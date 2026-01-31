@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bangkok Explorer 🇹🇭</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+const { useState, useEffect } = React;
+
+const BangkokExplorer = () => {
+  // Load saved preferences
+  const loadPreferences = () => {
+    try {
+      const saved = localStorage.getItem('bangkok_preferences');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return {
+      hours: 3,
+      area: 'sukhumvit',
+      interests: [],
+      circular: true,
+      startPoint: ''
+    };
+  };
+
+  const [currentView, setCurrentView] = useState('form');
+  const [formData, setFormData] = useState(loadPreferences());
+  const [route, setRoute] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [disabledStops, setDisabledStops] = useState([]); // Track disabled stop IDs
+  const [savedRoutes, setSavedRoutes] = useState([]);
+  const [routeName, setRouteName] = useState('');
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [customLocations, setCustomLocations] = useState([]);
+  const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
+  const [newLocation, setNewLocation] = useState({
+    name: '',
+    description: '',
+    area: formData.area,
+    interests: []
+  });
+  const [customInterests, setCustomInterests] = useState([]);
+  const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', baseCategory: '' });
+
+  // Load saved routes, custom locations, and custom interests from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('bangkok_saved_routes');
+      if (saved) {
+        setSavedRoutes(JSON.parse(saved));
+      }
+      const customLocs = localStorage.getItem('bangkok_custom_locations');
+      if (customLocs) {
+        setCustomLocations(JSON.parse(customLocs));
+      }
+      const customInts = localStorage.getItem('bangkok_custom_interests');
+      if (customInts) {
+        setCustomInterests(JSON.parse(customInts));
+      }
+    } catch (e) {
+      console.log('No saved data');
+    }
+  }, []);
+
+  const interestOptions = [
+    { id: 'temples', label: 'מקדשים', icon: '🛕' },
+    { id: 'food', label: 'אוכל', icon: '🍜' },
+    { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
+    { id: 'artisans', label: 'מלאכה', icon: '🔨' },
+    { id: 'galleries', label: 'גלריות', icon: '🖼️' },
+    { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
+    { id: 'canals', label: 'תעלות', icon: '🚤' },
+    { id: 'cafes', label: 'קפה', icon: '☕' },
+    { id: 'markets', label: 'שווקים', icon: '🏪' },
+    { id: 'nightlife', label: 'לילה', icon: '🌃' },
+    { id: 'parks', label: 'פארקים', icon: '🌳' },
+    { id: 'rooftop', label: 'גגות', icon: '🌆' },
+    { id: 'entertainment', label: 'בידור', icon: '🎭' },
+    { id: 'other', label: 'אחר', icon: '📍' }
+  ];
+
+  // Combine default and custom interests - with safety check
+  const allInterestOptions = [...interestOptions, ...(customInterests || [])];
+
+  // Save preferences whenever they change
+  useEffect(() => {
+    localStorage.setItem('bangkok_preferences', JSON.stringify(formData));
+  }, [formData]);
+
+  const areaOptions = [
+    { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
+    { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
+    { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
+    { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
+    { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
+    { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
+  ];
+
+  // מקומות מדויקים לכל אזור - מקומות יכולים להופיע בכמה קטגוריות
+  const allLocations = {
+    sukhumvit: {
+      // Sukhumvit: אזור Asok, Nana, Phrom Phong
+      graffiti: [
+        { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: 'גרפיטי ובילוי', duration: 25 },
+        { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: 'אומנות רחוב ליד BTS', duration: 30 },
+        { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: 'קיר גרפיטי', duration: 25 }
+      ],
+      galleries: [
+        { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: 'גלריה עכשווית', duration: 45 },
+        { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: 'אומנות מקומית', duration: 30 },
+        { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: 'אומנות אסיאתית', duration: 40 }
+      ],
+      artisans: [
+        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי ואדריכלות', duration: 60 },
+        { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: 'מלאכה תאילנדית', duration: 40 }
+      ],
+      cafes: [
+        { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: 'קפה מינימליסטי', duration: 40 },
+        { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: 'קפה איכותי ליד BTS', duration: 35 },
+        { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: 'קפה בוטיק', duration: 30 },
+        { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: 'קפה בקניון מודרני', duration: 40 }
+      ],
+      architecture: [
+        { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: 'קניון בעיצוב ערים', duration: 60 },
+        { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: 'קניון מודרני יוקרתי', duration: 50 },
+        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק ואגם גדול', duration: 45 },
+        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי היסטורי', duration: 60 }
+      ],
+      food: [
+        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל רחוב מפורסם', duration: 60 },
+        { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: 'מתחם אוכל בקניון', duration: 45 },
+        { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: 'מסעדות מגוונות', duration: 50 }
+      ],
+      markets: [
+        { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: 'שוק סיטונאי ואוכל', duration: 50 },
+        { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: 'שוק מקומי', duration: 40 },
+        { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: 'קניון עם שווקים', duration: 50 },
+        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל ומוצרים', duration: 60 }
+      ],
+      nightlife: [
+        { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: 'רחוב ברים ומועדונים', duration: 90 },
+        { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: 'אזור בילוי ומסעדות', duration: 90 },
+        { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: 'בילוי ליד BTS', duration: 80 }
+      ],
+      parks: [
+        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק עירוני גדול', duration: 45 }
+      ],
+      entertainment: [
+        { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: 'קולנוע בקניון', duration: 150 },
+        { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: 'קולנוע יוקרתי', duration: 150 },
+        { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: 'מועדון ג\'אז חי', duration: 120 },
+        { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: 'חדר בריחה', duration: 90 }
+      ]
+    },
+    'old-town': {
+      // Old Town: Rattanakosin - הארמון, ואט פו, קאוסאן
+      temples: [
+        { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: 'בודהה השוכב', duration: 90 },
+        { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: 'הארמון המלכותי', duration: 120 },
+        { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: 'הר הזהב', duration: 60 },
+        { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: 'מקדש גדול', duration: 45 }
+      ],
+      architecture: [
+        { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר', duration: 60 },
+        { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: 'אנדרטת דמוקרטיה', duration: 20 },
+        { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: 'נדנדה ענקית', duration: 15 }
+      ],
+      canals: [
+        { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: 'סירת תעלה', duration: 30 },
+        { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: 'סיור בתעלות', duration: 90 }
+      ],
+      markets: [
+        { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: 'שוק פרחים 24 שעות', duration: 45 },
+        { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: 'שוק קמיעות', duration: 30 }
+      ],
+      food: [
+        { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: 'רחוב תרמילאים', duration: 90 },
+        { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: 'שוק אוכל מקומי', duration: 40 }
+      ],
+      entertainment: [
+        { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: 'תיאטרון לאומי - מופעים תאילנדיים', duration: 120 },
+        { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: 'אולם תערוכות', duration: 60 }
+      ]
+    },
+    chinatown: {
+      // Chinatown: Yaowarat, Sampeng
+      food: [
+        { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: 'רחוב האוכל המפורסם', duration: 90 },
+        { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: 'פירות ים מפורסם', duration: 60 },
+        { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: 'נודלס גלילה', duration: 30 },
+        { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: 'מעגל אוכל', duration: 50 }
+      ],
+      markets: [
+        { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: 'סמטת סיטונאות', duration: 60 },
+        { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: 'שוק סיני', duration: 50 },
+        { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: 'שוק גנבים', duration: 45 }
+      ],
+      temples: [
+        { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: 'בודהה זהב 5.5 טון', duration: 45 },
+        { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: 'מקדש סיני עתיק', duration: 40 }
+      ],
+      architecture: [
+        { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: 'שער צ\'יינה טאון', duration: 15 },
+        { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: 'בתי חנות עתיקים', duration: 30 }
+      ],
+      entertainment: [
+        { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: 'מרכז מורשת', duration: 60 }
+      ]
+    },
+    thonglor: {
+      // Thonglor/Ekkamai: Sukhumvit Soi 55 area
+      galleries: [
+        { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: 'אומנות עכשווית', duration: 50 },
+        { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: 'גלריה בוטיק', duration: 40 },
+        { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: 'אומנות מקומית', duration: 45 }
+      ],
+      cafes: [
+        { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: 'קפה יפני-סקנדינבי', duration: 50 },
+        { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: 'קפה ובשמים', duration: 45 },
+        { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: 'קפה מקומי', duration: 40 },
+        { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: 'קפה איכותי', duration: 35 }
+      ],
+      food: [
+        { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: 'מסעדות בוטיק', duration: 60 },
+        { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: 'מתחם אוכל', duration: 50 }
+      ],
+      nightlife: [
+        { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: 'ברים ומועדונים', duration: 90 },
+        { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: 'מועדון', duration: 80 }
+      ],
+      markets: [
+        { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: 'שוק לילה וינטג\'', duration: 60 }
+      ],
+      entertainment: [
+        { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: 'קולנוע גדול', duration: 150 },
+        { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: 'בר ג\'אז אינטימי', duration: 120 }
+      ]
+    },
+    ari: {
+      // Ari: BTS Ari area, Phahonyothin Soi 7
+      graffiti: [
+        { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: 'גרפיטי בסמטאות', duration: 30 }
+      ],
+      galleries: [
+        { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: 'גלריה קטנה', duration: 35 },
+        { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: 'ספרייה וגלריה', duration: 40 }
+      ],
+      cafes: [
+        { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: 'קפה ורוד אודרי הפבורן', duration: 50 },
+        { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: 'קפה איטלקי רטרו', duration: 60 },
+        { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: 'קפה מקומי איכותי', duration: 40 },
+        { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: 'קפה אמנותי', duration: 45 }
+      ],
+      artisans: [
+        { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: 'בית בעלי מלאכה', duration: 45 },
+        { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: 'קרמיקה', duration: 50 }
+      ],
+      food: [
+        { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: 'שוק אוכל לילה', duration: 60 },
+        { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: 'מסעדות', duration: 50 }
+      ],
+      parks: [
+        { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: 'פארק גדול', duration: 40 }
+      ],
+      entertainment: [
+        { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: 'בר אלטרנטיבי', duration: 90 }
+      ]
+    },
+    riverside: {
+      // Riverside: לאורך נהר Chao Phraya
+      canals: [
+        { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: 'שייט ארוחת ערב', duration: 120 },
+        { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: 'סירת תחבורה', duration: 30 },
+        { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: 'תעלה גדולה', duration: 60 }
+      ],
+      rooftop: [
+        { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: 'בר גג Hangover 2', duration: 90 },
+        { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: 'בר גג פרואני', duration: 80 },
+        { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: 'מסעדת גג מול Wat Arun', duration: 70 }
+      ],
+      architecture: [
+        { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: 'שוק ריברסייד ענק', duration: 120 },
+        { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: 'מלון היסטורי 1876', duration: 30 },
+        { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: 'קניון על הנהר', duration: 90 },
+        { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: 'מחסן אומנות Talat Noi', duration: 50 }
+      ],
+      temples: [
+        { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר מהנהר', duration: 60 },
+        { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: 'מקדש על הנהר', duration: 40 }
+      ],
+      graffiti: [
+        { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: 'אומנות רחוב בשכונה סינית', duration: 40 }
+      ],
+      entertainment: [
+        { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: 'תיאטרון מופעים', duration: 90 },
+        { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: 'מופע קברט', duration: 90 },
+        { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: 'קולנוע על הנהר', duration: 150 }
+      ]
+    }
+  };
+
+  const toggleInterest = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      interests: prev.interests.includes(id)
+        ? prev.interests.filter(i => i !== id)
+        : [...prev.interests, id]
+    }));
+  };
+
+  const getStopsForInterests = () => {
+    const areaData = allLocations[formData.area] || allLocations.sukhumvit;
+    let stops = [];
+    
+    // Add locations from selected interests
+    formData.interests.forEach(interest => {
+      // Check if this is a custom interest with baseCategory
+      const customInterest = allInterestOptions.find(opt => opt.id === interest && opt.custom);
+      
+      if (customInterest && customInterest.baseCategory) {
+        // Use the base category to find locations
+        if (areaData[customInterest.baseCategory]) {
+          stops = [...stops, ...areaData[customInterest.baseCategory]];
+        }
+      } else if (areaData[interest]) {
+        // Regular interest - use as is
+        stops = [...stops, ...areaData[interest]];
+      }
+    });
+
+    // Add custom locations that match current area and interests
+    const matchingCustomLocations = customLocations.filter(loc => {
+      if (loc.area !== formData.area) return false;
+      if (!loc.interests || loc.interests.length === 0) return false;
+      
+      // Check if location interests match selected interests
+      return loc.interests.some(locInterest => {
+        // Direct match - location interest is in selected interests
+        if (formData.interests.includes(locInterest)) return true;
+        
+        // Check if selected interest is a custom one with baseCategory that matches
+        for (const selectedInterest of formData.interests) {
+          const customInterest = allInterestOptions.find(opt => 
+            opt.id === selectedInterest && opt.custom && opt.baseCategory
+          );
+          
+          // If selected is custom with base, check if location's interest matches the base
+          if (customInterest && locInterest === customInterest.baseCategory) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+    });
+    stops = [...stops, ...matchingCustomLocations];
+
+    // Remove duplicates based on exact coordinates
+    const seen = new Set();
+    stops = stops.filter(stop => {
+      const key = `${stop.lat},${stop.lng}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // If no matches, show random selection
+    if (stops.length === 0) {
+      stops = Object.values(areaData).flat().slice(0, 5);
+    }
+
+    const maxStops = Math.max(3, Math.min(formData.hours * 2, 10));
+    return stops.slice(0, maxStops);
+  };
+
+  const generateRoute = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      const stops = getStopsForInterests();
+      
+      let waypoints = stops.map(s => `${s.lat},${s.lng}`);
+      
+      // Build Google Maps URL with start point if provided
+      let mapUrl;
+      if (formData.startPoint && formData.startPoint.trim()) {
+        // User provided a start point - use it as origin
+        const origin = encodeURIComponent(formData.startPoint + ', Bangkok');
+        const destination = formData.circular ? origin : waypoints[waypoints.length - 1];
+        const waypointsStr = waypoints.join('|');
+        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
+      } else {
+        // No start point - use first location as origin
+        if (formData.circular && stops.length > 1) {
+          waypoints.push(waypoints[0]);
+        }
+        
+        const origin = waypoints[0];
+        const destination = waypoints[waypoints.length - 1];
+        const middlePoints = waypoints.slice(1, -1).join('|');
+        
+        mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+        if (middlePoints) {
+          mapUrl += `&waypoints=${middlePoints}`;
+        }
+        mapUrl += '&travelmode=walking';
+      }
+
+      const selectedArea = areaOptions.find(a => a.id === formData.area);
+      
+      // Generate default name: "Area - interests #number"
+      const areaName = selectedArea?.label || 'בנקוק';
+      const interestsText = formData.interests
+        .map(id => allInterestOptions.filter(o => o && o.id).find(o => o.id === id)?.label)
+        .filter(Boolean)
+        .join(', ');
+      
+      // Find highest sequential number for similar routes
+      const baseName = `${areaName} - ${interestsText}`;
+      const existingNumbers = savedRoutes
+        .filter(r => r.name && r.name.startsWith(baseName))
+        .map(r => {
+          const match = r.name.match(/#(\d+)$/);
+          return match ? parseInt(match[1]) : 0;
+        });
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      const defaultName = `${baseName} #${nextNumber}`;
+      
+      const newRoute = {
+        id: Date.now(),
+        name: '', // Will be set when user saves
+        defaultName: defaultName,
+        createdAt: new Date().toISOString(),
+        areaName: areaName,
+        interestsText: interestsText,
+        title: `${areaName} - ${formData.hours} שעות`,
+        description: `מסלול ${formData.circular ? 'מעגלי' : 'לינארי'}`,
+        duration: formData.hours,
+        circular: formData.circular,
+        startPoint: formData.startPoint || 'התחלה מהמקום הראשון ברשימה',
+        stops,
+        mapUrl,
+        preferences: { ...formData }
+      };
+
+      setRoute(newRoute);
+      setRouteName(defaultName); // Set default name
+      setCurrentView('route');
+      setIsGenerating(false);
+    }, 800);
+  };
+
+  const saveRoute = () => {
+    if (!routeName.trim()) {
+      return; // Just don't save if no name
+    }
+
+    const routeToSave = {
+      ...route,
+      name: routeName.trim(),
+      savedAt: new Date().toISOString()
+    };
+
+    const updated = [routeToSave, ...savedRoutes];
+    setSavedRoutes(updated);
+    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    
+    setShowSaveDialog(false);
+    setRouteName('');
+    setRoute(routeToSave); // Update route to show it's saved
+  };
+
+  const deleteRoute = (routeId) => {
+    // Just delete without confirmation in sandbox
+    const updated = savedRoutes.filter(r => r.id !== routeId);
+    setSavedRoutes(updated);
+    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+  };
+
+  const loadSavedRoute = (savedRoute) => {
+    setRoute(savedRoute);
+    setFormData(savedRoute.preferences);
+    setCurrentView('route');
+  };
+
+  const addCustomInterest = () => {
+    if (!newInterest.label.trim() || !newInterest.baseCategory) {
+      return; // Require both label and baseCategory
+    }
+    
+    const interestToAdd = {
+      id: `custom_${Date.now()}`,
+      label: newInterest.label.trim(),
+      icon: newInterest.icon || '📍',
+      baseCategory: newInterest.baseCategory, // Store the base category
+      custom: true
+    };
+    
+    const updated = [...customInterests, interestToAdd];
+    setCustomInterests(updated);
+    localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
+    
+    // Reset and close dialog
+    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
+    setShowAddInterestDialog(false);
+  };
+
+  const deleteCustomInterest = (interestId) => {
+    // Check if any custom locations use this interest
+    const locationsUsingInterest = customLocations.filter(loc => 
+      loc.interests && loc.interests.includes(interestId)
+    );
+    
+    if (locationsUsingInterest.length > 0) {
+      // Just remove the interest without warning (as we said in tips)
+      const updated = customInterests.filter(i => i.id !== interestId);
+      setCustomInterests(updated);
+      localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
+    } else {
+      const updated = customInterests.filter(i => i.id !== interestId);
+      setCustomInterests(updated);
+      localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
+    }
+  };
+
+  const deleteCustomLocation = (locationId) => {
+    const updated = customLocations.filter(loc => loc.id !== locationId);
+    setCustomLocations(updated);
+    localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
+  };
+
+  const addCustomLocation = () => {
+    if (!newLocation.name.trim() || newLocation.interests.length === 0) {
+      return; // Just don't add if validation fails
+    }
+    
+    const locationToAdd = {
+      id: Date.now(),
+      name: newLocation.name.trim(),
+      description: newLocation.description.trim() || 'מקום שהוספתי',
+      area: newLocation.area,
+      interests: newLocation.interests,
+      lat: 0, // Will be set by Google Maps or manually
+      lng: 0,
+      duration: 45,
+      custom: true,
+      addedAt: new Date().toISOString()
+    };
+    
+    const updated = [...customLocations, locationToAdd];
+    setCustomLocations(updated);
+    localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
+    
+    // Add to current route if exists
+    if (route) {
+      const updatedRoute = {
+        ...route,
+        stops: [...route.stops, locationToAdd]
+      };
+      setRoute(updatedRoute);
+    }
+    
+    setShowAddLocationDialog(false);
+    setNewLocation({ name: '', description: '', area: formData.area, interests: [] });
+  };
+
+  const toggleStopActive = (stopIndex) => {
+    const stopId = route.stops[stopIndex].id || stopIndex;
+    const newDisabledStops = disabledStops.includes(stopId)
+      ? disabledStops.filter(id => id !== stopId)
+      : [...disabledStops, stopId];
+    
+    setDisabledStops(newDisabledStops);
+    
+    // Regenerate map URL with only active stops
+    const activeStops = route.stops.filter((_, i) => 
+      !newDisabledStops.includes(route.stops[i].id || i)
+    );
+    
+    let waypoints = activeStops.map(s => `${s.lat},${s.lng}`);
+    
+    if (route.preferences.circular && activeStops.length > 1) {
+      waypoints.push(waypoints[0]);
+    }
+    
+    const origin = waypoints[0];
+    const destination = waypoints[waypoints.length - 1];
+    const middlePoints = waypoints.slice(1, -1).join('|');
+    
+    let mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+    if (middlePoints) {
+      mapUrl += `&waypoints=${middlePoints}`;
+    }
+    mapUrl += '&travelmode=walking';
+    
+    setRoute({...route, mapUrl});
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
+      <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
+        <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
+        <p className="text-sm text-orange-100">ההעדפות נשמרות אוטומטית</p>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4 pb-32">
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mb-4 bg-white rounded-lg p-2 shadow">
+          <button
+            onClick={() => setCurrentView('form')}
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+              currentView === 'form' || currentView === 'route' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            🗺️ מסלול חדש
+          </button>
+          <button
+            onClick={() => setCurrentView('saved')}
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+              currentView === 'saved' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            💾 מסלולים ({savedRoutes.length})
+          </button>
+          <button
+            onClick={() => setCurrentView('settings')}
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+              currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            ⚙️ הגדרות
+          </button>
+        </div>
+
+        {/* Form View */}
+        {currentView === 'form' && (
+          <div className="bg-white rounded-xl shadow-lg p-4 space-y-4">
+            <h2 className="text-xl font-bold">תכנן את הטיול</h2>
+            
+            {/* Compact settings */}
+            <div className="flex gap-4 items-center p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                <label className="text-xs font-medium">⏰</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="8"
+                  value={formData.hours}
+                  onChange={(e) => setFormData({...formData, hours: parseInt(e.target.value)})}
+                  className="flex-1"
+                />
+                <span className="text-sm font-bold text-orange-500 w-12">{formData.hours}ש'</span>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setFormData({...formData, circular: true})}
+                  className={`px-3 py-1 rounded text-xs ${
+                    formData.circular ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}
+                  title="מעגלי"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={() => setFormData({...formData, circular: false})}
+                  className={`px-3 py-1 rounded text-xs ${
+                    !formData.circular ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}
+                  title="לינארי"
+                >
+                  ➡️
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
+              <input
+                type="text"
+                value={formData.startPoint}
+                onChange={(e) => setFormData({...formData, startPoint: e.target.value})}
+                placeholder="לדוגמה: BTS Asok, שם מלון..."
+                className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="font-medium text-sm mb-2 block">🗺️ איזור</label>
+              <div className="grid grid-cols-3 gap-2">
+                {areaOptions.map(area => (
+                  <button
+                    key={area.id}
+                    onClick={() => setFormData({...formData, area: area.id})}
+                    style={{
+                      border: formData.area === area.id ? '5px solid #f97316' : '3px solid #d1d5db',
+                      backgroundColor: formData.area === area.id ? '#fed7aa' : '#ffffff',
+                      boxShadow: formData.area === area.id ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none'
+                    }}
+                    className="p-2 rounded-lg text-xs"
+                  >
+                    <div className="text-xl mb-1">{area.icon}</div>
+                    <div style={{
+                      fontWeight: 'bold',
+                      color: formData.area === area.id ? '#c2410c' : '#374151'
+                    }}>{area.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="font-medium text-sm mb-2 block">⭐ מה מעניין?</label>
+              <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                {allInterestOptions.filter(option => option && option.id).map(option => (
+                  <button
+                    key={option.id}
+                    onClick={() => toggleInterest(option.id)}
+                    style={{
+                      border: formData.interests.includes(option.id) ? '5px solid #f97316' : '3px solid #d1d5db',
+                      backgroundColor: formData.interests.includes(option.id) ? '#fed7aa' : '#ffffff',
+                      boxShadow: formData.interests.includes(option.id) ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none'
+                    }}
+                    className="p-2 rounded-lg text-xs"
+                  >
+                    <div className="text-lg mb-1">{option.icon}</div>
+                    <div style={{
+                      fontWeight: '600',
+                      color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
+                    }}>{option.label}</div>
+                  </button>
+                ))}
+              </div>
+              {formData.interests.length > 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  color: '#059669',
+                  backgroundColor: '#d1fae5',
+                  padding: '8px',
+                  borderRadius: '8px'
+                }}>
+                  ✓ {formData.interests.length} נבחרו
+                </div>
+              )}
+            </div>
+
+            {/* Generate Button - sticky at bottom for mobile */}
+            <div style={{
+              position: 'sticky',
+              bottom: '20px',
+              zIndex: 100,
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={generateRoute}
+                disabled={formData.interests.length === 0}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(to right, #f97316, #ec4899)',
+                  color: 'white',
+                  padding: '20px',
+                  borderRadius: '16px',
+                  fontWeight: 'bold',
+                  fontSize: '20px',
+                  border: 'none',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                  opacity: formData.interests.length === 0 ? 0.5 : 1
+                }}
+              >
+                {isGenerating ? 'מחשב מסלול...' : '🗺️ חשב מסלול'}
+              </button>
+            </div>
+            
+            {formData.interests.length === 0 && (
+              <p className="text-center text-gray-500 text-sm">בחר לפחות תחום עניין אחד</p>
+            )}
+
+            {/* Show stops list ONLY after route is calculated */}
+            {route && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mt-4">
+                <h3 className="font-bold mb-3 text-blue-900">מקומות ב{route.areaName} ({route.stops.length}):</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {route.stops.map((stop, i) => (
+                    <div key={i} className="bg-white p-2 rounded border">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-bold text-sm">{i + 1}. {stop.name}</div>
+                          <div className="text-xs text-gray-600">{stop.description}</div>
+                          <div className="text-xs text-gray-500">⏱️ {stop.duration} דקות</div>
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700 text-xs ml-2"
+                        >
+                          📍 מפה
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-3 space-y-2">
+                  <a
+                    href={(() => {
+                      const avgLat = route.stops.reduce((sum, s) => sum + s.lat, 0) / route.stops.length;
+                      const avgLng = route.stops.reduce((sum, s) => sum + s.lng, 0) / route.stops.length;
+                      const query = route.stops.map(s => s.name).join(' OR ');
+                      return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},14z`;
+                    })()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      backgroundColor: '#22c55e',
+                      color: 'white',
+                      textAlign: 'center',
+                      padding: '14px',
+                      borderRadius: '12px',
+                      fontWeight: 'bold',
+                      textDecoration: 'none',
+                      fontSize: '16px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    ⭐ הצג את כל המקומות על המפה (ללא מסלול)
+                  </a>
+                  
+                  <button
+                    onClick={() => setCurrentView('route')}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      backgroundColor: '#2563eb',
+                      color: 'white',
+                      textAlign: 'center',
+                      padding: '14px',
+                      borderRadius: '12px',
+                      fontWeight: 'bold',
+                      fontSize: '16px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                    }}
+                  >
+                    🗺️ פתח מסלול עם ניווט ב-Google Maps
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentView === 'route' && route && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <button
+              onClick={() => setCurrentView('form')}
+              className="text-orange-500 font-medium mb-4"
+            >
+              ← חזרה
+            </button>
+
+            {/* Save Route Button */}
+            {!route.name && (
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
+              >
+                💾 שמור מסלול זה
+              </button>
+            )}
+
+            {route.name && (
+              <div className="bg-green-50 border-2 border-green-500 p-3 rounded-lg mb-4">
+                <p className="text-green-800 font-medium">📌 {route.name}</p>
+                <p className="text-xs text-green-600">נשמר ב-{new Date(route.savedAt).toLocaleDateString('he-IL')}</p>
+              </div>
+            )}
+
+            <h2 className="text-2xl font-bold mb-2">{route.areaName} - {route.interestsText || 'כללי'}</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              נקודת התחלה: {route.startPoint}
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-bold">תחנות ({route.stops.length}):</h3>
+                <button
+                  onClick={() => {
+                    setNewLocation(prev => ({...prev, area: formData.area}));
+                    setShowAddLocationDialog(true);
+                  }}
+                  className="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-600"
+                >
+                  ➕ הוסף מקום
+                </button>
+              </div>
+              {route.stops.map((stop, i) => {
+                const stopId = stop.id || i;
+                const isDisabled = disabledStops.includes(stopId);
+                return (
+                  <div key={i} className={`border-r-4 pr-3 py-2 ${isDisabled ? 'border-gray-300 opacity-50' : 'border-orange-500'}`}>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex gap-2 flex-1">
+                        <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : 'bg-orange-500 text-white'}`}>
+                          {isDisabled ? '✕' : i + 1}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : ''}`}>{stop.name}</h4>
+                          <p className="text-xs text-gray-600">{stop.description}</p>
+                          <p className="text-xs text-gray-500">⏱️ {stop.duration} דקות</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => toggleStopActive(i)}
+                          className={`text-xs px-2 py-1 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
+                          title={isDisabled ? 'הפעל' : 'השבת'}
+                        >
+                          {isDisabled ? '✓' : '⏸'}
+                        </button>
+                        <a
+                          href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:text-blue-700 text-xs"
+                        >
+                          📍
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <a
+                href={(() => {
+                  const avgLat = route.stops.reduce((sum, s) => sum + s.lat, 0) / route.stops.length;
+                  const avgLng = route.stops.reduce((sum, s) => sum + s.lng, 0) / route.stops.length;
+                  const query = route.stops.map(s => s.name).join(' OR ');
+                  return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${avgLat},${avgLng},14z`;
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  backgroundColor: '#22c55e',
+                  color: 'white',
+                  textAlign: 'center',
+                  padding: '14px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  textDecoration: 'none',
+                  fontSize: '16px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+                  marginBottom: '12px'
+                }}
+              >
+                ⭐ הצג את כל המקומות על המפה (ללא מסלול)
+              </a>
+
+              <a
+                href={route.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  textAlign: 'center',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  textDecoration: 'none',
+                  fontSize: '16px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
+                }}
+              >
+                🗺️ פתח ב-Google Maps עם ניווט מלא
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Saved Routes View */}
+        {currentView === 'saved' && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-xl font-bold mb-4">מסלולים שמורים</h2>
+            
+            {savedRoutes.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🗺️</div>
+                <p className="text-gray-600 mb-4">עדיין אין מסלולים שמורים</p>
+                <button
+                  onClick={() => setCurrentView('form')}
+                  className="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600"
+                >
+                  צור מסלול חדש
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savedRoutes.map(savedRoute => (
+                  <div key={savedRoute.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-orange-300 transition">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-800">{savedRoute.name}</h3>
+                        <p className="text-sm text-gray-600">{savedRoute.areaName} • {savedRoute.interestsText || 'כללי'}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {savedRoute.stops.length} תחנות • 
+                          נשמר: {new Date(savedRoute.savedAt).toLocaleDateString('he-IL')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteRoute(savedRoute.id)}
+                        className="text-red-500 hover:text-red-700 text-sm ml-2"
+                      >
+                        🗑️ מחק
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => loadSavedRoute(savedRoute)}
+                        className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600"
+                      >
+                        📍 פתח מסלול
+                      </button>
+                      <a
+                        href={savedRoute.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 bg-green-500 text-white text-center py-2 rounded-lg font-medium hover:bg-green-600"
+                      >
+                        🗺️ Google Maps
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Settings View */}
+        {currentView === 'settings' && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-xl font-bold mb-4">⚙️ הגדרות</h2>
+            
+            {/* Custom Interests Section */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold">תחומי עניין מותאמים אישית</h3>
+                <button
+                  onClick={() => setShowAddInterestDialog(true)}
+                  style={{
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  ➕ הוסף תחום חדש
+                </button>
+              </div>
+
+              {customInterests.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <div className="text-4xl mb-2">🎯</div>
+                  <p className="text-gray-600">עדיין אין תחומי עניין מותאמים אישית</p>
+                  <p className="text-sm text-gray-500 mt-1">לחץ "הוסף תחום חדש" כדי ליצור</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {customInterests.map(interest => (
+                    <div
+                      key={interest.id}
+                      style={{
+                        border: '3px solid #8b5cf6',
+                        borderRadius: '12px',
+                        padding: '12px',
+                        backgroundColor: '#f3e8ff',
+                        position: 'relative'
+                      }}
+                    >
+                      <button
+                        onClick={() => deleteCustomInterest(interest.id)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title="מחק"
+                      >
+                        ×
+                      </button>
+                      <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>{interest.icon}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#6b21a8' }}>
+                          {interest.label}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Custom Locations Section */}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold mb-3">מקומות מותאמים אישית ({customLocations.length})</h3>
+              
+              {customLocations.length === 0 ? (
+                <div className="text-center py-6 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600 text-sm">עדיין אין מקומות מותאמים אישית</p>
+                  <p className="text-xs text-gray-500 mt-1">הוסף מקומות דרך כפתור "הוסף מקום" במסלול</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {customLocations.map(loc => (
+                    <div
+                      key={loc.id}
+                      style={{
+                        border: '2px solid #d1d5db',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        backgroundColor: 'white',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{loc.name}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>{loc.description}</div>
+                      </div>
+                      <button
+                        onClick={() => deleteCustomLocation(loc.id)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        🗑️ מחק
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Info Section */}
+            <div style={{
+              backgroundColor: '#eff6ff',
+              border: '2px solid #3b82f6',
+              borderRadius: '12px',
+              padding: '12px',
+              marginTop: '16px'
+            }}>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '8px', color: '#1e40af' }}>💡 טיפים:</h4>
+              <ul style={{ fontSize: '13px', color: '#1e3a8a', listStyle: 'disc', paddingRight: '20px' }}>
+                <li>תחום עניין חדש מוצג עם השם שלך אבל מראה מקומות מתחום הבסיס</li>
+                <li>לדוגמה: "בתי קולנוע" מבוסס על "ארכיטקטורה" - יציג את כל מקומות הארכיטקטורה</li>
+                <li>מקומות מותאמים שתוסיף יופיעו אוטומטית לפי תחומי העניין</li>
+                <li>מחיקת תחום עניין לא תמחק מקומות קיימים</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Save Dialog */}
+        {showSaveDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-4">שמור מסלול</h3>
+              <label className="block text-sm font-medium mb-2">שם המסלול:</label>
+              <input
+                type="text"
+                value={routeName}
+                onChange={(e) => setRouteName(e.target.value)}
+                placeholder="לדוגמה: טיול ראשון בבנקוק"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={saveRoute}
+                  className="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600"
+                >
+                  💾 שמור
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSaveDialog(false);
+                    setRouteName('');
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Location Dialog */}
+        {showAddLocationDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h3 className="text-xl font-bold mb-4">הוסף מקום חדש</h3>
+              
+              <label className="block text-sm font-medium mb-2">שם המקום:</label>
+              <input
+                type="text"
+                value={newLocation.name}
+                onChange={(e) => setNewLocation({...newLocation, name: e.target.value})}
+                placeholder="לדוגמה: Cafe Amazon"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
+                autoFocus
+              />
+              
+              <label className="block text-sm font-medium mb-2">תיאור:</label>
+              <input
+                type="text"
+                value={newLocation.description}
+                onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                placeholder="לדוגמה: קפה מעולה ליד המלון"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
+              />
+              
+              <label className="block text-sm font-medium mb-2">איזור:</label>
+              <select
+                value={newLocation.area}
+                onChange={(e) => setNewLocation({...newLocation, area: e.target.value})}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
+              >
+                {areaOptions.map(area => (
+                  <option key={area.id} value={area.id}>
+                    {area.icon} {area.label}
+                  </option>
+                ))}
+              </select>
+              
+              <label className="block text-sm font-medium mb-2">תחומי עניין (בחר אחד או יותר):</label>
+              <div className="grid grid-cols-3 gap-2 mb-2 max-h-48 overflow-y-auto border-2 border-gray-200 rounded-lg p-2">
+                {allInterestOptions.filter(option => option && option.id).map(option => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      const interests = newLocation.interests.includes(option.id)
+                        ? newLocation.interests.filter(i => i !== option.id)
+                        : [...newLocation.interests, option.id];
+                      setNewLocation({...newLocation, interests});
+                    }}
+                    className={`p-2 rounded-lg border-2 text-xs ${
+                      newLocation.interests.includes(option.id) 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="text-base mb-1">{option.icon}</div>
+                    <div className="font-medium">{option.label}</div>
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => setShowAddInterestDialog(true)}
+                className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-600 mb-4"
+              >
+                ➕ צור תחום עניין חדש
+              </button>
+              
+              {newLocation.interests.length > 0 && (
+                <div className="text-xs text-green-600 mb-3">
+                  ✓ נבחרו {newLocation.interests.length} תחומים
+                </div>
+              )}
+              
+              <div className="text-xs text-gray-500 mb-4 bg-blue-50 p-2 rounded">
+                💡 המקום יתוסף למסלול הנוכחי וישמר לשימוש עתידי במסלולים עם תחומי עניין אלה
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={addCustomLocation}
+                  className="flex-1 bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600"
+                >
+                  ➕ הוסף
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddLocationDialog(false);
+                    setNewLocation({ name: '', description: '', area: formData.area, interests: [] });
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400"
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Custom Interest Dialog */}
+        {showAddInterestDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold mb-4">➕ הוסף תחום עניין חדש</h3>
+              
+              <label className="block text-sm font-medium mb-2">שם התחום:</label>
+              <input
+                type="text"
+                value={newInterest.label}
+                onChange={(e) => setNewInterest({...newInterest, label: e.target.value})}
+                placeholder="לדוגמה: בתי קולנוע"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+              />
+
+              <label className="block text-sm font-medium mb-2">אייקון (אימוג'י):</label>
+              <input
+                type="text"
+                value={newInterest.icon}
+                onChange={(e) => setNewInterest({...newInterest, icon: e.target.value})}
+                placeholder="📍"
+                maxLength="2"
+                style={{ fontSize: '24px', textAlign: 'center' }}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+              />
+
+              <label className="block text-sm font-medium mb-2">🔗 מבוסס על תחום קיים:</label>
+              <select
+                value={newInterest.baseCategory || ''}
+                onChange={(e) => setNewInterest({...newInterest, baseCategory: e.target.value})}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+              >
+                <option value="">-- בחר תחום בסיס --</option>
+                {interestOptions.map(option => (
+                  <option key={option.id} value={option.id}>
+                    {option.icon} {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{
+                backgroundColor: '#dbeafe',
+                border: '2px solid #3b82f6',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '12px', color: '#1e40af' }}>
+                  <strong>💡 הסבר:</strong> התחום החדש יציג את כל המקומות מהתחום הבסיס. לדוגמה: "בתי קולנוע" מבוסס על "בידור" - יראה את כל מקומות הבידור אבל עם השם "בתי קולנוע"
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={addCustomInterest}
+                  disabled={!newInterest.label.trim() || !newInterest.baseCategory}
+                  style={{
+                    flex: 1,
+                    backgroundColor: (newInterest.label.trim() && newInterest.baseCategory) ? '#8b5cf6' : '#d1d5db',
+                    color: 'white',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    opacity: (newInterest.label.trim() && newInterest.baseCategory) ? 1 : 0.5
+                  }}
+                >
+                  ✓ הוסף
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddInterestDialog(false);
+                    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#e5e7eb',
+                    color: '#374151',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    fontWeight: 'bold',
+                    border: 'none'
+                  }}
+                >
+                  ביטול
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />);
+    </script>
+</body>
+</html>
