@@ -148,20 +148,20 @@ const BangkokExplorer = () => {
 
   // Map our interests to Google Places categories
   const interestToGooglePlaces = {
-    temples: ['place_of_worship'],
+    temples: ['hindu_temple', 'church', 'mosque', 'synagogue'],
     food: ['restaurant', 'meal_takeaway'],
     graffiti: ['tourist_attraction', 'art_gallery'],
     artisans: ['store', 'art_gallery'],
     galleries: ['art_gallery', 'museum'],
-    architecture: ['tourist_attraction', 'point_of_interest'],
+    architecture: ['tourist_attraction', 'historical_landmark'],
     canals: ['tourist_attraction'],
-    cafes: ['cafe'],
-    markets: ['shopping_mall'],
+    cafes: ['cafe', 'coffee_shop'],
+    markets: ['market', 'shopping_mall'],
     nightlife: ['bar', 'night_club'],
-    parks: ['park'],
+    parks: ['park', 'national_park'],
     rooftop: ['bar', 'restaurant'],
     entertainment: ['movie_theater', 'amusement_park', 'tourist_attraction'],
-    other: ['point_of_interest']
+    other: ['tourist_attraction']
   };
 
   // Interests NOT covered by the system - for informational purposes in settings
@@ -3182,4 +3182,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />)
     </script>
 </body>
 </html>
-v1.4 - [static vs dynamic]
+v1.5 - [static vs dynamic]
