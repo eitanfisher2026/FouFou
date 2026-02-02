@@ -3,11 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bangkok Explorer 🇹🇭</title>
+    <title>Bangkok Explorer נ‡¹נ‡­</title>
+    <style>
+      @keyframes slideUp {
+        from {
+          transform: translateY(100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            borderWidth: {
+              '3': '3px',
+              '4': '4px',
+            }
+          }
+        }
+      }
+    </script>
 </head>
 <body>
     <div id="root"></div>
@@ -15,13 +39,22 @@
     <script type="text/babel">
 const { useState, useEffect } = React;
 
+// Google Places API Configuration
+const GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
+const GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+
 const BangkokExplorer = () => {
   // Load saved preferences
   const loadPreferences = () => {
     try {
       const saved = localStorage.getItem('bangkok_preferences');
       if (saved) {
-        return JSON.parse(saved);
+        const prefs = JSON.parse(saved);
+        // Add maxStops if not present (for backward compatibility)
+        if (!prefs.maxStops) prefs.maxStops = 10;
+        // Add dataSource if not present (default: static for Claude debugging)
+        if (!prefs.dataSource) prefs.dataSource = 'static';
+        return prefs;
       }
     } catch (e) {}
     return {
@@ -29,7 +62,9 @@ const BangkokExplorer = () => {
       area: 'sukhumvit',
       interests: [],
       circular: true,
-      startPoint: ''
+      startPoint: '',
+      maxStops: 10,
+      dataSource: 'static' // Default: static for Claude, change to 'dynamic' for production
     };
   };
 
@@ -46,12 +81,33 @@ const BangkokExplorer = () => {
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
+    notes: '',
     area: formData.area,
-    interests: []
+    interests: [],
+    lat: null,
+    lng: null,
+    mapsUrl: '',
+    uploadedImage: null,  // Base64 image data
+    imageUrls: []  // Array of URL strings
   });
   const [customInterests, setCustomInterests] = useState([]);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', baseCategory: '' });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: 'נ“', baseCategory: '' });
+  const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImage, setModalImage] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showLocationDetailModal, setShowLocationDetailModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+
+  // Toast notification helper
+  const showToast = (message, type = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 4000); // Hide after 4 seconds
+  };
 
   // Load saved routes, custom locations, and custom interests from localStorage
   useEffect(() => {
@@ -69,26 +125,206 @@ const BangkokExplorer = () => {
         setCustomInterests(JSON.parse(customInts));
       }
     } catch (e) {
-      console.log('No saved data');
+      // Silent fail
     }
   }, []);
 
   const interestOptions = [
-    { id: 'temples', label: 'מקדשים', icon: '🛕' },
-    { id: 'food', label: 'אוכל', icon: '🍜' },
-    { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
-    { id: 'artisans', label: 'מלאכה', icon: '🔨' },
-    { id: 'galleries', label: 'גלריות', icon: '🖼️' },
-    { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
-    { id: 'canals', label: 'תעלות', icon: '🚤' },
-    { id: 'cafes', label: 'קפה', icon: '☕' },
-    { id: 'markets', label: 'שווקים', icon: '🏪' },
-    { id: 'nightlife', label: 'לילה', icon: '🌃' },
-    { id: 'parks', label: 'פארקים', icon: '🌳' },
-    { id: 'rooftop', label: 'גגות', icon: '🌆' },
-    { id: 'entertainment', label: 'בידור', icon: '🎭' },
-    { id: 'other', label: 'אחר', icon: '📍' }
+    { id: 'temples', label: '׳׳§׳“׳©׳™׳', icon: 'נ›•' },
+    { id: 'food', label: '׳׳•׳›׳', icon: 'נ' },
+    { id: 'graffiti', label: '׳’׳¨׳₪׳™׳˜׳™', icon: 'נ¨' },
+    { id: 'artisans', label: '׳׳׳׳›׳”', icon: 'נ”¨' },
+    { id: 'galleries', label: '׳’׳׳¨׳™׳•׳×', icon: 'נ–¼ן¸' },
+    { id: 'architecture', label: '׳׳¨׳›׳™׳˜׳§׳˜׳•׳¨׳”', icon: 'נ›ן¸' },
+    { id: 'canals', label: '׳×׳¢׳׳•׳×', icon: 'נ₪' },
+    { id: 'cafes', label: '׳§׳₪׳”', icon: 'ג˜•' },
+    { id: 'markets', label: '׳©׳•׳•׳§׳™׳', icon: 'נ×' },
+    { id: 'nightlife', label: '׳׳™׳׳”', icon: 'נƒ' },
+    { id: 'parks', label: '׳₪׳׳¨׳§׳™׳', icon: 'נ³' },
+    { id: 'rooftop', label: '׳’׳’׳•׳×', icon: 'נ†' },
+    { id: 'entertainment', label: '׳‘׳™׳“׳•׳¨', icon: 'נ­' },
+    { id: 'other', label: '׳׳—׳¨', icon: 'נ“' }
   ];
+
+  // Map our interests to Google Places categories
+  const interestToGooglePlaces = {
+    temples: ['hindu_temple', 'buddhist_temple', 'place_of_worship'],
+    food: ['restaurant', 'meal_takeaway', 'food'],
+    graffiti: ['tourist_attraction', 'art_gallery'],
+    artisans: ['store', 'shopping_mall', 'art_gallery'],
+    galleries: ['art_gallery', 'museum'],
+    architecture: ['tourist_attraction', 'point_of_interest'],
+    canals: ['tourist_attraction', 'boat_tour_agency'],
+    cafes: ['cafe', 'coffee_shop'],
+    markets: ['shopping_mall', 'market'],
+    nightlife: ['bar', 'night_club'],
+    parks: ['park'],
+    rooftop: ['bar', 'restaurant'],
+    entertainment: ['movie_theater', 'amusement_park', 'tourist_attraction'],
+    other: ['point_of_interest']
+  };
+
+  // Interests NOT covered by the system - for informational purposes in settings
+  const uncoveredInterests = [
+    { icon: 'נ’†', name: '׳¢׳™׳¡׳•׳™ ׳•׳¡׳₪׳', examples: 'Thai massage, wellness centers, spa' },
+    { icon: 'נ‹ן¸', name: '׳›׳•׳©׳¨ ׳•׳¡׳₪׳•׳¨׳˜', examples: 'Gyms, yoga studios, Muay Thai, fitness' },
+    { icon: 'נ›ן¸', name: '׳§׳ ׳™׳•׳× ׳׳™׳•׳—׳“׳•׳×', examples: 'Boutiques, jewelry, fashion stores' },
+    { icon: 'נ“', name: '׳׳™׳׳•׳“ ׳•׳—׳•׳•׳™׳•׳×', examples: 'Cooking classes, meditation, workshops' },
+    { icon: 'נ¥', name: '׳‘׳¨׳™׳׳•׳× ׳•׳¨׳₪׳•׳׳”', examples: 'Clinics, pharmacies, health services' },
+    { icon: 'נ¨', name: '׳׳™׳¨׳•׳—', examples: 'Hotels, hostels, guesthouses' },
+    { icon: 'נ—', name: '׳×׳—׳‘׳•׳¨׳”', examples: 'Car rental, bike rental, transportation' },
+    { icon: 'נ’¼', name: '׳¢׳¡׳§׳™׳', examples: 'Coworking, offices, business centers' }
+  ];
+
+  // Tooltip content - simple explanations for each interest
+  const interestTooltips = {
+    temples: '׳׳§׳“׳©׳™׳ ׳‘׳•׳“׳”׳™׳¡׳˜׳™׳™׳ ׳•׳”׳™׳ ׳“׳™׳™׳',
+    food: '׳׳¡׳¢׳“׳•׳× ׳•׳׳•׳›׳ ׳¨׳—׳•׳‘',
+    graffiti: '׳׳•׳׳ ׳•׳× ׳¨׳—׳•׳‘ ׳•׳’׳¨׳₪׳™׳˜׳™',
+    artisans: '׳‘׳×׳™ ׳׳׳׳›׳” ׳•׳׳•׳׳ ׳™׳',
+    galleries: '׳’׳׳¨׳™׳•׳× ׳•׳׳•׳–׳™׳׳•׳ ׳™׳',
+    architecture: '׳‘׳ ׳™׳™׳ ׳™׳ ׳”׳™׳¡׳˜׳•׳¨׳™׳™׳',
+    canals: '׳©׳™׳™׳˜׳™׳ ׳‘׳×׳¢׳׳•׳× ׳•׳‘׳ ׳”׳¨',
+    cafes: '׳‘׳×׳™ ׳§׳₪׳”',
+    markets: '׳©׳•׳•׳§׳™׳ ׳•׳‘׳–׳׳¨׳™׳',
+    nightlife: '׳‘׳¨׳™׳ ׳•׳׳•׳¢׳“׳•׳ ׳™ ׳׳™׳׳”',
+    parks: '׳’׳ ׳™׳ ׳•׳₪׳׳¨׳§׳™׳',
+    rooftop: '׳‘׳¨׳™׳ ׳•׳׳¡׳¢׳“׳•׳× ׳¢׳ ׳’׳’׳•׳×',
+    entertainment: '׳§׳•׳׳ ׳•׳¢, ׳×׳™׳׳˜׳¨׳•׳, ׳׳•׳₪׳¢׳™׳',
+    other: '׳׳§׳•׳׳•׳× ׳ ׳•׳¡׳₪׳™׳'
+  };
+
+  // Area coordinates (center points)
+  const areaCoordinates = {
+    'sukhumvit': { lat: 13.7370, lng: 100.5610, radius: 2500 }, // 2.5km radius
+    'old-town': { lat: 13.7500, lng: 100.4914, radius: 2000 },
+    'chinatown': { lat: 13.7408, lng: 100.5050, radius: 1500 },
+    'thonglor': { lat: 13.7320, lng: 100.5830, radius: 2000 },
+    'ari': { lat: 13.7790, lng: 100.5410, radius: 2000 },
+    'riverside': { lat: 13.7270, lng: 100.4965, radius: 2000 }
+  };
+  
+  // Check if location is within area boundaries
+  const checkLocationInArea = (lat, lng, areaId) => {
+    const area = areaCoordinates[areaId];
+    if (!area || !lat || !lng) return { valid: true, distance: 0 };
+    
+    // Calculate distance using Haversine formula
+    const R = 6371e3; // Earth radius in meters
+    const ֿ†1 = lat * Math.PI / 180;
+    const ֿ†2 = area.lat * Math.PI / 180;
+    const ־”ֿ† = (area.lat - lat) * Math.PI / 180;
+    const ־”־» = (area.lng - lng) * Math.PI / 180;
+    
+    const a = Math.sin(־”ֿ†/2) * Math.sin(־”ֿ†/2) +
+              Math.cos(ֿ†1) * Math.cos(ֿ†2) *
+              Math.sin(־”־»/2) * Math.sin(־”־»/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in meters
+    
+    const isValid = distance <= area.radius;
+    
+    return { 
+      valid: isValid, 
+      distance: Math.round(distance),
+      distanceKm: (distance / 1000).toFixed(1)
+    };
+  };
+
+  // Fetch places from Google Places API
+  const fetchGooglePlaces = async (area, interests) => {
+    const center = areaCoordinates[area];
+    if (!center) {
+      console.error('[DYNAMIC] No coordinates for area:', area);
+      return [];
+    }
+
+    try {
+      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
+      
+      // Get all relevant place types
+      const placeTypes = [...new Set(
+        interests.flatMap(interest => {
+          const customInterest = customInterests.find(ci => ci.id === interest);
+          const baseInterest = customInterest?.baseCategory || interest;
+          return interestToGooglePlaces[baseInterest] || ['point_of_interest'];
+        })
+      )];
+
+      const response = await fetch(GOOGLE_PLACES_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+        },
+        body: JSON.stringify({
+          includedTypes: placeTypes.slice(0, 10), // API limit
+          maxResultCount: 20,
+          locationRestriction: {
+            circle: {
+              center: {
+                latitude: center.lat,
+                longitude: center.lng
+              },
+              radius: 2000 // 2km radius
+            }
+          },
+          rankPreference: 'POPULARITY'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Google API Error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      console.log('[DYNAMIC] Google Places Response:', {
+        area,
+        interests,
+        placeTypes,
+        foundPlaces: data.places?.length || 0
+      });
+      
+      if (!data.places) {
+        console.warn('[DYNAMIC] No places found in response');
+        return [];
+      }
+
+      // Transform Google Places data to our format
+      const transformed = data.places
+        .filter(place => place.rating >= 4.0) // Only high-rated places
+        .map((place, index) => ({
+          name: place.displayName?.text || 'Unknown Place',
+          lat: place.location?.latitude || center.lat,
+          lng: place.location?.longitude || center.lng,
+          description: `ג­ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} ׳‘׳™׳§׳•׳¨׳•׳×)`,
+          duration: 45,
+          googlePlace: true,
+          rating: place.rating || 0,
+          ratingCount: place.userRatingCount || 0
+        }));
+      
+      console.log('[DYNAMIC] Transformed places:', transformed.length);
+      return transformed;
+    } catch (error) {
+      console.error('[DYNAMIC] Error fetching Google Places:', {
+        error: error.message,
+        stack: error.stack,
+        area,
+        interests
+      });
+      
+      // Throw error to be handled by caller
+      throw {
+        type: 'GOOGLE_API_ERROR',
+        message: error.message,
+        details: { area, interests, stack: error.stack }
+      };
+    }
+  };
 
   // Combine default and custom interests - with safety check
   const allInterestOptions = [...interestOptions, ...(customInterests || [])];
@@ -99,214 +335,352 @@ const BangkokExplorer = () => {
   }, [formData]);
 
   const areaOptions = [
-    { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
-    { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
-    { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
-    { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
-    { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-    { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' }
+    { id: 'sukhumvit', label: '׳¡׳•׳§׳•׳׳•׳•׳™׳×', labelEn: 'Sukhumvit', icon: 'נ™ן¸' },
+    { id: 'old-town', label: '׳”׳¢׳™׳¨ ׳”׳¢׳×׳™׳§׳”', labelEn: 'Old Town', icon: 'נ°' },
+    { id: 'chinatown', label: '׳¦\'׳™׳™׳ ׳” ׳˜׳׳•׳', labelEn: 'Chinatown', icon: 'נ®' },
+    { id: 'thonglor', label: '׳×׳•׳ ׳’׳׳•׳¨', labelEn: 'Thonglor', icon: 'ג˜•' },
+    { id: 'ari', label: '׳׳¨׳™', labelEn: 'Ari', icon: 'נ¨' },
+    { id: 'riverside', label: '׳¨׳™׳‘׳¨׳¡׳™׳™׳“', labelEn: 'Riverside', icon: 'נ' }
   ];
 
-  // מקומות מדויקים לכל אזור - מקומות יכולים להופיע בכמה קטגוריות
-  const allLocations = {
+
+  // ============================================================================
+  // STATIC DATA MANAGER - Separate component for static curated locations
+  // Used when dataSource === 'static' (for debugging in Claude Artifacts)
+  // ============================================================================
+  
+  const StaticDataManager = (() => {
+  const staticLocationsData = {
     sukhumvit: {
-      // Sukhumvit: אזור Asok, Nana, Phrom Phong
+      // Sukhumvit: ׳׳–׳•׳¨ Asok, Nana, Phrom Phong
       graffiti: [
-        { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: 'גרפיטי ובילוי', duration: 25 },
-        { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: 'אומנות רחוב ליד BTS', duration: 30 },
-        { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: 'קיר גרפיטי', duration: 25 }
+        { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: '׳’׳¨׳₪׳™׳˜׳™ ׳•׳‘׳™׳׳•׳™', duration: 25 },
+        { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: '׳׳•׳׳ ׳•׳× ׳¨׳—׳•׳‘ ׳׳™׳“ BTS', duration: 30 },
+        { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: '׳§׳™׳¨ ׳’׳¨׳₪׳™׳˜׳™', duration: 25 }
       ],
       galleries: [
-        { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: 'גלריה עכשווית', duration: 45 },
-        { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: 'אומנות מקומית', duration: 30 },
-        { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: 'אומנות אסיאתית', duration: 40 }
+        { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: '׳’׳׳¨׳™׳” ׳¢׳›׳©׳•׳•׳™׳×', duration: 45 },
+        { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: '׳׳•׳׳ ׳•׳× ׳׳§׳•׳׳™׳×', duration: 30 },
+        { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: '׳׳•׳׳ ׳•׳× ׳׳¡׳™׳׳×׳™׳×', duration: 40 }
       ],
       artisans: [
-        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי ואדריכלות', duration: 60 },
-        { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: 'מלאכה תאילנדית', duration: 40 }
+        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: '׳‘׳™׳× ׳׳©׳™ ׳•׳׳“׳¨׳™׳›׳׳•׳×', duration: 60 },
+        { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: '׳׳׳׳›׳” ׳×׳׳™׳׳ ׳“׳™׳×', duration: 40 }
       ],
       cafes: [
-        { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: 'קפה מינימליסטי', duration: 40 },
-        { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: 'קפה איכותי ליד BTS', duration: 35 },
-        { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: 'קפה בוטיק', duration: 30 },
-        { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: 'קפה בקניון מודרני', duration: 40 }
+        { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: '׳§׳₪׳” ׳׳™׳ ׳™׳׳׳™׳¡׳˜׳™', duration: 40 },
+        { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: '׳§׳₪׳” ׳׳™׳›׳•׳×׳™ ׳׳™׳“ BTS', duration: 35 },
+        { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: '׳§׳₪׳” ׳‘׳•׳˜׳™׳§', duration: 30 },
+        { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: '׳§׳₪׳” ׳‘׳§׳ ׳™׳•׳ ׳׳•׳“׳¨׳ ׳™', duration: 40 }
       ],
       architecture: [
-        { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: 'קניון בעיצוב ערים', duration: 60 },
-        { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: 'קניון מודרני יוקרתי', duration: 50 },
-        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק ואגם גדול', duration: 45 },
-        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי היסטורי', duration: 60 }
+        { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: '׳§׳ ׳™׳•׳ ׳‘׳¢׳™׳¦׳•׳‘ ׳¢׳¨׳™׳', duration: 60 },
+        { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: '׳§׳ ׳™׳•׳ ׳׳•׳“׳¨׳ ׳™ ׳™׳•׳§׳¨׳×׳™', duration: 50 },
+        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: '׳₪׳׳¨׳§ ׳•׳׳’׳ ׳’׳“׳•׳', duration: 45 },
+        { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: '׳‘׳™׳× ׳׳©׳™ ׳”׳™׳¡׳˜׳•׳¨׳™', duration: 60 }
       ],
       food: [
-        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל רחוב מפורסם', duration: 60 },
-        { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: 'מתחם אוכל בקניון', duration: 45 },
-        { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: 'מסעדות מגוונות', duration: 50 }
+        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: '׳©׳•׳§ ׳׳•׳›׳ ׳¨׳—׳•׳‘ ׳׳₪׳•׳¨׳¡׳', duration: 60 },
+        { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: '׳׳×׳—׳ ׳׳•׳›׳ ׳‘׳§׳ ׳™׳•׳', duration: 45 },
+        { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: '׳׳¡׳¢׳“׳•׳× ׳׳’׳•׳•׳ ׳•׳×', duration: 50 }
       ],
       markets: [
-        { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: 'שוק סיטונאי ואוכל', duration: 50 },
-        { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: 'שוק מקומי', duration: 40 },
-        { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: 'קניון עם שווקים', duration: 50 },
-        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל ומוצרים', duration: 60 }
+        { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: '׳©׳•׳§ ׳¡׳™׳˜׳•׳ ׳׳™ ׳•׳׳•׳›׳', duration: 50 },
+        { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: '׳©׳•׳§ ׳׳§׳•׳׳™', duration: 40 },
+        { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: '׳§׳ ׳™׳•׳ ׳¢׳ ׳©׳•׳•׳§׳™׳', duration: 50 },
+        { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: '׳©׳•׳§ ׳׳•׳›׳ ׳•׳׳•׳¦׳¨׳™׳', duration: 60 }
       ],
       nightlife: [
-        { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: 'רחוב ברים ומועדונים', duration: 90 },
-        { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: 'אזור בילוי ומסעדות', duration: 90 },
-        { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: 'בילוי ליד BTS', duration: 80 }
+        { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: '׳¨׳—׳•׳‘ ׳‘׳¨׳™׳ ׳•׳׳•׳¢׳“׳•׳ ׳™׳', duration: 90 },
+        { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: '׳׳–׳•׳¨ ׳‘׳™׳׳•׳™ ׳•׳׳¡׳¢׳“׳•׳×', duration: 90 },
+        { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: '׳‘׳™׳׳•׳™ ׳׳™׳“ BTS', duration: 80 }
       ],
       parks: [
-        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק עירוני גדול', duration: 45 }
+        { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: '׳₪׳׳¨׳§ ׳¢׳™׳¨׳•׳ ׳™ ׳’׳“׳•׳', duration: 45 }
       ],
       entertainment: [
-        { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: 'קולנוע בקניון', duration: 150 },
-        { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: 'קולנוע יוקרתי', duration: 150 },
-        { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: 'מועדון ג\'אז חי', duration: 120 },
-        { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: 'חדר בריחה', duration: 90 }
+        { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: '׳§׳•׳׳ ׳•׳¢ ׳‘׳§׳ ׳™׳•׳', duration: 150 },
+        { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: '׳§׳•׳׳ ׳•׳¢ ׳™׳•׳§׳¨׳×׳™', duration: 150 },
+        { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: '׳׳•׳¢׳“׳•׳ ׳’\'׳׳– ׳—׳™', duration: 120 },
+        { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: '׳—׳“׳¨ ׳‘׳¨׳™׳—׳”', duration: 90 }
       ]
     },
     'old-town': {
-      // Old Town: Rattanakosin - הארמון, ואט פו, קאוסאן
+      // Old Town: Rattanakosin - ׳”׳׳¨׳׳•׳, ׳•׳׳˜ ׳₪׳•, ׳§׳׳•׳¡׳׳
       temples: [
-        { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: 'בודהה השוכב', duration: 90 },
-        { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: 'הארמון המלכותי', duration: 120 },
-        { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: 'הר הזהב', duration: 60 },
-        { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: 'מקדש גדול', duration: 45 }
+        { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: '׳‘׳•׳“׳”׳” ׳”׳©׳•׳›׳‘', duration: 90 },
+        { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: '׳”׳׳¨׳׳•׳ ׳”׳׳׳›׳•׳×׳™', duration: 120 },
+        { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: '׳”׳¨ ׳”׳–׳”׳‘', duration: 60 },
+        { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: '׳׳§׳“׳© ׳’׳“׳•׳', duration: 45 }
       ],
       architecture: [
-        { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר', duration: 60 },
-        { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: 'אנדרטת דמוקרטיה', duration: 20 },
-        { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: 'נדנדה ענקית', duration: 15 }
+        { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: '׳׳§׳“׳© ׳”׳©׳—׳¨', duration: 60 },
+        { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: '׳׳ ׳“׳¨׳˜׳× ׳“׳׳•׳§׳¨׳˜׳™׳”', duration: 20 },
+        { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: '׳ ׳“׳ ׳“׳” ׳¢׳ ׳§׳™׳×', duration: 15 }
       ],
       canals: [
-        { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: 'סירת תעלה', duration: 30 },
-        { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: 'סיור בתעלות', duration: 90 }
+        { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: '׳¡׳™׳¨׳× ׳×׳¢׳׳”', duration: 30 },
+        { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: '׳¡׳™׳•׳¨ ׳‘׳×׳¢׳׳•׳×', duration: 90 }
       ],
       markets: [
-        { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: 'שוק פרחים 24 שעות', duration: 45 },
-        { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: 'שוק קמיעות', duration: 30 }
+        { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: '׳©׳•׳§ ׳₪׳¨׳—׳™׳ 24 ׳©׳¢׳•׳×', duration: 45 },
+        { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: '׳©׳•׳§ ׳§׳׳™׳¢׳•׳×', duration: 30 }
       ],
       food: [
-        { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: 'רחוב תרמילאים', duration: 90 },
-        { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: 'שוק אוכל מקומי', duration: 40 }
+        { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: '׳¨׳—׳•׳‘ ׳×׳¨׳׳™׳׳׳™׳', duration: 90 },
+        { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: '׳©׳•׳§ ׳׳•׳›׳ ׳׳§׳•׳׳™', duration: 40 }
       ],
       entertainment: [
-        { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: 'תיאטרון לאומי - מופעים תאילנדיים', duration: 120 },
-        { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: 'אולם תערוכות', duration: 60 }
+        { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: '׳×׳™׳׳˜׳¨׳•׳ ׳׳׳•׳׳™ - ׳׳•׳₪׳¢׳™׳ ׳×׳׳™׳׳ ׳“׳™׳™׳', duration: 120 },
+        { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: '׳׳•׳׳ ׳×׳¢׳¨׳•׳›׳•׳×', duration: 60 }
       ]
     },
     chinatown: {
       // Chinatown: Yaowarat, Sampeng
       food: [
-        { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: 'רחוב האוכל המפורסם', duration: 90 },
-        { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: 'פירות ים מפורסם', duration: 60 },
-        { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: 'נודלס גלילה', duration: 30 },
-        { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: 'מעגל אוכל', duration: 50 }
+        { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: '׳¨׳—׳•׳‘ ׳”׳׳•׳›׳ ׳”׳׳₪׳•׳¨׳¡׳', duration: 90 },
+        { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: '׳₪׳™׳¨׳•׳× ׳™׳ ׳׳₪׳•׳¨׳¡׳', duration: 60 },
+        { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: '׳ ׳•׳“׳׳¡ ׳’׳׳™׳׳”', duration: 30 },
+        { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: '׳׳¢׳’׳ ׳׳•׳›׳', duration: 50 }
       ],
       markets: [
-        { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: 'סמטת סיטונאות', duration: 60 },
-        { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: 'שוק סיני', duration: 50 },
-        { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: 'שוק גנבים', duration: 45 }
+        { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: '׳¡׳׳˜׳× ׳¡׳™׳˜׳•׳ ׳׳•׳×', duration: 60 },
+        { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: '׳©׳•׳§ ׳¡׳™׳ ׳™', duration: 50 },
+        { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: '׳©׳•׳§ ׳’׳ ׳‘׳™׳', duration: 45 }
       ],
       temples: [
-        { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: 'בודהה זהב 5.5 טון', duration: 45 },
-        { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: 'מקדש סיני עתיק', duration: 40 }
+        { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: '׳‘׳•׳“׳”׳” ׳–׳”׳‘ 5.5 ׳˜׳•׳', duration: 45 },
+        { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: '׳׳§׳“׳© ׳¡׳™׳ ׳™ ׳¢׳×׳™׳§', duration: 40 }
       ],
       architecture: [
-        { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: 'שער צ\'יינה טאון', duration: 15 },
-        { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: 'בתי חנות עתיקים', duration: 30 }
+        { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: '׳©׳¢׳¨ ׳¦\'׳™׳™׳ ׳” ׳˜׳׳•׳', duration: 15 },
+        { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: '׳‘׳×׳™ ׳—׳ ׳•׳× ׳¢׳×׳™׳§׳™׳', duration: 30 }
       ],
       entertainment: [
-        { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: 'מרכז מורשת', duration: 60 }
+        { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: '׳׳¨׳›׳– ׳׳•׳¨׳©׳×', duration: 60 }
       ]
     },
     thonglor: {
       // Thonglor/Ekkamai: Sukhumvit Soi 55 area
       galleries: [
-        { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: 'אומנות עכשווית', duration: 50 },
-        { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: 'גלריה בוטיק', duration: 40 },
-        { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: 'אומנות מקומית', duration: 45 }
+        { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: '׳׳•׳׳ ׳•׳× ׳¢׳›׳©׳•׳•׳™׳×', duration: 50 },
+        { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: '׳’׳׳¨׳™׳” ׳‘׳•׳˜׳™׳§', duration: 40 },
+        { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: '׳׳•׳׳ ׳•׳× ׳׳§׳•׳׳™׳×', duration: 45 }
       ],
       cafes: [
-        { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: 'קפה יפני-סקנדינבי', duration: 50 },
-        { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: 'קפה ובשמים', duration: 45 },
-        { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: 'קפה מקומי', duration: 40 },
-        { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: 'קפה איכותי', duration: 35 }
+        { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: '׳§׳₪׳” ׳™׳₪׳ ׳™-׳¡׳§׳ ׳“׳™׳ ׳‘׳™', duration: 50 },
+        { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: '׳§׳₪׳” ׳•׳‘׳©׳׳™׳', duration: 45 },
+        { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: '׳§׳₪׳” ׳׳§׳•׳׳™', duration: 40 },
+        { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: '׳§׳₪׳” ׳׳™׳›׳•׳×׳™', duration: 35 }
       ],
       food: [
-        { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: 'מסעדות בוטיק', duration: 60 },
-        { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: 'מתחם אוכל', duration: 50 }
+        { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: '׳׳¡׳¢׳“׳•׳× ׳‘׳•׳˜׳™׳§', duration: 60 },
+        { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: '׳׳×׳—׳ ׳׳•׳›׳', duration: 50 }
       ],
       nightlife: [
-        { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: 'ברים ומועדונים', duration: 90 },
-        { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: 'מועדון', duration: 80 }
+        { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: '׳‘׳¨׳™׳ ׳•׳׳•׳¢׳“׳•׳ ׳™׳', duration: 90 },
+        { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: '׳׳•׳¢׳“׳•׳', duration: 80 }
       ],
       markets: [
-        { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: 'שוק לילה וינטג\'', duration: 60 }
+        { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: '׳©׳•׳§ ׳׳™׳׳” ׳•׳™׳ ׳˜׳’\'', duration: 60 }
       ],
       entertainment: [
-        { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: 'קולנוע גדול', duration: 150 },
-        { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: 'בר ג\'אז אינטימי', duration: 120 }
+        { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: '׳§׳•׳׳ ׳•׳¢ ׳’׳“׳•׳', duration: 150 },
+        { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: '׳‘׳¨ ׳’\'׳׳– ׳׳™׳ ׳˜׳™׳׳™', duration: 120 }
       ]
     },
     ari: {
       // Ari: BTS Ari area, Phahonyothin Soi 7
       graffiti: [
-        { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: 'גרפיטי בסמטאות', duration: 30 }
+        { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: '׳’׳¨׳₪׳™׳˜׳™ ׳‘׳¡׳׳˜׳׳•׳×', duration: 30 }
       ],
       galleries: [
-        { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: 'גלריה קטנה', duration: 35 },
-        { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: 'ספרייה וגלריה', duration: 40 }
+        { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: '׳’׳׳¨׳™׳” ׳§׳˜׳ ׳”', duration: 35 },
+        { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: '׳¡׳₪׳¨׳™׳™׳” ׳•׳’׳׳¨׳™׳”', duration: 40 }
       ],
       cafes: [
-        { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: 'קפה ורוד אודרי הפבורן', duration: 50 },
-        { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: 'קפה איטלקי רטרו', duration: 60 },
-        { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: 'קפה מקומי איכותי', duration: 40 },
-        { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: 'קפה אמנותי', duration: 45 }
+        { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: '׳§׳₪׳” ׳•׳¨׳•׳“ ׳׳•׳“׳¨׳™ ׳”׳₪׳‘׳•׳¨׳', duration: 50 },
+        { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: '׳§׳₪׳” ׳׳™׳˜׳׳§׳™ ׳¨׳˜׳¨׳•', duration: 60 },
+        { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: '׳§׳₪׳” ׳׳§׳•׳׳™ ׳׳™׳›׳•׳×׳™', duration: 40 },
+        { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: '׳§׳₪׳” ׳׳׳ ׳•׳×׳™', duration: 45 }
       ],
       artisans: [
-        { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: 'בית בעלי מלאכה', duration: 45 },
-        { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: 'קרמיקה', duration: 50 }
+        { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: '׳‘׳™׳× ׳‘׳¢׳׳™ ׳׳׳׳›׳”', duration: 45 },
+        { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: '׳§׳¨׳׳™׳§׳”', duration: 50 }
       ],
       food: [
-        { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: 'שוק אוכל לילה', duration: 60 },
-        { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: 'מסעדות', duration: 50 }
+        { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: '׳©׳•׳§ ׳׳•׳›׳ ׳׳™׳׳”', duration: 60 },
+        { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: '׳׳¡׳¢׳“׳•׳×', duration: 50 }
       ],
       parks: [
-        { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: 'פארק גדול', duration: 40 }
+        { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: '׳₪׳׳¨׳§ ׳’׳“׳•׳', duration: 40 }
       ],
       entertainment: [
-        { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: 'בר אלטרנטיבי', duration: 90 }
+        { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: '׳‘׳¨ ׳׳׳˜׳¨׳ ׳˜׳™׳‘׳™', duration: 90 }
       ]
     },
     riverside: {
-      // Riverside: לאורך נהר Chao Phraya
+      // Riverside: ׳׳׳•׳¨׳ ׳ ׳”׳¨ Chao Phraya
       canals: [
-        { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: 'שייט ארוחת ערב', duration: 120 },
-        { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: 'סירת תחבורה', duration: 30 },
-        { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: 'תעלה גדולה', duration: 60 }
+        { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: '׳©׳™׳™׳˜ ׳׳¨׳•׳—׳× ׳¢׳¨׳‘', duration: 120 },
+        { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: '׳¡׳™׳¨׳× ׳×׳—׳‘׳•׳¨׳”', duration: 30 },
+        { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: '׳×׳¢׳׳” ׳’׳“׳•׳׳”', duration: 60 }
       ],
       rooftop: [
-        { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: 'בר גג Hangover 2', duration: 90 },
-        { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: 'בר גג פרואני', duration: 80 },
-        { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: 'מסעדת גג מול Wat Arun', duration: 70 }
+        { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: '׳‘׳¨ ׳’׳’ Hangover 2', duration: 90 },
+        { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: '׳‘׳¨ ׳’׳’ ׳₪׳¨׳•׳׳ ׳™', duration: 80 },
+        { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: '׳׳¡׳¢׳“׳× ׳’׳’ ׳׳•׳ Wat Arun', duration: 70 }
       ],
       architecture: [
-        { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: 'שוק ריברסייד ענק', duration: 120 },
-        { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: 'מלון היסטורי 1876', duration: 30 },
-        { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: 'קניון על הנהר', duration: 90 },
-        { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: 'מחסן אומנות Talat Noi', duration: 50 }
+        { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: '׳©׳•׳§ ׳¨׳™׳‘׳¨׳¡׳™׳™׳“ ׳¢׳ ׳§', duration: 120 },
+        { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: '׳׳׳•׳ ׳”׳™׳¡׳˜׳•׳¨׳™ 1876', duration: 30 },
+        { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: '׳§׳ ׳™׳•׳ ׳¢׳ ׳”׳ ׳”׳¨', duration: 90 },
+        { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: '׳׳—׳¡׳ ׳׳•׳׳ ׳•׳× Talat Noi', duration: 50 }
       ],
       temples: [
-        { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר מהנהר', duration: 60 },
-        { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: 'מקדש על הנהר', duration: 40 }
+        { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: '׳׳§׳“׳© ׳”׳©׳—׳¨ ׳׳”׳ ׳”׳¨', duration: 60 },
+        { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: '׳׳§׳“׳© ׳¢׳ ׳”׳ ׳”׳¨', duration: 40 }
       ],
       graffiti: [
-        { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: 'אומנות רחוב בשכונה סינית', duration: 40 }
+        { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: '׳׳•׳׳ ׳•׳× ׳¨׳—׳•׳‘ ׳‘׳©׳›׳•׳ ׳” ׳¡׳™׳ ׳™׳×', duration: 40 }
       ],
       entertainment: [
-        { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: 'תיאטרון מופעים', duration: 90 },
-        { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: 'מופע קברט', duration: 90 },
-        { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: 'קולנוע על הנהר', duration: 150 }
+        { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: '׳×׳™׳׳˜׳¨׳•׳ ׳׳•׳₪׳¢׳™׳', duration: 90 },
+        { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: '׳׳•׳₪׳¢ ׳§׳‘׳¨׳˜', duration: 90 },
+        { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: '׳§׳•׳׳ ׳•׳¢ ׳¢׳ ׳”׳ ׳”׳¨', duration: 150 }
       ]
+    }
+  };
+    
+    // Public API for StaticDataManager
+    return {
+      // Get locations for specific area and interests
+      getLocations: (area, interests) => {
+        console.log('[STATIC] Getting locations:', { area, interests });
+        const areaData = staticLocationsData[area] || staticLocationsData.sukhumvit;
+        let stops = [];
+        
+        interests.forEach(interest => {
+          // Skip custom interests (they start with 'custom_')
+          if (interest.startsWith('custom_')) {
+            console.log('[STATIC] Skipping custom interest:', interest);
+            return;
+          }
+          
+          if (areaData[interest]) {
+            stops = [...stops, ...areaData[interest]];
+          } else {
+            console.log('[STATIC] No data for interest:', interest);
+          }
+        });
+        
+        // Remove duplicates
+        const seen = new Set();
+        const unique = stops.filter(stop => {
+          const key = `${stop.lat},${stop.lng}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        
+        console.log('[STATIC] Found places:', unique.length);
+        return unique;
+      },
+      
+      // Check if static data is available
+      hasData: () => {
+        return Object.keys(staticLocationsData).length > 0;
+      },
+      
+      // Get all areas
+      getAreas: () => {
+        return Object.keys(staticLocationsData);
+      }
+    };
+  })();
+
+  const allLocations = {
+    sukhumvit: {},
+    'old-town': {},
+    chinatown: {},
+    thonglor: {},
+    ari: {},
+    riverside: {}
+  };
+
+
+  // ============================================================================
+  // IMAGE HANDLING - Compression and utilities
+  // ============================================================================
+  
+  const compressImage = (file, maxSizeKB = 200) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate new dimensions to keep under maxSizeKB
+          const maxDimension = 800;
+          if (width > height && width > maxDimension) {
+            height = (height / width) * maxDimension;
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = (width / height) * maxDimension;
+            height = maxDimension;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Start with quality 0.8 and reduce if needed
+          let quality = 0.8;
+          let compressed = canvas.toDataURL('image/jpeg', quality);
+          
+          // If still too large, reduce quality
+          while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.3) {
+            quality -= 0.1;
+            compressed = canvas.toDataURL('image/jpeg', quality);
+          }
+          
+          console.log('[IMAGE] Compressed:', {
+            original: file.size,
+            compressed: Math.round(compressed.length / 1024),
+            quality
+          });
+          
+          resolve(compressed);
+        };
+        img.src = e.target.result;
+      };
+      
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+  
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      showToast('׳׳ ׳ ׳‘׳—׳¨ ׳§׳•׳‘׳¥ ׳×׳׳•׳ ׳”', 'error');
+      return;
+    }
+    
+    try {
+      const compressed = await compressImage(file);
+      setNewLocation(prev => ({ ...prev, uploadedImage: compressed }));
+    } catch (error) {
+      console.error('[IMAGE] Upload error:', error);
+      showToast('׳©׳’׳™׳׳” ׳‘׳”׳¢׳׳׳× ׳”׳×׳׳•׳ ׳”', 'error');
     }
   };
 
@@ -319,34 +693,55 @@ const BangkokExplorer = () => {
     }));
   };
 
-  const getStopsForInterests = () => {
-    const areaData = allLocations[formData.area] || allLocations.sukhumvit;
-    let stops = [];
+  // ============================================================================
+  // CONSISTENT BUTTON STYLES - Used throughout the app
+  // ============================================================================
+  
+  const getButtonStyle = (isActive = false, variant = 'primary') => {
+    const baseStyle = {
+      border: isActive ? '5px solid #f97316' : '3px solid #d1d5db',
+      backgroundColor: isActive ? '#fed7aa' : '#ffffff',
+      boxShadow: isActive ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
+      padding: '12px 16px',
+      borderRadius: '12px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    };
     
-    // Add locations from selected interests
-    formData.interests.forEach(interest => {
-      // Check if this is a custom interest with baseCategory
-      const customInterest = allInterestOptions.find(opt => opt.id === interest && opt.custom);
-      
-      if (customInterest && customInterest.baseCategory) {
-        // Use the base category to find locations
-        if (areaData[customInterest.baseCategory]) {
-          stops = [...stops, ...areaData[customInterest.baseCategory]];
-        }
-      } else if (areaData[interest]) {
-        // Regular interest - use as is
-        stops = [...stops, ...areaData[interest]];
-      }
-    });
+    // Variants for different button types
+    if (variant === 'danger') {
+      return {
+        ...baseStyle,
+        border: '3px solid #ef4444',
+        backgroundColor: isActive ? '#fecaca' : '#ffffff',
+        color: '#dc2626'
+      };
+    }
+    
+    if (variant === 'success') {
+      return {
+        ...baseStyle,
+        border: '3px solid #10b981',
+        backgroundColor: isActive ? '#d1fae5' : '#ffffff',
+        color: '#059669'
+      };
+    }
+    
+    return baseStyle;
+  };
 
-    // Add custom locations that match current area and interests
+  const getStopsForInterests = () => {
+    // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
+    
+    // Filter custom locations that match current area and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
       if (loc.area !== formData.area) return false;
       if (!loc.interests || loc.interests.length === 0) return false;
       
       // Check if location interests match selected interests
       return loc.interests.some(locInterest => {
-        // Direct match - location interest is in selected interests
+        // Direct match
         if (formData.interests.includes(locInterest)) return true;
         
         // Check if selected interest is a custom one with baseCategory that matches
@@ -355,7 +750,6 @@ const BangkokExplorer = () => {
             opt.id === selectedInterest && opt.custom && opt.baseCategory
           );
           
-          // If selected is custom with base, check if location's interest matches the base
           if (customInterest && locInterest === customInterest.baseCategory) {
             return true;
           }
@@ -364,32 +758,191 @@ const BangkokExplorer = () => {
         return false;
       });
     });
-    stops = [...stops, ...matchingCustomLocations];
-
-    // Remove duplicates based on exact coordinates
+    
+    // Remove duplicates
     const seen = new Set();
-    stops = stops.filter(stop => {
+    return matchingCustomLocations.filter(stop => {
       const key = `${stop.lat},${stop.lng}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-
-    // If no matches, show random selection
-    if (stops.length === 0) {
-      stops = Object.values(areaData).flat().slice(0, 5);
-    }
-
-    const maxStops = Math.max(3, Math.min(formData.hours * 2, 10));
-    return stops.slice(0, maxStops);
   };
 
-  const generateRoute = () => {
+  const generateRoute = async () => {
+    if (!formData.area || formData.interests.length === 0) {
+      showToast('ג ן¸ ׳׳ ׳ ׳‘׳—׳¨ ׳׳™׳–׳•׳¨ ׳•׳׳₪׳—׳•׳× ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳׳—׳“', 'warning');
+      return;
+    }
+    
     setIsGenerating(true);
-    setTimeout(() => {
-      const stops = getStopsForInterests();
+    
+    try {
+      console.log(`[ROUTE] Starting route generation in ${formData.dataSource.toUpperCase()} mode`);
       
-      let waypoints = stops.map(s => `${s.lat},${s.lng}`);
+      // Get custom locations (always included)
+      const customStops = getStopsForInterests();
+      console.log('[ROUTE] Custom stops:', customStops.length);
+      
+      // Calculate stops needed per interest
+      const numInterests = formData.interests.length || 1;
+      const maxStops = formData.maxStops || 10;
+      const stopsPerInterest = Math.ceil(maxStops / numInterests);
+      
+      // Track results per interest for smart completion
+      const interestResults = {};
+      const allStops = [...customStops]; // Start with custom stops (highest priority)
+      let dataSourceErrors = [];
+      
+      // ROUND 1: Get places from selected data source
+      for (const interest of formData.interests) {
+        // Check how many custom stops we already have for this interest
+        const customStopsForInterest = customStops.filter(stop => 
+          stop.interests && stop.interests.includes(interest)
+        );
+        
+        const neededForInterest = Math.max(0, stopsPerInterest - customStopsForInterest.length);
+        
+        if (neededForInterest > 0) {
+          let fetchedPlaces = [];
+          
+          try {
+            // ===== DATA SOURCE DECISION =====
+            if (formData.dataSource === 'static') {
+              // STATIC MODE: Use StaticDataManager
+              console.log(`[STATIC] Fetching for interest: ${interest}`);
+              fetchedPlaces = StaticDataManager.getLocations(formData.area, [interest]);
+            } else {
+              // DYNAMIC MODE: Use Google Places API
+              console.log(`[DYNAMIC] Fetching for interest: ${interest}`);
+              fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
+            }
+          } catch (error) {
+            // Track errors for user notification
+            dataSourceErrors.push({
+              interest,
+              error: error.message || 'Unknown error',
+              details: error.details || {}
+            });
+            console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
+            fetchedPlaces = [];
+          }
+          
+          // Sort by rating and take what we need (or all if less available)
+          const sortedPlaces = fetchedPlaces
+            .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+            .slice(0, neededForInterest);
+          
+          // Track results
+          interestResults[interest] = {
+            requested: stopsPerInterest,
+            custom: customStopsForInterest.length,
+            fetched: sortedPlaces.length,
+            total: customStopsForInterest.length + sortedPlaces.length,
+            allPlaces: fetchedPlaces // Keep all for round 2
+          };
+          
+          // Add to allStops
+          allStops.push(...sortedPlaces);
+        } else {
+          // Already have enough from custom
+          interestResults[interest] = {
+            requested: stopsPerInterest,
+            custom: customStopsForInterest.length,
+            fetched: 0,
+            total: customStopsForInterest.length,
+            allPlaces: []
+          };
+        }
+      }
+      
+      // Remove duplicates after round 1 - check ONLY exact name match
+      // Allow same coordinates with different names (same physical location, different interests)
+      const seen = new Set();
+      let uniqueStops = allStops.filter(stop => {
+        const normalizedName = stop.name.toLowerCase().trim();
+        
+        if (seen.has(normalizedName)) {
+          console.log('[DEDUP] Removed duplicate by exact name:', stop.name);
+          return false;
+        }
+        
+        seen.add(normalizedName);
+        return true;
+      });
+      
+      // ROUND 2: If we didn't reach maxStops, try to add more from successful interests
+      const totalFound = uniqueStops.length;
+      const missing = maxStops - totalFound;
+      
+      console.log('[ROUTE] Round 1 complete:', { totalFound, maxStops, missing });
+      
+      if (missing > 0) {
+        // Find interests that might have more places available
+        const additionalPlaces = [];
+        
+        for (const interest of formData.interests) {
+          const result = interestResults[interest];
+          const alreadyUsed = result.fetched;
+          const available = result.allPlaces.length;
+          const canAddMore = available - alreadyUsed;
+          
+          if (canAddMore > 0) {
+            // This interest has more places we can use
+            const morePlaces = result.allPlaces
+              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+              .slice(alreadyUsed, alreadyUsed + canAddMore);
+            
+            additionalPlaces.push(...morePlaces);
+          }
+        }
+        
+        // Add additional places up to the missing amount
+        const sorted = additionalPlaces
+          .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+          .slice(0, missing);
+        
+        uniqueStops = [...uniqueStops, ...sorted];
+        
+        // Remove duplicates again - check ONLY exact name match
+        const seenNames = new Set();
+        const finalStops = [];
+        
+        for (const stop of uniqueStops) {
+          const normalizedName = stop.name.toLowerCase().trim();
+          
+          if (!seenNames.has(normalizedName)) {
+            finalStops.push(stop);
+            seenNames.add(normalizedName);
+          } else {
+            console.log('[DEDUP Round 2] Removed duplicate:', stop.name);
+          }
+        }
+        
+        uniqueStops = finalStops;
+        
+        console.log('[ROUTE] Round 2 complete:', { added: sorted.length, total: uniqueStops.length });
+      }
+      
+      // Show errors if any occurred
+      if (dataSourceErrors.length > 0) {
+        const errorMsg = dataSourceErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
+        
+        console.error('[ROUTE] Data source errors:', dataSourceErrors);
+        showToast(`ג ן¸ ׳©׳’׳™׳׳•׳× ׳‘׳§׳‘׳׳× ׳׳§׳•׳׳•׳×: ${errorMsg}`, 'warning');
+      }
+      
+      if (uniqueStops.length === 0) {
+        const noDataMsg = formData.dataSource === 'static' 
+          ? '׳׳ ׳ ׳׳¦׳׳• ׳׳§׳•׳׳•׳× ׳¡׳˜׳˜׳™׳™׳. ׳ ׳¡׳” ׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳ ׳׳—׳¨׳™׳ ׳׳• ׳¢׳‘׳•׳¨ ׳׳׳¦׳‘ ׳“׳™׳ ׳׳™.'
+          : '׳׳ ׳ ׳׳¦׳׳• ׳׳§׳•׳׳•׳× ׳-Google API. ׳•׳“׳ ׳©׳׳×׳” ׳׳—׳•׳¥ ׳-Claude Artifacts.';
+        
+        showToast(noDataMsg, 'error');
+        setIsGenerating(false);
+        return;
+      }
+      
+      let waypoints = uniqueStops.map(s => `${s.lat},${s.lng}`);
       
       // Build Google Maps URL with start point if provided
       let mapUrl;
@@ -401,7 +954,7 @@ const BangkokExplorer = () => {
         mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsStr}&travelmode=walking`;
       } else {
         // No start point - use first location as origin
-        if (formData.circular && stops.length > 1) {
+        if (formData.circular && allStops.length > 1) {
           waypoints.push(waypoints[0]);
         }
         
@@ -419,7 +972,7 @@ const BangkokExplorer = () => {
       const selectedArea = areaOptions.find(a => a.id === formData.area);
       
       // Generate default name: "Area - interests #number"
-      const areaName = selectedArea?.label || 'בנקוק';
+      const areaName = selectedArea?.label || '׳‘׳ ׳§׳•׳§';
       const interestsText = formData.interests
         .map(id => allInterestOptions.filter(o => o && o.id).find(o => o.id === id)?.label)
         .filter(Boolean)
@@ -443,21 +996,70 @@ const BangkokExplorer = () => {
         createdAt: new Date().toISOString(),
         areaName: areaName,
         interestsText: interestsText,
-        title: `${areaName} - ${formData.hours} שעות`,
-        description: `מסלול ${formData.circular ? 'מעגלי' : 'לינארי'}`,
-        duration: formData.hours,
+        title: `${areaName} - ${uniqueStops.length} ׳׳§׳•׳׳•׳×`,
+        description: `׳׳¡׳׳•׳ ${formData.circular ? '׳׳¢׳’׳׳™' : '׳׳™׳ ׳׳¨׳™'}`,
+        duration: formData.hours, // Keep for backward compatibility but not displayed
         circular: formData.circular,
-        startPoint: formData.startPoint || 'התחלה מהמקום הראשון ברשימה',
-        stops,
+        startPoint: formData.startPoint || '׳”׳×׳—׳׳” ׳׳”׳׳§׳•׳ ׳”׳¨׳׳©׳•׳ ׳‘׳¨׳©׳™׳׳”',
+        stops: uniqueStops,
         mapUrl,
-        preferences: { ...formData }
+        preferences: { ...formData },
+        stats: {
+          custom: customStops.length,
+          source: formData.dataSource,
+          fetched: uniqueStops.length - customStops.length,
+          total: uniqueStops.length
+        },
+        // Warning if didn't reach maxStops
+        incomplete: uniqueStops.length < maxStops ? {
+          requested: maxStops,
+          found: uniqueStops.length,
+          missing: maxStops - uniqueStops.length
+        } : null,
+        // Errors if any
+        errors: dataSourceErrors.length > 0 ? dataSourceErrors : null
       };
+
+      console.log('[ROUTE] Route created successfully:', {
+        stops: newRoute.stops.length,
+        stats: newRoute.stats,
+        incomplete: newRoute.incomplete,
+        errors: newRoute.errors
+      });
 
       setRoute(newRoute);
       setRouteName(defaultName); // Set default name
       setCurrentView('route');
+    } catch (error) {
+      console.error('[ROUTE] Fatal error generating route:', error);
+      
+      const errorDetails = {
+        message: error.message || 'Unknown error',
+        stack: error.stack,
+        dataSource: formData.dataSource
+      };
+      
+      console.error('[ROUTE] Error details:', errorDetails);
+      
+      showToast(`ג ׳©׳’׳™׳׳” ׳§׳¨׳™׳˜׳™׳×: ${error.message || '׳©׳’׳™׳׳” ׳׳ ׳™׳“׳•׳¢׳”'}. ׳‘׳“׳•׳§ Console (F12)`, 'error');
+      
+      // Fallback to static only
+      const staticStops = getStopsForInterests();
+      if (staticStops.length === 0) {
+        setIsGenerating(false);
+        return;
+      }
+      
+      const newRoute = {
+        id: Date.now(),
+        stops: staticStops,
+        // ... rest of route setup
+      };
+      setRoute(newRoute);
+      setCurrentView('route');
+    } finally {
       setIsGenerating(false);
-    }, 800);
+    }
   };
 
   const saveRoute = () => {
@@ -501,7 +1103,7 @@ const BangkokExplorer = () => {
     const interestToAdd = {
       id: `custom_${Date.now()}`,
       label: newInterest.label.trim(),
-      icon: newInterest.icon || '📍',
+      icon: newInterest.icon || 'נ“',
       baseCategory: newInterest.baseCategory, // Store the base category
       custom: true
     };
@@ -511,7 +1113,7 @@ const BangkokExplorer = () => {
     localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
     
     // Reset and close dialog
-    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
+    setNewInterest({ label: '', icon: 'נ“', baseCategory: '' });
     setShowAddInterestDialog(false);
   };
 
@@ -544,14 +1146,40 @@ const BangkokExplorer = () => {
       return; // Just don't add if validation fails
     }
     
+    // Use provided coordinates or default to area center
+    let lat = newLocation.lat;
+    let lng = newLocation.lng;
+    
+    // If no coordinates provided, use default for the area
+    if (lat === null || lng === null) {
+      const defaults = areaCoordinates[newLocation.area] || areaCoordinates['sukhumvit'];
+      lat = defaults.lat;
+      lng = defaults.lng;
+    }
+    
+    // Check if location is within area boundaries
+    const boundaryCheck = checkLocationInArea(lat, lng, newLocation.area);
+    const areaName = areaOptions.find(a => a.id === newLocation.area)?.label || newLocation.area;
+    
+    if (!boundaryCheck.valid) {
+      showToast(
+        `ג ן¸ ׳׳–׳”׳¨׳”: ׳”׳׳™׳§׳•׳ ${boundaryCheck.distanceKm} ׳§"׳ ׳׳—׳•׳¥ ׳׳׳–׳•׳¨ ${areaName}. ׳ ׳©׳׳¨ ׳‘׳›׳ ׳–׳׳×.`,
+        'warning'
+      );
+    }
+    
     const locationToAdd = {
       id: Date.now(),
       name: newLocation.name.trim(),
-      description: newLocation.description.trim() || 'מקום שהוספתי',
+      description: newLocation.description.trim() || newLocation.notes?.trim() || '׳׳§׳•׳ ׳©׳”׳•׳¡׳₪׳×׳™',
+      notes: newLocation.notes?.trim() || '',
       area: newLocation.area,
       interests: newLocation.interests,
-      lat: 0, // Will be set by Google Maps or manually
-      lng: 0,
+      lat: lat,
+      lng: lng,
+      uploadedImage: newLocation.uploadedImage || null,
+      imageUrls: newLocation.imageUrls || [],
+      outsideArea: !boundaryCheck.valid, // Flag for outside area
       duration: 45,
       custom: true,
       addedAt: new Date().toISOString()
@@ -571,7 +1199,159 @@ const BangkokExplorer = () => {
     }
     
     setShowAddLocationDialog(false);
-    setNewLocation({ name: '', description: '', area: formData.area, interests: [] });
+    setNewLocation({ 
+      name: '', 
+      description: '', 
+      notes: '',
+      area: formData.area, 
+      interests: [], 
+      lat: null, 
+      lng: null, 
+      mapsUrl: '',
+      uploadedImage: null,
+      imageUrls: []
+    });
+  };
+  
+  // Update existing location
+  const updateCustomLocation = () => {
+    if (!newLocation.name || !newLocation.lat || !newLocation.lng) {
+      showToast('ג ן¸ ׳׳ ׳ ׳׳׳ ׳©׳ ׳•׳׳™׳§׳•׳', 'warning');
+      return;
+    }
+    
+    // Check if location is within area boundaries
+    const boundaryCheck = checkLocationInArea(newLocation.lat, newLocation.lng, newLocation.area);
+    const areaName = areaOptions.find(a => a.id === newLocation.area)?.label || newLocation.area;
+    
+    if (!boundaryCheck.valid) {
+      showToast(
+        `ג ן¸ ׳׳–׳”׳¨׳”: ׳”׳׳™׳§׳•׳ ${boundaryCheck.distanceKm} ׳§"׳ ׳׳—׳•׳¥ ׳׳׳–׳•׳¨ ${areaName}. ׳ ׳©׳׳¨ ׳‘׳›׳ ׳–׳׳×.`,
+        'warning'
+      );
+    }
+    
+    const updatedLocation = { 
+      ...newLocation, 
+      custom: true, 
+      id: editingLocation.id,
+      outsideArea: !boundaryCheck.valid // Flag for outside area
+    };
+    
+    const updated = customLocations.map(loc => 
+      loc.id === editingLocation.id ? updatedLocation : loc
+    );
+    
+    setCustomLocations(updated);
+    localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
+    
+    setShowEditLocationDialog(false);
+    setEditingLocation(null);
+    setNewLocation({ 
+      name: '', 
+      description: '', 
+      notes: '',
+      area: formData.area, 
+      interests: [], 
+      lat: null, 
+      lng: null, 
+      mapsUrl: '',
+      uploadedImage: null,
+      imageUrls: []
+    });
+  };
+
+  // Get current location from GPS
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      showToast('ג ׳”׳“׳₪׳“׳₪׳ ׳©׳׳ ׳׳ ׳×׳•׳׳ ׳‘׳׳™׳§׳•׳ GPS', 'error');
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setNewLocation({
+          ...newLocation,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          mapsUrl: `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`
+        });
+      },
+      (error) => {
+        let errorMessage = '׳׳ ׳”׳¦׳׳—׳×׳™ ׳׳§׳‘׳ ׳׳× ׳”׳׳™׳§׳•׳.';
+        
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = '׳ ׳“׳¨׳©׳× ׳”׳¨׳©׳׳” ׳׳׳™׳§׳•׳. ׳׳ ׳ ׳׳₪׳©׳¨ ׳’׳™׳©׳” ׳‘׳׳™׳§׳•׳ ׳‘׳”׳’׳“׳¨׳•׳× ׳”׳“׳₪׳“׳₪׳.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = '׳”׳׳™׳§׳•׳ ׳׳ ׳–׳׳™׳ ׳›׳¨׳’׳¢. ׳ ׳¡׳” ׳©׳•׳‘.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = '׳×׳ ׳”׳–׳׳ ׳׳§׳‘׳׳× ׳”׳׳™׳§׳•׳. ׳ ׳¡׳” ׳©׳•׳‘.';
+            break;
+        }
+        
+        showToast(`ג ${errorMessage}`, 'error');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  // Parse Google Maps URL to extract coordinates
+  const parseMapsUrl = (url) => {
+    if (!url || !url.trim()) {
+      setNewLocation({ ...newLocation, lat: null, lng: null, mapsUrl: '' });
+      return;
+    }
+
+    // Try different Google Maps URL formats
+    let lat = null, lng = null;
+    
+    // Format 1: https://maps.google.com/?q=13.7465,100.4927
+    let match = url.match(/[?&]q=([-\d.]+),([-\d.]+)/);
+    if (match) {
+      lat = parseFloat(match[1]);
+      lng = parseFloat(match[2]);
+    }
+    
+    // Format 2: https://www.google.com/maps/@13.7465,100.4927,17z
+    if (!match) {
+      match = url.match(/@([-\d.]+),([-\d.]+)/);
+      if (match) {
+        lat = parseFloat(match[1]);
+        lng = parseFloat(match[2]);
+      }
+    }
+    
+    // Format 3: https://goo.gl/maps/... or https://maps.app.goo.gl/...
+    // These shortened URLs need to be opened first, so just inform user
+    if (!match && (url.includes('goo.gl') || url.includes('maps.app'))) {
+      alert('נ’¡ ׳§׳™׳©׳•׳¨׳™׳ ׳׳§׳•׳¦׳¨׳™׳: ׳₪׳×׳— ׳׳× ׳”׳§׳™׳©׳•׳¨ ׳‘׳“׳₪׳“׳₪׳ ׳•׳”׳¢׳×׳§ ׳׳× ׳”׳§׳™׳©׳•׳¨ ׳”׳׳׳');
+      setNewLocation({ ...newLocation, mapsUrl: url });
+      return;
+    }
+    
+    // Format 4: Just coordinates: 13.7465,100.4927 or 13.7465, 100.4927
+    if (!match) {
+      match = url.match(/^([-\d.]+)\s*,\s*([-\d.]+)$/);
+      if (match) {
+        lat = parseFloat(match[1]);
+        lng = parseFloat(match[2]);
+      }
+    }
+    
+    if (lat !== null && lng !== null) {
+      setNewLocation({ ...newLocation, lat, lng, mapsUrl: url });
+      alert('ג“ ׳”׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳× ׳ ׳§׳׳˜׳• ׳‘׳”׳¦׳׳—׳”!');
+    } else {
+      alert('ג ׳׳ ׳”׳¦׳׳—׳×׳™ ׳׳–׳”׳•׳× ׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳×. ׳ ׳¡׳” ׳׳”׳“׳‘׳™׳§ ׳§׳™׳©׳•׳¨ Google Maps ׳׳• ׳§׳•׳׳•׳¨׳“׳™׳ ׳˜׳•׳× ׳‘׳₪׳•׳¨׳׳˜: 13.7465,100.4927');
+      setNewLocation({ ...newLocation, mapsUrl: url });
+    }
   };
 
   const toggleStopActive = (stopIndex) => {
@@ -609,93 +1389,120 @@ const BangkokExplorer = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
-        <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
-        <p className="text-sm text-orange-100">ההעדפות נשמרות אוטומטית</p>
+        <h1 className="text-2xl font-bold">Bangkok Explorer נ‡¹נ‡­</h1>
+        <p className="text-sm text-orange-100">׳”׳”׳¢׳“׳₪׳•׳× ׳ ׳©׳׳¨׳•׳× ׳׳•׳˜׳•׳׳˜׳™׳×</p>
       </div>
 
       <div className="max-w-4xl mx-auto p-4 pb-32">
         {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-4 bg-white rounded-lg p-2 shadow">
+        <div className="grid grid-cols-4 gap-2 mb-4 bg-white rounded-lg p-2 shadow">
           <button
             onClick={() => setCurrentView('form')}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
               currentView === 'form' || currentView === 'route' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            🗺️ מסלול חדש
+            נ—÷ן¸ ׳׳¡׳׳•׳ ׳—׳“׳©
+          </button>
+          <button
+            onClick={() => setCurrentView('search')}
+            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
+              currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            נ” ׳—׳™׳₪׳•׳©
           </button>
           <button
             onClick={() => setCurrentView('saved')}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
               currentView === 'saved' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            💾 מסלולים ({savedRoutes.length})
+            נ’¾ ׳׳¡׳׳•׳׳™׳ ({savedRoutes.length})
           </button>
           <button
             onClick={() => setCurrentView('settings')}
-            className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
               currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            ⚙️ הגדרות
+            ג™ן¸ ׳”׳’׳“׳¨׳•׳×
           </button>
         </div>
 
         {/* Form View */}
         {currentView === 'form' && (
           <div className="bg-white rounded-xl shadow-lg p-4 space-y-4">
-            <h2 className="text-xl font-bold">תכנן את הטיול</h2>
+            <h2 className="text-xl font-bold">׳×׳›׳ ׳ ׳׳× ׳”׳˜׳™׳•׳</h2>
             
             {/* Compact settings */}
             <div className="flex gap-4 items-center p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 flex-1">
-                <label className="text-xs font-medium">⏰</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="8"
+              {/* Hours field - HIDDEN (not deleted, may use later) */}
+              <div className="flex items-center gap-2 flex-1" style={{ display: 'none' }}>
+                <label className="text-xs font-medium">ג°</label>
+                <select
                   value={formData.hours}
                   onChange={(e) => setFormData({...formData, hours: parseInt(e.target.value)})}
-                  className="flex-1"
-                />
-                <span className="text-sm font-bold text-orange-500 w-12">{formData.hours}ש'</span>
+                  className="flex-1 p-2 border-2 border-gray-300 rounded-lg text-sm font-medium bg-white"
+                >
+                  <option value={1}>1 ׳©׳¢׳”</option>
+                  <option value={2}>2 ׳©׳¢׳•׳×</option>
+                  <option value={3}>3 ׳©׳¢׳•׳×</option>
+                  <option value={4}>4 ׳©׳¢׳•׳×</option>
+                  <option value={5}>5 ׳©׳¢׳•׳×</option>
+                  <option value={6}>6 ׳©׳¢׳•׳×</option>
+                  <option value={7}>7 ׳©׳¢׳•׳×</option>
+                  <option value={8}>8 ׳©׳¢׳•׳×</option>
+                </select>
               </div>
-              <div className="flex gap-1">
+              {/* Circular/Linear buttons */}
+              <div className="flex gap-2">
                 <button
                   onClick={() => setFormData({...formData, circular: true})}
-                  className={`px-3 py-1 rounded text-xs ${
-                    formData.circular ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}
-                  title="מעגלי"
+                  style={{
+                    border: formData.circular ? '5px solid #f97316' : '3px solid #d1d5db',
+                    backgroundColor: formData.circular ? '#fed7aa' : '#ffffff',
+                    boxShadow: formData.circular ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
+                    padding: '8px 16px',
+                    borderRadius: '12px',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}
+                  title="׳׳¢׳’׳׳™ - ׳—׳–׳¨׳” ׳׳ ׳§׳•׳“׳× ׳”׳”׳×׳—׳׳”"
                 >
-                  🔄
+                  נ”„ ׳׳¢׳’׳׳™
                 </button>
                 <button
                   onClick={() => setFormData({...formData, circular: false})}
-                  className={`px-3 py-1 rounded text-xs ${
-                    !formData.circular ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}
-                  title="לינארי"
+                  style={{
+                    border: !formData.circular ? '5px solid #f97316' : '3px solid #d1d5db',
+                    backgroundColor: !formData.circular ? '#fed7aa' : '#ffffff',
+                    boxShadow: !formData.circular ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
+                    padding: '8px 16px',
+                    borderRadius: '12px',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}
+                  title="׳׳™׳ ׳׳¨׳™ - ׳׳ ׳§׳•׳“׳” ׳׳ ׳§׳•׳“׳”"
                 >
-                  ➡️
+                  ג¡ן¸ ׳׳™׳ ׳׳¨׳™
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
+              <label className="text-xs text-gray-600 mb-1 block">נ“ ׳ ׳§׳•׳“׳× ׳”׳×׳—׳׳” (׳׳•׳₪׳¦׳™׳•׳ ׳׳™)</label>
               <input
                 type="text"
                 value={formData.startPoint}
                 onChange={(e) => setFormData({...formData, startPoint: e.target.value})}
-                placeholder="לדוגמה: BTS Asok, שם מלון..."
+                placeholder="׳׳“׳•׳’׳׳”: BTS Asok, ׳©׳ ׳׳׳•׳..."
                 className="w-full p-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
 
             <div>
-              <label className="font-medium text-sm mb-2 block">🗺️ איזור</label>
+              <label className="font-medium text-sm mb-2 block">נ—÷ן¸ ׳׳™׳–׳•׳¨</label>
               <div className="grid grid-cols-3 gap-2">
                 {areaOptions.map(area => (
                   <button
@@ -719,26 +1526,44 @@ const BangkokExplorer = () => {
             </div>
 
             <div>
-              <label className="font-medium text-sm mb-2 block">⭐ מה מעניין?</label>
+              <label className="font-medium text-sm mb-2 block">ג­ ׳׳” ׳׳¢׳ ׳™׳™׳?</label>
               <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                {allInterestOptions.filter(option => option && option.id).map(option => (
-                  <button
-                    key={option.id}
-                    onClick={() => toggleInterest(option.id)}
-                    style={{
-                      border: formData.interests.includes(option.id) ? '5px solid #f97316' : '3px solid #d1d5db',
-                      backgroundColor: formData.interests.includes(option.id) ? '#fed7aa' : '#ffffff',
-                      boxShadow: formData.interests.includes(option.id) ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none'
-                    }}
-                    className="p-2 rounded-lg text-xs"
-                  >
-                    <div className="text-lg mb-1">{option.icon}</div>
-                    <div style={{
-                      fontWeight: '600',
-                      color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
-                    }}>{option.label}</div>
-                  </button>
-                ))}
+                {allInterestOptions.filter(option => option && option.id).map(option => {
+                  const tooltip = interestTooltips[option.id] || option.label;
+                  const customInterest = customInterests.find(ci => ci.id === option.id);
+                  const isCustom = !!customInterest;
+                  
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => toggleInterest(option.id)}
+                      title={tooltip}
+                      style={{
+                        border: formData.interests.includes(option.id) ? '5px solid #f97316' : '3px solid #d1d5db',
+                        backgroundColor: formData.interests.includes(option.id) ? '#fed7aa' : '#ffffff',
+                        boxShadow: formData.interests.includes(option.id) ? '0 10px 15px -3px rgba(0, 0, 0, 0.3)' : 'none',
+                        position: 'relative'
+                      }}
+                      className="p-2 rounded-lg text-xs"
+                    >
+                      <div className="text-lg mb-1">{option.icon}</div>
+                      <div style={{
+                        fontWeight: '600',
+                        color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
+                      }}>{option.label}</div>
+                      {/* Info icon - purple and larger for custom interests */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: '3px',
+                        fontSize: isCustom ? '14px' : '12px',
+                        color: isCustom ? '#a855f7' : '#9ca3af',
+                        opacity: isCustom ? '1' : '0.7',
+                        fontWeight: isCustom ? 'bold' : 'normal'
+                      }}>ג“˜</div>
+                    </button>
+                  );
+                })}
               </div>
               {formData.interests.length > 0 && (
                 <div style={{
@@ -750,7 +1575,7 @@ const BangkokExplorer = () => {
                   padding: '8px',
                   borderRadius: '8px'
                 }}>
-                  ✓ {formData.interests.length} נבחרו
+                  ג“ {formData.interests.length} ׳ ׳‘׳—׳¨׳•
                 </div>
               )}
             </div>
@@ -778,26 +1603,37 @@ const BangkokExplorer = () => {
                   opacity: formData.interests.length === 0 ? 0.5 : 1
                 }}
               >
-                {isGenerating ? 'מחשב מסלול...' : '🗺️ חשב מסלול'}
+                {isGenerating ? '׳׳—׳©׳‘ ׳׳¡׳׳•׳...' : 'נ—÷ן¸ ׳—׳©׳‘ ׳׳¡׳׳•׳'}
               </button>
             </div>
             
             {formData.interests.length === 0 && (
-              <p className="text-center text-gray-500 text-sm">בחר לפחות תחום עניין אחד</p>
+              <p className="text-center text-gray-500 text-sm">׳‘׳—׳¨ ׳׳₪׳—׳•׳× ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳׳—׳“</p>
             )}
 
             {/* Show stops list ONLY after route is calculated */}
             {route && (
               <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mt-4">
-                <h3 className="font-bold mb-3 text-blue-900">מקומות ב{route.areaName} ({route.stops.length}):</h3>
+                <h3 className="font-bold mb-3 text-blue-900">׳׳§׳•׳׳•׳× ׳‘{route.areaName} ({route.stops.length}):</h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {route.stops.map((stop, i) => (
                     <div key={i} className="bg-white p-2 rounded border">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-bold text-sm">{i + 1}. {stop.name}</div>
+                          <div className="font-bold text-sm flex items-center gap-1">
+                            <span>{i + 1}. {stop.name}</span>
+                            {stop.outsideArea && (
+                              <span 
+                                className="text-orange-500" 
+                                title="׳׳§׳•׳ ׳׳—׳•׳¥ ׳׳’׳‘׳•׳׳•׳× ׳”׳׳–׳•׳¨"
+                                style={{ fontSize: '12px' }}
+                              >
+                                נ”÷
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-600">{stop.description}</div>
-                          <div className="text-xs text-gray-500">⏱️ {stop.duration} דקות</div>
+                          <div className="text-xs text-gray-500">ג±ן¸ {stop.duration} ׳“׳§׳•׳×</div>
                         </div>
                         <a
                           href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
@@ -805,7 +1641,7 @@ const BangkokExplorer = () => {
                           rel="noopener noreferrer"
                           className="text-blue-500 hover:text-blue-700 text-xs ml-2"
                         >
-                          📍 מפה
+                          נ“ ׳׳₪׳”
                         </a>
                       </div>
                     </div>
@@ -837,7 +1673,7 @@ const BangkokExplorer = () => {
                       marginBottom: '8px'
                     }}
                   >
-                    ⭐ הצג את כל המקומות על המפה (ללא מסלול)
+                    ג­ ׳”׳¦׳’ ׳׳× ׳›׳ ׳”׳׳§׳•׳׳•׳× ׳¢׳ ׳”׳׳₪׳” (׳׳׳ ׳׳¡׳׳•׳)
                   </a>
                   
                   <button
@@ -856,7 +1692,7 @@ const BangkokExplorer = () => {
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
                     }}
                   >
-                    🗺️ פתח מסלול עם ניווט ב-Google Maps
+                    נ—÷ן¸ ׳₪׳×׳— ׳׳¡׳׳•׳ ׳¢׳ ׳ ׳™׳•׳•׳˜ ׳‘-Google Maps
                   </button>
                 </div>
               </div>
@@ -868,9 +1704,10 @@ const BangkokExplorer = () => {
           <div className="bg-white rounded-xl shadow-lg p-4">
             <button
               onClick={() => setCurrentView('form')}
-              className="text-orange-500 font-medium mb-4"
+              style={getButtonStyle(false)}
+              className="mb-4"
             >
-              ← חזרה
+              ג† ׳—׳–׳¨׳” ׳׳˜׳•׳₪׳¡
             </button>
 
             {/* Save Route Button */}
@@ -879,25 +1716,85 @@ const BangkokExplorer = () => {
                 onClick={() => setShowSaveDialog(true)}
                 className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
               >
-                💾 שמור מסלול זה
+                נ’¾ ׳©׳׳•׳¨ ׳׳¡׳׳•׳ ׳–׳”
               </button>
             )}
 
             {route.name && (
               <div className="bg-green-50 border-2 border-green-500 p-3 rounded-lg mb-4">
-                <p className="text-green-800 font-medium">📌 {route.name}</p>
-                <p className="text-xs text-green-600">נשמר ב-{new Date(route.savedAt).toLocaleDateString('he-IL')}</p>
+                <p className="text-green-800 font-medium">נ“ {route.name}</p>
+                <p className="text-xs text-green-600">׳ ׳©׳׳¨ ׳‘-{new Date(route.savedAt).toLocaleDateString('he-IL')}</p>
               </div>
             )}
 
-            <h2 className="text-2xl font-bold mb-2">{route.areaName} - {route.interestsText || 'כללי'}</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              נקודת התחלה: {route.startPoint}
+            <h2 className="text-2xl font-bold mb-2">{route.areaName} - {route.interestsText || '׳›׳׳׳™'}</h2>
+            <p className="text-sm text-gray-600 mb-2">
+              ׳ ׳§׳•׳“׳× ׳”׳×׳—׳׳”: {route.startPoint}
             </p>
+            
+            {/* Stats - show breakdown of place sources */}
+            {route.stats && (route.stats.custom > 0 || route.stats.fetched > 0) && (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 mb-4">
+                <div className="text-xs font-bold text-gray-700 mb-2">נ“ ׳׳§׳•׳¨׳•׳× ׳”׳׳§׳•׳׳•׳×:</div>
+                <div className="flex gap-2 flex-wrap">
+                  {route.stats.custom > 0 && (
+                    <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                      ג­ {route.stats.custom} ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×
+                    </span>
+                  )}
+                  {route.stats.fetched > 0 && (
+                    <span className={`text-white text-xs px-2 py-1 rounded-full font-bold ${
+                      route.stats.source === 'static' ? 'bg-purple-600' : 'bg-green-600'
+                    }`}>
+                      {route.stats.source === 'static' ? 'נ“' : 'נ'} {route.stats.fetched} {route.stats.source === 'static' ? '׳¡׳˜׳˜׳™' : '׳-Google API'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Errors display if any */}
+            {route.errors && route.errors.length > 0 && (
+              <div className="bg-red-50 border-2 border-red-400 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl">ג</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-red-800 mb-1">׳©׳’׳™׳׳•׳× ׳‘׳§׳‘׳׳× ׳׳§׳•׳׳•׳×</p>
+                    <div className="text-xs text-red-700 space-y-1">
+                      {route.errors.map((err, i) => (
+                        <div key={i}>ג€¢ {err.interest}: {err.error}</div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-red-600 mt-2">
+                      ׳₪׳¨׳˜׳™׳ ׳׳׳׳™׳ ׳‘-Console (F12) - ׳”׳¢׳×׳§ ׳•׳©׳׳— ׳׳×׳™׳§׳•׳
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if didn't reach requested max stops */}
+            {route.incomplete && (
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl">ג ן¸</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-yellow-800 mb-1">
+                      ׳ ׳׳¦׳׳• {route.incomplete.found} ׳׳§׳•׳׳•׳× ׳‘׳׳§׳•׳ {route.incomplete.requested} ׳”׳׳‘׳•׳§׳©׳™׳
+                    </p>
+                    <p className="text-xs text-yellow-700">
+                      {formData.interests.length === 1 
+                        ? '׳׳™׳ ׳׳¡׳₪׳™׳§ ׳׳§׳•׳׳•׳× ׳×׳•׳׳׳™׳ ׳‘׳×׳—׳•׳ ׳–׳” ׳‘׳׳–׳•׳¨ ׳”׳ ׳‘׳—׳¨'
+                        : '׳׳ ׳ ׳׳¦׳׳• ׳׳¡׳₪׳™׳§ ׳׳§׳•׳׳•׳× ׳×׳•׳׳׳™׳ ׳‘׳—׳׳§ ׳׳×׳—׳•׳׳™ ׳”׳¢׳ ׳™׳™׳ ׳‘׳׳–׳•׳¨ ׳”׳ ׳‘׳—׳¨'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold">תחנות ({route.stops.length}):</h3>
+                <h3 className="font-bold">׳×׳—׳ ׳•׳× ({route.stops.length}):</h3>
                 <button
                   onClick={() => {
                     setNewLocation(prev => ({...prev, area: formData.area}));
@@ -905,32 +1802,97 @@ const BangkokExplorer = () => {
                   }}
                   className="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-600"
                 >
-                  ➕ הוסף מקום
+                  ג• ׳”׳•׳¡׳£ ׳׳§׳•׳
                 </button>
               </div>
               {route.stops.map((stop, i) => {
                 const stopId = stop.id || i;
                 const isDisabled = disabledStops.includes(stopId);
+                
+                // Determine source badge
+                let sourceBadge = null;
+                if (stop.custom) {
+                  sourceBadge = { text: 'ג­ ׳©׳׳™', color: 'bg-purple-500', title: '׳׳§׳•׳ ׳׳•׳×׳׳ ׳׳™׳©׳™׳×' };
+                } else {
+                  // Everything else is from Google Places
+                  sourceBadge = { text: 'נ” Google', color: 'bg-blue-500', title: '׳׳׳§׳•׳׳•׳× Google Places' };
+                }
+                
                 return (
                   <div key={i} className={`border-r-4 pr-3 py-2 ${isDisabled ? 'border-gray-300 opacity-50' : 'border-orange-500'}`}>
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex gap-2 flex-1">
                         <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : 'bg-orange-500 text-white'}`}>
-                          {isDisabled ? '✕' : i + 1}
+                          {isDisabled ? 'ג•' : i + 1}
                         </div>
                         <div className="flex-1">
-                          <h4 className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : ''}`}>{stop.name}</h4>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : ''}`}>
+                              {stop.name}
+                            </h4>
+                            {stop.outsideArea && (
+                              <span 
+                                className="text-orange-500" 
+                                title="׳׳§׳•׳ ׳׳—׳•׳¥ ׳׳’׳‘׳•׳׳•׳× ׳”׳׳–׳•׳¨"
+                                style={{ fontSize: '14px' }}
+                              >
+                                נ”÷
+                              </span>
+                            )}
+                            {stop.custom ? (
+                              <div className="relative group">
+                                <button
+                                  onClick={() => {
+                                    setSelectedLocation(stop);
+                                    setShowLocationDetailModal(true);
+                                  }}
+                                  className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
+                                  title="׳׳—׳¥ ׳׳₪׳¨׳˜׳™׳ ׳׳׳׳™׳"
+                                >
+                                  {sourceBadge.text}
+                                </button>
+                                
+                                {/* Hover Tooltip */}
+                                <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50 w-64">
+                                  <div className="bg-gray-900 text-white p-3 rounded-lg shadow-2xl text-xs">
+                                    {stop.uploadedImage && (
+                                      <img 
+                                        src={stop.uploadedImage} 
+                                        alt={stop.name}
+                                        className="w-full h-24 object-cover rounded mb-2"
+                                      />
+                                    )}
+                                    <div className="font-bold mb-1">{stop.name}</div>
+                                    {stop.description && (
+                                      <div className="text-gray-300 mb-1">{stop.description}</div>
+                                    )}
+                                    {stop.notes && (
+                                      <div className="text-gray-400 italic">נ’­ {stop.notes}</div>
+                                    )}
+                                    <div className="text-gray-400 mt-2 text-[9px]">נ‘† ׳׳—׳¥ ׳׳₪׳¨׳˜׳™׳ ׳׳׳׳™׳</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <span 
+                                className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold`}
+                                title={sourceBadge.title}
+                              >
+                                {sourceBadge.text}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-600">{stop.description}</p>
-                          <p className="text-xs text-gray-500">⏱️ {stop.duration} דקות</p>
+                          <p className="text-xs text-gray-500">ג±ן¸ {stop.duration} ׳“׳§׳•׳×</p>
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
                           onClick={() => toggleStopActive(i)}
                           className={`text-xs px-2 py-1 rounded ${isDisabled ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-700'}`}
-                          title={isDisabled ? 'הפעל' : 'השבת'}
+                          title={isDisabled ? '׳”׳₪׳¢׳' : '׳”׳©׳‘׳×'}
                         >
-                          {isDisabled ? '✓' : '⏸'}
+                          {isDisabled ? 'ג“' : 'ג¸'}
                         </button>
                         <a
                           href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
@@ -938,7 +1900,7 @@ const BangkokExplorer = () => {
                           rel="noopener noreferrer"
                           className="text-blue-500 hover:text-blue-700 text-xs"
                         >
-                          📍
+                          נ“
                         </a>
                       </div>
                     </div>
@@ -972,7 +1934,7 @@ const BangkokExplorer = () => {
                   marginBottom: '12px'
                 }}
               >
-                ⭐ הצג את כל המקומות על המפה (ללא מסלול)
+                ג­ ׳”׳¦׳’ ׳׳× ׳›׳ ׳”׳׳§׳•׳׳•׳× ׳¢׳ ׳”׳׳₪׳” (׳׳׳ ׳׳¡׳׳•׳)
               </a>
 
               <a
@@ -993,26 +1955,149 @@ const BangkokExplorer = () => {
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)'
                 }}
               >
-                🗺️ פתח ב-Google Maps עם ניווט מלא
+                נ—÷ן¸ ׳₪׳×׳— ׳‘-Google Maps ׳¢׳ ׳ ׳™׳•׳•׳˜ ׳׳׳
               </a>
             </div>
           </div>
         )}
 
         {/* Saved Routes View */}
+        {/* Search View */}
+        {currentView === 'search' && (
+          <div className="bg-white rounded-xl shadow-lg p-4">
+            <h2 className="text-2xl font-bold mb-4">נ” ׳—׳™׳₪׳•׳© ׳‘׳׳§׳•׳׳•׳× ׳©׳׳™</h2>
+            
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="׳—׳₪׳© ׳‘׳©׳, ׳×׳™׳׳•׳¨ ׳׳• ׳”׳¢׳¨׳•׳×..."
+                value={searchQuery}
+                className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                style={{ textAlign: 'right', direction: 'rtl' }}
+                onChange={(e) => {
+                  const query = e.target.value;
+                  setSearchQuery(query);
+                  
+                  if (!query.trim()) {
+                    setSearchResults([]);
+                    return;
+                  }
+                  
+                  const queryLower = query.toLowerCase();
+                  const results = customLocations.filter(loc => 
+                    loc.name.toLowerCase().includes(queryLower) ||
+                    (loc.description && loc.description.toLowerCase().includes(queryLower)) ||
+                    (loc.notes && loc.notes.toLowerCase().includes(queryLower))
+                  );
+                  setSearchResults(results);
+                }}
+              />
+            </div>
+            
+            {/* Search Results */}
+            {searchQuery && searchResults.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 font-bold">׳ ׳׳¦׳׳• {searchResults.length} ׳×׳•׳¦׳׳•׳×:</p>
+                {searchResults.map(loc => (
+                  <div
+                    key={loc.id}
+                    className="bg-gradient-to-r from-green-50 to-teal-50 border-3 border-green-400 rounded-xl p-4"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-green-900 flex items-center gap-2">
+                          <span>{loc.name}</span>
+                          {loc.outsideArea && (
+                            <span 
+                              className="text-orange-500" 
+                              title="׳׳§׳•׳ ׳׳—׳•׳¥ ׳׳’׳‘׳•׳׳•׳× ׳”׳׳–׳•׳¨"
+                              style={{ fontSize: '16px' }}
+                            >
+                              נ”÷
+                            </span>
+                          )}
+                        </h3>
+                        <p className="text-sm text-green-700 mt-1">{loc.description || '׳׳™׳ ׳×׳™׳׳•׳¨'}</p>
+                        {loc.notes && (
+                          <p className="text-xs text-green-600 mt-1 italic">נ’­ {loc.notes}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingLocation(loc);
+                          setNewLocation(loc);
+                          setShowEditLocationDialog(true);
+                        }}
+                        className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold"
+                      >
+                        גן¸ ׳¢׳¨׳•׳
+                      </button>
+                    </div>
+                    
+                    {/* Image Preview */}
+                    {loc.uploadedImage && (
+                      <img 
+                        src={loc.uploadedImage} 
+                        alt={loc.name}
+                        className="w-full h-32 object-cover rounded-lg mt-2 cursor-pointer border-2 border-green-300"
+                        onClick={() => {
+                          setModalImage(loc.uploadedImage);
+                          setShowImageModal(true);
+                        }}
+                      />
+                    )}
+                    
+                    {/* Interests Tags */}
+                    {loc.interests && loc.interests.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {loc.interests.map(intId => {
+                          const interest = allInterestOptions.find(opt => opt.id === intId);
+                          return interest ? (
+                            <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                              {interest.icon} {interest.label}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : searchQuery && searchResults.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">נ”</div>
+                <p className="font-bold">׳׳ ׳ ׳׳¦׳׳• ׳×׳•׳¦׳׳•׳× ׳¢׳‘׳•׳¨ "{searchQuery}"</p>
+                <p className="text-sm mt-2">׳ ׳¡׳” ׳׳—׳₪׳© ׳׳©׳”׳• ׳׳—׳¨</p>
+              </div>
+            ) : customLocations.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">נ“</div>
+                <p className="font-bold">׳¢׳“׳™׳™׳ ׳׳™׳ ׳׳§׳•׳׳•׳× ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×</p>
+                <p className="text-sm mt-2">׳”׳•׳¡׳£ ׳׳§׳•׳׳•׳× ׳›׳“׳™ ׳׳—׳₪׳© ׳‘׳”׳</p>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-6xl mb-4">נ”</div>
+                <p className="font-bold">׳”׳×׳—׳ ׳׳”׳§׳׳™׳“ ׳›׳“׳™ ׳׳—׳₪׳©</p>
+                <p className="text-sm mt-2">׳™׳© ׳׳ {customLocations.length} ׳׳§׳•׳׳•׳× ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {currentView === 'saved' && (
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-xl font-bold mb-4">מסלולים שמורים</h2>
+            <h2 className="text-xl font-bold mb-4">׳׳¡׳׳•׳׳™׳ ׳©׳׳•׳¨׳™׳</h2>
             
             {savedRoutes.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🗺️</div>
-                <p className="text-gray-600 mb-4">עדיין אין מסלולים שמורים</p>
+                <div className="text-6xl mb-4">נ—÷ן¸</div>
+                <p className="text-gray-600 mb-4">׳¢׳“׳™׳™׳ ׳׳™׳ ׳׳¡׳׳•׳׳™׳ ׳©׳׳•׳¨׳™׳</p>
                 <button
                   onClick={() => setCurrentView('form')}
                   className="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600"
                 >
-                  צור מסלול חדש
+                  ׳¦׳•׳¨ ׳׳¡׳׳•׳ ׳—׳“׳©
                 </button>
               </div>
             ) : (
@@ -1022,17 +2107,17 @@ const BangkokExplorer = () => {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-gray-800">{savedRoute.name}</h3>
-                        <p className="text-sm text-gray-600">{savedRoute.areaName} • {savedRoute.interestsText || 'כללי'}</p>
+                        <p className="text-sm text-gray-600">{savedRoute.areaName} ג€¢ {savedRoute.interestsText || '׳›׳׳׳™'}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {savedRoute.stops.length} תחנות • 
-                          נשמר: {new Date(savedRoute.savedAt).toLocaleDateString('he-IL')}
+                          {savedRoute.stops.length} ׳×׳—׳ ׳•׳× ג€¢ 
+                          ׳ ׳©׳׳¨: {new Date(savedRoute.savedAt).toLocaleDateString('he-IL')}
                         </p>
                       </div>
                       <button
                         onClick={() => deleteRoute(savedRoute.id)}
                         className="text-red-500 hover:text-red-700 text-sm ml-2"
                       >
-                        🗑️ מחק
+                        נ—‘ן¸ ׳׳—׳§
                       </button>
                     </div>
                     
@@ -1041,7 +2126,7 @@ const BangkokExplorer = () => {
                         onClick={() => loadSavedRoute(savedRoute)}
                         className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600"
                       >
-                        📍 פתח מסלול
+                        נ“ ׳₪׳×׳— ׳׳¡׳׳•׳
                       </button>
                       <a
                         href={savedRoute.mapUrl}
@@ -1049,7 +2134,7 @@ const BangkokExplorer = () => {
                         rel="noopener noreferrer"
                         className="flex-1 bg-green-500 text-white text-center py-2 rounded-lg font-medium hover:bg-green-600"
                       >
-                        🗺️ Google Maps
+                        נ—÷ן¸ Google Maps
                       </a>
                     </div>
                   </div>
@@ -1062,12 +2147,105 @@ const BangkokExplorer = () => {
         {/* Settings View */}
         {currentView === 'settings' && (
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-xl font-bold mb-4">⚙️ הגדרות</h2>
+            <h2 className="text-xl font-bold mb-4">ג™ן¸ ׳”׳’׳“׳¨׳•׳×</h2>
+            
+            {/* Max Stops Setting */}
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-3 border-blue-400 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">נ“ ׳׳¡׳₪׳¨ ׳׳§׳•׳׳•׳× ׳‘׳׳¡׳׳•׳</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  ׳›׳׳” ׳׳§׳•׳׳•׳× ׳׳§׳¡׳™׳׳׳™ ׳׳”׳¦׳™׳’ ׳‘׳׳¡׳׳•׳? (׳™׳—׳•׳׳§ ׳©׳•׳•׳” ׳‘׳™׳ ׳×׳—׳•׳׳™ ׳”׳¢׳ ׳™׳™׳)
+                </p>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="5"
+                    max="20"
+                    value={formData.maxStops}
+                    onChange={(e) => setFormData({...formData, maxStops: parseInt(e.target.value)})}
+                    className="flex-1"
+                    style={{ accentColor: '#3b82f6' }}
+                  />
+                  <div className="bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-lg min-w-[60px] text-center">
+                    {formData.maxStops}
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>׳׳¢׳˜ (5)</span>
+                  <span>׳‘׳¨׳™׳¨׳× ׳׳—׳“׳ (10)</span>
+                  <span>׳”׳¨׳‘׳” (20)</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Data Source Setting - Static vs Dynamic */}
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-3 border-purple-400 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">נ”„ ׳׳§׳•׳¨ ׳ ׳×׳•׳ ׳™׳</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  ׳‘׳—׳¨ ׳׳™׳ ׳׳§׳‘׳ ׳׳§׳•׳׳•׳×: ׳¨׳©׳™׳׳” ׳§׳‘׳•׳¢׳” ׳׳• ׳—׳™׳₪׳•׳© ׳‘׳’׳•׳’׳
+                </p>
+                
+                {/* Toggle buttons */}
+                <div className="flex gap-3 mb-3">
+                  <button
+                    onClick={() => setFormData({...formData, dataSource: 'static'})}
+                    className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition ${
+                      formData.dataSource === 'static' 
+                        ? 'bg-purple-500 text-white shadow-lg' 
+                        : 'bg-white text-gray-600 border-2 border-purple-200'
+                    }`}
+                  >
+                    נ“ ׳¨׳©׳™׳׳” ׳§׳‘׳•׳¢׳”
+                  </button>
+                  <button
+                    onClick={() => setFormData({...formData, dataSource: 'dynamic'})}
+                    className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm transition ${
+                      formData.dataSource === 'dynamic' 
+                        ? 'bg-green-500 text-white shadow-lg' 
+                        : 'bg-white text-gray-600 border-2 border-green-200'
+                    }`}
+                  >
+                    נ ׳—׳™׳₪׳•׳© ׳‘׳’׳•׳’׳
+                  </button>
+                </div>
+                
+                {/* Explanation based on selection */}
+                {formData.dataSource === 'static' ? (
+                  <div className="bg-purple-100 border-2 border-purple-300 rounded-lg p-3">
+                    <p className="text-xs text-purple-900">
+                      <strong>נ“ ׳¨׳©׳™׳׳” ׳§׳‘׳•׳¢׳”:</strong> ׳׳©׳×׳׳© ׳‘-100+ ׳׳§׳•׳׳•׳× ׳׳•׳›׳ ׳™׳ ׳׳¨׳׳©. 
+                      ׳׳•׳׳׳¥ ׳׳“׳™׳‘׳׳’ ׳‘׳×׳•׳ Claude Artifacts.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-green-100 border-2 border-green-300 rounded-lg p-3">
+                    <p className="text-xs text-green-900">
+                      <strong>נ ׳—׳™׳₪׳•׳© ׳‘׳’׳•׳’׳:</strong> ׳׳—׳₪׳© ׳׳§׳•׳׳•׳× ׳‘-Google Places API ׳‘׳–׳׳ ׳׳׳×. 
+                      ׳¢׳•׳‘׳“ ׳¨׳§ ׳׳—׳•׳¥ ׳-Claude (GitHub/Browser).
+                    </p>
+                  </div>
+                )}
+                
+                {/* Refresh static data button */}
+                {formData.dataSource === 'static' && (
+                  <button
+                    onClick={() => {
+                      console.log('[STATIC] Manual refresh triggered');
+                      // No toast needed - data is always ready
+                    }}
+                    className="w-full mt-3 bg-purple-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-purple-700 transition"
+                  >
+                    נ”„ ׳¨׳¢׳ ׳ ׳ ׳×׳•׳ ׳™׳ ׳¡׳˜׳˜׳™׳™׳
+                  </button>
+                )}
+              </div>
+            </div>
             
             {/* Custom Interests Section */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-bold">תחומי עניין מותאמים אישית</h3>
+                <h3 className="text-lg font-bold">׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳ ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×</h3>
                 <button
                   onClick={() => setShowAddInterestDialog(true)}
                   style={{
@@ -1081,15 +2259,15 @@ const BangkokExplorer = () => {
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                   }}
                 >
-                  ➕ הוסף תחום חדש
+                  ג• ׳”׳•׳¡׳£ ׳×׳—׳•׳ ׳—׳“׳©
                 </button>
               </div>
 
               {customInterests.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <p className="text-gray-600">עדיין אין תחומי עניין מותאמים אישית</p>
-                  <p className="text-sm text-gray-500 mt-1">לחץ "הוסף תחום חדש" כדי ליצור</p>
+                  <div className="text-4xl mb-2">נ¯</div>
+                  <p className="text-gray-600">׳¢׳“׳™׳™׳ ׳׳™׳ ׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳ ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×</p>
+                  <p className="text-sm text-gray-500 mt-1">׳׳—׳¥ "׳”׳•׳¡׳£ ׳×׳—׳•׳ ׳—׳“׳©" ׳›׳“׳™ ׳׳™׳¦׳•׳¨</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
@@ -1122,9 +2300,9 @@ const BangkokExplorer = () => {
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}
-                        title="מחק"
+                        title="׳׳—׳§"
                       >
-                        ×
+                        ֳ—
                       </button>
                       <div style={{ textAlign: 'center', marginTop: '8px' }}>
                         <div style={{ fontSize: '24px', marginBottom: '4px' }}>{interest.icon}</div>
@@ -1140,12 +2318,30 @@ const BangkokExplorer = () => {
 
             {/* Custom Locations Section */}
             <div className="mb-6">
-              <h3 className="text-lg font-bold mb-3">מקומות מותאמים אישית ({customLocations.length})</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold">׳”׳׳§׳•׳׳•׳× ׳©׳׳™ ({customLocations.length})</h3>
+                <button
+                  onClick={() => setShowAddLocationDialog(true)}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  ג• ׳”׳•׳¡׳£ ׳׳§׳•׳ ׳—׳“׳©
+                </button>
+              </div>
               
               {customLocations.length === 0 ? (
-                <div className="text-center py-6 bg-gray-50 rounded-lg">
-                  <p className="text-gray-600 text-sm">עדיין אין מקומות מותאמים אישית</p>
-                  <p className="text-xs text-gray-500 mt-1">הוסף מקומות דרך כפתור "הוסף מקום" במסלול</p>
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <div className="text-4xl mb-2">נ“</div>
+                  <p className="text-gray-600">׳¢׳“׳™׳™׳ ׳׳™׳ ׳׳§׳•׳׳•׳× ׳׳•׳×׳׳׳™׳ ׳׳™׳©׳™׳×</p>
+                  <p className="text-sm text-gray-500 mt-1">׳׳—׳¥ "׳”׳•׳¡׳£ ׳׳§׳•׳ ׳—׳“׳©" ׳›׳“׳™ ׳׳™׳¦׳•׳¨</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -1153,37 +2349,109 @@ const BangkokExplorer = () => {
                     <div
                       key={loc.id}
                       style={{
-                        border: '2px solid #d1d5db',
-                        borderRadius: '8px',
-                        padding: '8px',
-                        backgroundColor: 'white',
+                        border: '3px solid #10b981',
+                        borderRadius: '12px',
+                        padding: '12px',
+                        backgroundColor: '#d1fae5',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        gap: '8px'
                       }}
                     >
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{loc.name}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280' }}>{loc.description}</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#065f46', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{loc.name}</span>
+                          {loc.outsideArea && (
+                            <span 
+                              style={{ color: '#f97316', fontSize: '14px' }}
+                              title="׳׳§׳•׳ ׳׳—׳•׳¥ ׳׳’׳‘׳•׳׳•׳× ׳”׳׳–׳•׳¨"
+                            >
+                              נ”÷
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>
+                          {loc.description || '׳׳™׳ ׳×׳™׳׳•׳¨'}
+                        </div>
+                        {loc.notes && (
+                          <div style={{ fontSize: '11px', color: '#059669', marginTop: '2px', fontStyle: 'italic' }}>
+                            נ’­ {loc.notes}
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => deleteCustomLocation(loc.id)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '4px 12px',
-                          fontSize: '12px',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        🗑️ מחק
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={() => {
+                            setEditingLocation(loc);
+                            setNewLocation(loc);
+                            setShowEditLocationDialog(true);
+                          }}
+                          style={{
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          }}
+                        >
+                          גן¸ ׳¢׳¨׳•׳
+                        </button>
+                        <button
+                          onClick={() => deleteCustomLocation(loc.id)}
+                          style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          }}
+                        >
+                          נ—‘ן¸ ׳׳—׳§
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Uncovered Interests Section */}
+            <div className="mb-6">
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-3 border-orange-400 rounded-xl p-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">ג„¹ן¸ ׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳ ׳©׳׳ ׳ ׳›׳׳׳™׳ ׳‘׳׳¢׳¨׳›׳×</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  ׳”׳׳¢׳¨׳›׳× ׳׳׳•׳§׳“׳× ׳‘׳×׳™׳™׳¨׳•׳× ׳•׳˜׳™׳•׳׳™׳. ׳”׳×׳—׳•׳׳™׳ ׳”׳‘׳׳™׳ <strong>׳׳ ׳ ׳›׳׳׳™׳</strong> ׳‘׳—׳™׳₪׳•׳©:
+                </p>
+                
+                <div className="space-y-2">
+                  {uncoveredInterests.map((interest, idx) => (
+                    <div key={idx} className="bg-white rounded-lg p-2 border-2 border-orange-200">
+                      <div className="flex items-center gap-2">
+                        <div className="text-2xl">{interest.icon}</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 text-sm">{interest.name}</h4>
+                          <p className="text-xs text-gray-600">{interest.examples}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="bg-orange-100 border-2 border-orange-400 rounded-lg p-3 mt-3">
+                  <p className="text-xs text-orange-900">
+                    <strong>נ’¡ ׳˜׳™׳₪:</strong> ׳׳ ׳׳×׳” ׳¦׳¨׳™׳ ׳×׳—׳•׳ ׳©׳׳ ׳‘׳׳¢׳¨׳›׳×, ׳”׳©׳×׳׳© ׳‘<strong>"ג• ׳”׳•׳¡׳£ ׳×׳—׳•׳ ׳—׳“׳©"</strong> ׳׳׳¢׳׳”!
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Info Section */}
@@ -1194,12 +2462,12 @@ const BangkokExplorer = () => {
               padding: '12px',
               marginTop: '16px'
             }}>
-              <h4 style={{ fontWeight: 'bold', marginBottom: '8px', color: '#1e40af' }}>💡 טיפים:</h4>
+              <h4 style={{ fontWeight: 'bold', marginBottom: '8px', color: '#1e40af' }}>נ’¡ ׳˜׳™׳₪׳™׳:</h4>
               <ul style={{ fontSize: '13px', color: '#1e3a8a', listStyle: 'disc', paddingRight: '20px' }}>
-                <li>תחום עניין חדש מוצג עם השם שלך אבל מראה מקומות מתחום הבסיס</li>
-                <li>לדוגמה: "בתי קולנוע" מבוסס על "ארכיטקטורה" - יציג את כל מקומות הארכיטקטורה</li>
-                <li>מקומות מותאמים שתוסיף יופיעו אוטומטית לפי תחומי העניין</li>
-                <li>מחיקת תחום עניין לא תמחק מקומות קיימים</li>
+                <li>׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳—׳“׳© ׳׳•׳¦׳’ ׳¢׳ ׳”׳©׳ ׳©׳׳ ׳׳‘׳ ׳׳¨׳׳” ׳׳§׳•׳׳•׳× ׳׳×׳—׳•׳ ׳”׳‘׳¡׳™׳¡</li>
+                <li>׳׳“׳•׳’׳׳”: "׳‘׳×׳™ ׳§׳•׳׳ ׳•׳¢" ׳׳‘׳•׳¡׳¡ ׳¢׳ "׳׳¨׳›׳™׳˜׳§׳˜׳•׳¨׳”" - ׳™׳¦׳™׳’ ׳׳× ׳›׳ ׳׳§׳•׳׳•׳× ׳”׳׳¨׳›׳™׳˜׳§׳˜׳•׳¨׳”</li>
+                <li>׳׳§׳•׳׳•׳× ׳׳•׳×׳׳׳™׳ ׳©׳×׳•׳¡׳™׳£ ׳™׳•׳₪׳™׳¢׳• ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳₪׳™ ׳×׳—׳•׳׳™ ׳”׳¢׳ ׳™׳™׳</li>
+                <li>׳׳—׳™׳§׳× ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳׳ ׳×׳׳—׳§ ׳׳§׳•׳׳•׳× ׳§׳™׳™׳׳™׳</li>
               </ul>
             </div>
           </div>
@@ -1207,16 +2475,17 @@ const BangkokExplorer = () => {
 
         {/* Save Dialog */}
         {showSaveDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full">
-              <h3 className="text-xl font-bold mb-4">שמור מסלול</h3>
-              <label className="block text-sm font-medium mb-2">שם המסלול:</label>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" style={{ paddingBottom: '0' }}>
+            <div className="bg-white rounded-t-xl p-6 w-full max-w-md mb-0">
+              <h3 className="text-xl font-bold mb-4">׳©׳׳•׳¨ ׳׳¡׳׳•׳</h3>
+              <label className="block text-sm font-medium mb-2">׳©׳ ׳”׳׳¡׳׳•׳:</label>
               <input
                 type="text"
                 value={routeName}
                 onChange={(e) => setRouteName(e.target.value)}
-                placeholder="לדוגמה: טיול ראשון בבנקוק"
+                placeholder="׳׳“׳•׳’׳׳”: ׳˜׳™׳•׳ ׳¨׳׳©׳•׳ ׳‘׳‘׳ ׳§׳•׳§"
                 className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+                style={{ textAlign: 'right', direction: 'rtl' }}
                 autoFocus
               />
               <div className="flex gap-3">
@@ -1224,7 +2493,7 @@ const BangkokExplorer = () => {
                   onClick={saveRoute}
                   className="flex-1 bg-green-500 text-white py-3 rounded-lg font-bold hover:bg-green-600"
                 >
-                  💾 שמור
+                  נ’¾ ׳©׳׳•׳¨
                 </button>
                 <button
                   onClick={() => {
@@ -1233,7 +2502,7 @@ const BangkokExplorer = () => {
                   }}
                   className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400"
                 >
-                  ביטול
+                  ׳‘׳™׳˜׳•׳
                 </button>
               </div>
             </div>
@@ -1241,99 +2510,323 @@ const BangkokExplorer = () => {
         )}
 
         {/* Add Location Dialog */}
-        {showAddLocationDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h3 className="text-xl font-bold mb-4">הוסף מקום חדש</h3>
+        {(showAddLocationDialog || showEditLocationDialog) && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" style={{ paddingBottom: '0' }}>
+            <div className="bg-white rounded-t-2xl w-full max-h-[70vh] overflow-y-auto mb-0" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b-2 border-gray-200 px-6 py-4 rounded-t-2xl z-10">
+                <h3 className="text-2xl font-bold text-gray-800">
+                  {showEditLocationDialog ? 'גן¸ ׳¢׳¨׳•׳ ׳׳§׳•׳' : 'ג• ׳”׳•׳¡׳£ ׳׳§׳•׳ ׳—׳“׳©'}
+                </h3>
+              </div>
               
-              <label className="block text-sm font-medium mb-2">שם המקום:</label>
-              <input
-                type="text"
-                value={newLocation.name}
-                onChange={(e) => setNewLocation({...newLocation, name: e.target.value})}
-                placeholder="לדוגמה: Cafe Amazon"
-                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
-                autoFocus
-              />
-              
-              <label className="block text-sm font-medium mb-2">תיאור:</label>
-              <input
-                type="text"
-                value={newLocation.description}
-                onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
-                placeholder="לדוגמה: קפה מעולה ליד המלון"
-                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
-              />
-              
-              <label className="block text-sm font-medium mb-2">איזור:</label>
-              <select
-                value={newLocation.area}
-                onChange={(e) => setNewLocation({...newLocation, area: e.target.value})}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg mb-3"
-              >
-                {areaOptions.map(area => (
-                  <option key={area.id} value={area.id}>
-                    {area.icon} {area.label}
-                  </option>
-                ))}
-              </select>
-              
-              <label className="block text-sm font-medium mb-2">תחומי עניין (בחר אחד או יותר):</label>
-              <div className="grid grid-cols-3 gap-2 mb-2 max-h-48 overflow-y-auto border-2 border-gray-200 rounded-lg p-2">
-                {allInterestOptions.filter(option => option && option.id).map(option => (
+              {/* Content with padding */}
+              <div className="px-6 py-4 space-y-4">
+                {/* Name Input */}
+                <div>
+                  <label className="block text-base font-bold mb-2 text-gray-700">
+                    ׳©׳ ׳”׳׳§׳•׳: <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newLocation.name}
+                    onChange={(e) => setNewLocation({...newLocation, name: e.target.value})}
+                    placeholder="׳׳“׳•׳’׳׳”: Cafe Amazon"
+                    className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    style={{ textAlign: 'right', direction: 'rtl' }}
+                    autoFocus
+                  />
+                </div>
+                
+                {/* Description Input */}
+                <div>
+                  <label className="block text-base font-bold mb-2 text-gray-700">׳×׳™׳׳•׳¨:</label>
+                  <textarea
+                    value={newLocation.description || ''}
+                    onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                    placeholder="׳׳“׳•׳’׳׳”: ׳§׳₪׳” ׳׳¢׳•׳׳” ׳׳™׳“ ׳”׳׳׳•׳, ׳™׳© wifi ׳׳”׳™׳¨"
+                    className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    style={{ textAlign: 'right', direction: 'rtl', minHeight: '80px' }}
+                    rows="3"
+                  />
+                </div>
+                
+                {/* Notes Input */}
+                <div>
+                  <label className="block text-base font-bold mb-2 text-gray-700">׳”׳¢׳¨׳•׳× ׳₪׳¨׳˜׳™׳•׳×:</label>
+                  <textarea
+                    value={newLocation.notes || ''}
+                    onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
+                    placeholder="׳׳“׳•׳’׳׳”: ׳₪׳×׳•׳— ׳¢׳“ 22:00, ׳׳•׳׳׳¥ ׳׳‘׳•׳ ׳‘׳‘׳•׳§׳¨"
+                    className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    style={{ textAlign: 'right', direction: 'rtl', minHeight: '80px' }}
+                    rows="3"
+                  />
+                </div>
+                
+                {/* Image Upload Section */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-3 border-purple-400 rounded-2xl p-4">
+                  <label className="block text-base font-bold mb-3 text-purple-900">נ“· ׳×׳׳•׳ ׳•׳×:</label>
+                  
+                  {/* Uploaded Image Preview */}
+                  {newLocation.uploadedImage && (
+                    <div className="mb-3 relative">
+                      <img 
+                        src={newLocation.uploadedImage} 
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg border-3 border-purple-300 cursor-pointer"
+                        onClick={() => {
+                          setModalImage(newLocation.uploadedImage);
+                          setShowImageModal(true);
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          setNewLocation({...newLocation, uploadedImage: null});
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 font-bold"
+                      >
+                        ג•
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Upload Button */}
+                  {!newLocation.uploadedImage && (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        id="imageUpload"
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="imageUpload"
+                        className="block w-full bg-purple-500 text-white text-center py-3 rounded-lg font-bold cursor-pointer hover:bg-purple-600 transition"
+                      >
+                        נ“₪ ׳”׳¢׳׳” ׳×׳׳•׳ ׳” (׳™׳™׳“׳—׳¡ ׳׳•׳˜׳•׳׳˜׳™׳×)
+                      </label>
+                    </div>
+                  )}
+                  
+                  {/* Image URLs */}
+                  <div className="mt-3">
+                    <label className="block text-sm font-bold mb-2 text-purple-900">נ”— ׳§׳™׳©׳•׳¨׳™ ׳×׳׳•׳ ׳•׳× ׳ ׳•׳¡׳₪׳™׳:</label>
+                    {(newLocation.imageUrls || []).map((url, idx) => (
+                      <div key={idx} className="flex gap-2 mb-2">
+                        <input
+                          type="url"
+                          value={url}
+                          onChange={(e) => {
+                            const urls = [...(newLocation.imageUrls || [])];
+                            urls[idx] = e.target.value;
+                            setNewLocation({...newLocation, imageUrls: urls});
+                          }}
+                          placeholder="https://example.com/image.jpg"
+                          className="flex-1 p-2 border-2 border-purple-300 rounded-lg text-sm"
+                        />
+                        <button
+                          onClick={() => {
+                            const urls = (newLocation.imageUrls || []).filter((_, i) => i !== idx);
+                            setNewLocation({...newLocation, imageUrls: urls});
+                          }}
+                          className="bg-red-500 text-white px-3 rounded-lg font-bold"
+                        >
+                          ג•
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const urls = [...(newLocation.imageUrls || []), ''];
+                        setNewLocation({...newLocation, imageUrls: urls});
+                      }}
+                      className="w-full bg-purple-100 text-purple-800 py-2 rounded-lg font-bold hover:bg-purple-200 transition text-sm"
+                    >
+                      ג• ׳”׳•׳¡׳£ ׳§׳™׳©׳•׳¨
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Area Select */}
+                <div>
+                  <label className="block text-base font-bold mb-2 text-gray-700">׳׳™׳–׳•׳¨:</label>
+                  <select
+                    value={newLocation.area}
+                    onChange={(e) => setNewLocation({...newLocation, area: e.target.value})}
+                    className="w-full p-3 border-3 border-gray-300 rounded-xl text-base bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  >
+                    {areaOptions.map(area => (
+                      <option key={area.id} value={area.id}>
+                        {area.icon} {area.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Location Section - Improved with status */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-3 border-blue-400 rounded-2xl p-4">
+                  <label className="block text-base font-bold mb-3 text-blue-900">נ“ ׳׳™׳§׳•׳ (׳׳•׳₪׳¦׳™׳•׳ ׳׳™):</label>
+                  
+                  {/* Status Display */}
+                  {newLocation.lat !== null && newLocation.lng !== null ? (
+                    <div className="bg-green-500 text-white rounded-xl p-4 mb-3 shadow-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">ג…</span>
+                          <span className="font-bold text-lg">׳׳™׳§׳•׳ ׳ ׳§׳׳˜!</span>
+                        </div>
+                        <button
+                          onClick={() => setNewLocation({...newLocation, lat: null, lng: null, mapsUrl: ''})}
+                          className="bg-white text-red-600 px-3 py-1 rounded-lg text-sm font-bold hover:bg-red-50"
+                        >
+                          ג• ׳‘׳˜׳
+                        </button>
+                      </div>
+                      <div className="text-sm font-mono bg-green-600 rounded p-2">
+                        {newLocation.lat.toFixed(6)}, {newLocation.lng.toFixed(6)}
+                      </div>
+                    </div>
+                  ) : null}
+                  
+                  {/* Current Location Button */}
                   <button
-                    key={option.id}
-                    onClick={() => {
-                      const interests = newLocation.interests.includes(option.id)
-                        ? newLocation.interests.filter(i => i !== option.id)
-                        : [...newLocation.interests, option.id];
-                      setNewLocation({...newLocation, interests});
-                    }}
-                    className={`p-2 rounded-lg border-2 text-xs ${
-                      newLocation.interests.includes(option.id) 
-                        ? 'border-purple-500 bg-purple-50' 
-                        : 'border-gray-200'
+                    onClick={getCurrentLocation}
+                    disabled={newLocation.lat !== null}
+                    className={`w-full py-3 rounded-xl text-base font-bold shadow-md mb-3 flex items-center justify-center gap-2 ${
+                      newLocation.lat !== null 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-green-500 text-white hover:bg-green-600'
                     }`}
                   >
-                    <div className="text-base mb-1">{option.icon}</div>
-                    <div className="font-medium">{option.label}</div>
+                    <span className="text-xl">נ“</span>
+                    <span>׳”׳©׳×׳׳© ׳‘׳׳™׳§׳•׳ ׳”׳ ׳•׳›׳—׳™ ׳©׳׳™</span>
                   </button>
-                ))}
-              </div>
-              
-              <button
-                onClick={() => setShowAddInterestDialog(true)}
-                className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-600 mb-4"
-              >
-                ➕ צור תחום עניין חדש
-              </button>
-              
-              {newLocation.interests.length > 0 && (
-                <div className="text-xs text-green-600 mb-3">
-                  ✓ נבחרו {newLocation.interests.length} תחומים
+                  
+                  {/* Divider */}
+                  <div className="flex items-center gap-3 my-3">
+                    <div className="flex-1 border-t-2 border-blue-300"></div>
+                    <span className="text-sm text-blue-700 font-bold">׳׳•</span>
+                    <div className="flex-1 border-t-2 border-blue-300"></div>
+                  </div>
+                  
+                  {/* Google Maps URL Input */}
+                  <div>
+                    <label className="block text-sm font-bold mb-2 text-blue-800">נ”— ׳”׳“׳‘׳§ ׳§׳™׳©׳•׳¨ Google Maps:</label>
+                    <input
+                      type="text"
+                      value={newLocation.mapsUrl}
+                      onChange={(e) => parseMapsUrl(e.target.value)}
+                      disabled={newLocation.lat !== null}
+                      placeholder="׳”׳“׳‘׳§ ׳§׳™׳©׳•׳¨ ׳׳•: 13.7465,100.4927"
+                      className={`w-full p-3 border-2 rounded-lg text-sm ${
+                        newLocation.lat !== null
+                          ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-white border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
+                      }`}
+                      style={{ textAlign: 'right', direction: 'rtl' }}
+                    />
+                    <div className="text-xs text-blue-700 mt-2 font-medium">
+                      נ’¡ ׳×׳•׳׳ ׳‘׳›׳ ׳¡׳•׳’׳™ ׳§׳™׳©׳•׳¨׳™ Google Maps
+                    </div>
+                  </div>
                 </div>
-              )}
-              
-              <div className="text-xs text-gray-500 mb-4 bg-blue-50 p-2 rounded">
-                💡 המקום יתוסף למסלול הנוכחי וישמר לשימוש עתידי במסלולים עם תחומי עניין אלה
+                
+                {/* Interests Selection */}
+                <div>
+                  <label className="block text-base font-bold mb-2 text-gray-700">׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳:</label>
+                  <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded-xl max-h-40 overflow-y-auto">
+                    {allInterestOptions.filter(option => option && option.id).map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          const interests = newLocation.interests.includes(option.id)
+                            ? newLocation.interests.filter(i => i !== option.id)
+                            : [...newLocation.interests, option.id];
+                          setNewLocation({...newLocation, interests});
+                        }}
+                        className={`p-2 rounded-lg text-sm transition-all ${
+                          newLocation.interests.includes(option.id) 
+                            ? 'border-3 border-purple-500 bg-purple-100 shadow-md' 
+                            : 'border-2 border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="text-xl mb-1">{option.icon}</div>
+                        <div className="font-bold text-[10px]">{option.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Selected Count */}
+                  {newLocation.interests.length > 0 && (
+                    <div className="mt-2 text-xs font-bold text-green-600 bg-green-50 p-2 rounded-lg">
+                      ג“ ׳ ׳‘׳—׳¨׳• {newLocation.interests.length} ׳×׳—׳•׳׳™׳
+                    </div>
+                  )}
+                </div>
+                
+                {/* Add Interest Button */}
+                <button
+                  onClick={() => setShowAddInterestDialog(true)}
+                  className="w-full bg-blue-500 text-white py-3 rounded-xl text-sm font-bold hover:bg-blue-600"
+                >
+                  ג• ׳¦׳•׳¨ ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳—׳“׳©
+                </button>
               </div>
               
-              <div className="flex gap-3">
-                <button
-                  onClick={addCustomLocation}
-                  className="flex-1 bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600"
-                >
-                  ➕ הוסף
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddLocationDialog(false);
-                    setNewLocation({ name: '', description: '', area: formData.area, interests: [] });
-                  }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400"
-                >
-                  ביטול
-                </button>
+              {/* Footer Buttons - Sticky */}
+              <div className="sticky bottom-0 bg-white border-t-3 border-gray-300 px-6 py-3 shadow-2xl">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!newLocation.name || !newLocation.name.trim()) {
+                        showToast('ג ן¸ ׳׳ ׳ ׳׳׳ ׳׳× ׳©׳ ׳”׳׳§׳•׳', 'warning');
+                        return;
+                      }
+                      if (newLocation.interests.length === 0) {
+                        showToast('ג ן¸ ׳׳ ׳ ׳‘׳—׳¨ ׳׳₪׳—׳•׳× ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳׳—׳“', 'warning');
+                        return;
+                      }
+                      
+                      if (showEditLocationDialog) {
+                        updateCustomLocation();
+                      } else {
+                        addCustomLocation();
+                      }
+                    }}
+                    disabled={!newLocation.name || !newLocation.name.trim() || newLocation.interests.length === 0}
+                    className={`flex-1 py-3 rounded-xl text-base font-bold shadow-md transition-all ${
+                      newLocation.name && newLocation.name.trim() && newLocation.interests.length > 0
+                        ? 'bg-purple-500 text-white hover:bg-purple-600'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {showEditLocationDialog ? '׳¢׳“׳›׳' : '׳”׳•׳¡׳£'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddLocationDialog(false);
+                      setShowEditLocationDialog(false);
+                      setEditingLocation(null);
+                      setNewLocation({ 
+                        name: '', 
+                        description: '', 
+                        notes: '',
+                        area: formData.area, 
+                        interests: [], 
+                        lat: null, 
+                        lng: null, 
+                        mapsUrl: '',
+                        uploadedImage: null,
+                        imageUrls: []
+                      });
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl text-base font-bold hover:bg-gray-300"
+                  >
+                    ׳‘׳™׳˜׳•׳
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1341,37 +2834,38 @@ const BangkokExplorer = () => {
 
         {/* Add Custom Interest Dialog */}
         {showAddInterestDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full">
-              <h3 className="text-xl font-bold mb-4">➕ הוסף תחום עניין חדש</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50" style={{ paddingBottom: '0' }}>
+            <div className="bg-white rounded-t-xl p-6 w-full max-w-md max-h-[75vh] overflow-y-auto mb-0">
+              <h3 className="text-xl font-bold mb-4">ג• ׳”׳•׳¡׳£ ׳×׳—׳•׳ ׳¢׳ ׳™׳™׳ ׳—׳“׳©</h3>
               
-              <label className="block text-sm font-medium mb-2">שם התחום:</label>
+              <label className="block text-sm font-medium mb-2">׳©׳ ׳”׳×׳—׳•׳:</label>
               <input
                 type="text"
                 value={newInterest.label}
                 onChange={(e) => setNewInterest({...newInterest, label: e.target.value})}
-                placeholder="לדוגמה: בתי קולנוע"
+                placeholder="׳׳“׳•׳’׳׳”: ׳‘׳×׳™ ׳§׳•׳׳ ׳•׳¢"
                 className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
+                style={{ textAlign: 'right', direction: 'rtl' }}
               />
 
-              <label className="block text-sm font-medium mb-2">אייקון (אימוג'י):</label>
+              <label className="block text-sm font-medium mb-2">׳׳™׳™׳§׳•׳ (׳׳™׳׳•׳’'׳™):</label>
               <input
                 type="text"
                 value={newInterest.icon}
                 onChange={(e) => setNewInterest({...newInterest, icon: e.target.value})}
-                placeholder="📍"
+                placeholder="נ“"
                 maxLength="2"
                 style={{ fontSize: '24px', textAlign: 'center' }}
                 className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
               />
 
-              <label className="block text-sm font-medium mb-2">🔗 מבוסס על תחום קיים:</label>
+              <label className="block text-sm font-medium mb-2">נ”— ׳׳‘׳•׳¡׳¡ ׳¢׳ ׳×׳—׳•׳ ׳§׳™׳™׳:</label>
               <select
                 value={newInterest.baseCategory || ''}
                 onChange={(e) => setNewInterest({...newInterest, baseCategory: e.target.value})}
                 className="w-full p-3 border-2 border-gray-300 rounded-lg mb-4"
               >
-                <option value="">-- בחר תחום בסיס --</option>
+                <option value="">-- ׳‘׳—׳¨ ׳×׳—׳•׳ ׳‘׳¡׳™׳¡ --</option>
                 {interestOptions.map(option => (
                   <option key={option.id} value={option.id}>
                     {option.icon} {option.label}
@@ -1387,7 +2881,7 @@ const BangkokExplorer = () => {
                 marginBottom: '16px'
               }}>
                 <div style={{ fontSize: '12px', color: '#1e40af' }}>
-                  <strong>💡 הסבר:</strong> התחום החדש יציג את כל המקומות מהתחום הבסיס. לדוגמה: "בתי קולנוע" מבוסס על "בידור" - יראה את כל מקומות הבידור אבל עם השם "בתי קולנוע"
+                  <strong>נ’¡ ׳”׳¡׳‘׳¨:</strong> ׳”׳×׳—׳•׳ ׳”׳—׳“׳© ׳™׳¦׳™׳’ ׳׳× ׳›׳ ׳”׳׳§׳•׳׳•׳× ׳׳”׳×׳—׳•׳ ׳”׳‘׳¡׳™׳¡. ׳׳“׳•׳’׳׳”: "׳‘׳×׳™ ׳§׳•׳׳ ׳•׳¢" ׳׳‘׳•׳¡׳¡ ׳¢׳ "׳‘׳™׳“׳•׳¨" - ׳™׳¨׳׳” ׳׳× ׳›׳ ׳׳§׳•׳׳•׳× ׳”׳‘׳™׳“׳•׳¨ ׳׳‘׳ ׳¢׳ ׳”׳©׳ "׳‘׳×׳™ ׳§׳•׳׳ ׳•׳¢"
                 </div>
               </div>
 
@@ -1406,12 +2900,12 @@ const BangkokExplorer = () => {
                     opacity: (newInterest.label.trim() && newInterest.baseCategory) ? 1 : 0.5
                   }}
                 >
-                  ✓ הוסף
+                  ג“ ׳”׳•׳¡׳£
                 </button>
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', baseCategory: '' });
+                    setNewInterest({ label: '', icon: 'נ“', baseCategory: '' });
                   }}
                   style={{
                     flex: 1,
@@ -1423,13 +2917,249 @@ const BangkokExplorer = () => {
                     border: 'none'
                   }}
                 >
-                  ביטול
+                  ׳‘׳™׳˜׳•׳
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+      
+      {/* Location Detail Modal - Full details for custom locations */}
+      {showLocationDetailModal && selectedLocation && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowLocationDetailModal(false);
+            setSelectedLocation(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
+              <h3 className="text-xl font-bold">נ“ ׳₪׳¨׳˜׳™ ׳”׳׳§׳•׳</h3>
+              <button
+                onClick={() => {
+                  setShowLocationDetailModal(false);
+                  setSelectedLocation(null);
+                }}
+                className="bg-white text-purple-600 rounded-full w-8 h-8 font-bold hover:bg-gray-100"
+              >
+                ג•
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* Image */}
+              {selectedLocation.uploadedImage && (
+                <div className="relative">
+                  <img 
+                    src={selectedLocation.uploadedImage} 
+                    alt={selectedLocation.name}
+                    className="w-full h-64 object-cover rounded-xl cursor-pointer hover:opacity-90 transition"
+                    onClick={() => {
+                      setModalImage(selectedLocation.uploadedImage);
+                      setShowImageModal(true);
+                    }}
+                  />
+                  <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                    נ‘† ׳׳—׳¥ ׳׳”׳’׳“׳׳”
+                  </div>
+                </div>
+              )}
+              
+              {/* Image URLs */}
+              {selectedLocation.imageUrls && selectedLocation.imageUrls.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedLocation.imageUrls.filter(url => url).map((url, idx) => (
+                    <a 
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 text-xs hover:underline truncate"
+                    >
+                      נ”— ׳×׳׳•׳ ׳” {idx + 1}
+                    </a>
+                  ))}
+                </div>
+              )}
+              
+              {/* Name */}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  {selectedLocation.name}
+                  {selectedLocation.outsideArea && (
+                    <span className="text-orange-500 text-lg" title="׳׳—׳•׳¥ ׳׳’׳‘׳•׳׳•׳× ׳”׳׳–׳•׳¨">נ”÷</span>
+                  )}
+                </h2>
+              </div>
+              
+              {/* Description */}
+              {selectedLocation.description && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+                  <div className="text-xs font-bold text-blue-900 mb-1">נ“ ׳×׳™׳׳•׳¨:</div>
+                  <div className="text-sm text-gray-700">{selectedLocation.description}</div>
+                </div>
+              )}
+              
+              {/* Notes */}
+              {selectedLocation.notes && (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-3">
+                  <div className="text-xs font-bold text-yellow-900 mb-1">נ’­ ׳”׳¢׳¨׳•׳× ׳₪׳¨׳˜׳™׳•׳×:</div>
+                  <div className="text-sm text-gray-700 italic">{selectedLocation.notes}</div>
+                </div>
+              )}
+              
+              {/* Area */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-bold text-gray-700">נ—÷ן¸ ׳׳™׳–׳•׳¨:</span>
+                <span className="bg-gray-200 px-3 py-1 rounded-full">
+                  {areaOptions.find(a => a.id === selectedLocation.area)?.label || selectedLocation.area}
+                </span>
+              </div>
+              
+              {/* Interests Tags */}
+              {selectedLocation.interests && selectedLocation.interests.length > 0 && (
+                <div>
+                  <div className="text-xs font-bold text-gray-700 mb-2">נ·ן¸ ׳×׳—׳•׳׳™ ׳¢׳ ׳™׳™׳:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLocation.interests.map(intId => {
+                      const interest = allInterestOptions.find(opt => opt.id === intId);
+                      return interest ? (
+                        <span key={intId} className="bg-purple-100 text-purple-800 text-xs px-3 py-1 rounded-full font-bold">
+                          {interest.icon} {interest.label}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {/* Location */}
+              {selectedLocation.lat && selectedLocation.lng && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3">
+                  <div className="text-xs font-bold text-green-900 mb-2">נ“ ׳׳™׳§׳•׳:</div>
+                  <div className="text-xs text-gray-600 mb-2 font-mono">
+                    {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/${encodeURIComponent(selectedLocation.name)}/@${selectedLocation.lat},${selectedLocation.lng},17z`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-green-500 text-white text-center py-2 rounded-lg font-bold hover:bg-green-600 transition"
+                  >
+                    נ—÷ן¸ ׳₪׳×׳— ׳‘-Google Maps
+                  </a>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer Actions */}
+            <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl border-t-2 border-gray-200">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setEditingLocation(selectedLocation);
+                    setNewLocation(selectedLocation);
+                    setShowEditLocationDialog(true);
+                    setShowLocationDetailModal(false);
+                  }}
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-bold hover:bg-blue-600 transition"
+                >
+                  גן¸ ׳¢׳¨׳•׳ ׳׳§׳•׳
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLocationDetailModal(false);
+                    setSelectedLocation(null);
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-400 transition"
+                >
+                  ג• ׳¡׳’׳•׳¨
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Image Modal - Full screen image view */}
+      {showImageModal && modalImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+          onClick={() => {
+            setShowImageModal(false);
+            setModalImage(null);
+          }}
+        >
+          <div className="relative max-w-4xl max-h-screen p-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowImageModal(false);
+                setModalImage(null);
+              }}
+              className="absolute top-6 right-6 bg-white text-black rounded-full w-12 h-12 text-2xl font-bold z-10 shadow-lg hover:bg-gray-200"
+            >
+              ג•
+            </button>
+            <img 
+              src={modalImage} 
+              alt="Full view"
+              className="max-w-full max-h-screen object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            left: '20px',
+            maxWidth: '400px',
+            margin: '0 auto',
+            padding: '16px',
+            borderRadius: '12px',
+            backgroundColor: toastMessage.type === 'error' ? '#fee2e2' : toastMessage.type === 'warning' ? '#fef3c7' : '#d1fae5',
+            border: `3px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : '#10b981'}`,
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+            zIndex: 9999,
+            animation: 'slideUp 0.3s ease-out'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>
+              {toastMessage.type === 'error' ? 'ג' : toastMessage.type === 'warning' ? 'ג ן¸' : 'ג…'}
+            </span>
+            <div style={{ flex: 1, fontWeight: 'bold', color: '#1f2937' }}>
+              {toastMessage.message}
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                padding: '0',
+                lineHeight: '1'
+              }}
+            >
+              ג•
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1438,3 +3168,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />)
     </script>
 </body>
 </html>
+v1.2 - [static vs dynamic]
