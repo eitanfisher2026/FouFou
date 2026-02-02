@@ -1714,49 +1714,42 @@ const BangkokExplorer = () => {
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {route.stops.map((stop, i) => (
                     <div key={i} className="bg-white p-2 rounded border">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="font-bold text-sm flex items-center gap-1">
-                            <span>{i + 1}. {stop.name}</span>
-                            {stop.outsideArea && (
-                              <span 
-                                className="text-orange-500" 
-                                title="מקום מחוץ לגבולות האזור"
-                                style={{ fontSize: '12px' }}
-                              >
-                                🔺
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600">{stop.description}</div>
+                      <a
+                        href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block hover:bg-gray-50 transition"
+                      >
+                        <div className="font-bold text-sm flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                          <span>{i + 1}. {stop.name}</span>
+                          {stop.outsideArea && (
+                            <span 
+                              className="text-orange-500" 
+                              title="מקום מחוץ לגבולות האזור"
+                              style={{ fontSize: '12px' }}
+                            >
+                              🔺
+                            </span>
+                          )}
                           {stop.interests && stop.interests.length > 0 && (
-                            <div className="text-xs mt-1">
+                            <>
                               {stop.interests.map((interest, idx) => {
                                 const interestObj = allInterestOptions.find(opt => opt.id === interest);
-                                const label = interestObj?.label || interest;
-                                return (
+                                return interestObj?.icon ? (
                                   <span 
                                     key={idx}
-                                    className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded mr-1"
-                                    style={{ fontSize: '10px' }}
+                                    title={interestObj.label}
+                                    style={{ fontSize: '14px' }}
                                   >
-                                    {label}
+                                    {interestObj.icon}
                                   </span>
-                                );
+                                ) : null;
                               })}
-                            </div>
+                            </>
                           )}
-                          <div className="text-xs text-gray-500">⏱️ {stop.duration} דקות</div>
                         </div>
-                        <a
-                          href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:text-blue-700 text-xs ml-2"
-                        >
-                          📍 מפה
-                        </a>
-                      </div>
+                        <div className="text-xs text-gray-600">{stop.description}</div>
+                      </a>
                     </div>
                   ))}
                 </div>
@@ -1940,9 +1933,14 @@ const BangkokExplorer = () => {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : ''}`}>
+                            <a
+                              href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : 'text-blue-600 hover:text-blue-800'}`}
+                            >
                               {stop.name}
-                            </h4>
+                            </a>
                             {stop.outsideArea && (
                               <span 
                                 className="text-orange-500" 
@@ -1951,6 +1949,22 @@ const BangkokExplorer = () => {
                               >
                                 🔺
                               </span>
+                            )}
+                            {stop.interests && stop.interests.length > 0 && (
+                              <>
+                                {stop.interests.map((interest, idx) => {
+                                  const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                                  return interestObj?.icon ? (
+                                    <span 
+                                      key={idx}
+                                      title={interestObj.label}
+                                      style={{ fontSize: '16px' }}
+                                    >
+                                      {interestObj.icon}
+                                    </span>
+                                  ) : null;
+                                })}
+                              </>
                             )}
                             {stop.custom ? (
                               <div className="relative group">
@@ -1996,24 +2010,6 @@ const BangkokExplorer = () => {
                             )}
                           </div>
                           <p className="text-xs text-gray-600">{stop.description}</p>
-                          {stop.interests && stop.interests.length > 0 && (
-                            <div className="text-xs mt-1">
-                              {stop.interests.map((interest, idx) => {
-                                const interestObj = allInterestOptions.find(opt => opt.id === interest);
-                                const label = interestObj?.label || interest;
-                                return (
-                                  <span 
-                                    key={idx}
-                                    className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded mr-1"
-                                    style={{ fontSize: '10px' }}
-                                  >
-                                    {label}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                          <p className="text-xs text-gray-500">⏱️ {stop.duration} דקות</p>
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
@@ -2024,14 +2020,6 @@ const BangkokExplorer = () => {
                         >
                           {isDisabled ? '✓' : '⏸'}
                         </button>
-                        <a
-                          href={`https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:text-blue-700 text-xs"
-                        >
-                          📍
-                        </a>
                       </div>
                     </div>
                   </div>
