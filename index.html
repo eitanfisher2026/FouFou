@@ -1727,7 +1727,7 @@ const BangkokExplorer = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
         <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
-        <p className="text-sm text-orange-100">ההעדפות נשמרות אוטומטית</p>
+
       </div>
 
       <div className="max-w-4xl mx-auto p-4 pb-32">
@@ -1779,28 +1779,6 @@ const BangkokExplorer = () => {
         {currentView === 'form' && (
           <div className="bg-white rounded-xl shadow-lg p-4 space-y-4">
             <h2 className="text-xl font-bold">תכנן את הטיול</h2>
-            
-            {/* Compact settings */}
-            <div className="flex gap-4 items-center p-3 bg-gray-50 rounded-lg">
-              {/* Hours field - HIDDEN (not deleted, may use later) */}
-              <div className="flex items-center gap-2 flex-1" style={{ display: 'none' }}>
-                <label className="text-xs font-medium">⏰</label>
-                <select
-                  value={formData.hours}
-                  onChange={(e) => setFormData({...formData, hours: parseInt(e.target.value)})}
-                  className="flex-1 p-2 border-2 border-gray-300 rounded-lg text-sm font-medium bg-white"
-                >
-                  <option value={1}>1 שעה</option>
-                  <option value={2}>2 שעות</option>
-                  <option value={3}>3 שעות</option>
-                  <option value={4}>4 שעות</option>
-                  <option value={5}>5 שעות</option>
-                  <option value={6}>6 שעות</option>
-                  <option value={7}>7 שעות</option>
-                  <option value={8}>8 שעות</option>
-                </select>
-              </div>
-            </div>
 
             <div>
               <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
@@ -1904,14 +1882,14 @@ const BangkokExplorer = () => {
                 disabled={formData.interests.length === 0}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(to right, #f97316, #ec4899)',
+                  backgroundColor: '#2563eb',
                   color: 'white',
-                  padding: '20px',
-                  borderRadius: '16px',
+                  padding: '10px',
+                  borderRadius: '12px',
                   fontWeight: 'bold',
-                  fontSize: '20px',
+                  fontSize: '15px',
                   border: 'none',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                   opacity: formData.interests.length === 0 ? 0.5 : 1
                 }}
               >
@@ -1925,8 +1903,8 @@ const BangkokExplorer = () => {
 
             {/* Show stops list ONLY after route is calculated */}
             {route && (
-              <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4">
-                <h3 className="font-bold mb-2 text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
+              <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir="rtl">
+                <h3 className="font-bold mb-2 text-blue-900 text-sm text-right">מקומות ב{route.areaName} ({route.stops.length}):</h3>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {(() => {
                     // Group stops by interest
@@ -2022,7 +2000,7 @@ const BangkokExplorer = () => {
                                     href={hasValidCoords ? `https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z` : '#'}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
-                                    className="block hover:bg-gray-100 transition pr-12"
+                                    className="block hover:bg-gray-100 transition pr-2"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
@@ -2038,7 +2016,7 @@ const BangkokExplorer = () => {
                                           ❗
                                         </span>
                                       )}
-                                      <span>{stop.displayNumber}. {stop.name}</span>
+                                      <span>{stop.name}</span>
                                       {stop.outsideArea && (
                                         <span className="text-orange-500" title="מקום מחוץ לגבולות האזור" style={{ fontSize: '10px' }}>
                                           🔺
@@ -2143,14 +2121,14 @@ const BangkokExplorer = () => {
                     style={{
                       display: 'block',
                       width: '100%',
-                      backgroundColor: '#22c55e',
+                      backgroundColor: '#f59e0b',
                       color: 'white',
                       textAlign: 'center',
-                      padding: '14px',
+                      padding: '10px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       textDecoration: 'none',
-                      fontSize: '16px',
+                      fontSize: '14px',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                       marginBottom: '8px'
                     }}
@@ -2233,13 +2211,13 @@ const BangkokExplorer = () => {
                       }}
                       style={{
                         width: '100%',
-                        backgroundColor: '#2563eb',
+                        backgroundColor: '#22c55e',
                         color: 'white',
                         textAlign: 'center',
-                        padding: '12px',
+                        padding: '10px',
                         borderRadius: '12px',
                         fontWeight: 'bold',
-                        fontSize: '15px',
+                        fontSize: '14px',
                         border: 'none',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                         cursor: 'pointer'
@@ -2536,14 +2514,14 @@ const BangkokExplorer = () => {
                 style={{
                   display: 'block',
                   width: '100%',
-                  backgroundColor: '#22c55e',
+                  backgroundColor: '#f59e0b',
                   color: 'white',
                   textAlign: 'center',
-                  padding: '14px',
+                  padding: '10px',
                   borderRadius: '12px',
                   fontWeight: 'bold',
                   textDecoration: 'none',
-                  fontSize: '16px',
+                  fontSize: '14px',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                   marginBottom: '12px'
                 }}
@@ -2621,14 +2599,14 @@ const BangkokExplorer = () => {
                   rel="noopener noreferrer"
                   style={{
                     width: '100%',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#22c55e',
                     color: 'white',
                     textAlign: 'center',
-                    padding: '14px',
+                    padding: '10px',
                     borderRadius: '12px',
                     fontWeight: 'bold',
                     textDecoration: 'none',
-                    fontSize: '15px',
+                    fontSize: '14px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                     display: 'block'
                   }}
