@@ -303,58 +303,70 @@ const BangkokExplorer = () => {
       localStorage.setItem('bangkok_user_id', userId);
     }
     
-    // Generate or retrieve admin ID (first time setup)
-    let adminId = localStorage.getItem('bangkok_admin_id');
-    if (!adminId) {
-      adminId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('bangkok_admin_id', adminId);
-      console.log('[ACCESS LOG] Admin ID created:', adminId);
-    }
+    console.log('[ACCESS LOG] User ID:', userId);
     
-    const isAdmin = userId.includes(adminId);
-    
-    // Log access (skip admin)
-    if (!isAdmin) {
-      const accessEntry = {
-        userId: userId,
-        timestamp: Date.now(),
-        date: new Date().toISOString(),
-        userAgent: navigator.userAgent.substring(0, 100)
-      };
-      
-      database.ref('accessLog').push(accessEntry)
-        .then(() => console.log('[ACCESS LOG] Visit logged'))
-        .catch(err => console.error('[ACCESS LOG] Error:', err));
-    }
-    
-    // Listen to access log (admin only)
-    if (isAdmin) {
-      const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
-      
-      // Get last seen timestamp
-      const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
-      
-      const unsubscribe = logRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const logsArray = Object.keys(data).map(key => ({
-            ...data[key],
-            id: key
-          })).sort((a, b) => b.timestamp - a.timestamp);
-          
-          setAccessLogs(logsArray);
-          
-          // Check for new entries
-          const hasNew = logsArray.some(log => log.timestamp > lastSeen);
-          if (hasNew && lastSeen > 0) {
-            setHasNewEntries(true);
-            showToast('🔔 יש כניסות חדשות!', 'info');
-          }
+    // Admin detection: Read from Firebase (shared across all devices)
+    database.ref('settings/adminId').once('value')
+      .then((snapshot) => {
+        let adminId = snapshot.val();
+        
+        if (!adminId) {
+          // First user ever - this user becomes admin
+          adminId = userId;
+          database.ref('settings/adminId').set(adminId)
+            .then(() => {
+              console.log('[ACCESS LOG] You are the FIRST admin! ID:', adminId);
+              showToast('👑 אתה ה-Admin הראשון!', 'success');
+            });
         }
-      });
-      
-      return () => logRef.off('value', unsubscribe);
-    }
+        
+        const isAdmin = (userId === adminId);
+        console.log('[ACCESS LOG] Admin:', adminId, 'Is Admin:', isAdmin);
+        
+        // Log access (skip admin)
+        if (!isAdmin) {
+          const accessEntry = {
+            userId: userId,
+            timestamp: Date.now(),
+            date: new Date().toISOString(),
+            userAgent: navigator.userAgent.substring(0, 100)
+          };
+          
+          database.ref('accessLog').push(accessEntry)
+            .then(() => console.log('[ACCESS LOG] Visit logged'))
+            .catch(err => console.error('[ACCESS LOG] Error:', err));
+        }
+        
+        // Listen to access log (admin only)
+        if (isAdmin) {
+          const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
+          
+          // Get last seen timestamp
+          const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
+          
+          const unsubscribe = logRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              const logsArray = Object.keys(data).map(key => ({
+                ...data[key],
+                id: key
+              })).sort((a, b) => b.timestamp - a.timestamp);
+              
+              setAccessLogs(logsArray);
+              
+              // Check for new entries
+              const hasNew = logsArray.some(log => log.timestamp > lastSeen);
+              if (hasNew && lastSeen > 0) {
+                setHasNewEntries(true);
+                showToast('🔔 יש כניסות חדשות!', 'info');
+              }
+            }
+          });
+          
+          return () => logRef.off('value', unsubscribe);
+        }
+      })
+      .catch(err => console.error('[ACCESS LOG] Error reading admin:', err));
   }, [formData.dataSource]);
   
   // Mark logs as seen
@@ -4059,13 +4071,6 @@ const BangkokExplorer = () => {
                 <div className="mt-2">
                   <button
                     onClick={() => {
-                      // Initialize admin if needed
-                      if (!localStorage.getItem('bangkok_admin_id')) {
-                        const adminId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        localStorage.setItem('bangkok_admin_id', adminId);
-                        console.log('[ADMIN] Admin ID created:', adminId);
-                        showToast('✅ Admin ID created!', 'success');
-                      }
                       setShowAccessLog(true);
                       markLogsAsSeen();
                     }}
@@ -4082,12 +4087,31 @@ const BangkokExplorer = () => {
                   </button>
                   
                   {/* Admin Status */}
-                  <div className="text-[9px] text-gray-400 mt-1">
-                    {localStorage.getItem('bangkok_admin_id') ? (
-                      <span>👑 Admin Mode</span>
+                  <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
+                    {accessLogs.length > 0 ? (
+                      <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
                     ) : (
-                      <span>לחץ ליצירת Admin</span>
+                      <span>אין כניסות עדיין</span>
                     )}
+                    
+                    {/* Debug: Reset Admin */}
+                    <button
+                      onClick={() => {
+                        showConfirm('לאפס Admin ולמחוק כל הלוג?', () => {
+                          database.ref('settings/adminId').remove();
+                          database.ref('accessLog').remove();
+                          localStorage.removeItem('bangkok_user_id');
+                          localStorage.removeItem('bangkok_last_seen');
+                          setAccessLogs([]);
+                          setHasNewEntries(false);
+                          showToast('🔄 Admin אופס! רענן את הדף', 'success');
+                        });
+                      }}
+                      className="text-[8px] text-red-400 hover:text-red-600"
+                      title="איפוס מלא של Admin והלוג"
+                    >
+                      🔄
+                    </button>
                   </div>
                 </div>
               )}
