@@ -23,6 +23,17 @@
         }
       }
       
+      @keyframes slideDown {
+        from {
+          transform: translateY(-30px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
       /* Custom Scrollbar - Thin and Subtle */
       .overflow-y-auto::-webkit-scrollbar {
         width: 6px;
@@ -203,7 +214,7 @@ const BangkokExplorer = () => {
   // Toast notification helper
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
-    setTimeout(() => setToastMessage(null), 4000); // Hide after 4 seconds
+    setTimeout(() => setToastMessage(null), 1500); // Hide after 1.5 seconds
   };
 
   // Load saved routes from localStorage (still local)
@@ -320,7 +331,7 @@ const BangkokExplorer = () => {
           await database.ref('settings/adminId').set(adminId);
           await database.ref(`settings/adminDevices/${userId}`).set(true);
           console.log('[ACCESS LOG] You are the FIRST admin! ID:', adminId);
-          showToast('👑 אתה ה-Admin הראשון!', 'success');
+          showToast('אתה ה-Admin הראשון!', 'success');
         }
         
         // Check if this device is registered as admin
@@ -418,7 +429,7 @@ const BangkokExplorer = () => {
               const hasNew = logsArray.some(log => log.timestamp > lastSeen);
               if (hasNew && lastSeen > 0) {
                 setHasNewEntries(true);
-                showToast('🔔 יש כניסות חדשות!', 'info');
+                showToast('יש כניסות חדשות!', 'info');
               }
             } else {
               setAccessLogs([]);
@@ -1162,7 +1173,7 @@ const BangkokExplorer = () => {
 
   const generateRoute = async () => {
     if (!formData.area || formData.interests.length === 0) {
-      showToast('⚠️ אנא בחר איזור ולפחות תחום עניין אחד', 'warning');
+      showToast('אנא בחר איזור ולפחות תחום עניין אחד', 'warning');
       return;
     }
     
@@ -1323,7 +1334,7 @@ const BangkokExplorer = () => {
         const errorMsg = dataSourceErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
         
         console.error('[ROUTE] Data source errors:', dataSourceErrors);
-        showToast(`⚠️ שגיאות בקבלת מקומות: ${errorMsg}`, 'warning');
+        showToast(`שגיאות בקבלת מקומות: ${errorMsg}`, 'warning');
       }
       
       if (uniqueStops.length === 0) {
@@ -1415,7 +1426,7 @@ const BangkokExplorer = () => {
       
       console.error('[ROUTE] Error details:', errorDetails);
       
-      showToast(`❌ שגיאה קריטית: ${error.message || 'שגיאה לא ידועה'}. בדוק Console (F12)`, 'error');
+      showToast(`שגיאה קריטית: ${error.message || 'שגיאה לא ידועה'}. בדוק Console (F12)`, 'error');
       
       // Fallback to static only
       const staticStops = getStopsForInterests();
@@ -1476,7 +1487,7 @@ const BangkokExplorer = () => {
       };
       
       setRoute(updatedRoute);
-      showToast(`✅ נוספו ${placesToAdd.length} מקומות!`, 'success');
+      showToast(`נוספו ${placesToAdd.length} מקומות!`, 'success');
       
       // Scroll to results
       setTimeout(() => {
@@ -1485,7 +1496,7 @@ const BangkokExplorer = () => {
       
     } catch (error) {
       console.error('[FETCH_MORE] Error:', error);
-      showToast('❌ שגיאה בהוספת מקומות', 'error');
+      showToast('שגיאה בהוספת מקומות', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -1535,7 +1546,7 @@ const BangkokExplorer = () => {
       };
       
       setRoute(updatedRoute);
-      showToast(`✅ נוספו ${allNewPlaces.length} מקומות!`, 'success');
+      showToast(`נוספו ${allNewPlaces.length} מקומות!`, 'success');
       
       // Scroll to results
       setTimeout(() => {
@@ -1544,7 +1555,7 @@ const BangkokExplorer = () => {
       
     } catch (error) {
       console.error('[FETCH_MORE_ALL] Error:', error);
-      showToast('❌ שגיאה בהוספת מקומות', 'error');
+      showToast('שגיאה בהוספת מקומות', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -1618,18 +1629,18 @@ const BangkokExplorer = () => {
       database.ref('customInterests').push(interestToAdd)
         .then(() => {
           console.log('[FIREBASE] Interest added to shared database');
-          showToast('✅ תחום העניין נוסף!', 'success');
+          showToast('תחום העניין נוסף!', 'success');
         })
         .catch((error) => {
           console.error('[FIREBASE] Error adding interest:', error);
-          showToast('❌ שגיאה בשמירה', 'error');
+          showToast('שגיאה בשמירה', 'error');
         });
     } else {
       // STATIC MODE: localStorage (local)
       const updated = [...customInterests, interestToAdd];
       setCustomInterests(updated);
       localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
-      showToast('✅ תחום העניין נוסף!', 'success');
+      showToast('תחום העניין נוסף!', 'success');
     }
     
     // Reset and close dialog
@@ -1653,14 +1664,14 @@ const BangkokExplorer = () => {
           .then(() => {
             console.log('[FIREBASE] Interest deleted from shared database');
             if (locationsUsingInterest.length > 0) {
-              showToast(`✅ תחום נמחק (${locationsUsingInterest.length} מקומות עדיין משתמשים בו)`, 'success');
+              showToast(`תחום נמחק (${locationsUsingInterest.length} מקומות עדיין משתמשים בו)`, 'success');
             } else {
-              showToast('✅ תחום נמחק!', 'success');
+              showToast('תחום נמחק!', 'success');
             }
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting interest:', error);
-            showToast('❌ שגיאה במחיקה', 'error');
+            showToast('שגיאה במחיקה', 'error');
           });
       }
     } else {
@@ -1670,9 +1681,9 @@ const BangkokExplorer = () => {
       localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
       
       if (locationsUsingInterest.length > 0) {
-        showToast(`✅ תחום נמחק (${locationsUsingInterest.length} מקומות עדיין משתמשים בו)`, 'success');
+        showToast(`תחום נמחק (${locationsUsingInterest.length} מקומות עדיין משתמשים בו)`, 'success');
       } else {
-        showToast('✅ תחום נמחק!', 'success');
+        showToast('תחום נמחק!', 'success');
       }
     }
   };
@@ -1687,11 +1698,11 @@ const BangkokExplorer = () => {
         database.ref(`customLocations/${locationToDelete.firebaseId}`).remove()
           .then(() => {
             console.log('[FIREBASE] Location deleted from shared database');
-            showToast('✅ המקום נמחק!', 'success');
+            showToast('המקום נמחק!', 'success');
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting location:', error);
-            showToast('❌ שגיאה במחיקה', 'error');
+            showToast('שגיאה במחיקה', 'error');
           });
       }
     } else {
@@ -1699,7 +1710,7 @@ const BangkokExplorer = () => {
       const updated = customLocations.filter(loc => loc.id !== locationId);
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast('✅ המקום נמחק!', 'success');
+      showToast('המקום נמחק!', 'success');
     }
   };
   
@@ -1742,7 +1753,7 @@ const BangkokExplorer = () => {
           })
           .catch((error) => {
             console.error('[FIREBASE] Error updating status:', error);
-            showToast('❌ שגיאה בעדכון', 'error');
+            showToast('שגיאה בעדכון', 'error');
           });
       }
     } else {
@@ -1803,7 +1814,7 @@ const BangkokExplorer = () => {
     );
     
     if (exists) {
-      showToast(`⚠️ "${place.name}" כבר קיים ברשימה שלך`, 'warning');
+      showToast(`"${place.name}" כבר קיים ברשימה שלך`, 'warning');
       return;
     }
     
@@ -1835,18 +1846,18 @@ const BangkokExplorer = () => {
       database.ref('customLocations').push(locationToAdd)
         .then(() => {
           console.log('[FIREBASE] Google place added to shared database');
-          showToast(`✅ "${place.name}" נוסף לרשימה שלך!`, 'success');
+          showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
         })
         .catch((error) => {
           console.error('[FIREBASE] Error adding Google place:', error);
-          showToast('❌ שגיאה בשמירה', 'error');
+          showToast('שגיאה בשמירה', 'error');
         });
     } else {
       // STATIC MODE: localStorage (local)
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast(`✅ "${place.name}" נוסף לרשימה שלך!`, 'success');
+      showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
     }
   };
   
@@ -1860,7 +1871,7 @@ const BangkokExplorer = () => {
     if (exists) {
       // Already exists - just update status to blacklist
       if (exists.status === 'blacklist') {
-        showToast(`⚠️ "${place.name}" כבר ברשימת דילוג`, 'warning');
+        showToast(`"${place.name}" כבר ברשימת דילוג`, 'warning');
         return;
       }
       
@@ -1873,11 +1884,11 @@ const BangkokExplorer = () => {
           inProgress: false
         })
           .then(() => {
-            showToast(`🚫 "${place.name}" נוסף לדילוג קבוע`, 'success');
+            showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
           })
           .catch((error) => {
             console.error('[FIREBASE] Error updating to blacklist:', error);
-            showToast('❌ שגיאה בעדכון', 'error');
+            showToast('שגיאה בעדכון', 'error');
           });
       } else {
         const updated = customLocations.map(loc => {
@@ -1888,7 +1899,7 @@ const BangkokExplorer = () => {
         });
         setCustomLocations(updated);
         localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-        showToast(`🚫 "${place.name}" נוסף לדילוג קבוע`, 'success');
+        showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
       }
       return;
     }
@@ -1922,17 +1933,17 @@ const BangkokExplorer = () => {
       database.ref('customLocations').push(locationToAdd)
         .then(() => {
           console.log('[FIREBASE] Place added to blacklist');
-          showToast(`🚫 "${place.name}" נוסף לדילוג קבוע`, 'success');
+          showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
         })
         .catch((error) => {
           console.error('[FIREBASE] Error adding to blacklist:', error);
-          showToast('❌ שגיאה בשמירה', 'error');
+          showToast('שגיאה בשמירה', 'error');
         });
     } else {
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast(`🚫 "${place.name}" נוסף לדילוג קבוע`, 'success');
+      showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
     }
   };
   
@@ -1995,12 +2006,12 @@ const BangkokExplorer = () => {
     setImportedData(null);
     
     showToast(
-      `✅ יובא! נוספו ${addedInterests} תחומים חדשים, ${addedLocations} מקומות חדשים`,
+      `יובא! נוספו ${addedInterests} תחומים חדשים, ${addedLocations} מקומות חדשים`,
       'success'
     );
   };
 
-  const addCustomLocation = () => {
+  const addCustomLocation = (closeAfter = true) => {
     if (!newLocation.name.trim() || newLocation.interests.length === 0) {
       return; // Just don't add if validation fails
     }
@@ -2019,14 +2030,15 @@ const BangkokExplorer = () => {
       
       if (!boundaryCheck.valid) {
         showToast(
-          `⚠️ אזהרה: המיקום ${boundaryCheck.distanceKm} ק"מ מחוץ לאזור ${areaName}. נשמר בכל זאת.`,
+          `אזהרה: המיקום ${boundaryCheck.distanceKm} ק"מ מחוץ לאזור ${areaName}. נשמר בכל זאת.`,
           'warning'
         );
       }
     }
     
+    const newId = Date.now();
     const locationToAdd = {
-      id: Date.now(),
+      id: newId,
       name: newLocation.name.trim(),
       description: newLocation.description.trim() || newLocation.notes?.trim() || 'מקום שהוספתי',
       notes: newLocation.notes?.trim() || '',
@@ -2051,20 +2063,35 @@ const BangkokExplorer = () => {
     if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref('customLocations').push(locationToAdd)
-        .then(() => {
+        .then((ref) => {
           console.log('[FIREBASE] Location added to shared database');
-          showToast('✅ המקום נוסף ונשמר לכולם!', 'success');
+          showToast('המקום נוסף ונשמר לכולם!', 'success');
+          
+          // If staying open, switch to edit mode
+          if (!closeAfter) {
+            const addedWithFirebaseId = { ...locationToAdd, firebaseId: ref.key };
+            setEditingLocation(addedWithFirebaseId);
+            setShowAddLocationDialog(false);
+            setShowEditLocationDialog(true);
+          }
         })
         .catch((error) => {
           console.error('[FIREBASE] Error adding location:', error);
-          showToast('❌ שגיאה בשמירה', 'error');
+          showToast('שגיאה בשמירה', 'error');
         });
     } else {
       // STATIC MODE: localStorage (local)
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast('✅ המקום נוסף!', 'success');
+      showToast('המקום נוסף!', 'success');
+      
+      // If staying open, switch to edit mode
+      if (!closeAfter) {
+        setEditingLocation(locationToAdd);
+        setShowAddLocationDialog(false);
+        setShowEditLocationDialog(true);
+      }
     }
     
     // Add to current route if exists (only if has coordinates)
@@ -2076,26 +2103,28 @@ const BangkokExplorer = () => {
       setRoute(updatedRoute);
     }
     
-    setShowAddLocationDialog(false);
-    setNewLocation({ 
-      name: '', 
-      description: '', 
-      notes: '',
-      area: formData.area, 
-      interests: [], 
-      lat: null, 
-      lng: null, 
-      mapsUrl: '',
-      address: '',
-      uploadedImage: null,
-      imageUrls: []
-    });
+    if (closeAfter) {
+      setShowAddLocationDialog(false);
+      setNewLocation({ 
+        name: '', 
+        description: '', 
+        notes: '',
+        area: formData.area, 
+        interests: [], 
+        lat: null, 
+        lng: null, 
+        mapsUrl: '',
+        address: '',
+        uploadedImage: null,
+        imageUrls: []
+      });
+    }
   };
   
   // Update existing location
-  const updateCustomLocation = () => {
+  const updateCustomLocation = (closeAfter = true) => {
     if (!newLocation.name?.trim()) {
-      showToast('⚠️ אנא הזן שם למקום', 'warning');
+      showToast('אנא הזן שם למקום', 'warning');
       return;
     }
     
@@ -2112,7 +2141,7 @@ const BangkokExplorer = () => {
       
       if (!boundaryCheck.valid) {
         showToast(
-          `⚠️ אזהרה: המיקום ${boundaryCheck.distanceKm} ק"מ מחוץ לאזור ${areaName}. נשמר בכל זאת.`,
+          `אזהרה: המיקום ${boundaryCheck.distanceKm} ק"מ מחוץ לאזור ${areaName}. נשמר בכל זאת.`,
           'warning'
         );
       }
@@ -2136,11 +2165,15 @@ const BangkokExplorer = () => {
         database.ref(`customLocations/${firebaseId}`).set(locationData)
           .then(() => {
             console.log('[FIREBASE] Location updated in shared database');
-            showToast('✅ המקום עודכן!', 'success');
+            showToast('המקום עודכן!', 'success');
+            // Update editingLocation with latest data
+            if (!closeAfter) {
+              setEditingLocation({ ...updatedLocation, firebaseId });
+            }
           })
           .catch((error) => {
             console.error('[FIREBASE] Error updating location:', error);
-            showToast('❌ שגיאה בעדכון', 'error');
+            showToast('שגיאה בעדכון', 'error');
           });
       }
     } else {
@@ -2150,41 +2183,68 @@ const BangkokExplorer = () => {
       );
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast('✅ המקום עודכן!', 'success');
+      showToast('המקום עודכן!', 'success');
+      // Update editingLocation with latest data
+      if (!closeAfter) {
+        setEditingLocation(updatedLocation);
+      }
     }
     
-    setShowEditLocationDialog(false);
-    setEditingLocation(null);
-    setNewLocation({ 
-      name: '', 
-      description: '', 
-      notes: '',
-      area: formData.area, 
-      interests: [], 
-      lat: null, 
-      lng: null, 
-      mapsUrl: '',
-      address: '',
-      uploadedImage: null,
-      imageUrls: []
-    });
+    if (closeAfter) {
+      setShowEditLocationDialog(false);
+      setEditingLocation(null);
+      setNewLocation({ 
+        name: '', 
+        description: '', 
+        notes: '',
+        area: formData.area, 
+        interests: [], 
+        lat: null, 
+        lng: null, 
+        mapsUrl: '',
+        address: '',
+        uploadedImage: null,
+        imageUrls: []
+      });
+    }
   };
 
   // Get current location from GPS
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      showToast('❌ הדפדפן שלך לא תומך במיקום GPS', 'error');
+      showToast('הדפדפן שלך לא תומך במיקום GPS', 'error');
       return;
     }
     
+    showToast('מחפש מיקום...', 'info');
+    
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setNewLocation({
-          ...newLocation,
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          mapsUrl: `https://maps.google.com/?q=${position.coords.latitude},${position.coords.longitude}`
-        });
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        // First update with coordinates
+        setNewLocation(prev => ({
+          ...prev,
+          lat: lat,
+          lng: lng,
+          mapsUrl: `https://maps.google.com/?q=${lat},${lng}`
+        }));
+        
+        showToast(`מיקום נקלט: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
+        
+        // Then try to get address (reverse geocode)
+        try {
+          const address = await reverseGeocode(lat, lng);
+          if (address) {
+            setNewLocation(prev => ({
+              ...prev,
+              address: address
+            }));
+          }
+        } catch (err) {
+          console.log('[GPS] Reverse geocode failed (ok):', err);
+        }
       },
       (error) => {
         let errorMessage = 'לא הצלחתי לקבל את המיקום.';
@@ -2201,7 +2261,7 @@ const BangkokExplorer = () => {
             break;
         }
         
-        showToast(`❌ ${errorMessage}`, 'error');
+        showToast(`${errorMessage}`, 'error');
       },
       {
         enableHighAccuracy: true,
@@ -2249,7 +2309,7 @@ const BangkokExplorer = () => {
     // Format 4: https://goo.gl/maps/... or https://maps.app.goo.gl/...
     // These shortened URLs need to be opened first, so just inform user
     if (!match && (url.includes('goo.gl') || url.includes('maps.app'))) {
-      showToast('💡 קישורים מקוצרים: פתח בדפדפן והעתק את הקישור המלא', 'warning');
+      showToast('קישורים מקוצרים: פתח בדפדפן והעתק את הקישור המלא', 'warning');
       setNewLocation({ ...newLocation, mapsUrl: url });
       return;
     }
@@ -2265,9 +2325,9 @@ const BangkokExplorer = () => {
     
     if (lat !== null && lng !== null) {
       setNewLocation({ ...newLocation, lat, lng, mapsUrl: url });
-      showToast(`✅ קואורדינטות נקלטו: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
+      showToast(`קואורדינטות נקלטו: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
     } else {
-      showToast('❌ לא זיהיתי קואורדינטות. נסה קישור Google Maps או: 13.7465,100.4927', 'error');
+      showToast('לא זיהיתי קואורדינטות. נסה קישור Google Maps או: 13.7465,100.4927', 'error');
       setNewLocation({ ...newLocation, mapsUrl: url });
     }
   };
@@ -2275,12 +2335,12 @@ const BangkokExplorer = () => {
   // Search address using Google Places API (instead of Geocoding)
   const geocodeAddress = async (address) => {
     if (!address || !address.trim()) {
-      showToast('⚠️ אנא הזן כתובת', 'warning');
+      showToast('אנא הזן כתובת', 'warning');
       return;
     }
 
     try {
-      showToast('🔍 מחפש כתובת...', 'info');
+      showToast('מחפש כתובת...', 'info');
       
       // Add "Bangkok, Thailand" if not already included
       const searchQuery = address.toLowerCase().includes('bangkok') 
@@ -2319,13 +2379,100 @@ const BangkokExplorer = () => {
           mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
         });
         
-        showToast(`✅ נמצא! ${formattedAddress}`, 'success');
+        showToast(`נמצא! ${formattedAddress}`, 'success');
       } else {
-        showToast('❌ לא נמצאה כתובת. נסה כתובת אחרת', 'error');
+        showToast('לא נמצאה כתובת. נסה כתובת אחרת', 'error');
       }
     } catch (error) {
       console.error('[GEOCODING] Error:', error);
-      showToast('❌ שגיאה בחיפוש הכתובת. נסה באמצעות קישור Google Maps', 'error');
+      showToast('שגיאה בחיפוש הכתובת. נסה באמצעות קישור Google Maps', 'error');
+    }
+  };
+
+  // Search coordinates by place name
+  const geocodeByName = async (name) => {
+    if (!name || !name.trim()) {
+      showToast('אנא הזן שם מקום', 'warning');
+      return;
+    }
+
+    try {
+      showToast('מחפש לפי שם...', 'info');
+      
+      // Add "Bangkok, Thailand" for better results
+      const searchQuery = name.toLowerCase().includes('bangkok') 
+        ? name 
+        : `${name}, Bangkok, Thailand`;
+      
+      const response = await fetch(
+        `https://places.googleapis.com/v1/places:searchText`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
+          },
+          body: JSON.stringify({
+            textQuery: searchQuery,
+            maxResultCount: 1
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.places && data.places.length > 0) {
+        const place = data.places[0];
+        const location = place.location;
+        const formattedAddress = place.formattedAddress || '';
+        
+        setNewLocation({
+          ...newLocation,
+          lat: location.latitude,
+          lng: location.longitude,
+          address: formattedAddress,
+          mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
+        });
+        
+        showToast(`נמצא: ${place.displayName?.text || name}`, 'success');
+      } else {
+        showToast('לא נמצא מקום. נסה שם אחר או כתובת', 'error');
+      }
+    } catch (error) {
+      console.error('[GEOCODE BY NAME] Error:', error);
+      showToast('שגיאה בחיפוש', 'error');
+    }
+  };
+
+  // Reverse geocode: get address from coordinates
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://places.googleapis.com/v1/places:searchText`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.formattedAddress'
+          },
+          body: JSON.stringify({
+            textQuery: `${lat},${lng}`,
+            maxResultCount: 1
+          })
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.places && data.places.length > 0) {
+        return data.places[0].formattedAddress || '';
+      }
+      return '';
+    } catch (error) {
+      console.error('[REVERSE GEOCODE] Error:', error);
+      return '';
     }
   };
 
@@ -2625,7 +2772,7 @@ const BangkokExplorer = () => {
                                           <button
                                             onClick={() => {
                                               deleteCustomLocation(blacklisted.id);
-                                              showToast(`✅ "${stop.name}" חזר לרשימה הרגילה`, 'success');
+                                              showToast(`"${stop.name}" חזר לרשימה הרגילה`, 'success');
                                             }}
                                             className="text-[9px] px-1 py-0.5 rounded bg-green-500 text-white hover:bg-green-600"
                                             title="ביטול דילוג - המקום יחזור להיות זמין"
@@ -2678,14 +2825,14 @@ const BangkokExplorer = () => {
                                   </div>
                                   
                                   <a
-                                    href={hasValidCoords ? `https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z` : '#'}
+                                    href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
                                     target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
-                                        showToast('⚠️ למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.', 'warning');
+                                        showToast('למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.', 'warning');
                                       }
                                     }}
                                   >
@@ -2796,7 +2943,7 @@ const BangkokExplorer = () => {
                       });
                       if (activeStops.length === 0) {
                         e.preventDefault();
-                        showToast('⚠️ אין מקומות עם קואורדינטות תקינות', 'warning');
+                        showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
                       }
                     }}
                     style={{
@@ -2892,7 +3039,7 @@ const BangkokExplorer = () => {
                         });
                         
                         if (activeStops.length === 0) {
-                          showToast('⚠️ אין מקומות עם קואורדינטות תקינות', 'warning');
+                          showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
                           return;
                         }
 
@@ -3096,14 +3243,14 @@ const BangkokExplorer = () => {
                               </span>
                             )}
                             <a
-                              href={hasValidCoords ? `https://www.google.com/maps/search/${encodeURIComponent(stop.name)}/@${stop.lat},${stop.lng},17z` : '#'}
+                              href={hasValidCoords ? `https://www.google.com/maps?q=${stop.lat},${stop.lng}` : '#'}
                               target={hasValidCoords ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
                               onClick={(e) => {
                                 if (!hasValidCoords) {
                                   e.preventDefault();
-                                  showToast('⚠️ למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.', 'warning');
+                                  showToast('למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.', 'warning');
                                 }
                               }}
                             >
@@ -3206,7 +3353,7 @@ const BangkokExplorer = () => {
                               <button
                                 onClick={() => {
                                   deleteCustomLocation(blacklisted.id);
-                                  showToast(`✅ "${stop.name}" חזר לרשימה הרגילה`, 'success');
+                                  showToast(`"${stop.name}" חזר לרשימה הרגילה`, 'success');
                                 }}
                                 className="text-xs px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600"
                                 title="ביטול דילוג - המקום יחזור להיות זמין"
@@ -3272,7 +3419,7 @@ const BangkokExplorer = () => {
                   });
                   if (activeStops.length === 0) {
                     e.preventDefault();
-                    showToast('⚠️ אין מקומות עם קואורדינטות תקינות', 'warning');
+                    showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
                   }
                 }}
                 style={{
@@ -3997,11 +4144,11 @@ const BangkokExplorer = () => {
                           .then(() => {
                             setIsCurrentUserAdmin(true);
                             localStorage.setItem('bangkok_is_admin', 'true');
-                            showToast('👑 מכשיר זה נרשם כ-Admin!', 'success');
+                            showToast('מכשיר זה נרשם כ-Admin!', 'success');
                           })
-                          .catch(err => showToast('❌ שגיאה', 'error'));
+                          .catch(err => showToast('שגיאה', 'error'));
                       } else if (code !== null) {
-                        showToast('❌ קוד שגוי', 'error');
+                        showToast('קוד שגוי', 'error');
                       }
                     }}
                     className="w-full bg-red-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-red-600"
@@ -4056,10 +4203,10 @@ const BangkokExplorer = () => {
                         link.click();
                         URL.revokeObjectURL(url);
                         
-                        showToast(`✅ הקובץ הורד! (${customInterests.length} תחומים, ${customLocations.length} מקומות)`, 'success');
+                        showToast(`הקובץ הורד! (${customInterests.length} תחומים, ${customLocations.length} מקומות)`, 'success');
                       } catch (error) {
                         console.error('[EXPORT] Error:', error);
-                        showToast('❌ שגיאה בייצוא', 'error');
+                        showToast('שגיאה בייצוא', 'error');
                       }
                     }}
                     className="w-full bg-blue-500 text-white py-2 px-3 rounded-lg font-bold hover:bg-blue-600 transition text-sm flex items-center justify-center gap-2"
@@ -4085,7 +4232,7 @@ const BangkokExplorer = () => {
                             const data = JSON.parse(event.target.result);
                             
                             if (!data.customInterests || !data.customLocations) {
-                              showToast('❌ קובץ לא תקין', 'error');
+                              showToast('קובץ לא תקין', 'error');
                               return;
                             }
                             
@@ -4093,7 +4240,7 @@ const BangkokExplorer = () => {
                             setShowImportDialog(true);
                           } catch (error) {
                             console.error('[IMPORT] Error:', error);
-                            showToast('❌ שגיאה בקריאת הקובץ', 'error');
+                            showToast('שגיאה בקריאת הקובץ', 'error');
                           }
                         };
                         reader.readAsText(file);
@@ -4142,7 +4289,7 @@ const BangkokExplorer = () => {
                     // Try native share API (mobile)
                     if (navigator.share) {
                       navigator.share(shareData)
-                        .then(() => showToast('✅ תודה על השיתוף!', 'success'))
+                        .then(() => showToast('תודה על השיתוף!', 'success'))
                         .catch((err) => {
                           if (err.name !== 'AbortError') {
                             console.error('Share error:', err);
@@ -4164,15 +4311,15 @@ const BangkokExplorer = () => {
                         document.body.removeChild(textArea);
                         
                         if (successful) {
-                          showToast('✅ הקישור הועתק ללוח!', 'success');
+                          showToast('הקישור הועתק ללוח!', 'success');
                         } else {
                           // Show toast with URL
-                          showToast('📋 העתק: ' + window.location.href, 'info');
+                          showToast('העתק: ' + window.location.href, 'info');
                         }
                       } catch (err) {
                         console.error('Copy error:', err);
                         // Show toast with URL
-                        showToast('📋 העתק: ' + window.location.href, 'info');
+                        showToast('העתק: ' + window.location.href, 'info');
                       }
                     }
                   }}
@@ -4227,7 +4374,7 @@ const BangkokExplorer = () => {
                             localStorage.setItem('bangkok_last_seen', Date.now().toString());
                             setAccessLogs([]);
                             setHasNewEntries(false);
-                            showToast('✅ הלוג נוקה', 'success');
+                            showToast('הלוג נוקה', 'success');
                           });
                         }}
                         className="text-red-500 hover:text-red-700 text-lg p-1"
@@ -4324,7 +4471,7 @@ const BangkokExplorer = () => {
                             loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
                             (!editingLocation || loc.id !== editingLocation.id)
                           );
-                          if (exists) showToast('⚠️ שם זה כבר קיים', 'warning');
+                          if (exists) showToast('שם זה כבר קיים', 'warning');
                         }
                       }}
                       placeholder="שם המקום"
@@ -4506,48 +4653,65 @@ const BangkokExplorer = () => {
                     />
                   </div>
 
-                  {/* Calculate Buttons - Row */}
-                  <div className="grid grid-cols-4 gap-1">
+                  {/* Calculate Buttons - Row with labels */}
+                  <div className="grid grid-cols-5 gap-1">
+                    <button
+                      onClick={() => geocodeByName(newLocation.name)}
+                      disabled={!newLocation.name?.trim()}
+                      className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
+                        newLocation.name?.trim()
+                          ? 'bg-indigo-500 text-white hover:bg-indigo-600'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      title="חפש לפי שם המקום"
+                    >
+                      <span className="text-sm">🔤</span>
+                      <span>שם</span>
+                    </button>
                     <button
                       onClick={() => geocodeAddress(newLocation.address)}
                       disabled={!newLocation.address?.trim()}
-                      className={`p-1.5 rounded-lg text-[10px] font-bold ${
+                      className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
                         newLocation.address?.trim()
                           ? 'bg-purple-500 text-white hover:bg-purple-600'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
-                      title="מכתובת"
+                      title="חפש לפי כתובת"
                     >
-                      🏠
+                      <span className="text-sm">🏠</span>
+                      <span>כתובת</span>
                     </button>
                     <button
                       onClick={() => parseMapsUrl(newLocation.mapsUrl)}
                       disabled={!newLocation.mapsUrl?.trim()}
-                      className={`p-1.5 rounded-lg text-[10px] font-bold ${
+                      className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
                         newLocation.mapsUrl?.trim()
                           ? 'bg-blue-500 text-white hover:bg-blue-600'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
-                      title="מקישור"
+                      title="חלץ מקישור"
                     >
-                      🔗
+                      <span className="text-sm">🔗</span>
+                      <span>קישור</span>
                     </button>
                     <button
                       onClick={getCurrentLocation}
-                      className="p-1.5 rounded-lg text-[10px] font-bold bg-green-500 text-white hover:bg-green-600"
-                      title="GPS"
+                      className="p-1.5 rounded-lg text-[9px] font-bold bg-green-500 text-white hover:bg-green-600 flex flex-col items-center"
+                      title="השתמש ב-GPS"
                     >
-                      📍
+                      <span className="text-sm">📍</span>
+                      <span>מיקום</span>
                     </button>
                     {newLocation.lat && newLocation.lng && (
                       <a
                         href={`https://www.google.com/maps?q=${newLocation.lat},${newLocation.lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-[10px] font-bold bg-orange-500 text-white hover:bg-orange-600 text-center"
+                        className="p-1.5 rounded-lg text-[9px] font-bold bg-orange-500 text-white hover:bg-orange-600 flex flex-col items-center"
                         title="בדוק על המפה"
                       >
-                        🗺️
+                        <span className="text-sm">🗺️</span>
+                        <span>בדוק</span>
                       </a>
                     )}
                   </div>
@@ -4569,11 +4733,15 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Footer - Compact */}
-              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2">
+              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 <button
                   onClick={() => {
                     if (!newLocation.name || !newLocation.name.trim()) {
-                      showToast('⚠️ אנא הזן שם למקום', 'warning');
+                      showToast('אנא הזן שם למקום', 'warning');
+                      return;
+                    }
+                    if (!newLocation.interests || newLocation.interests.length === 0) {
+                      showToast('אנא בחר לפחות תחום עניין אחד', 'warning');
                       return;
                     }
                     const exists = customLocations.find(loc => 
@@ -4581,13 +4749,13 @@ const BangkokExplorer = () => {
                       (!editingLocation || loc.id !== editingLocation.id)
                     );
                     if (exists) {
-                      showToast('⚠️ מקום עם שם זה כבר קיים', 'error');
+                      showToast('מקום עם שם זה כבר קיים', 'error');
                       return;
                     }
                     if (showEditLocationDialog) {
-                      updateCustomLocation();
+                      updateCustomLocation(false); // Save but don't close
                     } else {
-                      addCustomLocation();
+                      addCustomLocation(false); // Save but don't close (resets form for new entry)
                     }
                   }}
                   disabled={!newLocation.name?.trim()}
@@ -4597,17 +4765,37 @@ const BangkokExplorer = () => {
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  {showEditLocationDialog ? 'עדכן' : 'הוסף'}
+                  {showEditLocationDialog ? '💾 עדכן' : '➕ הוסף'}
                 </button>
                 <button
                   onClick={() => {
+                    // Save if there's valid content, then close
+                    if (newLocation.name?.trim() && newLocation.interests?.length > 0) {
+                      const exists = customLocations.find(loc => 
+                        loc.name.toLowerCase() === newLocation.name.trim().toLowerCase() &&
+                        (!editingLocation || loc.id !== editingLocation.id)
+                      );
+                      if (!exists) {
+                        if (showEditLocationDialog) {
+                          updateCustomLocation(true); // Save and close
+                        } else {
+                          addCustomLocation(true); // Save and close
+                        }
+                        return;
+                      }
+                    }
+                    // Just close if nothing to save or invalid
                     setShowAddLocationDialog(false);
                     setShowEditLocationDialog(false);
                     setEditingLocation(null);
+                    setNewLocation({ 
+                      name: '', description: '', notes: '', area: formData.area, interests: [], 
+                      lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: []
+                    });
                   }}
-                  className="px-5 py-2.5 rounded-lg bg-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-400"
+                  className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
                 >
-                  ביטול
+                  ✓ סגור
                 </button>
               </div>
 
@@ -4899,7 +5087,7 @@ const BangkokExplorer = () => {
                     {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                   </div>
                   <a
-                    href={`https://www.google.com/maps/search/${encodeURIComponent(selectedLocation.name)}/@${selectedLocation.lat},${selectedLocation.lng},17z`}
+                    href={`https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block w-full bg-green-500 text-white text-center py-2 rounded-lg font-bold hover:bg-green-600 transition"
@@ -5097,11 +5285,11 @@ const BangkokExplorer = () => {
                               setAccessLogs([]);
                               setHasNewEntries(false);
                               localStorage.setItem('bangkok_last_seen', Date.now().toString());
-                              showToast('✅ הלוג נוקה', 'success');
+                              showToast('הלוג נוקה', 'success');
                             })
                             .catch(err => {
                               console.error('[ACCESS LOG] Clear error:', err);
-                              showToast('❌ שגיאה בניקוי הלוג', 'error');
+                              showToast('שגיאה בניקוי הלוג', 'error');
                             });
                         }
                       });
@@ -5155,45 +5343,32 @@ const BangkokExplorer = () => {
       )}
       
       
-      {/* Toast Notification */}
+      {/* Toast Notification - Subtle */}
       {toastMessage && (
         <div
           style={{
             position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            left: '20px',
-            maxWidth: '400px',
+            top: '10px',
+            right: '10px',
+            left: '10px',
+            maxWidth: '280px',
             margin: '0 auto',
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: toastMessage.type === 'error' ? '#fee2e2' : toastMessage.type === 'warning' ? '#fef3c7' : '#d1fae5',
-            border: `3px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : '#10b981'}`,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            backgroundColor: toastMessage.type === 'error' ? '#fecaca' : toastMessage.type === 'warning' ? '#fde68a' : toastMessage.type === 'info' ? '#dbeafe' : '#bbf7d0',
+            border: `1px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : toastMessage.type === 'info' ? '#3b82f6' : '#22c55e'}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             zIndex: 9999,
-            animation: 'slideUp 0.3s ease-out'
+            animation: 'slideDown 0.15s ease-out'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '24px' }}>
-              {toastMessage.type === 'error' ? '❌' : toastMessage.type === 'warning' ? '⚠️' : '✅'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+            <span style={{ fontSize: '12px' }}>
+              {toastMessage.type === 'error' ? '✗' : toastMessage.type === 'warning' ? '!' : toastMessage.type === 'info' ? 'ℹ' : '✓'}
             </span>
-            <div style={{ flex: 1, fontWeight: 'bold', color: '#1f2937' }}>
+            <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
               {toastMessage.message}
             </div>
-            <button
-              onClick={() => setToastMessage(null)}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                fontSize: '20px',
-                cursor: 'pointer',
-                padding: '0',
-                lineHeight: '1'
-              }}
-            >
-              ✕
-            </button>
           </div>
         </div>
       )}
@@ -5205,4 +5380,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(<BangkokExplorer />)
     </script>
 </body>
 </html>
-v1.2 - [Bangkok Explorer]
+v1.3 - [Bangkok Explorer]
