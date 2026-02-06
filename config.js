@@ -5,6 +5,9 @@
 
 window.BKK = window.BKK || {};
 
+// App Version
+window.BKK.VERSION = '2.1.0';
+
 // Firebase Configuration
 window.BKK.firebaseConfig = {
   apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",

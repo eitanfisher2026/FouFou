@@ -85,9 +85,6 @@
 
 window.BKK = window.BKK || {};
 
-// App Version
-window.BKK.VERSION = '2.1.0';
-
 // Firebase Configuration
 window.BKK.firebaseConfig = {
   apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
@@ -379,6 +376,264 @@ window.BKK.helpContent = {
 };
 
 console.log('[CONFIG] Loaded successfully');
+
+    </script>
+    <script>
+// ============================================================================
+// Bangkok Explorer - Static Data Manager
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// Curated locations for offline/static mode
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+const staticLocationsData = {
+  sukhumvit: {
+    graffiti: [
+      { name: 'Sukhumvit Soi 11 Street Art', lat: 13.7450, lng: 100.5535, description: 'גרפיטי ובילוי', duration: 25 },
+      { name: 'Phrom Phong Art Walk', lat: 13.7305, lng: 100.5700, description: 'אומנות רחוב ליד BTS', duration: 30 },
+      { name: 'Soi 23 Graffiti Wall', lat: 13.7410, lng: 100.5640, description: 'קיר גרפיטי', duration: 25 }
+    ],
+    galleries: [
+      { name: 'H Gallery', lat: 13.7290, lng: 100.5715, description: 'גלריה עכשווית', duration: 45 },
+      { name: 'Number 1 Gallery', lat: 13.7420, lng: 100.5565, description: 'אומנות מקומית', duration: 30 },
+      { name: 'Thavibu Gallery', lat: 13.7365, lng: 100.5625, description: 'אומנות אסיאתית', duration: 40 }
+    ],
+    artisans: [
+      { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי ואדריכלות', duration: 60 },
+      { name: 'Local Crafts Soi 33', lat: 13.7355, lng: 100.5680, description: 'מלאכה תאילנדית', duration: 40 }
+    ],
+    cafes: [
+      { name: 'Rocket Coffeebar Soi 12', lat: 13.7425, lng: 100.5575, description: 'קפה מינימליסטי', duration: 40 },
+      { name: 'Roast Coffee Asok', lat: 13.7375, lng: 100.5605, description: 'קפה איכותי ליד BTS', duration: 35 },
+      { name: 'Roots Coffee Soi 49', lat: 13.7295, lng: 100.5760, description: 'קפה בוטיק', duration: 30 },
+      { name: 'EmQuartier Cafes', lat: 13.7310, lng: 100.5695, description: 'קפה בקניון מודרני', duration: 40 }
+    ],
+    architecture: [
+      { name: 'Terminal 21 Asoke', lat: 13.7380, lng: 100.5600, description: 'קניון בעיצוב ערים', duration: 60 },
+      { name: 'EmQuartier Mall', lat: 13.7310, lng: 100.5695, description: 'קניון מודרני יוקרתי', duration: 50 },
+      { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק ואגם גדול', duration: 45 },
+      { name: 'Jim Thompson House', lat: 13.7464, lng: 100.5347, description: 'בית משי היסטורי', duration: 60 }
+    ],
+    food: [
+      { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל רחוב מפורסם', duration: 60 },
+      { name: 'Terminal 21 Food Court', lat: 13.7380, lng: 100.5600, description: 'מתחם אוכל בקניון', duration: 45 },
+      { name: 'Nana Plaza Restaurants', lat: 13.7415, lng: 100.5550, description: 'מסעדות מגוונות', duration: 50 }
+    ],
+    markets: [
+      { name: 'Khlong Toei Market', lat: 13.7230, lng: 100.5840, description: 'שוק סיטונאי ואוכל', duration: 50 },
+      { name: 'Sukhumvit Plaza Market', lat: 13.7390, lng: 100.5585, description: 'שוק מקומי', duration: 40 },
+      { name: 'Terminal 21 Shopping', lat: 13.7380, lng: 100.5600, description: 'קניון עם שווקים', duration: 50 },
+      { name: 'Sukhumvit Soi 38 Night Market', lat: 13.7345, lng: 100.5725, description: 'שוק אוכל ומוצרים', duration: 60 }
+    ],
+    nightlife: [
+      { name: 'Sukhumvit Soi 11 Bars', lat: 13.7450, lng: 100.5535, description: 'רחוב ברים ומועדונים', duration: 90 },
+      { name: 'Nana Plaza Entertainment', lat: 13.7415, lng: 100.5550, description: 'אזור בילוי ומסעדות', duration: 90 },
+      { name: 'Asok Nightlife Area', lat: 13.7370, lng: 100.5610, description: 'בילוי ליד BTS', duration: 80 }
+    ],
+    parks: [
+      { name: 'Benjakitti Park', lat: 13.7300, lng: 100.5645, description: 'פארק עירוני גדול', duration: 45 }
+    ],
+    entertainment: [
+      { name: 'Terminal 21 Cineplex', lat: 13.7380, lng: 100.5600, description: 'קולנוע בקניון', duration: 150 },
+      { name: 'EmQuartier Cineplex', lat: 13.7310, lng: 100.5695, description: 'קולנוע יוקרתי', duration: 150 },
+      { name: 'Saxophone Pub & Restaurant', lat: 13.7405, lng: 100.5545, description: 'מועדון ג\'אז חי', duration: 120 },
+      { name: 'Escape Hunt Bangkok', lat: 13.7310, lng: 100.5695, description: 'חדר בריחה', duration: 90 }
+    ]
+  },
+  'old-town': {
+    temples: [
+      { name: 'Wat Pho', lat: 13.7465, lng: 100.4927, description: 'בודהה השוכב', duration: 90 },
+      { name: 'Grand Palace', lat: 13.7500, lng: 100.4914, description: 'הארמון המלכותי', duration: 120 },
+      { name: 'Wat Saket (Golden Mount)', lat: 13.7539, lng: 100.5064, description: 'הר הזהב', duration: 60 },
+      { name: 'Wat Suthat', lat: 13.7513, lng: 100.5006, description: 'מקדש גדול', duration: 45 }
+    ],
+    architecture: [
+      { name: 'Wat Arun', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר', duration: 60 },
+      { name: 'Democracy Monument', lat: 13.7566, lng: 100.5015, description: 'אנדרטת דמוקרטיה', duration: 20 },
+      { name: 'Giant Swing', lat: 13.7512, lng: 100.5014, description: 'נדנדה ענקית', duration: 15 }
+    ],
+    canals: [
+      { name: 'Khlong Saen Saeb Canal Boat', lat: 13.7590, lng: 100.5017, description: 'סירת תעלה', duration: 30 },
+      { name: 'Longtail Boat Tour', lat: 13.7520, lng: 100.4950, description: 'סיור בתעלות', duration: 90 }
+    ],
+    markets: [
+      { name: 'Pak Khlong Talat', lat: 13.7413, lng: 100.4959, description: 'שוק פרחים 24 שעות', duration: 45 },
+      { name: 'Amulet Market', lat: 13.7480, lng: 100.4938, description: 'שוק קמיעות', duration: 30 }
+    ],
+    food: [
+      { name: 'Khao San Road', lat: 13.7590, lng: 100.4978, description: 'רחוב תרמילאים', duration: 90 },
+      { name: 'Tha Tien Market', lat: 13.7450, lng: 100.4920, description: 'שוק אוכל מקומי', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'National Theatre', lat: 13.7540, lng: 100.5025, description: 'תיאטרון לאומי - מופעים תאילנדיים', duration: 120 },
+      { name: 'Rattanakosin Exhibition Hall', lat: 13.7513, lng: 100.4988, description: 'אולם תערוכות', duration: 60 }
+    ]
+  },
+  chinatown: {
+    food: [
+      { name: 'Yaowarat Road', lat: 13.7408, lng: 100.5133, description: 'רחוב האוכל המפורסם', duration: 90 },
+      { name: 'T&K Seafood', lat: 13.7392, lng: 100.5078, description: 'פירות ים מפורסם', duration: 60 },
+      { name: 'Nai Ek Roll Noodles', lat: 13.7420, lng: 100.5110, description: 'נודלס גלילה', duration: 30 },
+      { name: 'Chinatown Odeon Circle', lat: 13.7403, lng: 100.5152, description: 'מעגל אוכל', duration: 50 }
+    ],
+    markets: [
+      { name: 'Sampeng Lane', lat: 13.7422, lng: 100.5102, description: 'סמטת סיטונאות', duration: 60 },
+      { name: 'Yaowarat Market', lat: 13.7405, lng: 100.5115, description: 'שוק סיני', duration: 50 },
+      { name: 'Nakhon Kasem (Thieves Market)', lat: 13.7445, lng: 100.5098, description: 'שוק גנבים', duration: 45 }
+    ],
+    temples: [
+      { name: 'Wat Traimit', lat: 13.7403, lng: 100.5152, description: 'בודהה זהב 5.5 טון', duration: 45 },
+      { name: 'Wat Mangkon Kamalawat', lat: 13.7431, lng: 100.5123, description: 'מקדש סיני עתיק', duration: 40 }
+    ],
+    architecture: [
+      { name: 'Yaowarat Chinatown Gate', lat: 13.7403, lng: 100.5152, description: 'שער צ\'יינה טאון', duration: 15 },
+      { name: 'Old Shophouses', lat: 13.7410, lng: 100.5120, description: 'בתי חנות עתיקים', duration: 30 }
+    ],
+    entertainment: [
+      { name: 'Chinatown Heritage Center', lat: 13.7422, lng: 100.5102, description: 'מרכז מורשת', duration: 60 }
+    ]
+  },
+  thonglor: {
+    galleries: [
+      { name: 'ARDEL Gallery', lat: 13.7284, lng: 100.5801, description: 'אומנות עכשווית', duration: 50 },
+      { name: '100 Tonson Gallery', lat: 13.7326, lng: 100.5795, description: 'גלריה בוטיק', duration: 40 },
+      { name: 'Bangkok CityCity Gallery', lat: 13.7312, lng: 100.5789, description: 'אומנות מקומית', duration: 45 }
+    ],
+    cafes: [
+      { name: 'Casa Lapin x49', lat: 13.7325, lng: 100.5814, description: 'קפה יפני-סקנדינבי', duration: 50 },
+      { name: 'Everyday Karmakamet', lat: 13.7312, lng: 100.5797, description: 'קפה ובשמים', duration: 45 },
+      { name: 'Roots Coffee Roaster', lat: 13.7329, lng: 100.5821, description: 'קפה מקומי', duration: 40 },
+      { name: 'Ceresia Coffee', lat: 13.7318, lng: 100.5805, description: 'קפה איכותי', duration: 35 }
+    ],
+    food: [
+      { name: 'Thonglor Soi 13', lat: 13.7323, lng: 100.5795, description: 'מסעדות בוטיק', duration: 60 },
+      { name: 'J Avenue Food Hall', lat: 13.7315, lng: 100.5806, description: 'מתחם אוכל', duration: 50 }
+    ],
+    nightlife: [
+      { name: 'Thonglor Soi 10', lat: 13.7318, lng: 100.5810, description: 'ברים ומועדונים', duration: 90 },
+      { name: 'Arena 10', lat: 13.7320, lng: 100.5812, description: 'מועדון', duration: 80 }
+    ],
+    markets: [
+      { name: 'W Market Ekkamai', lat: 13.7206, lng: 100.5891, description: 'שוק לילה וינטג\'', duration: 60 }
+    ],
+    entertainment: [
+      { name: 'Major Cineplex Ekkamai', lat: 13.7195, lng: 100.5850, description: 'קולנוע גדול', duration: 150 },
+      { name: 'The Commons Jazz Bar', lat: 13.7300, lng: 100.5743, description: 'בר ג\'אז אינטימי', duration: 120 }
+    ]
+  },
+  ari: {
+    graffiti: [
+      { name: 'Ari Street Art', lat: 13.7788, lng: 100.5445, description: 'גרפיטי בסמטאות', duration: 30 }
+    ],
+    galleries: [
+      { name: 'Speedy Grandma', lat: 13.7774, lng: 100.5423, description: 'גלריה קטנה', duration: 35 },
+      { name: 'The Reading Room', lat: 13.7780, lng: 100.5435, description: 'ספרייה וגלריה', duration: 40 }
+    ],
+    cafes: [
+      { name: 'Audrey Cafe', lat: 13.7781, lng: 100.5419, description: 'קפה ורוד אודרי הפבורן', duration: 50 },
+      { name: 'Macaroni Club', lat: 13.7803, lng: 100.5461, description: 'קפה איטלקי רטרו', duration: 60 },
+      { name: 'Brave Roasters', lat: 13.7795, lng: 100.5441, description: 'קפה מקומי איכותי', duration: 40 },
+      { name: 'Stendhal Syndrome', lat: 13.7785, lng: 100.5430, description: 'קפה אמנותי', duration: 45 }
+    ],
+    artisans: [
+      { name: 'YELO House', lat: 13.7792, lng: 100.5432, description: 'בית בעלי מלאכה', duration: 45 },
+      { name: 'Play Pot', lat: 13.7787, lng: 100.5438, description: 'קרמיקה', duration: 50 }
+    ],
+    food: [
+      { name: 'Ari Night Market', lat: 13.7785, lng: 100.5437, description: 'שוק אוכל לילה', duration: 60 },
+      { name: 'Ari Soi 1', lat: 13.7790, lng: 100.5440, description: 'מסעדות', duration: 50 }
+    ],
+    parks: [
+      { name: 'Chatuchak Park', lat: 13.8034, lng: 100.5523, description: 'פארק גדול', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'Iron Fairies Bar', lat: 13.7790, lng: 100.5445, description: 'בר אלטרנטיבי', duration: 90 }
+    ]
+  },
+  riverside: {
+    canals: [
+      { name: 'Chao Phraya River Cruise', lat: 13.7248, lng: 100.5084, description: 'שייט ארוחת ערב', duration: 120 },
+      { name: 'Chao Phraya Express Boat', lat: 13.7272, lng: 100.5085, description: 'סירת תחבורה', duration: 30 },
+      { name: 'Khlong Bangkok Yai Tour', lat: 13.7380, lng: 100.4895, description: 'תעלה גדולה', duration: 60 }
+    ],
+    rooftop: [
+      { name: 'Sky Bar Lebua', lat: 13.7227, lng: 100.5089, description: 'בר גג Hangover 2', duration: 90 },
+      { name: 'Above Eleven', lat: 13.7245, lng: 100.5256, description: 'בר גג פרואני', duration: 80 },
+      { name: 'The Deck by Arun Residence', lat: 13.7430, lng: 100.4895, description: 'מסעדת גג מול Wat Arun', duration: 70 }
+    ],
+    architecture: [
+      { name: 'Asiatique Riverfront', lat: 13.7051, lng: 100.5091, description: 'שוק ריברסייד ענק', duration: 120 },
+      { name: 'Mandarin Oriental', lat: 13.7237, lng: 100.5145, description: 'מלון היסטורי 1876', duration: 30 },
+      { name: 'ICONSIAM', lat: 13.7268, lng: 100.5101, description: 'קניון על הנהר', duration: 90 },
+      { name: 'Warehouse 30', lat: 13.7305, lng: 100.5024, description: 'מחסן אומנות Talat Noi', duration: 50 }
+    ],
+    temples: [
+      { name: 'Wat Arun from River', lat: 13.7437, lng: 100.4888, description: 'מקדש השחר מהנהר', duration: 60 },
+      { name: 'Wat Kalayanamit', lat: 13.7351, lng: 100.4900, description: 'מקדש על הנהר', duration: 40 }
+    ],
+    graffiti: [
+      { name: 'Talat Noi Street Art', lat: 13.7305, lng: 100.5024, description: 'אומנות רחוב בשכונה סינית', duration: 40 }
+    ],
+    entertainment: [
+      { name: 'Asiatique Sky Theater', lat: 13.7045, lng: 100.5076, description: 'תיאטרון מופעים', duration: 90 },
+      { name: 'Calypso Cabaret', lat: 13.7048, lng: 100.5078, description: 'מופע קברט', duration: 90 },
+      { name: 'ICONSIAM ICON Cineplex', lat: 13.7268, lng: 100.5101, description: 'קולנוע על הנהר', duration: 150 }
+    ]
+  }
+};
+
+// Public API for StaticDataManager
+window.BKK.StaticDataManager = {
+  // Get locations for specific area and interests
+  getLocations: (area, interests) => {
+    console.log('[STATIC] Getting locations:', { area, interests });
+    const areaData = staticLocationsData[area] || staticLocationsData.sukhumvit;
+    let stops = [];
+    
+    interests.forEach(interest => {
+      // Skip custom interests (they start with 'custom_')
+      if (interest.startsWith('custom_')) {
+        console.log('[STATIC] Skipping custom interest:', interest);
+        return;
+      }
+      
+      if (areaData[interest]) {
+        const locationsWithInterest = areaData[interest].map(loc => ({
+          ...loc,
+          interests: [interest]
+        }));
+        stops = [...stops, ...locationsWithInterest];
+      } else {
+        console.log('[STATIC] No data for interest:', interest);
+      }
+    });
+    
+    // Remove duplicates
+    const seen = new Set();
+    const unique = stops.filter(stop => {
+      const key = `${stop.lat},${stop.lng}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    console.log('[STATIC] Found places:', unique.length);
+    return unique;
+  },
+  
+  // Check if static data is available
+  hasData: () => {
+    return Object.keys(staticLocationsData).length > 0;
+  },
+  
+  // Get all areas
+  getAreas: () => {
+    return Object.keys(staticLocationsData);
+  }
+};
+
+console.log('[STATIC DATA] Loaded successfully -', Object.keys(staticLocationsData).length, 'areas');
 
     </script>
     <script>
@@ -774,6 +1029,8 @@ const BangkokExplorer = () => {
         const prefs = JSON.parse(saved);
         // Add maxStops if not present (for backward compatibility)
         if (!prefs.maxStops) prefs.maxStops = 10;
+        // Add dataSource if not present (default: dynamic for production)
+        if (!prefs.dataSource) prefs.dataSource = 'dynamic';
         // Add fetchMoreCount if not present
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 5;
         return prefs;
@@ -786,6 +1043,7 @@ const BangkokExplorer = () => {
       circular: true,
       startPoint: '',
       maxStops: 10,
+      dataSource: 'dynamic', // Default: dynamic for production (Firebase Real-time sync)
       fetchMoreCount: 5
     };
   };
@@ -830,7 +1088,6 @@ const BangkokExplorer = () => {
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [addingPlaceIds, setAddingPlaceIds] = useState([]); // Track places being added
   const [showLocationDetailModal, setShowLocationDetailModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -851,27 +1108,6 @@ const BangkokExplorer = () => {
   // Help System
   const [showHelp, setShowHelp] = useState(false);
   const [helpContext, setHelpContext] = useState('main');
-  
-  // Debug Mode System
-  const [debugMode, setDebugMode] = useState(() => {
-    return localStorage.getItem('bangkok_debug_mode') === 'true';
-  });
-  const [debugLogs, setDebugLogs] = useState([]);
-  const [debugPanelOpen, setDebugPanelOpen] = useState(true);
-  
-  // Add debug log entry
-  const addDebugLog = (category, message, data = null) => {
-    if (!debugMode) return;
-    const timestamp = new Date().toLocaleTimeString('he-IL');
-    const entry = { timestamp, category, message, data };
-    setDebugLogs(prev => [...prev.slice(-100), entry]); // Keep last 100 entries
-    console.log(`[${category}] ${message}`, data || '');
-  };
-  
-  // Save debug mode preference
-  useEffect(() => {
-    localStorage.setItem('bangkok_debug_mode', debugMode.toString());
-  }, [debugMode]);
   
   // Help content - loaded from js/config.js
   const helpContent = window.BKK.helpContent;
@@ -906,11 +1142,11 @@ const BangkokExplorer = () => {
     }
   }, []);
 
-  // Load custom locations from Firebase
-  // Load custom locations from Firebase
+  // Load custom locations - CONDITIONAL based on dataSource
   useEffect(() => {
-    if (isFirebaseAvailable && database) {
-      console.log('[DATA] Using Firebase');
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+      // DYNAMIC MODE: Firebase Real-time sync (SHARED!)
+      console.log('[DATA] Using Firebase (dynamic mode)');
       const locationsRef = database.ref('customLocations');
       
       const unsubscribe = locationsRef.on('value', (snapshot) => {
@@ -921,7 +1157,7 @@ const BangkokExplorer = () => {
             firebaseId: key
           }));
           setCustomLocations(locationsArray);
-          console.log('[FIREBASE] Loaded', locationsArray.length, 'locations');
+          console.log('[FIREBASE] Loaded', locationsArray.length, 'shared locations');
         } else {
           setCustomLocations([]);
         }
@@ -929,7 +1165,8 @@ const BangkokExplorer = () => {
       
       return () => locationsRef.off('value', unsubscribe);
     } else {
-      console.log('[DATA] Firebase not available - using localStorage fallback');
+      // STATIC MODE: localStorage (LOCAL!)
+      console.log('[DATA] Using localStorage (static mode)');
       try {
         const customLocs = localStorage.getItem('bangkok_custom_locations');
         if (customLocs) {
@@ -939,11 +1176,13 @@ const BangkokExplorer = () => {
         console.error('[LOCALSTORAGE] Error loading locations:', e);
       }
     }
-  }, []);
+  }, [formData.dataSource]);
 
-  // Load custom interests from Firebase
+  // Load custom interests - CONDITIONAL based on dataSource
   useEffect(() => {
-    if (isFirebaseAvailable && database) {
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+      // DYNAMIC MODE: Firebase Real-time sync (SHARED!)
+      console.log('[DATA] Using Firebase for interests (dynamic mode)');
       const interestsRef = database.ref('customInterests');
       
       const unsubscribe = interestsRef.on('value', (snapshot) => {
@@ -954,7 +1193,7 @@ const BangkokExplorer = () => {
             firebaseId: key
           }));
           setCustomInterests(interestsArray);
-          console.log('[FIREBASE] Loaded', interestsArray.length, 'interests');
+          console.log('[FIREBASE] Loaded', interestsArray.length, 'shared interests');
         } else {
           setCustomInterests([]);
         }
@@ -962,6 +1201,8 @@ const BangkokExplorer = () => {
       
       return () => interestsRef.off('value', unsubscribe);
     } else {
+      // STATIC MODE: localStorage (LOCAL!)
+      console.log('[DATA] Using localStorage for interests (static mode)');
       try {
         const customInts = localStorage.getItem('bangkok_custom_interests');
         if (customInts) {
@@ -971,14 +1212,14 @@ const BangkokExplorer = () => {
         console.error('[LOCALSTORAGE] Error loading interests:', e);
       }
     }
-  }, []);
+  }, [formData.dataSource]);
 
   // Save routeType to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('bangkok_route_type', routeType);
   }, [routeType]);
 
-  // Access Log System - Track visits
+  // Access Log System - Track visits (ALWAYS via Firebase, independent of dataSource)
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     
@@ -1122,15 +1363,22 @@ const BangkokExplorer = () => {
   // Fetch places from Google Places API
 
   // === APP LOGIC (from app-logic.js) ===
+// ============================================================================
+// Bangkok Explorer - Application Logic
+// Business logic: API calls, route generation, CRUD, import/export
+// This code runs INSIDE the BangkokExplorer component (has access to state)
+// ============================================================================
+
   const fetchGooglePlaces = async (area, interests) => {
     const center = areaCoordinates[area];
     if (!center) {
-      addDebugLog('API', `No coordinates for area: ${area}`);
       console.error('[DYNAMIC] No coordinates for area:', area);
       return [];
     }
 
     try {
+      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
+      
       // Get all relevant place types
       const placeTypes = [...new Set(
         interests.flatMap(interest => {
@@ -1139,9 +1387,6 @@ const BangkokExplorer = () => {
           return interestToGooglePlaces[baseInterest] || ['point_of_interest'];
         })
       )];
-
-      addDebugLog('API', `Fetching Google Places`, { area, interests, placeTypes: placeTypes.slice(0, 10), center });
-      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
 
       const response = await fetch(GOOGLE_PLACES_API_URL, {
         method: 'POST',
@@ -1253,10 +1498,6 @@ const BangkokExplorer = () => {
         final: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${ratingFilteredCount} by rating, ${typeFilteredCount} by type)`, {
-        names: transformed.slice(0, 5).map(p => p.name)
-      });
-      
       return transformed;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
@@ -1305,6 +1546,12 @@ const BangkokExplorer = () => {
   }, [showEditLocationDialog, editingLocation]);
 
   const areaOptions = window.BKK.areaOptions;
+
+
+  // Static Data Manager - loaded from js/static-data.js
+  const StaticDataManager = window.BKK.StaticDataManager;
+
+
 
   // Image handling - loaded from js/utils.js
   const compressImage = window.BKK.compressImage;
@@ -1388,12 +1635,10 @@ const BangkokExplorer = () => {
     setIsGenerating(true);
     
     try {
-      addDebugLog('ROUTE', 'Starting route generation', { area: formData.area, interests: formData.interests, maxStops: formData.maxStops });
-      console.log('[ROUTE] Starting route generation');
+      console.log(`[ROUTE] Starting route generation in ${formData.dataSource.toUpperCase()} mode`);
       
       // Get custom locations (always included)
       const customStops = getStopsForInterests();
-      addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
       console.log('[ROUTE] Custom stops:', customStops.length);
       
       // Calculate stops needed per interest
@@ -1404,9 +1649,9 @@ const BangkokExplorer = () => {
       // Track results per interest for smart completion
       const interestResults = {};
       const allStops = [...customStops]; // Start with custom stops (highest priority)
-      let fetchErrors = [];
+      let dataSourceErrors = [];
       
-      // ROUND 1: Get places from Google Places API
+      // ROUND 1: Get places from selected data source
       for (const interest of formData.interests) {
         // Check how many custom stops we already have for this interest
         const customStopsForInterest = customStops.filter(stop => 
@@ -1419,11 +1664,19 @@ const BangkokExplorer = () => {
           let fetchedPlaces = [];
           
           try {
-            console.log(`[ROUTE] Fetching for interest: ${interest}`);
-            fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
+            // ===== DATA SOURCE DECISION =====
+            if (formData.dataSource === 'static') {
+              // STATIC MODE: Use StaticDataManager
+              console.log(`[STATIC] Fetching for interest: ${interest}`);
+              fetchedPlaces = StaticDataManager.getLocations(formData.area, [interest]);
+            } else {
+              // DYNAMIC MODE: Use Google Places API
+              console.log(`[DYNAMIC] Fetching for interest: ${interest}`);
+              fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
+            }
           } catch (error) {
             // Track errors for user notification
-            fetchErrors.push({
+            dataSourceErrors.push({
               interest,
               error: error.message || 'Unknown error',
               details: error.details || {}
@@ -1532,15 +1785,19 @@ const BangkokExplorer = () => {
       }
       
       // Show errors if any occurred
-      if (fetchErrors.length > 0) {
-        const errorMsg = fetchErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
+      if (dataSourceErrors.length > 0) {
+        const errorMsg = dataSourceErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
         
-        console.error('[ROUTE] Data source errors:', fetchErrors);
+        console.error('[ROUTE] Data source errors:', dataSourceErrors);
         showToast(`שגיאות בקבלת מקומות: ${errorMsg}`, 'warning');
       }
       
       if (uniqueStops.length === 0) {
-        showToast('לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.', 'error');
+        const noDataMsg = formData.dataSource === 'static' 
+          ? 'לא נמצאו מקומות סטטיים. נסה תחומי עניין אחרים או עבור למצב דינמי.'
+          : 'לא נמצאו מקומות מ-Google API. ודא שאתה מחוץ ל-Claude Artifacts.';
+        
+        showToast(noDataMsg, 'error');
         setIsGenerating(false);
         return;
       }
@@ -1581,6 +1838,7 @@ const BangkokExplorer = () => {
         preferences: { ...formData },
         stats: {
           custom: customStops.length,
+          source: formData.dataSource,
           fetched: uniqueStops.length - customStops.length,
           total: uniqueStops.length
         },
@@ -1591,7 +1849,7 @@ const BangkokExplorer = () => {
           missing: maxStops - uniqueStops.length
         } : null,
         // Errors if any
-        errors: fetchErrors.length > 0 ? fetchErrors : null
+        errors: dataSourceErrors.length > 0 ? dataSourceErrors : null
       };
 
       console.log('[ROUTE] Route created successfully:', {
@@ -1614,7 +1872,31 @@ const BangkokExplorer = () => {
       // Stay in form view to show compact list
     } catch (error) {
       console.error('[ROUTE] Fatal error generating route:', error);
-      showToast(`שגיאה: ${error.message || 'שגיאה לא ידועה'}`, 'error');
+      
+      const errorDetails = {
+        message: error.message || 'Unknown error',
+        stack: error.stack,
+        dataSource: formData.dataSource
+      };
+      
+      console.error('[ROUTE] Error details:', errorDetails);
+      
+      showToast(`שגיאה קריטית: ${error.message || 'שגיאה לא ידועה'}. בדוק Console (F12)`, 'error');
+      
+      // Fallback to static only
+      const staticStops = getStopsForInterests();
+      if (staticStops.length === 0) {
+        setIsGenerating(false);
+        return;
+      }
+      
+      const newRoute = {
+        id: Date.now(),
+        stops: staticStops,
+        // ... rest of route setup
+      };
+      setRoute(newRoute);
+      // Stay in form view
     } finally {
       setIsGenerating(false);
     }
@@ -1630,7 +1912,13 @@ const BangkokExplorer = () => {
       const fetchCount = formData.fetchMoreCount || 5;
       console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
       
-      let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+      let newPlaces = [];
+      
+      if (formData.dataSource === 'static') {
+        newPlaces = StaticDataManager.getLocations(formData.area, [interest]);
+      } else {
+        newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+      }
       
       // Filter blacklist
       newPlaces = filterBlacklist(newPlaces);
@@ -1684,7 +1972,13 @@ const BangkokExplorer = () => {
       const allNewPlaces = [];
       
       for (const interest of formData.interests) {
-        let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+        let newPlaces = [];
+        
+        if (formData.dataSource === 'static') {
+          newPlaces = StaticDataManager.getLocations(formData.area, [interest]);
+        } else {
+          newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+        }
         
         // Filter blacklist
         newPlaces = filterBlacklist(newPlaces);
@@ -1795,8 +2089,8 @@ const BangkokExplorer = () => {
       custom: true
     };
     
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Save based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref('customInterests').push(interestToAdd)
         .then(() => {
@@ -1828,8 +2122,8 @@ const BangkokExplorer = () => {
       loc.interests && loc.interests.includes(interestId)
     );
     
-    // Delete from Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Delete based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (interestToDelete && interestToDelete.firebaseId) {
         database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
@@ -1863,8 +2157,8 @@ const BangkokExplorer = () => {
   const deleteCustomLocation = (locationId) => {
     const locationToDelete = customLocations.find(loc => loc.id === locationId);
     
-    // Delete from Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Delete based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (locationToDelete && locationToDelete.firebaseId) {
         database.ref(`customLocations/${locationToDelete.firebaseId}`).remove()
@@ -1908,8 +2202,8 @@ const BangkokExplorer = () => {
       newInProgress = false;
     }
     
-    // Update in Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Update based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (location.firebaseId) {
         database.ref(`customLocations/${location.firebaseId}`).update({
@@ -1979,20 +2273,16 @@ const BangkokExplorer = () => {
   };
   
   // NEW: Add Google place to My Locations
-  const addGooglePlaceToCustom = async (place) => {
+  const addGooglePlaceToCustom = (place) => {
     // Check if already exists (by name, case-insensitive)
     const exists = customLocations.find(loc => 
-      loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
+      loc.name.toLowerCase() === place.name.toLowerCase()
     );
     
     if (exists) {
       showToast(`"${place.name}" כבר קיים ברשימה שלך`, 'warning');
-      return false;
+      return;
     }
-    
-    // Set adding state for dimmed button
-    const placeId = place.id || place.name;
-    setAddingPlaceIds(prev => [...prev, placeId]);
     
     const boundaryCheck = checkLocationInArea(place.lat, place.lng, formData.area);
     
@@ -2016,28 +2306,24 @@ const BangkokExplorer = () => {
       fromGoogle: true // Mark as added from Google
     };
     
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
-      try {
-        await database.ref('customLocations').push(locationToAdd);
-        addDebugLog('ADD', `Added "${place.name}" to Firebase`);
-        showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        return true;
-      } catch (error) {
-        console.error('[FIREBASE] Error adding Google place:', error);
-        addDebugLog('ERROR', `Failed to add "${place.name}"`, error);
-        showToast('שגיאה בשמירה', 'error');
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        return false;
-      }
+    // CONDITIONAL: Save based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+      // DYNAMIC MODE: Firebase (shared)
+      database.ref('customLocations').push(locationToAdd)
+        .then(() => {
+          console.log('[FIREBASE] Google place added to shared database');
+          showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
+        })
+        .catch((error) => {
+          console.error('[FIREBASE] Error adding Google place:', error);
+          showToast('שגיאה בשמירה', 'error');
+        });
     } else {
+      // STATIC MODE: localStorage (local)
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
-      setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-      return true;
     }
   };
   
@@ -2058,7 +2344,7 @@ const BangkokExplorer = () => {
       // Update existing location to blacklist
       const locationId = exists.id;
       
-      if (isFirebaseAvailable && database && exists.firebaseId) {
+      if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database && exists.firebaseId) {
         database.ref(`customLocations/${exists.firebaseId}`).update({
           status: 'blacklist',
           inProgress: false
@@ -2108,8 +2394,8 @@ const BangkokExplorer = () => {
       fromGoogle: true
     };
     
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Save based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       database.ref('customLocations').push(locationToAdd)
         .then(() => {
           console.log('[FIREBASE] Place added to blacklist');
@@ -2146,8 +2432,8 @@ const BangkokExplorer = () => {
       return customLocations.find(l => l.name.toLowerCase() === name.toLowerCase());
     };
     
-    // Import to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Import based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       
       // Import interests first
@@ -2377,15 +2663,6 @@ const BangkokExplorer = () => {
       return; // Just don't add if validation fails
     }
     
-    // Check for duplicate name
-    const exists = customLocations.find(loc => 
-      loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim()
-    );
-    if (exists) {
-      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
-      return;
-    }
-    
     // Use provided coordinates (can be null)
     let lat = newLocation.lat;
     let lng = newLocation.lng;
@@ -2429,8 +2706,8 @@ const BangkokExplorer = () => {
       addedAt: new Date().toISOString()
     };
     
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Save based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref('customLocations').push(locationToAdd)
         .then((ref) => {
@@ -2498,16 +2775,6 @@ const BangkokExplorer = () => {
       return;
     }
     
-    // Check for duplicate name (exclude current location)
-    const exists = customLocations.find(loc => 
-      loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim() &&
-      loc.id !== editingLocation.id
-    );
-    if (exists) {
-      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
-      return;
-    }
-    
     // Use provided coordinates (can be null)
     let hasCoordinates = (newLocation.lat !== null && newLocation.lng !== null && 
                           newLocation.lat !== 0 && newLocation.lng !== 0);
@@ -2536,8 +2803,8 @@ const BangkokExplorer = () => {
       missingCoordinates: !hasCoordinates // Flag for missing coordinates
     };
     
-    // Update in Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
+    // CONDITIONAL: Update based on dataSource
+    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       const { firebaseId, ...locationData } = updatedLocation;
       
@@ -2892,15 +3159,13 @@ const BangkokExplorer = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-pink-50" dir="rtl">
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
-          <span className="text-xs opacity-70">v{window.BKK.VERSION}</span>
-        </div>
+        <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
+
       </div>
 
       <div className="max-w-4xl mx-auto p-4 pb-32">
         {/* Navigation Tabs */}
-        <div className={`grid ${isCurrentUserAdmin ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4 bg-white rounded-lg p-2 shadow`}>
+        <div className={`grid ${isCurrentUserAdmin ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mb-4 bg-white rounded-lg p-2 shadow`}>
           <button
             onClick={() => setCurrentView('form')}
             className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
@@ -2908,6 +3173,14 @@ const BangkokExplorer = () => {
             }`}
           >
             🗺️ מסלול
+          </button>
+          <button
+            onClick={() => setCurrentView('search')}
+            className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
+              currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            🔍 חיפוש
           </button>
           <button
             onClick={() => setCurrentView('saved')}
@@ -2920,7 +3193,7 @@ const BangkokExplorer = () => {
           <button
             onClick={() => setCurrentView('myContent')}
             className={`py-3 px-2 rounded-lg font-medium transition text-sm ${
-              currentView === 'myContent' || currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'myContent' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             התוכן שלי
@@ -2940,6 +3213,12 @@ const BangkokExplorer = () => {
         {/* Form View */}
 
         {/* === VIEWS (from views.js) === */}
+// ============================================================================
+// Bangkok Explorer - Views (JSX)
+// Main screens: Form, Route, Search, Saved, MyContent, Settings
+// This JSX runs INSIDE the BangkokExplorer component return statement
+// ============================================================================
+
         {currentView === 'form' && (
           <div className="bg-white rounded-xl shadow-lg p-3 space-y-3">
             <div className="flex items-center justify-center gap-2">
@@ -3195,39 +3474,13 @@ const BangkokExplorer = () => {
                                     })()}
                                     
                                     {!isCustom && (
-                                      (() => {
-                                        const placeId = stop.id || stop.name;
-                                        const isAdding = addingPlaceIds.includes(placeId);
-                                        const alreadyExists = customLocations.some(loc => 
-                                          loc.name.toLowerCase().trim() === stop.name.toLowerCase().trim()
-                                        );
-                                        
-                                        if (alreadyExists) {
-                                          return (
-                                            <span 
-                                              className="text-[9px] px-1 py-0.5 rounded bg-green-200 text-green-700"
-                                              title="כבר ברשימה שלי"
-                                            >
-                                              ✓
-                                            </span>
-                                          );
-                                        }
-                                        
-                                        return (
-                                          <button
-                                            onClick={() => addGooglePlaceToCustom(stop)}
-                                            disabled={isAdding}
-                                            className={`text-[9px] px-1 py-0.5 rounded ${
-                                              isAdding 
-                                                ? 'bg-gray-300 text-gray-500 cursor-wait' 
-                                                : 'bg-purple-500 text-white hover:bg-purple-600'
-                                            }`}
-                                            title="הוסף לרשימה שלי"
-                                          >
-                                            {isAdding ? '...' : '+'}
-                                          </button>
-                                        );
-                                      })()
+                                      <button
+                                        onClick={() => addGooglePlaceToCustom(stop)}
+                                        className="text-[9px] px-1 py-0.5 rounded bg-purple-500 text-white hover:bg-purple-600"
+                                        title="הוסף לרשימה שלי"
+                                      >
+                                        +
+                                      </button>
                                     )}
                                     
                                     {isCustom && (
@@ -4017,13 +4270,6 @@ const BangkokExplorer = () => {
                 </p>
               </div>
             </div>
-            
-            {/* Copyright Footer */}
-            <div className="mt-4 pt-3 border-t border-gray-200 text-center">
-              <p className="text-[10px] text-gray-400">
-                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
-              </p>
-            </div>
           </div>
         )}
 
@@ -4031,15 +4277,7 @@ const BangkokExplorer = () => {
         {/* Search View */}
         {currentView === 'search' && (
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
-              <button
-                onClick={() => setCurrentView('myContent')}
-                className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 flex items-center gap-1"
-              >
-                ← חזרה
-              </button>
-            </div>
+            <h2 className="text-2xl font-bold mb-4">🔍 חיפוש במקומות שלי</h2>
             
             <div className="mb-4">
               <input
@@ -4230,22 +4468,14 @@ const BangkokExplorer = () => {
         {/* My Content View - Compact Design */}
         {currentView === 'myContent' && (
           <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">התוכן שלי</h2>
-                <button
-                  onClick={() => showHelpFor('myContent')}
-                  className="text-gray-400 hover:text-blue-500 text-sm"
-                  title="עזרה"
-                >
-                  ❓
-                </button>
-              </div>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-lg font-bold">התוכן שלי</h2>
               <button
-                onClick={() => setCurrentView('search')}
-                className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-600 flex items-center gap-1"
+                onClick={() => showHelpFor('myContent')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
               >
-                🔍 חיפוש Google
+                ❓
               </button>
             </div>
             
@@ -4578,31 +4808,61 @@ const BangkokExplorer = () => {
               </div>
             </div>
             
-            {/* Debug Mode Toggle */}
+            {/* Data Source Setting */}
             <div className="mb-4">
-              <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">🔧 מצב Debug</h3>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 מקור נתונים</h3>
                 <p className="text-xs text-gray-600 mb-2">
-                  הצג לוג של פעולות לאיתור בעיות
+                  מאיפה לקחת מקומות עבור המסלול?
                 </p>
                 
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={debugMode}
-                    onChange={(e) => setDebugMode(e.target.checked)}
-                    className="w-5 h-5 rounded border-2 border-gray-400"
-                  />
-                  <span className="text-sm font-bold">
-                    {debugMode ? '✅ Debug מופעל' : '❌ Debug כבוי'}
-                  </span>
-                </label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
+                    <input
+                      type="radio"
+                      name="dataSource"
+                      value="static"
+                      checked={formData.dataSource === 'static'}
+                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm">📚 סטטי (מקומי)</div>
+                      <div className="text-xs text-gray-600">רשימה קבועה + localStorage (רק שלי)</div>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
+                    <input
+                      type="radio"
+                      name="dataSource"
+                      value="dynamic"
+                      checked={formData.dataSource === 'dynamic'}
+                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm">🌐 דינמי (משותף)</div>
+                      <div className="text-xs text-gray-600">
+                        {isFirebaseAvailable ? 'Google Places + Firebase (כולם רואים!)' : 'Google Places + Firebase (לא זמין ב-Claude)'}
+                      </div>
+                    </div>
+                  </label>
+                </div>
                 
-                {debugMode && (
-                  <div className="mt-2 text-xs text-gray-600">
-                    פאנל Debug יופיע בתחתית המסך
+                {/* Status indicator */}
+                <div className="mt-2 p-2 bg-white rounded-lg border border-purple-200">
+                  <div className="text-xs text-gray-700">
+                    <strong>מצב נוכחי:</strong>
+                    {formData.dataSource === 'static' ? (
+                      <span className="text-blue-600"> 💻 מקומי (localStorage)</span>
+                    ) : isFirebaseAvailable ? (
+                      <span className="text-green-600"> 🔥 Firebase (משותף!)</span>
+                    ) : (
+                      <span className="text-orange-600"> 💻 מקומי (Firebase לא זמין)</span>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
             
@@ -4828,44 +5088,45 @@ const BangkokExplorer = () => {
             {/* Copyright Footer - Discreet */}
             <div className="mt-4 pt-3 border-t border-gray-200 text-center">
               <p className="text-[10px] text-gray-400">
-                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
+                © 2026 Eitan Fisher | Bangkok Explorer v1.0
               </p>
               
-              {/* Admin Access Log Button */}
-              <div className="mt-2">
-                <button
-                  onClick={() => {
-                    setShowAccessLog(true);
-                    markLogsAsSeen();
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
-                    hasNewEntries 
-                      ? 'bg-red-500 text-white animate-pulse shadow-lg' 
-                      : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
-                  }`}
-                >
-                  🔒 לוג כניסות
-                  {hasNewEntries && (
-                    <span className="mr-1">🔔</span>
-                  )}
-                </button>
-                
-                {/* Admin Status */}
-                <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
-                  {accessLogs.length > 0 ? (
-                    <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
-                  ) : (
-                    <span>אין כניסות עדיין</span>
-                  )}
+              {/* Admin Access Log Button - Always visible, changes color */}
+              {formData.dataSource === 'dynamic' && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      setShowAccessLog(true);
+                      markLogsAsSeen();
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
+                      hasNewEntries 
+                        ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+                        : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
+                    }`}
+                  >
+                    🔒 לוג כניסות
+                    {hasNewEntries && (
+                      <span className="mr-1">🔔</span>
+                    )}
+                  </button>
                   
-                  {/* Clear Log Button */}
-                  {accessLogs.length > 0 && (
-                    <button
-                      onClick={() => {
-                        showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
-                          database.ref('accessLog').remove();
-                          localStorage.setItem('bangkok_last_seen', Date.now().toString());
-                          setAccessLogs([]);
+                  {/* Admin Status */}
+                  <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
+                    {accessLogs.length > 0 ? (
+                      <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
+                    ) : (
+                      <span>אין כניסות עדיין</span>
+                    )}
+                    
+                    {/* Clear Log Button */}
+                    {accessLogs.length > 0 && (
+                      <button
+                        onClick={() => {
+                          showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
+                            database.ref('accessLog').remove();
+                            localStorage.setItem('bangkok_last_seen', Date.now().toString());
+                            setAccessLogs([]);
                             setHasNewEntries(false);
                             showToast('הלוג נוקה', 'success');
                           });
@@ -4878,6 +5139,7 @@ const BangkokExplorer = () => {
                     )}
                   </div>
                 </div>
+              )}
             </div>
           </div>
         )}
@@ -4885,6 +5147,13 @@ const BangkokExplorer = () => {
 
 
         {/* === DIALOGS (from dialogs.js) === */}
+// ============================================================================
+// Bangkok Explorer - Dialogs & Modals (JSX)
+// Save, Add/Edit Location, Add Interest, Import, Detail, Image, 
+// Access Log, Confirm, Help, Toast
+// This JSX runs INSIDE the BangkokExplorer component return statement
+// ============================================================================
+
         {showSaveDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
@@ -5073,32 +5342,6 @@ const BangkokExplorer = () => {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Description - NEW */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">📝 תיאור</label>
-                  <input
-                    type="text"
-                    value={newLocation.description || ''}
-                    onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
-                    placeholder="תיאור קצר של המקום"
-                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: 'rtl' }}
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">💭 הערות אישיות</label>
-                  <textarea
-                    value={newLocation.notes || ''}
-                    onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
-                    placeholder="טיפים, המלצות, הערות לעצמך..."
-                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500 resize-none"
-                    style={{ direction: 'rtl' }}
-                    rows={2}
-                  />
                 </div>
 
                 {/* Image - Compact */}
@@ -6027,130 +6270,6 @@ const BangkokExplorer = () => {
               {toastMessage.message}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Debug Panel - Fixed at bottom */}
-      {debugMode && (
-        <div 
-          style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: '#1e293b',
-            color: '#e2e8f0',
-            zIndex: 9998,
-            direction: 'ltr',
-            fontFamily: 'monospace',
-            fontSize: '11px'
-          }}
-        >
-          {/* Header */}
-          <div 
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 12px',
-              backgroundColor: '#334155',
-              cursor: 'pointer'
-            }}
-            onClick={() => setDebugPanelOpen(!debugPanelOpen)}
-          >
-            <span style={{ fontWeight: 'bold' }}>
-              🔧 Debug Log ({debugLogs.length})
-            </span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const text = debugLogs.map(l => `${l.timestamp} [${l.category}] ${l.message}${l.data ? ' ' + JSON.stringify(l.data) : ''}`).join('\n');
-                  navigator.clipboard.writeText(text);
-                  showToast('Copied to clipboard', 'success');
-                }}
-                style={{
-                  padding: '2px 8px',
-                  backgroundColor: '#3b82f6',
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '10px'
-                }}
-              >
-                Copy
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDebugLogs([]);
-                }}
-                style={{
-                  padding: '2px 8px',
-                  backgroundColor: '#ef4444',
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '10px'
-                }}
-              >
-                Clear
-              </button>
-              <span style={{ fontSize: '14px' }}>
-                {debugPanelOpen ? '▼' : '▲'}
-              </span>
-            </div>
-          </div>
-          
-          {/* Log content */}
-          {debugPanelOpen && (
-            <div 
-              style={{
-                maxHeight: '150px',
-                overflowY: 'auto',
-                padding: '8px 12px'
-              }}
-            >
-              {debugLogs.length === 0 ? (
-                <div style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>
-                  No logs yet. Actions will appear here.
-                </div>
-              ) : (
-                debugLogs.map((log, i) => (
-                  <div 
-                    key={i}
-                    style={{
-                      padding: '2px 0',
-                      borderBottom: '1px solid #334155',
-                      display: 'flex',
-                      gap: '8px'
-                    }}
-                  >
-                    <span style={{ color: '#64748b' }}>{log.timestamp}</span>
-                    <span style={{ 
-                      color: log.category === 'ERROR' ? '#f87171' : 
-                             log.category === 'API' ? '#60a5fa' :
-                             log.category === 'ROUTE' ? '#4ade80' :
-                             log.category === 'ADD' ? '#a78bfa' :
-                             '#94a3b8',
-                      fontWeight: 'bold',
-                      minWidth: '50px'
-                    }}>
-                      [{log.category}]
-                    </span>
-                    <span style={{ color: '#e2e8f0' }}>{log.message}</span>
-                    {log.data && (
-                      <span style={{ color: '#94a3b8', fontSize: '10px' }}>
-                        {typeof log.data === 'object' ? JSON.stringify(log.data) : log.data}
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
         </div>
       )}
 

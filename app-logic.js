@@ -1,19 +1,12 @@
-// ============================================================================
-// Bangkok Explorer - Application Logic
-// Business logic: API calls, route generation, CRUD, import/export
-// This code runs INSIDE the BangkokExplorer component (has access to state)
-// ============================================================================
-
   const fetchGooglePlaces = async (area, interests) => {
     const center = areaCoordinates[area];
     if (!center) {
+      addDebugLog('API', `No coordinates for area: ${area}`);
       console.error('[DYNAMIC] No coordinates for area:', area);
       return [];
     }
 
     try {
-      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
-      
       // Get all relevant place types
       const placeTypes = [...new Set(
         interests.flatMap(interest => {
@@ -22,6 +15,9 @@
           return interestToGooglePlaces[baseInterest] || ['point_of_interest'];
         })
       )];
+
+      addDebugLog('API', `Fetching Google Places`, { area, interests, placeTypes: placeTypes.slice(0, 10), center });
+      console.log('[DYNAMIC] Fetching from Google Places API:', { area, interests });
 
       const response = await fetch(GOOGLE_PLACES_API_URL, {
         method: 'POST',
@@ -133,6 +129,10 @@
         final: transformed.length
       });
       
+      addDebugLog('API', `Got ${transformed.length} results (filtered ${ratingFilteredCount} by rating, ${typeFilteredCount} by type)`, {
+        names: transformed.slice(0, 5).map(p => p.name)
+      });
+      
       return transformed;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
@@ -181,12 +181,6 @@
   }, [showEditLocationDialog, editingLocation]);
 
   const areaOptions = window.BKK.areaOptions;
-
-
-  // Static Data Manager - loaded from js/static-data.js
-  const StaticDataManager = window.BKK.StaticDataManager;
-
-
 
   // Image handling - loaded from js/utils.js
   const compressImage = window.BKK.compressImage;
@@ -270,10 +264,12 @@
     setIsGenerating(true);
     
     try {
-      console.log(`[ROUTE] Starting route generation in ${formData.dataSource.toUpperCase()} mode`);
+      addDebugLog('ROUTE', 'Starting route generation', { area: formData.area, interests: formData.interests, maxStops: formData.maxStops });
+      console.log('[ROUTE] Starting route generation');
       
       // Get custom locations (always included)
       const customStops = getStopsForInterests();
+      addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
       console.log('[ROUTE] Custom stops:', customStops.length);
       
       // Calculate stops needed per interest
@@ -284,9 +280,9 @@
       // Track results per interest for smart completion
       const interestResults = {};
       const allStops = [...customStops]; // Start with custom stops (highest priority)
-      let dataSourceErrors = [];
+      let fetchErrors = [];
       
-      // ROUND 1: Get places from selected data source
+      // ROUND 1: Get places from Google Places API
       for (const interest of formData.interests) {
         // Check how many custom stops we already have for this interest
         const customStopsForInterest = customStops.filter(stop => 
@@ -299,19 +295,11 @@
           let fetchedPlaces = [];
           
           try {
-            // ===== DATA SOURCE DECISION =====
-            if (formData.dataSource === 'static') {
-              // STATIC MODE: Use StaticDataManager
-              console.log(`[STATIC] Fetching for interest: ${interest}`);
-              fetchedPlaces = StaticDataManager.getLocations(formData.area, [interest]);
-            } else {
-              // DYNAMIC MODE: Use Google Places API
-              console.log(`[DYNAMIC] Fetching for interest: ${interest}`);
-              fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
-            }
+            console.log(`[ROUTE] Fetching for interest: ${interest}`);
+            fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
           } catch (error) {
             // Track errors for user notification
-            dataSourceErrors.push({
+            fetchErrors.push({
               interest,
               error: error.message || 'Unknown error',
               details: error.details || {}
@@ -420,19 +408,15 @@
       }
       
       // Show errors if any occurred
-      if (dataSourceErrors.length > 0) {
-        const errorMsg = dataSourceErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
+      if (fetchErrors.length > 0) {
+        const errorMsg = fetchErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
         
-        console.error('[ROUTE] Data source errors:', dataSourceErrors);
+        console.error('[ROUTE] Data source errors:', fetchErrors);
         showToast(`שגיאות בקבלת מקומות: ${errorMsg}`, 'warning');
       }
       
       if (uniqueStops.length === 0) {
-        const noDataMsg = formData.dataSource === 'static' 
-          ? 'לא נמצאו מקומות סטטיים. נסה תחומי עניין אחרים או עבור למצב דינמי.'
-          : 'לא נמצאו מקומות מ-Google API. ודא שאתה מחוץ ל-Claude Artifacts.';
-        
-        showToast(noDataMsg, 'error');
+        showToast('לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.', 'error');
         setIsGenerating(false);
         return;
       }
@@ -473,7 +457,6 @@
         preferences: { ...formData },
         stats: {
           custom: customStops.length,
-          source: formData.dataSource,
           fetched: uniqueStops.length - customStops.length,
           total: uniqueStops.length
         },
@@ -484,7 +467,7 @@
           missing: maxStops - uniqueStops.length
         } : null,
         // Errors if any
-        errors: dataSourceErrors.length > 0 ? dataSourceErrors : null
+        errors: fetchErrors.length > 0 ? fetchErrors : null
       };
 
       console.log('[ROUTE] Route created successfully:', {
@@ -507,31 +490,7 @@
       // Stay in form view to show compact list
     } catch (error) {
       console.error('[ROUTE] Fatal error generating route:', error);
-      
-      const errorDetails = {
-        message: error.message || 'Unknown error',
-        stack: error.stack,
-        dataSource: formData.dataSource
-      };
-      
-      console.error('[ROUTE] Error details:', errorDetails);
-      
-      showToast(`שגיאה קריטית: ${error.message || 'שגיאה לא ידועה'}. בדוק Console (F12)`, 'error');
-      
-      // Fallback to static only
-      const staticStops = getStopsForInterests();
-      if (staticStops.length === 0) {
-        setIsGenerating(false);
-        return;
-      }
-      
-      const newRoute = {
-        id: Date.now(),
-        stops: staticStops,
-        // ... rest of route setup
-      };
-      setRoute(newRoute);
-      // Stay in form view
+      showToast(`שגיאה: ${error.message || 'שגיאה לא ידועה'}`, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -547,13 +506,7 @@
       const fetchCount = formData.fetchMoreCount || 5;
       console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
       
-      let newPlaces = [];
-      
-      if (formData.dataSource === 'static') {
-        newPlaces = StaticDataManager.getLocations(formData.area, [interest]);
-      } else {
-        newPlaces = await fetchGooglePlaces(formData.area, [interest]);
-      }
+      let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
       
       // Filter blacklist
       newPlaces = filterBlacklist(newPlaces);
@@ -607,13 +560,7 @@
       const allNewPlaces = [];
       
       for (const interest of formData.interests) {
-        let newPlaces = [];
-        
-        if (formData.dataSource === 'static') {
-          newPlaces = StaticDataManager.getLocations(formData.area, [interest]);
-        } else {
-          newPlaces = await fetchGooglePlaces(formData.area, [interest]);
-        }
+        let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
         
         // Filter blacklist
         newPlaces = filterBlacklist(newPlaces);
@@ -724,8 +671,8 @@
       custom: true
     };
     
-    // CONDITIONAL: Save based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Save to Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref('customInterests').push(interestToAdd)
         .then(() => {
@@ -757,8 +704,8 @@
       loc.interests && loc.interests.includes(interestId)
     );
     
-    // CONDITIONAL: Delete based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Delete from Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (interestToDelete && interestToDelete.firebaseId) {
         database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
@@ -792,8 +739,8 @@
   const deleteCustomLocation = (locationId) => {
     const locationToDelete = customLocations.find(loc => loc.id === locationId);
     
-    // CONDITIONAL: Delete based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Delete from Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (locationToDelete && locationToDelete.firebaseId) {
         database.ref(`customLocations/${locationToDelete.firebaseId}`).remove()
@@ -837,8 +784,8 @@
       newInProgress = false;
     }
     
-    // CONDITIONAL: Update based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Update in Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (location.firebaseId) {
         database.ref(`customLocations/${location.firebaseId}`).update({
@@ -908,16 +855,20 @@
   };
   
   // NEW: Add Google place to My Locations
-  const addGooglePlaceToCustom = (place) => {
+  const addGooglePlaceToCustom = async (place) => {
     // Check if already exists (by name, case-insensitive)
     const exists = customLocations.find(loc => 
-      loc.name.toLowerCase() === place.name.toLowerCase()
+      loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
     );
     
     if (exists) {
       showToast(`"${place.name}" כבר קיים ברשימה שלך`, 'warning');
-      return;
+      return false;
     }
+    
+    // Set adding state for dimmed button
+    const placeId = place.id || place.name;
+    setAddingPlaceIds(prev => [...prev, placeId]);
     
     const boundaryCheck = checkLocationInArea(place.lat, place.lng, formData.area);
     
@@ -941,24 +892,28 @@
       fromGoogle: true // Mark as added from Google
     };
     
-    // CONDITIONAL: Save based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
-      database.ref('customLocations').push(locationToAdd)
-        .then(() => {
-          console.log('[FIREBASE] Google place added to shared database');
-          showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
-        })
-        .catch((error) => {
-          console.error('[FIREBASE] Error adding Google place:', error);
-          showToast('שגיאה בשמירה', 'error');
-        });
+    // Save to Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
+      try {
+        await database.ref('customLocations').push(locationToAdd);
+        addDebugLog('ADD', `Added "${place.name}" to Firebase`);
+        showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
+        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+        return true;
+      } catch (error) {
+        console.error('[FIREBASE] Error adding Google place:', error);
+        addDebugLog('ERROR', `Failed to add "${place.name}"`, error);
+        showToast('שגיאה בשמירה', 'error');
+        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+        return false;
+      }
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
+      setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+      return true;
     }
   };
   
@@ -979,7 +934,7 @@
       // Update existing location to blacklist
       const locationId = exists.id;
       
-      if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database && exists.firebaseId) {
+      if (isFirebaseAvailable && database && exists.firebaseId) {
         database.ref(`customLocations/${exists.firebaseId}`).update({
           status: 'blacklist',
           inProgress: false
@@ -1029,8 +984,8 @@
       fromGoogle: true
     };
     
-    // CONDITIONAL: Save based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Save to Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       database.ref('customLocations').push(locationToAdd)
         .then(() => {
           console.log('[FIREBASE] Place added to blacklist');
@@ -1067,8 +1022,8 @@
       return customLocations.find(l => l.name.toLowerCase() === name.toLowerCase());
     };
     
-    // CONDITIONAL: Import based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Import to Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       
       // Import interests first
@@ -1298,6 +1253,15 @@
       return; // Just don't add if validation fails
     }
     
+    // Check for duplicate name
+    const exists = customLocations.find(loc => 
+      loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim()
+    );
+    if (exists) {
+      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
+      return;
+    }
+    
     // Use provided coordinates (can be null)
     let lat = newLocation.lat;
     let lng = newLocation.lng;
@@ -1341,8 +1305,8 @@
       addedAt: new Date().toISOString()
     };
     
-    // CONDITIONAL: Save based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Save to Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       database.ref('customLocations').push(locationToAdd)
         .then((ref) => {
@@ -1410,6 +1374,16 @@
       return;
     }
     
+    // Check for duplicate name (exclude current location)
+    const exists = customLocations.find(loc => 
+      loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim() &&
+      loc.id !== editingLocation.id
+    );
+    if (exists) {
+      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
+      return;
+    }
+    
     // Use provided coordinates (can be null)
     let hasCoordinates = (newLocation.lat !== null && newLocation.lng !== null && 
                           newLocation.lat !== 0 && newLocation.lng !== 0);
@@ -1438,8 +1412,8 @@
       missingCoordinates: !hasCoordinates // Flag for missing coordinates
     };
     
-    // CONDITIONAL: Update based on dataSource
-    if (formData.dataSource === 'dynamic' && isFirebaseAvailable && database) {
+    // Update in Firebase (or localStorage fallback)
+    if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       const { firebaseId, ...locationData } = updatedLocation;
       

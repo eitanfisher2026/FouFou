@@ -1,9 +1,3 @@
-// ============================================================================
-// Bangkok Explorer - Views (JSX)
-// Main screens: Form, Route, Search, Saved, MyContent, Settings
-// This JSX runs INSIDE the BangkokExplorer component return statement
-// ============================================================================
-
         {currentView === 'form' && (
           <div className="bg-white rounded-xl shadow-lg p-3 space-y-3">
             <div className="flex items-center justify-center gap-2">
@@ -259,13 +253,39 @@
                                     })()}
                                     
                                     {!isCustom && (
-                                      <button
-                                        onClick={() => addGooglePlaceToCustom(stop)}
-                                        className="text-[9px] px-1 py-0.5 rounded bg-purple-500 text-white hover:bg-purple-600"
-                                        title="הוסף לרשימה שלי"
-                                      >
-                                        +
-                                      </button>
+                                      (() => {
+                                        const placeId = stop.id || stop.name;
+                                        const isAdding = addingPlaceIds.includes(placeId);
+                                        const alreadyExists = customLocations.some(loc => 
+                                          loc.name.toLowerCase().trim() === stop.name.toLowerCase().trim()
+                                        );
+                                        
+                                        if (alreadyExists) {
+                                          return (
+                                            <span 
+                                              className="text-[9px] px-1 py-0.5 rounded bg-green-200 text-green-700"
+                                              title="כבר ברשימה שלי"
+                                            >
+                                              ✓
+                                            </span>
+                                          );
+                                        }
+                                        
+                                        return (
+                                          <button
+                                            onClick={() => addGooglePlaceToCustom(stop)}
+                                            disabled={isAdding}
+                                            className={`text-[9px] px-1 py-0.5 rounded ${
+                                              isAdding 
+                                                ? 'bg-gray-300 text-gray-500 cursor-wait' 
+                                                : 'bg-purple-500 text-white hover:bg-purple-600'
+                                            }`}
+                                            title="הוסף לרשימה שלי"
+                                          >
+                                            {isAdding ? '...' : '+'}
+                                          </button>
+                                        );
+                                      })()
                                     )}
                                     
                                     {isCustom && (
@@ -1055,6 +1075,13 @@
                 </p>
               </div>
             </div>
+            
+            {/* Copyright Footer */}
+            <div className="mt-4 pt-3 border-t border-gray-200 text-center">
+              <p className="text-[10px] text-gray-400">
+                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
+              </p>
+            </div>
           </div>
         )}
 
@@ -1062,7 +1089,15 @@
         {/* Search View */}
         {currentView === 'search' && (
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <h2 className="text-2xl font-bold mb-4">🔍 חיפוש במקומות שלי</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
+              <button
+                onClick={() => setCurrentView('myContent')}
+                className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 flex items-center gap-1"
+              >
+                ← חזרה
+              </button>
+            </div>
             
             <div className="mb-4">
               <input
@@ -1253,14 +1288,22 @@
         {/* My Content View - Compact Design */}
         {currentView === 'myContent' && (
           <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-lg font-bold">התוכן שלי</h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">התוכן שלי</h2>
+                <button
+                  onClick={() => showHelpFor('myContent')}
+                  className="text-gray-400 hover:text-blue-500 text-sm"
+                  title="עזרה"
+                >
+                  ❓
+                </button>
+              </div>
               <button
-                onClick={() => showHelpFor('myContent')}
-                className="text-gray-400 hover:text-blue-500 text-sm"
-                title="עזרה"
+                onClick={() => setCurrentView('search')}
+                className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-600 flex items-center gap-1"
               >
-                ❓
+                🔍 חיפוש Google
               </button>
             </div>
             
@@ -1593,61 +1636,31 @@
               </div>
             </div>
             
-            {/* Data Source Setting */}
+            {/* Debug Mode Toggle */}
             <div className="mb-4">
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 מקור נתונים</h3>
+              <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔧 מצב Debug</h3>
                 <p className="text-xs text-gray-600 mb-2">
-                  מאיפה לקחת מקומות עבור המסלול?
+                  הצג לוג של פעולות לאיתור בעיות
                 </p>
                 
-                <div className="space-y-2">
-                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
-                    <input
-                      type="radio"
-                      name="dataSource"
-                      value="static"
-                      checked={formData.dataSource === 'static'}
-                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <div className="font-bold text-sm">📚 סטטי (מקומי)</div>
-                      <div className="text-xs text-gray-600">רשימה קבועה + localStorage (רק שלי)</div>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-start gap-2 p-2 bg-white rounded-lg border-2 border-purple-200 cursor-pointer hover:bg-purple-50">
-                    <input
-                      type="radio"
-                      name="dataSource"
-                      value="dynamic"
-                      checked={formData.dataSource === 'dynamic'}
-                      onChange={(e) => setFormData({...formData, dataSource: e.target.value})}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <div className="font-bold text-sm">🌐 דינמי (משותף)</div>
-                      <div className="text-xs text-gray-600">
-                        {isFirebaseAvailable ? 'Google Places + Firebase (כולם רואים!)' : 'Google Places + Firebase (לא זמין ב-Claude)'}
-                      </div>
-                    </div>
-                  </label>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={debugMode}
+                    onChange={(e) => setDebugMode(e.target.checked)}
+                    className="w-5 h-5 rounded border-2 border-gray-400"
+                  />
+                  <span className="text-sm font-bold">
+                    {debugMode ? '✅ Debug מופעל' : '❌ Debug כבוי'}
+                  </span>
+                </label>
                 
-                {/* Status indicator */}
-                <div className="mt-2 p-2 bg-white rounded-lg border border-purple-200">
-                  <div className="text-xs text-gray-700">
-                    <strong>מצב נוכחי:</strong>
-                    {formData.dataSource === 'static' ? (
-                      <span className="text-blue-600"> 💻 מקומי (localStorage)</span>
-                    ) : isFirebaseAvailable ? (
-                      <span className="text-green-600"> 🔥 Firebase (משותף!)</span>
-                    ) : (
-                      <span className="text-orange-600"> 💻 מקומי (Firebase לא זמין)</span>
-                    )}
+                {debugMode && (
+                  <div className="mt-2 text-xs text-gray-600">
+                    פאנל Debug יופיע בתחתית המסך
                   </div>
-                </div>
+                )}
               </div>
             </div>
             
@@ -1873,45 +1886,44 @@
             {/* Copyright Footer - Discreet */}
             <div className="mt-4 pt-3 border-t border-gray-200 text-center">
               <p className="text-[10px] text-gray-400">
-                © 2026 Eitan Fisher | Bangkok Explorer v1.0
+                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
               </p>
               
-              {/* Admin Access Log Button - Always visible, changes color */}
-              {formData.dataSource === 'dynamic' && (
-                <div className="mt-2">
-                  <button
-                    onClick={() => {
-                      setShowAccessLog(true);
-                      markLogsAsSeen();
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
-                      hasNewEntries 
-                        ? 'bg-red-500 text-white animate-pulse shadow-lg' 
-                        : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
-                    }`}
-                  >
-                    🔒 לוג כניסות
-                    {hasNewEntries && (
-                      <span className="mr-1">🔔</span>
-                    )}
-                  </button>
+              {/* Admin Access Log Button */}
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    setShowAccessLog(true);
+                    markLogsAsSeen();
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
+                    hasNewEntries 
+                      ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+                      : 'bg-gray-400 text-white hover:bg-gray-500 shadow-md'
+                  }`}
+                >
+                  🔒 לוג כניסות
+                  {hasNewEntries && (
+                    <span className="mr-1">🔔</span>
+                  )}
+                </button>
+                
+                {/* Admin Status */}
+                <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
+                  {accessLogs.length > 0 ? (
+                    <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
+                  ) : (
+                    <span>אין כניסות עדיין</span>
+                  )}
                   
-                  {/* Admin Status */}
-                  <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
-                    {accessLogs.length > 0 ? (
-                      <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
-                    ) : (
-                      <span>אין כניסות עדיין</span>
-                    )}
-                    
-                    {/* Clear Log Button */}
-                    {accessLogs.length > 0 && (
-                      <button
-                        onClick={() => {
-                          showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
-                            database.ref('accessLog').remove();
-                            localStorage.setItem('bangkok_last_seen', Date.now().toString());
-                            setAccessLogs([]);
+                  {/* Clear Log Button */}
+                  {accessLogs.length > 0 && (
+                    <button
+                      onClick={() => {
+                        showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
+                          database.ref('accessLog').remove();
+                          localStorage.setItem('bangkok_last_seen', Date.now().toString());
+                          setAccessLogs([]);
                             setHasNewEntries(false);
                             showToast('הלוג נוקה', 'success');
                           });
@@ -1924,7 +1936,6 @@
                     )}
                   </div>
                 </div>
-              )}
             </div>
           </div>
         )}

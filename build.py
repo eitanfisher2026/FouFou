@@ -18,7 +18,7 @@ import time
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Source files that make up the app
-JS_MODULES = ['config.js', 'static-data.js', 'utils.js']
+JS_MODULES = ['config.js', 'utils.js']
 JSX_PARTS = ['app-logic.js', 'views.js', 'dialogs.js']
 SHELL = 'index.html'
 ALL_FILES = [SHELL] + JS_MODULES + JSX_PARTS
@@ -38,7 +38,6 @@ def build():
     # 1. Inline the plain JS modules
     old_external = '''    <!-- External JS modules (combined by build.py for single-file deployment) -->
     <script src="config.js"></script>
-    <script src="static-data.js"></script>
     <script src="utils.js"></script>'''
     
     new_inline = '    <!-- Inlined JS modules -->\n'

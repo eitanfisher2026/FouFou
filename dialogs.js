@@ -1,10 +1,3 @@
-// ============================================================================
-// Bangkok Explorer - Dialogs & Modals (JSX)
-// Save, Add/Edit Location, Add Interest, Import, Detail, Image, 
-// Access Log, Confirm, Help, Toast
-// This JSX runs INSIDE the BangkokExplorer component return statement
-// ============================================================================
-
         {showSaveDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
@@ -193,6 +186,32 @@
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Description - NEW */}
+                <div>
+                  <label className="block text-xs font-bold mb-1">📝 תיאור</label>
+                  <input
+                    type="text"
+                    value={newLocation.description || ''}
+                    onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                    placeholder="תיאור קצר של המקום"
+                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                    style={{ direction: 'rtl' }}
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-bold mb-1">💭 הערות אישיות</label>
+                  <textarea
+                    value={newLocation.notes || ''}
+                    onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
+                    placeholder="טיפים, המלצות, הערות לעצמך..."
+                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500 resize-none"
+                    style={{ direction: 'rtl' }}
+                    rows={2}
+                  />
                 </div>
 
                 {/* Image - Compact */}
@@ -1121,5 +1140,129 @@
               {toastMessage.message}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Debug Panel - Fixed at bottom */}
+      {debugMode && (
+        <div 
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: '#1e293b',
+            color: '#e2e8f0',
+            zIndex: 9998,
+            direction: 'ltr',
+            fontFamily: 'monospace',
+            fontSize: '11px'
+          }}
+        >
+          {/* Header */}
+          <div 
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '6px 12px',
+              backgroundColor: '#334155',
+              cursor: 'pointer'
+            }}
+            onClick={() => setDebugPanelOpen(!debugPanelOpen)}
+          >
+            <span style={{ fontWeight: 'bold' }}>
+              🔧 Debug Log ({debugLogs.length})
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const text = debugLogs.map(l => `${l.timestamp} [${l.category}] ${l.message}${l.data ? ' ' + JSON.stringify(l.data) : ''}`).join('\n');
+                  navigator.clipboard.writeText(text);
+                  showToast('Copied to clipboard', 'success');
+                }}
+                style={{
+                  padding: '2px 8px',
+                  backgroundColor: '#3b82f6',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '10px'
+                }}
+              >
+                Copy
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDebugLogs([]);
+                }}
+                style={{
+                  padding: '2px 8px',
+                  backgroundColor: '#ef4444',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '10px'
+                }}
+              >
+                Clear
+              </button>
+              <span style={{ fontSize: '14px' }}>
+                {debugPanelOpen ? '▼' : '▲'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Log content */}
+          {debugPanelOpen && (
+            <div 
+              style={{
+                maxHeight: '150px',
+                overflowY: 'auto',
+                padding: '8px 12px'
+              }}
+            >
+              {debugLogs.length === 0 ? (
+                <div style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>
+                  No logs yet. Actions will appear here.
+                </div>
+              ) : (
+                debugLogs.map((log, i) => (
+                  <div 
+                    key={i}
+                    style={{
+                      padding: '2px 0',
+                      borderBottom: '1px solid #334155',
+                      display: 'flex',
+                      gap: '8px'
+                    }}
+                  >
+                    <span style={{ color: '#64748b' }}>{log.timestamp}</span>
+                    <span style={{ 
+                      color: log.category === 'ERROR' ? '#f87171' : 
+                             log.category === 'API' ? '#60a5fa' :
+                             log.category === 'ROUTE' ? '#4ade80' :
+                             log.category === 'ADD' ? '#a78bfa' :
+                             '#94a3b8',
+                      fontWeight: 'bold',
+                      minWidth: '50px'
+                    }}>
+                      [{log.category}]
+                    </span>
+                    <span style={{ color: '#e2e8f0' }}>{log.message}</span>
+                    {log.data && (
+                      <span style={{ color: '#94a3b8', fontSize: '10px' }}>
+                        {typeof log.data === 'object' ? JSON.stringify(log.data) : log.data}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
