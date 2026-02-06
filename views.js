@@ -256,18 +256,20 @@
                                       (() => {
                                         const placeId = stop.id || stop.name;
                                         const isAdding = addingPlaceIds.includes(placeId);
-                                        const alreadyExists = customLocations.some(loc => 
+                                        const existingLoc = customLocations.find(loc => 
                                           loc.name.toLowerCase().trim() === stop.name.toLowerCase().trim()
                                         );
                                         
-                                        if (alreadyExists) {
+                                        if (existingLoc) {
+                                          // Place was added - show edit button
                                           return (
-                                            <span 
-                                              className="text-[9px] px-1 py-0.5 rounded bg-green-200 text-green-700"
-                                              title="כבר ברשימה שלי"
+                                            <button
+                                              onClick={() => handleEditLocation(existingLoc)}
+                                              className="text-[9px] px-1 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
+                                              title="ערוך (נוסף לרשימה)"
                                             >
-                                              ✓
-                                            </span>
+                                              ✏️
+                                            </button>
                                           );
                                         }
                                         
@@ -1075,8 +1077,9 @@
                 </p>
               </div>
             </div>
+            )}
             
-            {/* Copyright Footer */}
+            {/* Copyright Footer - Always visible */}
             <div className="mt-4 pt-3 border-t border-gray-200 text-center">
               <p className="text-[10px] text-gray-400">
                 © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
@@ -1215,14 +1218,22 @@
 
         {currentView === 'saved' && (
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-xl font-bold">מסלולים שמורים</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold">מסלולים שמורים</h2>
+                <button
+                  onClick={() => showHelpFor('saved')}
+                  className="text-gray-400 hover:text-blue-500 text-sm"
+                  title="עזרה"
+                >
+                  ❓
+                </button>
+              </div>
               <button
-                onClick={() => showHelpFor('saved')}
-                className="text-gray-400 hover:text-blue-500 text-sm"
-                title="עזרה"
+                onClick={() => setCurrentView('form')}
+                className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300"
               >
-                ❓
+                ← חזרה
               </button>
             </div>
             
@@ -1268,14 +1279,23 @@
                       >
                         📍 פתח מסלול
                       </button>
-                      <a
-                        href={savedRoute.mapUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 bg-green-500 text-white text-center py-2 rounded-lg font-medium hover:bg-green-600"
+                      <button
+                        onClick={() => {
+                          const shareText = `🗺️ ${savedRoute.name}\n📍 ${savedRoute.areaName}\n🎯 ${savedRoute.stops.length} תחנות\n\nתחנות:\n${savedRoute.stops.map((s, i) => `${i+1}. ${s.name}`).join('\n')}`;
+                          if (navigator.share) {
+                            navigator.share({
+                              title: savedRoute.name,
+                              text: shareText
+                            });
+                          } else {
+                            navigator.clipboard.writeText(shareText);
+                            showToast('הועתק ללוח', 'success');
+                          }
+                        }}
+                        className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600"
                       >
-                        🗺️ Google Maps
-                      </a>
+                        📤 שתף
+                      </button>
                     </div>
                   </div>
                 ))}

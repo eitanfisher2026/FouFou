@@ -655,7 +655,7 @@
   const loadSavedRoute = (savedRoute) => {
     setRoute(savedRoute);
     setFormData(savedRoute.preferences);
-    setCurrentView('route');
+    setCurrentView('form'); // Go to form view to show places list
   };
 
   const addCustomInterest = () => {

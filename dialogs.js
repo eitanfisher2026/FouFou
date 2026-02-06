@@ -201,19 +201,6 @@
                   />
                 </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">💭 הערות אישיות</label>
-                  <textarea
-                    value={newLocation.notes || ''}
-                    onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
-                    placeholder="טיפים, המלצות, הערות לעצמך..."
-                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500 resize-none"
-                    style={{ direction: 'rtl' }}
-                    rows={2}
-                  />
-                </div>
-
                 {/* Image - Compact */}
                 <div>
                   <label className="block text-xs font-bold mb-1">📷 תמונה</label>
