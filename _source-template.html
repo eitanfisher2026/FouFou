@@ -502,7 +502,7 @@ const BangkokExplorer = () => {
               currentView === 'saved' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            💾 שמורים
+            💾 שמורים {savedRoutes.length > 0 && `(${savedRoutes.length})`}
           </button>
           <button
             onClick={() => setCurrentView('myContent')}
@@ -510,7 +510,7 @@ const BangkokExplorer = () => {
               currentView === 'myContent' || currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            התוכן שלי
+            התוכן שלי {customLocations.length > 0 && `(${customLocations.length})`}
           </button>
           {isCurrentUserAdmin && (
             <button
@@ -532,6 +532,16 @@ const BangkokExplorer = () => {
         {/* === DIALOGS (from dialogs.js) === */}
         {/* __INSERT_DIALOGS__ */}
 
+      </div>
+      
+      {/* Fixed Copyright Footer - Hidden when debug mode is on */}
+      {!debugMode && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-1 text-center z-40">
+          <p className="text-[10px] text-gray-400">
+            © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

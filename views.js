@@ -1078,13 +1078,6 @@
               </div>
             </div>
             )}
-            
-            {/* Copyright Footer - Always visible */}
-            <div className="mt-4 pt-3 border-t border-gray-200 text-center">
-              <p className="text-[10px] text-gray-400">
-                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
-              </p>
-            </div>
           </div>
         )}
 
@@ -1308,22 +1301,14 @@
         {/* My Content View - Compact Design */}
         {currentView === 'myContent' && (
           <div className="bg-white rounded-xl shadow-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">התוכן שלי</h2>
-                <button
-                  onClick={() => showHelpFor('myContent')}
-                  className="text-gray-400 hover:text-blue-500 text-sm"
-                  title="עזרה"
-                >
-                  ❓
-                </button>
-              </div>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-lg font-bold">התוכן שלי</h2>
               <button
-                onClick={() => setCurrentView('search')}
-                className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-blue-600 flex items-center gap-1"
+                onClick={() => showHelpFor('myContent')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title="עזרה"
               >
-                🔍 חיפוש Google
+                ❓
               </button>
             </div>
             
@@ -1331,12 +1316,21 @@
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-base font-bold">המקומות שלי ({customLocations.length})</h3>
-                <button
-                  onClick={() => setShowAddLocationDialog(true)}
-                  className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-600"
-                >
-                  ➕ הוסף מקום
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentView('search')}
+                    className="text-blue-500 hover:text-blue-700 text-xl"
+                    title="חיפוש"
+                  >
+                    🔍
+                  </button>
+                  <button
+                    onClick={() => setShowAddLocationDialog(true)}
+                    className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-600"
+                  >
+                    ➕ הוסף מקום
+                  </button>
+                </div>
               </div>
               
               {customLocations.length === 0 ? (
@@ -1903,12 +1897,8 @@
               </div>
             </div>
             
-            {/* Copyright Footer - Discreet */}
+            {/* Admin Access Log Section */}
             <div className="mt-4 pt-3 border-t border-gray-200 text-center">
-              <p className="text-[10px] text-gray-400">
-                © 2026 Eitan Fisher | Bangkok Explorer v{window.BKK.VERSION}
-              </p>
-              
               {/* Admin Access Log Button */}
               <div className="mt-2">
                 <button
