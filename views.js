@@ -1078,8 +1078,6 @@
               </div>
             </div>
             )}
-          </div>
-        )}
 
         {/* Saved Routes View */}
         {/* Search View */}
