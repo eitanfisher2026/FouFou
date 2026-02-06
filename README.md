@@ -1,8 +1,8 @@
 # Bangkok Explorer 🇹🇭
 
-**גרסה:** 2.1.0
+**גרסה:** 2.1.1
 
-## שינויים
-- Copyright עבר לכותרת (header)
+## תיקונים
+- הוספת cache-control למניעת בעיות cache
+- Copyright בכותרת
 - מונים בניווט
-- כפתור חיפוש רק אייקון
