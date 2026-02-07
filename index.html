@@ -1295,7 +1295,7 @@ const BangkokExplorer = () => {
       const transformed = data.places
         .filter(place => {
           // Filter 1: Rating check (lower threshold for text search as results are more specific)
-          const minRating = isTextSearch ? 3.5 : 4.0;
+          const minRating = isTextSearch ? 0 : 4.0; // No rating filter for text search
           if (place.rating && place.rating < minRating) {
             ratingFilteredCount++;
             return false;
