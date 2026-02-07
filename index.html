@@ -1002,7 +1002,6 @@ const BangkokExplorer = () => {
     console.log('[ACCESS LOG] User ID:', userId);
     
     // Admin detection: Password-based system
-    // Firebase stores: settings/adminPassword + settings/adminUsers/{userId}
     const loadAdminSettings = async () => {
       try {
         // Load admin password
@@ -1029,11 +1028,6 @@ const BangkokExplorer = () => {
         localStorage.setItem('bangkok_is_admin', userIsAdmin ? 'true' : 'false');
         
         console.log('[ADMIN] Password empty:', passwordEmpty, 'In list:', isInAdminList, 'Unlocked:', userIsAdmin);
-        
-        if (passwordEmpty && !isInAdminList) {
-          // First time - no password set, everyone has access
-          console.log('[ADMIN] No password set - open access');
-        }
       } catch (err) {
         console.error('[ADMIN] Error loading settings:', err);
       }
@@ -1045,7 +1039,6 @@ const BangkokExplorer = () => {
     database.ref('settings/adminPassword').on('value', (snap) => {
       const pw = snap.val() || '';
       setAdminPassword(pw);
-      // Recheck unlock status
       const cachedUserId = localStorage.getItem('bangkok_user_id');
       database.ref('settings/adminUsers').once('value').then(usersSnap => {
         const usersData = usersSnap.val() || {};
@@ -1063,84 +1056,83 @@ const BangkokExplorer = () => {
       setAdminUsers(usersList);
     });
     
+    // Log access (skip if admin)
     const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';
-        
-    // Log access (skip admin)
+    
     if (!isAdmin) {
-          // THROTTLE: Don't log same userId more than once per hour
-          const lastLogTime = parseInt(localStorage.getItem('bangkok_last_log_time') || '0');
-          const oneHour = 60 * 60 * 1000;
-          
-          if (Date.now() - lastLogTime < oneHour) {
-            console.log('[ACCESS LOG] Throttled - already logged within last hour');
-          } else {
-            localStorage.setItem('bangkok_last_log_time', Date.now().toString());
-            
-            const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
-            
-            const accessEntry = {
-              userId, timestamp: Date.now(), date: new Date().toISOString(),
-              userAgent: navigator.userAgent.substring(0, 100),
-              browser, os,
-              screenSize: `${screen.width}x${screen.height}`,
-              language: navigator.language || 'unknown',
-              country: '', city: '', region: ''
-            };
-            
-            const entryRef = database.ref('accessLog').push();
-            entryRef.set(accessEntry)
-              .then(() => {
-                console.log('[ACCESS LOG] Visit logged');
-                // Fetch geo data async
-                fetch('https://ipapi.co/json/')
-                  .then(r => r.json())
-                  .then(geo => {
-                    entryRef.update({
-                      country: geo.country_name || '',
-                      countryCode: geo.country_code || '',
-                      city: geo.city || '',
-                      region: geo.region || '',
-                      ip: geo.ip ? geo.ip.substring(0, 12) + '***' : '',
-                      isp: geo.org || ''
-                    });
-                  })
-                  .catch(err => console.log('[ACCESS LOG] Geo lookup failed:', err));
-              })
-              .catch(err => console.error('[ACCESS LOG] Error:', err));
-          }
-        }
+      const lastLogTime = parseInt(localStorage.getItem('bangkok_last_log_time') || '0');
+      const oneHour = 60 * 60 * 1000;
+      
+      if (Date.now() - lastLogTime >= oneHour) {
+        localStorage.setItem('bangkok_last_log_time', Date.now().toString());
         
-        // Listen to access log (admin only)
-        if (isAdmin) {
-          const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
-          const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
+        const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
+        
+        const accessEntry = {
+          userId, 
+          timestamp: Date.now(), 
+          date: new Date().toISOString(),
+          userAgent: navigator.userAgent.substring(0, 100),
+          browser, 
+          os,
+          screenSize: `${screen.width}x${screen.height}`,
+          language: navigator.language || 'unknown',
+          country: '', 
+          city: '', 
+          region: ''
+        };
+        
+        const entryRef = database.ref('accessLog').push();
+        entryRef.set(accessEntry)
+          .then(() => {
+            console.log('[ACCESS LOG] Visit logged');
+            fetch('https://ipapi.co/json/')
+              .then(r => r.json())
+              .then(geo => {
+                entryRef.update({
+                  country: geo.country_name || '',
+                  countryCode: geo.country_code || '',
+                  city: geo.city || '',
+                  region: geo.region || '',
+                  ip: geo.ip ? geo.ip.substring(0, 12) + '***' : '',
+                  isp: geo.org || ''
+                });
+              })
+              .catch(err => console.log('[ACCESS LOG] Geo lookup failed:', err));
+          })
+          .catch(err => console.error('[ACCESS LOG] Error:', err));
+      }
+    }
+    
+    // Listen to access log (admin only)
+    if (isAdmin) {
+      const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
+      const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
+      
+      const unsubscribe = logRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const logsArray = Object.keys(data).map(key => ({
+            ...data[key], 
+            id: key
+          })).sort((a, b) => b.timestamp - a.timestamp);
           
-          const unsubscribe = logRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            console.log('[ACCESS LOG] Snapshot:', data ? Object.keys(data).length + ' entries' : 'EMPTY');
-            if (data) {
-              const logsArray = Object.keys(data).map(key => ({
-                ...data[key], id: key
-              })).sort((a, b) => b.timestamp - a.timestamp);
-              
-              setAccessLogs(logsArray);
-              
-              const hasNew = logsArray.some(log => log.timestamp > lastSeen);
-              if (hasNew && lastSeen > 0) {
-                setHasNewEntries(true);
-                showToast('יש כניסות חדשות!', 'info');
-              }
-            } else {
-              setAccessLogs([]);
-            }
-          });
+          setAccessLogs(logsArray);
           
-          return () => logRef.off('value', unsubscribe);
+          const hasNew = logsArray.some(log => log.timestamp > lastSeen);
+          if (hasNew && lastSeen > 0) {
+            setHasNewEntries(true);
+            showToast('יש כניסות חדשות!', 'info');
+          }
+        } else {
+          setAccessLogs([]);
         }
-      })
-      .catch(err => console.error('[ACCESS LOG] Error reading admin:', err));
+      });
+      
+      return () => logRef.off('value', unsubscribe);
+    }
   }, []);
-  
+
   // Mark logs as seen
   const markLogsAsSeen = () => {
     const latest = accessLogs.length > 0 ? accessLogs[0].timestamp : Date.now();
