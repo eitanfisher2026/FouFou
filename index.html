@@ -89,7 +89,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.4.0';
+window.BKK.VERSION = '2.4.1';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -837,6 +837,8 @@ const BangkokExplorer = () => {
   const [editingInterestConfig, setEditingInterestConfig] = useState(null);
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
+  const [showStopInfoDialog, setShowStopInfoDialog] = useState(false);
+  const [selectedStopInfo, setSelectedStopInfo] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
   const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', baseCategory: '' });
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
@@ -3548,6 +3550,18 @@ const BangkokExplorer = () => {
                                         </span>
                                       )}
                                       <span>{stop.name}</span>
+                                      {/* Info icon - show selection criteria */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setSelectedStopInfo(stop);
+                                          setShowStopInfoDialog(true);
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 ml-1"
+                                        title="מידע על בחירת המקום"
+                                        style={{ fontSize: '10px' }}
+                                      >ⓘ</button>
                                       {stop.outsideArea && (
                                         <span className="text-orange-500" title="מקום מחוץ לגבולות האזור" style={{ fontSize: '10px' }}>
                                           🔺
@@ -4005,6 +4019,18 @@ const BangkokExplorer = () => {
                             >
                               {stop.name}
                             </a>
+                            {/* Info icon - show selection criteria */}
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedStopInfo(stop);
+                                setShowStopInfoDialog(true);
+                              }}
+                              className="text-blue-500 hover:text-blue-700 ml-1"
+                              title="מידע על בחירת המקום"
+                              style={{ fontSize: '12px' }}
+                            >ⓘ</button>
                             {stop.outsideArea && (
                               <span 
                                 className="text-orange-500" 
@@ -5748,11 +5774,19 @@ const BangkokExplorer = () => {
                   <input
                     type="text"
                     value={newInterest.icon}
-                    onChange={(e) => setNewInterest({...newInterest, icon: e.target.value})}
+                    onChange={(e) => {
+                      // Take only the first emoji/character sequence
+                      const value = e.target.value;
+                      // Get first grapheme (emoji can be multiple code points)
+                      const firstEmoji = [...value][0] || '';
+                      setNewInterest({...newInterest, icon: firstEmoji});
+                    }}
                     placeholder="📍"
-                    maxLength="2"
                     className="w-full p-2 text-xl border-2 border-gray-300 rounded-lg focus:border-purple-500 text-center"
                   />
+                  <p className="text-[10px] text-gray-500 mt-1 text-center" style={{ direction: 'ltr' }}>
+                    Supported: Emoji (🎨 🏛️ 🎭), Unicode symbols, single characters
+                  </p>
                 </div>
 
                 <div>
@@ -6387,6 +6421,105 @@ const BangkokExplorer = () => {
         </div>
       )}
       
+      {/* Stop Info Dialog - shows selection criteria */}
+      {showStopInfoDialog && selectedStopInfo && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowStopInfoDialog(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-sm shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-t-xl">
+              <div className="flex justify-between items-center">
+                <h3 className="text-base font-bold">ⓘ מידע על בחירת המקום</h3>
+                <button
+                  onClick={() => setShowStopInfoDialog(false)}
+                  className="text-white hover:text-gray-200"
+                >✕</button>
+              </div>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="font-bold text-lg text-gray-800">{selectedStopInfo.name}</div>
+              
+              {/* Source */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs font-bold text-gray-600 mb-1">📍 מקור:</div>
+                <div className="text-sm">
+                  {selectedStopInfo.custom ? (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-bold">
+                      מקום מותאם אישית (שלי)
+                    </span>
+                  ) : (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-bold">
+                      Google Places API
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Interests that matched */}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <div className="text-xs font-bold text-blue-800 mb-1">🏷️ תחומי עניין שהתאימו:</div>
+                <div className="flex flex-wrap gap-1">
+                  {selectedStopInfo.interests && selectedStopInfo.interests.length > 0 ? (
+                    selectedStopInfo.interests.map((interest, idx) => {
+                      const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                      const config = interestConfig[interest] || {};
+                      return (
+                        <div key={idx} className="bg-white border border-blue-200 rounded px-2 py-1">
+                          <span className="text-sm">{interestObj?.icon} {interestObj?.label || interest}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <span className="text-gray-500 text-sm">לא צוינו תחומי עניין</span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Search criteria used */}
+              <div className="bg-indigo-50 rounded-lg p-3" style={{ direction: 'ltr' }}>
+                <div className="text-xs font-bold text-indigo-800 mb-2" style={{ direction: 'rtl' }}>🔍 קריטריוני חיפוש:</div>
+                {selectedStopInfo.interests && selectedStopInfo.interests.map((interest, idx) => {
+                  const config = interestConfig[interest] || {};
+                  return (
+                    <div key={idx} className="text-xs mb-2 bg-white p-2 rounded border border-indigo-200">
+                      <div className="font-bold text-indigo-700">{interest}:</div>
+                      {config.textSearch ? (
+                        <div className="text-gray-600">Text Search: "{config.textSearch}"</div>
+                      ) : (
+                        <div className="text-gray-600">Types: {(config.types || []).join(', ') || 'default'}</div>
+                      )}
+                      {config.blacklist && config.blacklist.length > 0 && (
+                        <div className="text-red-600">Blacklist: {config.blacklist.join(', ')}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Rating */}
+              {selectedStopInfo.rating && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-bold text-gray-600">⭐ דירוג:</span>
+                  <span>{selectedStopInfo.rating.toFixed(1)} ({selectedStopInfo.ratingCount || 0} ביקורות)</span>
+                </div>
+              )}
+              
+              {/* Close button */}
+              <button
+                onClick={() => setShowStopInfoDialog(false)}
+                className="w-full py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
+              >
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Interest Config Dialog */}
       {showInterestConfigDialog && editingInterestConfig && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
