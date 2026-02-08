@@ -1610,8 +1610,12 @@
 
   const loadSavedRoute = (savedRoute) => {
     setRoute(savedRoute);
-    setFormData(savedRoute.preferences);
+    // Restore formData from preferences, but override startPoint with the validated one from route
+    const restoredStartPoint = savedRoute.startPoint === 'התחלה מהמקום הראשון ברשימה' ? '' : (savedRoute.startPoint || '');
+    setFormData({...savedRoute.preferences, startPoint: restoredStartPoint });
     setStartPointCoords(savedRoute.startPointCoords || null);
+    // Restore route type (circular/linear)
+    setRouteType(savedRoute.circular ? 'circular' : 'linear');
     setCurrentView('form');
   };
 

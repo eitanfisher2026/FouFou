@@ -146,30 +146,6 @@
                         fontSize: '11px',
                         color: formData.interests.includes(option.id) ? '#c2410c' : '#374151'
                       }}>{option.label}</div>
-                      {/* Info icon - clickable to show/edit search config */}
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingInterestConfig({
-                            id: option.id,
-                            label: option.label,
-                            icon: option.icon,
-                            isCustom: isCustom,
-                            config: interestConfig[option.id] || {}
-                          });
-                          setShowInterestConfigDialog(true);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          top: '2px',
-                          left: '2px',
-                          fontSize: '10px',
-                          color: '#3b82f6',
-                          cursor: 'pointer',
-                          padding: '2px'
-                        }}
-                        title="הגדרות חיפוש"
-                      >ⓘ</div>
                     </button>
                   );
                 })}
