@@ -116,7 +116,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.7.2';
+window.BKK.VERSION = '2.7.4';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -876,7 +876,7 @@ const BangkokExplorer = () => {
         // Add maxStops if not present (for backward compatibility)
         if (!prefs.maxStops) prefs.maxStops = 10;
         // Add fetchMoreCount if not present
-        if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 5;
+        if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         return prefs;
       }
     } catch (e) {}
@@ -887,7 +887,7 @@ const BangkokExplorer = () => {
       circular: true,
       startPoint: '',
       maxStops: 10,
-      fetchMoreCount: 5
+      fetchMoreCount: 3
     };
   };
 
@@ -1580,7 +1580,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -1622,7 +1622,7 @@ const BangkokExplorer = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -1678,7 +1678,6 @@ const BangkokExplorer = () => {
       const isTextSearch = !!textSearchQuery;
       
       // Filter and transform Google Places data
-      let ratingFilteredCount = 0;
       let typeFilteredCount = 0;
       let blacklistFilteredCount = 0;
       
@@ -1699,14 +1698,7 @@ const BangkokExplorer = () => {
             }
           }
           
-          // Filter 2: Rating check (no filter for text search)
-          const minRating = isTextSearch ? 0 : 4.0;
-          if (place.rating && place.rating < minRating) {
-            ratingFilteredCount++;
-            return false;
-          }
-          
-          // Filter 3: Type validation - skip for text search
+          // Filter 2: Type validation - skip for text search
           if (!isTextSearch && placeTypes.length > 0) {
             const placeTypesFromGoogle = place.types || [];
             const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
@@ -1738,17 +1730,20 @@ const BangkokExplorer = () => {
           googlePlace: true,
           rating: place.rating || 0,
           ratingCount: place.userRatingCount || 0,
-          interests: interests  // Add interests field
+          googleTypes: place.types || [],
+          primaryType: place.primaryType || '',
+          address: place.formattedAddress || '',
+          interests: interests
         }));
       
       console.log('[DYNAMIC] Filtering summary:', {
         received: data.places.length,
-        ratingFiltered: ratingFilteredCount,
         typeFiltered: typeFilteredCount,
+        blacklistFiltered: blacklistFilteredCount,
         final: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${ratingFilteredCount} rating, ${typeFilteredCount} type)`, {
+      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type)`, {
         names: transformed.slice(0, 5).map(p => p.name)
       });
       
@@ -2015,8 +2010,11 @@ const BangkokExplorer = () => {
             fetchedPlaces = [];
           }
           
-          // Filter blacklist BEFORE sorting
+          // Filter blacklisted places (status='blacklist') BEFORE sorting
           fetchedPlaces = filterBlacklist(fetchedPlaces);
+          
+          // Filter out Google places that duplicate custom locations
+          fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
           
           // Sort by rating and take what we need (or all if less available)
           const sortedPlaces = fetchedPlaces
@@ -2210,39 +2208,41 @@ const BangkokExplorer = () => {
     setIsGenerating(true);
     
     try {
-      const fetchCount = formData.fetchMoreCount || 5;
+      const fetchCount = formData.fetchMoreCount || 3;
       console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
       
       let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
       
-      // Filter blacklist
+      // Filter blacklisted places and duplicates of custom locations
       newPlaces = filterBlacklist(newPlaces);
+      newPlaces = filterDuplicatesOfCustom(newPlaces);
       
-      // Filter duplicates (by name)
+      // Filter duplicates of places already in route (by name)
       const existingNames = route.stops.map(s => s.name.toLowerCase());
       newPlaces = newPlaces.filter(p => !existingNames.includes(p.name.toLowerCase()));
       
-      // Take only what we need
-      const placesToAdd = newPlaces.slice(0, fetchCount);
+      // Sort by rating (descending) - rating is for prioritization only
+      newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+      
+      // Take only what we need and mark as addedLater
+      const placesToAdd = newPlaces.slice(0, fetchCount).map(p => ({
+        ...p,
+        addedLater: true
+      }));
       
       if (placesToAdd.length === 0) {
         showToast(`לא נמצאו עוד מקומות ב${allInterestOptions.find(o => o.id === interest)?.label}`, 'warning');
         return;
       }
       
-      // Update route
+      // Append new places at the end of the route
       const updatedRoute = {
         ...route,
         stops: [...route.stops, ...placesToAdd]
       };
       
       setRoute(updatedRoute);
-      showToast(`נוספו ${placesToAdd.length} מקומות!`, 'success');
-      
-      // Scroll to results
-      setTimeout(() => {
-        document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      showToast(`נוספו ${placesToAdd.length} מקומות ל${allInterestOptions.find(o => o.id === interest)?.label}!`, 'success');
       
     } catch (error) {
       console.error('[FETCH_MORE] Error:', error);
@@ -2259,7 +2259,7 @@ const BangkokExplorer = () => {
     setIsGenerating(true);
     
     try {
-      const fetchCount = formData.fetchMoreCount || 5;
+      const fetchCount = formData.fetchMoreCount || 3;
       const perInterest = Math.ceil(fetchCount / formData.interests.length);
       
       console.log(`[FETCH_MORE_ALL] Fetching ${perInterest} per interest, total: ${fetchCount}`);
@@ -2269,8 +2269,9 @@ const BangkokExplorer = () => {
       for (const interest of formData.interests) {
         let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
         
-        // Filter blacklist
+        // Filter blacklisted places and duplicates of custom locations
         newPlaces = filterBlacklist(newPlaces);
+        newPlaces = filterDuplicatesOfCustom(newPlaces);
         
         // Filter duplicates
         const existingNames = [...route.stops, ...allNewPlaces].map(s => s.name.toLowerCase());
@@ -2306,18 +2307,39 @@ const BangkokExplorer = () => {
   };
 
   // Filter blacklisted places
+  // Filter out places that exist in custom locations with status='blacklist' (exact name match)
   const filterBlacklist = (places) => {
+    const blacklistedNames = customLocations
+      .filter(loc => loc.status === 'blacklist')
+      .map(loc => loc.name.toLowerCase().trim());
+    
+    if (blacklistedNames.length === 0) return places;
+    
     return places.filter(place => {
-      const blacklisted = customLocations.find(loc => 
-        loc.name.toLowerCase() === place.name.toLowerCase() && 
-        loc.status === 'blacklist'
-      );
-      
-      if (blacklisted) {
+      const placeName = place.name.toLowerCase().trim();
+      const isBlacklisted = blacklistedNames.includes(placeName);
+      if (isBlacklisted) {
         console.log(`[BLACKLIST] Filtered out: ${place.name}`);
       }
-      
-      return !blacklisted;
+      return !isBlacklisted;
+    });
+  };
+  
+  // Filter out Google places that already exist in custom locations (exact name match)
+  const filterDuplicatesOfCustom = (places) => {
+    const customNames = customLocations
+      .filter(loc => loc.status !== 'blacklist')
+      .map(loc => loc.name.toLowerCase().trim());
+    
+    if (customNames.length === 0) return places;
+    
+    return places.filter(place => {
+      const placeName = place.name.toLowerCase().trim();
+      const isDuplicate = customNames.includes(placeName);
+      if (isDuplicate) {
+        console.log(`[DEDUP] Filtered Google duplicate of custom location: ${place.name}`);
+      }
+      return !isDuplicate;
     });
   };
 
@@ -3781,11 +3803,14 @@ const BangkokExplorer = () => {
                               const stopId = stop.id || stop.originalIndex;
                               const isDisabled = disabledStops.includes(stopId);
                               const isCustom = stop.custom;
+                              const isAddedLater = stop.addedLater;
                               
                               return (
-                                <div key={stop.originalIndex} className="bg-gray-50 p-1.5 rounded border relative" style={{ 
-                                  borderColor: hasValidCoords ? (isDisabled ? '#9ca3af' : '#e5e7eb') : '#ef4444',
-                                  backgroundColor: hasValidCoords ? (isDisabled ? '#f3f4f6' : '#fafafa') : '#fef2f2',
+                                <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
+                                  borderColor: !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
+                                  borderWidth: isAddedLater ? '2px' : '1px',
+                                  borderStyle: isAddedLater ? 'dashed' : 'solid',
+                                  backgroundColor: !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
                                   {/* Action buttons */}
@@ -3933,6 +3958,9 @@ const BangkokExplorer = () => {
                                       {isCustom && (
                                         <span title="מקום שלי" style={{ fontSize: '11px' }}>🎖️</span>
                                       )}
+                                      {isAddedLater && (
+                                        <span className="text-blue-500 font-bold" title="נוסף ב+עוד" style={{ fontSize: '9px' }}>+עוד</span>
+                                      )}
                                       {/* Camera icon for custom locations with image */}
                                       {isCustom && stop.uploadedImage && (
                                         <button
@@ -3977,16 +4005,6 @@ const BangkokExplorer = () => {
                       );
                     });
                   })()}
-                  
-                  {/* Fetch more all button */}
-                  <button
-                    onClick={async () => {
-                      await fetchMoreAll();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm hover:from-blue-600 hover:to-indigo-600"
-                  >
-                    ➕ מצא עוד מכולם ({formData.fetchMoreCount || 5} מקומות)
-                  </button>
                 </div>
                 
                 <div className="mt-3 space-y-2">
@@ -5421,7 +5439,7 @@ const BangkokExplorer = () => {
                   type="number"
                   min="1"
                   max="100"
-                  value={formData.fetchMoreCount || 5}
+                  value={formData.fetchMoreCount || 3}
                   onChange={(e) => {
                     const val = parseInt(e.target.value) || 5;
                     setFormData({...formData, fetchMoreCount: Math.min(100, Math.max(1, val))});
@@ -7151,7 +7169,7 @@ const BangkokExplorer = () => {
                 >✕</button>
               </div>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
               <div className="font-bold text-lg text-gray-800">{selectedStopInfo.name}</div>
               
               {/* Source */}
@@ -7212,10 +7230,39 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Rating */}
-              {selectedStopInfo.rating && (
+              {selectedStopInfo.rating > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-bold text-gray-600">⭐ דירוג:</span>
                   <span>{selectedStopInfo.rating.toFixed(1)} ({selectedStopInfo.ratingCount || 0} ביקורות)</span>
+                </div>
+              )}
+              
+              {/* Address */}
+              {selectedStopInfo.address && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-bold text-gray-600">📫 כתובת:</span>
+                  <span className="text-gray-700 text-xs">{selectedStopInfo.address}</span>
+                </div>
+              )}
+              
+              {/* Google Place Types - from Google API */}
+              {selectedStopInfo.googleTypes && selectedStopInfo.googleTypes.length > 0 && (
+                <div className="bg-green-50 rounded-lg p-3" style={{ direction: 'ltr' }}>
+                  <div className="text-xs font-bold text-green-800 mb-2" style={{ direction: 'rtl' }}>🏷️ קטגוריות Google:</div>
+                  {selectedStopInfo.primaryType && (
+                    <div className="mb-2">
+                      <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                        Primary: {selectedStopInfo.primaryType}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {selectedStopInfo.googleTypes.map((type, idx) => (
+                      <span key={idx} className="bg-white border border-green-300 text-green-800 px-2 py-0.5 rounded text-xs">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
               

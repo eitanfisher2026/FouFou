@@ -7,7 +7,7 @@
         // Add maxStops if not present (for backward compatibility)
         if (!prefs.maxStops) prefs.maxStops = 10;
         // Add fetchMoreCount if not present
-        if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 5;
+        if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         return prefs;
       }
     } catch (e) {}
@@ -18,7 +18,7 @@
       circular: true,
       startPoint: '',
       maxStops: 10,
-      fetchMoreCount: 5
+      fetchMoreCount: 3
     };
   };
 
@@ -711,7 +711,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -753,7 +753,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types'
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -809,7 +809,6 @@
       const isTextSearch = !!textSearchQuery;
       
       // Filter and transform Google Places data
-      let ratingFilteredCount = 0;
       let typeFilteredCount = 0;
       let blacklistFilteredCount = 0;
       
@@ -830,14 +829,7 @@
             }
           }
           
-          // Filter 2: Rating check (no filter for text search)
-          const minRating = isTextSearch ? 0 : 4.0;
-          if (place.rating && place.rating < minRating) {
-            ratingFilteredCount++;
-            return false;
-          }
-          
-          // Filter 3: Type validation - skip for text search
+          // Filter 2: Type validation - skip for text search
           if (!isTextSearch && placeTypes.length > 0) {
             const placeTypesFromGoogle = place.types || [];
             const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
@@ -869,17 +861,20 @@
           googlePlace: true,
           rating: place.rating || 0,
           ratingCount: place.userRatingCount || 0,
-          interests: interests  // Add interests field
+          googleTypes: place.types || [],
+          primaryType: place.primaryType || '',
+          address: place.formattedAddress || '',
+          interests: interests
         }));
       
       console.log('[DYNAMIC] Filtering summary:', {
         received: data.places.length,
-        ratingFiltered: ratingFilteredCount,
         typeFiltered: typeFilteredCount,
+        blacklistFiltered: blacklistFilteredCount,
         final: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${ratingFilteredCount} rating, ${typeFilteredCount} type)`, {
+      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type)`, {
         names: transformed.slice(0, 5).map(p => p.name)
       });
       
@@ -1146,8 +1141,11 @@
             fetchedPlaces = [];
           }
           
-          // Filter blacklist BEFORE sorting
+          // Filter blacklisted places (status='blacklist') BEFORE sorting
           fetchedPlaces = filterBlacklist(fetchedPlaces);
+          
+          // Filter out Google places that duplicate custom locations
+          fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
           
           // Sort by rating and take what we need (or all if less available)
           const sortedPlaces = fetchedPlaces
@@ -1341,39 +1339,41 @@
     setIsGenerating(true);
     
     try {
-      const fetchCount = formData.fetchMoreCount || 5;
+      const fetchCount = formData.fetchMoreCount || 3;
       console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
       
       let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
       
-      // Filter blacklist
+      // Filter blacklisted places and duplicates of custom locations
       newPlaces = filterBlacklist(newPlaces);
+      newPlaces = filterDuplicatesOfCustom(newPlaces);
       
-      // Filter duplicates (by name)
+      // Filter duplicates of places already in route (by name)
       const existingNames = route.stops.map(s => s.name.toLowerCase());
       newPlaces = newPlaces.filter(p => !existingNames.includes(p.name.toLowerCase()));
       
-      // Take only what we need
-      const placesToAdd = newPlaces.slice(0, fetchCount);
+      // Sort by rating (descending) - rating is for prioritization only
+      newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+      
+      // Take only what we need and mark as addedLater
+      const placesToAdd = newPlaces.slice(0, fetchCount).map(p => ({
+        ...p,
+        addedLater: true
+      }));
       
       if (placesToAdd.length === 0) {
         showToast(`לא נמצאו עוד מקומות ב${allInterestOptions.find(o => o.id === interest)?.label}`, 'warning');
         return;
       }
       
-      // Update route
+      // Append new places at the end of the route
       const updatedRoute = {
         ...route,
         stops: [...route.stops, ...placesToAdd]
       };
       
       setRoute(updatedRoute);
-      showToast(`נוספו ${placesToAdd.length} מקומות!`, 'success');
-      
-      // Scroll to results
-      setTimeout(() => {
-        document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      showToast(`נוספו ${placesToAdd.length} מקומות ל${allInterestOptions.find(o => o.id === interest)?.label}!`, 'success');
       
     } catch (error) {
       console.error('[FETCH_MORE] Error:', error);
@@ -1390,7 +1390,7 @@
     setIsGenerating(true);
     
     try {
-      const fetchCount = formData.fetchMoreCount || 5;
+      const fetchCount = formData.fetchMoreCount || 3;
       const perInterest = Math.ceil(fetchCount / formData.interests.length);
       
       console.log(`[FETCH_MORE_ALL] Fetching ${perInterest} per interest, total: ${fetchCount}`);
@@ -1400,8 +1400,9 @@
       for (const interest of formData.interests) {
         let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
         
-        // Filter blacklist
+        // Filter blacklisted places and duplicates of custom locations
         newPlaces = filterBlacklist(newPlaces);
+        newPlaces = filterDuplicatesOfCustom(newPlaces);
         
         // Filter duplicates
         const existingNames = [...route.stops, ...allNewPlaces].map(s => s.name.toLowerCase());
@@ -1437,18 +1438,39 @@
   };
 
   // Filter blacklisted places
+  // Filter out places that exist in custom locations with status='blacklist' (exact name match)
   const filterBlacklist = (places) => {
+    const blacklistedNames = customLocations
+      .filter(loc => loc.status === 'blacklist')
+      .map(loc => loc.name.toLowerCase().trim());
+    
+    if (blacklistedNames.length === 0) return places;
+    
     return places.filter(place => {
-      const blacklisted = customLocations.find(loc => 
-        loc.name.toLowerCase() === place.name.toLowerCase() && 
-        loc.status === 'blacklist'
-      );
-      
-      if (blacklisted) {
+      const placeName = place.name.toLowerCase().trim();
+      const isBlacklisted = blacklistedNames.includes(placeName);
+      if (isBlacklisted) {
         console.log(`[BLACKLIST] Filtered out: ${place.name}`);
       }
-      
-      return !blacklisted;
+      return !isBlacklisted;
+    });
+  };
+  
+  // Filter out Google places that already exist in custom locations (exact name match)
+  const filterDuplicatesOfCustom = (places) => {
+    const customNames = customLocations
+      .filter(loc => loc.status !== 'blacklist')
+      .map(loc => loc.name.toLowerCase().trim());
+    
+    if (customNames.length === 0) return places;
+    
+    return places.filter(place => {
+      const placeName = place.name.toLowerCase().trim();
+      const isDuplicate = customNames.includes(placeName);
+      if (isDuplicate) {
+        console.log(`[DEDUP] Filtered Google duplicate of custom location: ${place.name}`);
+      }
+      return !isDuplicate;
     });
   };
 

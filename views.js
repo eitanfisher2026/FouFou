@@ -285,11 +285,14 @@
                               const stopId = stop.id || stop.originalIndex;
                               const isDisabled = disabledStops.includes(stopId);
                               const isCustom = stop.custom;
+                              const isAddedLater = stop.addedLater;
                               
                               return (
-                                <div key={stop.originalIndex} className="bg-gray-50 p-1.5 rounded border relative" style={{ 
-                                  borderColor: hasValidCoords ? (isDisabled ? '#9ca3af' : '#e5e7eb') : '#ef4444',
-                                  backgroundColor: hasValidCoords ? (isDisabled ? '#f3f4f6' : '#fafafa') : '#fef2f2',
+                                <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
+                                  borderColor: !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
+                                  borderWidth: isAddedLater ? '2px' : '1px',
+                                  borderStyle: isAddedLater ? 'dashed' : 'solid',
+                                  backgroundColor: !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
                                   opacity: isDisabled ? 0.6 : 1
                                 }}>
                                   {/* Action buttons */}
@@ -437,6 +440,9 @@
                                       {isCustom && (
                                         <span title="מקום שלי" style={{ fontSize: '11px' }}>🎖️</span>
                                       )}
+                                      {isAddedLater && (
+                                        <span className="text-blue-500 font-bold" title="נוסף ב+עוד" style={{ fontSize: '9px' }}>+עוד</span>
+                                      )}
                                       {/* Camera icon for custom locations with image */}
                                       {isCustom && stop.uploadedImage && (
                                         <button
@@ -481,16 +487,6 @@
                       );
                     });
                   })()}
-                  
-                  {/* Fetch more all button */}
-                  <button
-                    onClick={async () => {
-                      await fetchMoreAll();
-                    }}
-                    className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold text-sm hover:from-blue-600 hover:to-indigo-600"
-                  >
-                    ➕ מצא עוד מכולם ({formData.fetchMoreCount || 5} מקומות)
-                  </button>
                 </div>
                 
                 <div className="mt-3 space-y-2">
@@ -1925,7 +1921,7 @@
                   type="number"
                   min="1"
                   max="100"
-                  value={formData.fetchMoreCount || 5}
+                  value={formData.fetchMoreCount || 3}
                   onChange={(e) => {
                     const val = parseInt(e.target.value) || 5;
                     setFormData({...formData, fetchMoreCount: Math.min(100, Math.max(1, val))});

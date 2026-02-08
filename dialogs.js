@@ -1338,7 +1338,7 @@
                 >✕</button>
               </div>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
               <div className="font-bold text-lg text-gray-800">{selectedStopInfo.name}</div>
               
               {/* Source */}
@@ -1399,10 +1399,39 @@
               </div>
               
               {/* Rating */}
-              {selectedStopInfo.rating && (
+              {selectedStopInfo.rating > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-bold text-gray-600">⭐ דירוג:</span>
                   <span>{selectedStopInfo.rating.toFixed(1)} ({selectedStopInfo.ratingCount || 0} ביקורות)</span>
+                </div>
+              )}
+              
+              {/* Address */}
+              {selectedStopInfo.address && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-bold text-gray-600">📫 כתובת:</span>
+                  <span className="text-gray-700 text-xs">{selectedStopInfo.address}</span>
+                </div>
+              )}
+              
+              {/* Google Place Types - from Google API */}
+              {selectedStopInfo.googleTypes && selectedStopInfo.googleTypes.length > 0 && (
+                <div className="bg-green-50 rounded-lg p-3" style={{ direction: 'ltr' }}>
+                  <div className="text-xs font-bold text-green-800 mb-2" style={{ direction: 'rtl' }}>🏷️ קטגוריות Google:</div>
+                  {selectedStopInfo.primaryType && (
+                    <div className="mb-2">
+                      <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold">
+                        Primary: {selectedStopInfo.primaryType}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {selectedStopInfo.googleTypes.map((type, idx) => (
+                      <span key={idx} className="bg-white border border-green-300 text-green-800 px-2 py-0.5 rounded text-xs">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
               
