@@ -808,13 +808,20 @@
       // Check if this was a text search
       const isTextSearch = !!textSearchQuery;
       
+      // For text search: extract query words for relevance filtering
+      const textSearchWords = isTextSearch 
+        ? textSearchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+        : [];
+      
       // Filter and transform Google Places data
       let typeFilteredCount = 0;
       let blacklistFilteredCount = 0;
+      let relevanceFilteredCount = 0;
       
       const transformed = data.places
         .filter(place => {
           const placeName = (place.displayName?.text || '').toLowerCase();
+          const placeTypesFromGoogle = place.types || [];
           
           // Filter 1: Blacklist check - filter out places with blacklisted words in name
           if (blacklistWords.length > 0) {
@@ -829,7 +836,27 @@
             }
           }
           
-          // Filter 2: Type validation - skip for text search
+          // Filter 2: For text search - relevance check
+          // Place name must contain at least one word from the search query
+          // OR place types must include art_gallery/museum (for art-related searches)
+          if (isTextSearch && textSearchWords.length > 0) {
+            const nameHasQueryWord = textSearchWords.some(word => placeName.includes(word));
+            const hasArtType = placeTypesFromGoogle.some(t => 
+              ['art_gallery', 'museum', 'painter', 'art_studio'].includes(t)
+            );
+            
+            if (!nameHasQueryWord && !hasArtType) {
+              relevanceFilteredCount++;
+              console.log('[DYNAMIC] ❌ Filtered out (text search irrelevant):', {
+                name: place.displayName?.text,
+                types: placeTypesFromGoogle,
+                searchWords: textSearchWords
+              });
+              return false;
+            }
+          }
+          
+          // Filter 3: Type validation - for category search only
           if (!isTextSearch && placeTypes.length > 0) {
             const placeTypesFromGoogle = place.types || [];
             const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
@@ -871,10 +898,11 @@
         received: data.places.length,
         typeFiltered: typeFilteredCount,
         blacklistFiltered: blacklistFilteredCount,
+        relevanceFiltered: relevanceFilteredCount,
         final: transformed.length
       });
       
-      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type)`, {
+      addDebugLog('API', `Got ${transformed.length} results (filtered ${blacklistFilteredCount} blacklist, ${typeFilteredCount} type, ${relevanceFilteredCount} irrelevant)`, {
         names: transformed.slice(0, 5).map(p => p.name)
       });
       

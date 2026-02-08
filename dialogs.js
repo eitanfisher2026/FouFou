@@ -1406,13 +1406,27 @@
                 </div>
               )}
               
-              {/* Address */}
-              {selectedStopInfo.address && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-bold text-gray-600">📫 כתובת:</span>
-                  <span className="text-gray-700 text-xs">{selectedStopInfo.address}</span>
-                </div>
-              )}
+              {/* Blacklist words - from interest config */}
+              {(() => {
+                const allBlacklistWords = (selectedStopInfo.interests || []).flatMap(interest => {
+                  const config = interestConfig[interest] || {};
+                  return (config.blacklist || []);
+                });
+                const uniqueWords = [...new Set(allBlacklistWords)];
+                if (uniqueWords.length === 0) return null;
+                return (
+                  <div className="bg-red-50 rounded-lg p-3" style={{ direction: 'ltr' }}>
+                    <div className="text-xs font-bold text-red-800 mb-2" style={{ direction: 'rtl' }}>🚫 מילות סינון (Blacklist):</div>
+                    <div className="flex flex-wrap gap-1">
+                      {uniqueWords.map((word, idx) => (
+                        <span key={idx} className="bg-white border border-red-300 text-red-700 px-2 py-0.5 rounded text-xs">
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               
               {/* Google Place Types - from Google API */}
               {selectedStopInfo.googleTypes && selectedStopInfo.googleTypes.length > 0 && (
