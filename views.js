@@ -2321,7 +2321,6 @@
           <p className="text-sm font-bold text-gray-500">© 2026 Eitan Fisher</p>
           <p className="text-[10px] text-gray-400 mt-0.5">Bangkok Explorer v{window.BKK.VERSION}</p>
         </div>
-      </div>
 
       {/* Floating Feedback Button */}
       {!showFeedbackDialog && (
