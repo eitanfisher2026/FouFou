@@ -1045,7 +1045,7 @@
                 radius: searchRadius
               }
             },
-            rankPreference: 'POPULARITY'
+            rankPreference: radiusOverride ? 'DISTANCE' : 'POPULARITY'
           })
         });
       }
@@ -1591,6 +1591,20 @@
           // Filter out Google places that duplicate custom locations
           fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
           
+          // In radius mode: HARD filter by actual distance (API locationBias doesn't guarantee this)
+          if (isRadiusMode) {
+            const beforeFilter = fetchedPlaces.length;
+            fetchedPlaces = fetchedPlaces.filter(p => {
+              const dist = calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng);
+              return dist <= formData.radiusMeters;
+            });
+            const removed = beforeFilter - fetchedPlaces.length;
+            if (removed > 0) {
+              addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
+              console.log(`[RADIUS] Filtered ${removed}/${beforeFilter} places beyond radius`);
+            }
+          }
+          
           // Sort and take what we need
           let sortedPlaces;
           if (isRadiusMode) {
@@ -1842,6 +1856,8 @@
       if (isRadiusMode) {
         newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
           .filter(p => p.detectedArea);
+        // Hard filter by actual distance
+        newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
       } else {
         newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
       }
@@ -1916,6 +1932,8 @@
         if (isRadiusModeMore) {
           newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
             .filter(p => p.detectedArea);
+          // Hard filter by actual distance
+          newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
         } else {
           newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
         }
