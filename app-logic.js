@@ -43,6 +43,7 @@
   const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
   const [editingRoute, setEditingRoute] = useState(null);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
+  const [routeDialogMode, setRouteDialogMode] = useState('edit'); // 'add' or 'edit'
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
@@ -1760,6 +1761,11 @@
     setRouteNotes('');
     setRoute(routeToSave); // Update route to show it's saved
     showToast('המסלול נשמר!', 'success');
+    
+    // Open edit dialog with saved route
+    setEditingRoute({...routeToSave});
+    setRouteDialogMode('add');
+    setShowRouteDialog(true);
   };
 
   const deleteRoute = (routeId) => {
@@ -1788,7 +1794,7 @@
     setStartPointCoords(coords);
     // Restore route type (circular/linear)
     setRouteType(savedRoute.circular ? 'circular' : 'linear');
-    setCurrentView('form');
+    setCurrentView('route');
   };
 
   // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)

@@ -1443,10 +1443,7 @@
                           className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${
                             savedRoute.inProgress ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white'
                           } hover:bg-blue-50 cursor-pointer`}
-                          onClick={() => {
-                            setEditingRoute({...savedRoute});
-                            setShowRouteDialog(true);
-                          }}
+                          onClick={() => loadSavedRoute(savedRoute)}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap">
@@ -1467,6 +1464,7 @@
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingRoute({...savedRoute});
+                              setRouteDialogMode('edit');
                               setShowRouteDialog(true);
                             }}
                             className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
