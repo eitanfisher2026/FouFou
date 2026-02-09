@@ -1357,6 +1357,141 @@
       )}
 
       {/* Toast Notification - Subtle */}
+      {/* Feedback Dialog */}
+      {showFeedbackDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl">
+            <div className="bg-gradient-to-r from-orange-400 to-pink-400 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
+              <h3 className="text-base font-bold">💬 שלח משוב</h3>
+              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex gap-2">
+                {[
+                  { id: 'bug', label: '🐛 באג', color: 'red' },
+                  { id: 'idea', label: '💡 רעיון', color: 'yellow' },
+                  { id: 'general', label: '💭 כללי', color: 'blue' }
+                ].map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setFeedbackCategory(cat.id)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      feedbackCategory === cat.id
+                        ? cat.color === 'red' ? 'bg-red-100 border-2 border-red-400 text-red-700'
+                        : cat.color === 'yellow' ? 'bg-yellow-100 border-2 border-yellow-400 text-yellow-700'
+                        : 'bg-blue-100 border-2 border-blue-400 text-blue-700'
+                        : 'bg-gray-100 border-2 border-transparent text-gray-500'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+              
+              <textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="ספר לנו מה חשבת..."
+                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-orange-400 focus:outline-none"
+                rows={4}
+                autoFocus
+                dir="rtl"
+              />
+              
+              <button
+                onClick={submitFeedback}
+                disabled={!feedbackText.trim()}
+                className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all ${
+                  feedbackText.trim()
+                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                📨 שלח
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback List Dialog (Admin Only) */}
+      {showFeedbackList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-t-xl flex justify-between items-center">
+              <h3 className="text-base font-bold">💬 משובים ({feedbackList.length})</h3>
+              <div className="flex items-center gap-2">
+                {feedbackList.length > 0 && (
+                  <button
+                    onClick={() => {
+                      showConfirm('למחוק את כל המשובים?', () => {
+                        if (isFirebaseAvailable && database) {
+                          database.ref('feedback').remove().then(() => {
+                            setFeedbackList([]);
+                            showToast('כל המשובים נמחקו', 'success');
+                          });
+                        }
+                      });
+                    }}
+                    className="text-white opacity-70 hover:opacity-100 text-sm"
+                    title="מחק הכל"
+                  >
+                    🗑️
+                  </button>
+                )}
+                <button onClick={() => setShowFeedbackList(false)} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 p-3">
+              {feedbackList.length === 0 ? (
+                <div className="text-center text-gray-400 py-8">
+                  <div className="text-3xl mb-2">📭</div>
+                  <p className="text-sm">אין משובים עדיין</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {feedbackList.map((item) => (
+                    <div key={item.firebaseId} className={`p-3 rounded-lg border-2 transition-all ${
+                      item.resolved ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-gray-300'
+                    }`}>
+                      <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">
+                            {item.category === 'bug' ? '🐛' : item.category === 'idea' ? '💡' : '💭'}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono">{item.userId?.slice(-8)}</span>
+                          <span className="text-[10px] text-gray-400">מ: {item.currentView || '?'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => toggleFeedbackResolved(item)}
+                            className={`text-sm px-1 ${item.resolved ? 'opacity-50' : ''}`}
+                            title={item.resolved ? 'סמן כלא טופל' : 'סמן כטופל'}
+                          >
+                            {item.resolved ? '↩️' : '✅'}
+                          </button>
+                          <button
+                            onClick={() => deleteFeedback(item)}
+                            className="text-sm px-1 opacity-50 hover:opacity-100"
+                            title="מחק"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.text}</p>
+                      <div className="text-[10px] text-gray-400 mt-1">
+                        {item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Import Confirmation Dialog */}
       {showImportDialog && importedData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

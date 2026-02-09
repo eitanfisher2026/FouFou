@@ -84,6 +84,14 @@
   });
   const [showAccessLog, setShowAccessLog] = useState(false);
 
+  // Feedback System
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackCategory, setFeedbackCategory] = useState('general');
+  const [feedbackList, setFeedbackList] = useState([]);
+  const [showFeedbackList, setShowFeedbackList] = useState(false);
+  const [hasNewFeedback, setHasNewFeedback] = useState(false);
+
   // Confirm Dialog (replaces browser confirm)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ message: '', onConfirm: null });
@@ -763,6 +771,87 @@
     const latest = accessLogs.length > 0 ? accessLogs[0].timestamp : Date.now();
     localStorage.setItem('bangkok_last_seen', latest.toString());
     setHasNewEntries(false);
+  };
+
+  // Feedback System
+  const submitFeedback = () => {
+    if (!feedbackText.trim()) {
+      showToast('אנא כתוב משוב', 'warning');
+      return;
+    }
+    
+    const feedbackEntry = {
+      category: feedbackCategory,
+      text: feedbackText.trim(),
+      userId: localStorage.getItem('bangkok_user_id') || 'unknown',
+      currentView: currentView,
+      timestamp: Date.now(),
+      date: new Date().toISOString(),
+      resolved: false
+    };
+    
+    if (isFirebaseAvailable && database) {
+      database.ref('feedback').push(feedbackEntry)
+        .then(() => {
+          showToast('תודה על המשוב! 🙏', 'success');
+          setFeedbackText('');
+          setFeedbackCategory('general');
+          setShowFeedbackDialog(false);
+        })
+        .catch(() => showToast('שגיאה בשליחה', 'error'));
+    } else {
+      showToast('Firebase לא זמין', 'error');
+    }
+  };
+
+  // Load feedback list (admin only)
+  useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    if (!isCurrentUserAdmin) return;
+    
+    const feedbackRef = database.ref('feedback').orderByChild('timestamp').limitToLast(100);
+    const lastSeenFeedback = parseInt(localStorage.getItem('bangkok_last_seen_feedback') || '0');
+    
+    const unsubscribe = feedbackRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const arr = Object.keys(data).map(key => ({
+          ...data[key],
+          firebaseId: key
+        })).sort((a, b) => b.timestamp - a.timestamp);
+        setFeedbackList(arr);
+        
+        const hasNew = arr.some(f => f.timestamp > lastSeenFeedback);
+        if (hasNew && lastSeenFeedback > 0) {
+          setHasNewFeedback(true);
+        }
+      } else {
+        setFeedbackList([]);
+      }
+    });
+    
+    return () => feedbackRef.off('value', unsubscribe);
+  }, [isCurrentUserAdmin]);
+
+  const markFeedbackAsSeen = () => {
+    const latest = feedbackList.length > 0 ? feedbackList[0].timestamp : Date.now();
+    localStorage.setItem('bangkok_last_seen_feedback', latest.toString());
+    setHasNewFeedback(false);
+  };
+
+  const toggleFeedbackResolved = (feedbackItem) => {
+    if (isFirebaseAvailable && database && feedbackItem.firebaseId) {
+      database.ref(`feedback/${feedbackItem.firebaseId}`).update({
+        resolved: !feedbackItem.resolved
+      });
+    }
+  };
+
+  const deleteFeedback = (feedbackItem) => {
+    if (isFirebaseAvailable && database && feedbackItem.firebaseId) {
+      database.ref(`feedback/${feedbackItem.firebaseId}`).remove()
+        .then(() => showToast('משוב נמחק', 'success'));
+    }
   };
 
   // Config - loaded from config.js

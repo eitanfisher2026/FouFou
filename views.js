@@ -75,7 +75,12 @@
               currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">{(isUnlocked || !adminPassword) ? '🔓' : '🔒'}</div>
+            <div className="truncate text-center relative">
+              {(isUnlocked || !adminPassword) ? '🔓' : '🔒'}
+              {(hasNewFeedback || hasNewEntries) && isCurrentUserAdmin && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </div>
           </button>
         </div>
 
@@ -2073,6 +2078,18 @@
                   📋 צפה בלוג כניסות
                   {hasNewEntries && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">חדש!</span>}
                 </button>
+                
+                {/* Feedback Viewer Button */}
+                <button
+                  onClick={() => {
+                    markFeedbackAsSeen();
+                    setShowFeedbackList(true);
+                  }}
+                  className="w-full bg-purple-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-purple-600 flex items-center justify-center gap-2 mt-2"
+                >
+                  💬 משובים ({feedbackList.length})
+                  {hasNewFeedback && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">חדש!</span>}
+                </button>
               </div>
             </div>
             )}
@@ -2304,5 +2321,17 @@
           <p className="text-sm font-bold text-gray-500">© 2026 Eitan Fisher</p>
           <p className="text-[10px] text-gray-400 mt-0.5">Bangkok Explorer v{window.BKK.VERSION}</p>
         </div>
+      </div>
+
+      {/* Floating Feedback Button */}
+      {!showFeedbackDialog && (
+        <button
+          onClick={() => setShowFeedbackDialog(true)}
+          className="fixed bottom-20 left-4 z-40 bg-white text-gray-400 hover:text-orange-500 hover:shadow-lg w-10 h-10 rounded-full shadow-md border border-gray-200 flex items-center justify-center transition-all duration-300 text-lg"
+          title="שלח משוב"
+        >
+          💬
+        </button>
+      )}
 
         {/* === DIALOGS (from dialogs.js) === */}
