@@ -101,45 +101,209 @@
               </button>
             </div>
 
-            {/* Split Layout: Areas (right) | Interests (left) */}
-            <div className="grid grid-cols-[95px_1fr] gap-3 items-start" style={{ paddingBottom: '60px' }}>
+            {/* Split Layout: Mode selector + content (right) | Interests (left) */}
+            <div className="grid grid-cols-[110px_1fr] gap-3 items-start" style={{ paddingBottom: '60px' }}>
               
-              {/* Right Column: Areas */}
+              {/* Right Column: Search Mode */}
               <div className="flex flex-col">
-                <div className="flex items-center justify-center gap-1 mb-1.5">
-                  <label className="font-medium text-xs block text-center">🗺️ איזור</label>
+                {/* Mode Toggle */}
+                <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2">
                   <button
-                    onClick={detectArea}
-                    disabled={isLocating}
-                    className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                    title="זהה איזור לפי מיקום נוכחי"
-                  >
-                    {isLocating ? '⏳' : '📍'}
-                  </button>
+                    onClick={() => setFormData({...formData, searchMode: 'area'})}
+                    className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                      formData.searchMode === 'area' ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                    }`}
+                  >🗺️ איזור</button>
+                  <button
+                    onClick={() => setFormData({...formData, searchMode: 'radius'})}
+                    className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                      formData.searchMode === 'radius' ? 'bg-white shadow text-orange-600' : 'text-gray-500'
+                    }`}
+                  >📍 רדיוס</button>
                 </div>
-                <div className="border border-gray-200 rounded-lg p-1.5">
-                  <div className="space-y-1.5">
-                    {areaOptions.map(area => (
+                
+                {formData.searchMode === 'area' ? (
+                  /* Area Mode - same as before */
+                  <div>
+                    <div className="flex items-center justify-center gap-1 mb-1.5">
+                      <label className="font-medium text-xs block text-center">🗺️ איזור</label>
                       <button
-                        key={area.id}
-                        onClick={() => setFormData({...formData, area: area.id})}
-                        style={{
-                          border: formData.area === area.id ? '3px solid #3b82f6' : '2px solid #d1d5db',
-                          backgroundColor: formData.area === area.id ? '#dbeafe' : '#ffffff',
-                          boxShadow: formData.area === area.id ? '0 4px 6px -1px rgba(59, 130, 246, 0.3)' : 'none'
-                        }}
-                        className="w-full p-1.5 rounded-lg text-xs"
+                        onClick={detectArea}
+                        disabled={isLocating}
+                        className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+                        title="זהה איזור לפי מיקום נוכחי"
                       >
-                        <div className="text-base mb-0.5">{area.icon}</div>
-                        <div style={{
-                          fontWeight: 'bold',
-                          fontSize: '10px',
-                          color: formData.area === area.id ? '#1e40af' : '#374151'
-                        }}>{area.label}</div>
+                        {isLocating ? '⏳' : '📍'}
                       </button>
-                    ))}
+                    </div>
+                    <div className="border border-gray-200 rounded-lg p-1.5">
+                      <div className="space-y-1.5">
+                        {areaOptions.map(area => (
+                          <button
+                            key={area.id}
+                            onClick={() => setFormData({...formData, area: area.id})}
+                            style={{
+                              border: formData.area === area.id ? '3px solid #3b82f6' : '2px solid #d1d5db',
+                              backgroundColor: formData.area === area.id ? '#dbeafe' : '#ffffff',
+                              boxShadow: formData.area === area.id ? '0 4px 6px -1px rgba(59, 130, 246, 0.3)' : 'none'
+                            }}
+                            className="w-full p-1.5 rounded-lg text-xs"
+                          >
+                            <div className="text-base mb-0.5">{area.icon}</div>
+                            <div style={{
+                              fontWeight: 'bold',
+                              fontSize: '10px',
+                              color: formData.area === area.id ? '#1e40af' : '#374151'
+                            }}>{area.label}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Radius Mode */
+                  <div className="border border-orange-200 rounded-lg p-2 bg-orange-50 space-y-2">
+                    {/* Radius slider */}
+                    <div className="text-center">
+                      <label className="font-medium text-[10px] block text-center mb-0.5">📍 רדיוס חיפוש</label>
+                      <div className="text-lg font-bold text-orange-600">{formData.radiusMeters}מ'</div>
+                      <input
+                        type="range"
+                        min="100"
+                        max="2000"
+                        step="100"
+                        value={formData.radiusMeters}
+                        onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
+                        className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer"
+                        style={{ accentColor: '#ea580c' }}
+                      />
+                      <div className="flex justify-between text-[8px] text-gray-400 mt-0.5">
+                        <span>100מ'</span>
+                        <span>2ק"מ</span>
+                      </div>
+                    </div>
+
+                    {/* Source toggle: GPS vs My Place */}
+                    <div className="flex bg-white rounded p-0.5 border border-orange-200">
+                      <button
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, radiusSource: 'gps', currentLat: null, currentLng: null, radiusPlaceId: null }));
+                          setPlaceSearchQuery('');
+                        }}
+                        className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                          formData.radiusSource === 'gps' ? 'bg-orange-500 text-white' : 'text-gray-500'
+                        }`}
+                      >📍 GPS</button>
+                      <button
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, radiusSource: 'myplace', currentLat: null, currentLng: null, radiusPlaceId: null }));
+                          setPlaceSearchQuery('');
+                        }}
+                        className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                          formData.radiusSource === 'myplace' ? 'bg-orange-500 text-white' : 'text-gray-500'
+                        }`}
+                      >🏠 מקום שלי</button>
+                    </div>
+                    
+                    {formData.radiusSource === 'gps' ? (
+                      /* GPS Mode */
+                      <button
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            showToast('הדפדפן לא תומך במיקום', 'error');
+                            return;
+                          }
+                          setIsLocating(true);
+                          navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                              const { latitude, longitude } = position.coords;
+                              setFormData(prev => ({ 
+                                ...prev, 
+                                currentLat: parseFloat(latitude.toFixed(6)), 
+                                currentLng: parseFloat(longitude.toFixed(6)) 
+                              }));
+                              showToast('📍 מיקום נקלט!', 'success');
+                              setIsLocating(false);
+                            },
+                            (error) => {
+                              setIsLocating(false);
+                              showToast(error.code === 1 ? 'אין הרשאת מיקום' : 'לא ניתן לאתר מיקום', 'error');
+                            },
+                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                          );
+                        }}
+                        disabled={isLocating}
+                        className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition ${
+                          isLocating ? 'bg-gray-300 text-gray-500' 
+                          : formData.currentLat ? 'bg-green-500 text-white hover:bg-green-600' 
+                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                      >
+                        {isLocating ? '⏳ מאתר...' : formData.currentLat ? '✅ עדכן מיקום' : '📍 מצא מיקום'}
+                      </button>
+                    ) : (
+                      /* My Place Mode */
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          value={placeSearchQuery}
+                          onChange={(e) => setPlaceSearchQuery(e.target.value)}
+                          placeholder="🔍 חפש מקום שלי..."
+                          className="w-full p-1.5 border border-orange-300 rounded-lg text-[10px] focus:border-orange-500 focus:outline-none"
+                          dir="rtl"
+                        />
+                        <div className="max-h-32 overflow-y-auto bg-white rounded border border-gray-200">
+                          {customLocations
+                            .filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist')
+                            .filter(loc => !placeSearchQuery || loc.name.toLowerCase().includes(placeSearchQuery.toLowerCase()))
+                            .slice(0, 20)
+                            .map(loc => (
+                              <button
+                                key={loc.id}
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentLat: loc.lat,
+                                    currentLng: loc.lng,
+                                    radiusPlaceId: loc.id
+                                  }));
+                                  setPlaceSearchQuery(loc.name);
+                                }}
+                                className={`w-full text-right p-1.5 text-[10px] border-b border-gray-100 hover:bg-orange-50 transition ${
+                                  formData.radiusPlaceId === loc.id ? 'bg-orange-100 font-bold' : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[8px]">{areaOptions.find(a => a.id === loc.area)?.icon || '📍'}</span>
+                                  <span className="truncate">{loc.name}</span>
+                                </div>
+                              </button>
+                            ))
+                          }
+                          {customLocations.filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist').length === 0 && (
+                            <div className="p-2 text-center text-[10px] text-gray-400">אין מקומות עם קואורדינטות</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Coordinates display */}
+                    {formData.currentLat && (
+                      <div className="bg-white rounded p-1.5 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[8px] text-gray-400 w-6">Lat:</span>
+                          <input type="text" readOnly value={formData.currentLat} 
+                            className="flex-1 text-[9px] font-mono bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-center" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[8px] text-gray-400 w-6">Lng:</span>
+                          <input type="text" readOnly value={formData.currentLng} 
+                            className="flex-1 text-[9px] font-mono bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-center" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Left Column: Interests */}
@@ -211,7 +375,7 @@
             }}>
               <button
                 onClick={generateRoute}
-                disabled={formData.interests.length === 0}
+                disabled={formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)}
                 style={{
                   width: '100%',
                   backgroundColor: '#2563eb',
@@ -222,7 +386,7 @@
                   fontSize: '14px',
                   border: 'none',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-                  opacity: formData.interests.length === 0 ? 0.5 : 1
+                  opacity: (formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)) ? 0.5 : 1
                 }}
               >
                 {isGenerating ? 'מחפש...' : `🔍 מצא נקודות עניין (${formData.maxStops} מקומות)`}
@@ -238,6 +402,9 @@
             
             {formData.interests.length === 0 && (
               <p className="text-center text-gray-500 text-xs">בחר לפחות תחום עניין אחד</p>
+            )}
+            {formData.searchMode === 'radius' && !formData.currentLat && formData.interests.length > 0 && (
+              <p className="text-center text-orange-500 text-xs font-medium">📍 לחץ "מצא מיקום" כדי להפעיל חיפוש</p>
             )}
 
             {/* Show stops list ONLY after route is calculated */}
@@ -436,6 +603,16 @@
                                         </span>
                                       )}
                                       <span>{stop.name}</span>
+                                      {stop.detectedArea && formData.searchMode === 'radius' && (
+                                        <span className="text-[8px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded font-bold">
+                                          {areaOptions.find(a => a.id === stop.detectedArea)?.label || stop.detectedArea}
+                                        </span>
+                                      )}
+                                      {stop.distFromCenter != null && formData.searchMode === 'radius' && (
+                                        <span className="text-[8px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold">
+                                          {stop.distFromCenter}מ'
+                                        </span>
+                                      )}
                                       {stop.outsideArea && (
                                         <span className="text-orange-500" title="מקום מחוץ לגבולות האזור" style={{ fontSize: '10px' }}>
                                           🔺
@@ -936,6 +1113,16 @@
                             >
                               {stop.name}
                             </a>
+                            {stop.detectedArea && route.preferences?.searchMode === 'radius' && (
+                              <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold mr-1">
+                                {areaOptions.find(a => a.id === stop.detectedArea)?.label || stop.detectedArea}
+                              </span>
+                            )}
+                            {stop.distFromCenter != null && route.preferences?.searchMode === 'radius' && (
+                              <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold mr-1">
+                                {stop.distFromCenter}מ'
+                              </span>
+                            )}
                             {stop.outsideArea && (
                               <span 
                                 className="text-orange-500" 
@@ -1916,6 +2103,29 @@
                   placeholder="5"
                 />
                 <span className="text-[10px] text-gray-500 mr-2">(1-100)</span>
+              </div>
+            </div>
+            
+            {/* Default Radius Setting */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-400 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-1">📍 רדיוס ברירת מחדל</h3>
+                <p className="text-[10px] text-gray-600 mb-1">רדיוס חיפוש מסביב למיקום נוכחי (מטרים)</p>
+                <input
+                  type="range"
+                  min="100"
+                  max="2000"
+                  step="100"
+                  value={formData.radiusMeters}
+                  onChange={(e) => setFormData({...formData, radiusMeters: parseInt(e.target.value)})}
+                  className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer"
+                  style={{ accentColor: '#ea580c' }}
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-[10px] text-gray-400">100מ'</span>
+                  <span className="text-sm font-bold text-orange-600">{formData.radiusMeters}מ'</span>
+                  <span className="text-[10px] text-gray-400">2000מ'</span>
+                </div>
               </div>
             </div>
             

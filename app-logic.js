@@ -8,6 +8,10 @@
         if (!prefs.maxStops) prefs.maxStops = 10;
         // Add fetchMoreCount if not present
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
+        // Add radius search fields if not present
+        if (!prefs.searchMode) prefs.searchMode = 'area';
+        if (!prefs.radiusMeters) prefs.radiusMeters = 500;
+        if (!prefs.radiusSource) prefs.radiusSource = 'gps';
         return prefs;
       }
     } catch (e) {}
@@ -18,7 +22,13 @@
       circular: true,
       startPoint: '',
       maxStops: 10,
-      fetchMoreCount: 3
+      fetchMoreCount: 3,
+      searchMode: 'area',
+      radiusMeters: 500,
+      radiusSource: 'gps',
+      radiusPlaceId: null,
+      currentLat: null,
+      currentLng: null
     };
   };
 
@@ -71,6 +81,7 @@
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [placeSearchQuery, setPlaceSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [addingPlaceIds, setAddingPlaceIds] = useState([]); // Track places being added
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -872,12 +883,49 @@
   // Text Search URL
   const GOOGLE_PLACES_TEXT_SEARCH_URL = window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL || 'https://places.googleapis.com/v1/places:searchText';
 
-  const fetchGooglePlaces = async (area, interests) => {
-    const center = areaCoordinates[area];
-    if (!center) {
-      addDebugLog('API', `No coordinates for area: ${area}`);
-      console.error('[DYNAMIC] No coordinates for area:', area);
-      return [];
+  // Calculate distance between two coordinates in meters (Haversine)
+  const calcDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371e3;
+    const r1 = lat1 * Math.PI / 180;
+    const r2 = lat2 * Math.PI / 180;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(r1)*Math.cos(r2)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  // Detect which area a coordinate belongs to (returns areaId or null)
+  const detectAreaFromCoords = (lat, lng) => {
+    const coords = window.BKK.areaCoordinates;
+    let closest = null;
+    let closestDist = Infinity;
+    
+    for (const [areaId, center] of Object.entries(coords)) {
+      const check = checkLocationInArea(lat, lng, areaId);
+      if (check.valid && check.distance < closestDist) {
+        closest = areaId;
+        closestDist = check.distance;
+      }
+    }
+    return closest;
+  };
+
+  const fetchGooglePlaces = async (area, interests, radiusOverride) => {
+    // radiusOverride: { lat, lng, radius } for radius mode
+    let center, searchRadius;
+    
+    if (radiusOverride) {
+      center = { lat: radiusOverride.lat, lng: radiusOverride.lng };
+      searchRadius = radiusOverride.radius;
+    } else {
+      const areaCenter = areaCoordinates[area];
+      if (!areaCenter) {
+        addDebugLog('API', `No coordinates for area: ${area}`);
+        console.error('[DYNAMIC] No coordinates for area:', area);
+        return [];
+      }
+      center = { lat: areaCenter.lat, lng: areaCenter.lng };
+      searchRadius = areaCenter.radius || 2000;
     }
 
     // Filter out invalid interests (those without search config)
@@ -930,8 +978,8 @@
       
       if (textSearchQuery) {
         // Use Text Search API for interests like "graffiti" -> "street art"
-        const areaName = areaOptions.find(a => a.id === area)?.labelEn || area;
-        const searchQuery = `${textSearchQuery} ${areaName} Bangkok`;
+        const areaName = area ? (areaOptions.find(a => a.id === area)?.labelEn || area) : '';
+        const searchQuery = `${textSearchQuery} ${areaName} Bangkok`.trim();
         
         addDebugLog('API', `Text Search`, { query: searchQuery, area });
         console.log('[DYNAMIC] Using Text Search:', searchQuery);
@@ -952,7 +1000,7 @@
                   latitude: center.lat,
                   longitude: center.lng
                 },
-                radius: 3000.0
+                radius: searchRadius * 1.5
               }
             }
           })
@@ -994,7 +1042,7 @@
                   latitude: center.lat,
                   longitude: center.lng
                 },
-                radius: 2000
+                radius: searchRadius
               }
             },
             rankPreference: 'POPULARITY'
@@ -1036,7 +1084,7 @@
                   locationRestriction: {
                     circle: {
                       center: { latitude: center.lat, longitude: center.lng },
-                      radius: 2000
+                      radius: searchRadius
                     }
                   }
                 })
@@ -1411,13 +1459,23 @@
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
+    const isRadiusMode = formData.searchMode === 'radius';
     
-    // Filter custom locations that match current area and selected interests
+    // Filter custom locations that match current area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
       // CRITICAL: Skip blacklisted locations!
       if (loc.status === 'blacklist') return false;
       
-      if (loc.area !== formData.area) return false;
+      if (isRadiusMode) {
+        // In radius mode: filter by distance from current position
+        if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
+        const dist = calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng);
+        if (dist > formData.radiusMeters) return false;
+      } else {
+        // In area mode: filter by area (original behavior)
+        if (loc.area !== formData.area) return false;
+      }
+      
       if (!loc.interests || loc.interests.length === 0) return false;
       
       // Check if location interests match selected interests
@@ -1451,16 +1509,35 @@
   };
 
   const generateRoute = async () => {
-    if (!formData.area || formData.interests.length === 0) {
-      showToast('אנא בחר איזור ולפחות תחום עניין אחד', 'warning');
-      return;
+    const isRadiusMode = formData.searchMode === 'radius';
+    
+    if (isRadiusMode) {
+      if (!formData.currentLat || !formData.currentLng) {
+        showToast('אנא מצא את המיקום הנוכחי שלך תחילה', 'warning');
+        return;
+      }
+      if (formData.interests.length === 0) {
+        showToast('אנא בחר לפחות תחום עניין אחד', 'warning');
+        return;
+      }
+    } else {
+      if (!formData.area || formData.interests.length === 0) {
+        showToast('אנא בחר איזור ולפחות תחום עניין אחד', 'warning');
+        return;
+      }
     }
     
     setIsGenerating(true);
     
     try {
-      addDebugLog('ROUTE', 'Starting route generation', { area: formData.area, interests: formData.interests, maxStops: formData.maxStops });
-      console.log('[ROUTE] Starting route generation');
+      addDebugLog('ROUTE', 'Starting route generation', { 
+        mode: formData.searchMode, 
+        area: formData.area, 
+        radius: isRadiusMode ? formData.radiusMeters : null,
+        interests: formData.interests, 
+        maxStops: formData.maxStops 
+      });
+      console.log('[ROUTE] Starting route generation', isRadiusMode ? 'RADIUS mode' : 'AREA mode');
       
       // Get custom locations (always included)
       const customStops = getStopsForInterests();
@@ -1491,7 +1568,12 @@
           
           try {
             console.log(`[ROUTE] Fetching for interest: ${interest}`);
-            fetchedPlaces = await fetchGooglePlaces(formData.area, [interest]);
+            const radiusOverride = isRadiusMode ? { 
+              lat: formData.currentLat, 
+              lng: formData.currentLng, 
+              radius: formData.radiusMeters 
+            } : null;
+            fetchedPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
           } catch (error) {
             // Track errors for user notification
             fetchErrors.push({
@@ -1509,10 +1591,20 @@
           // Filter out Google places that duplicate custom locations
           fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
           
-          // Sort by rating and take what we need (or all if less available)
-          const sortedPlaces = fetchedPlaces
-            .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
-            .slice(0, neededForInterest);
+          // Sort and take what we need
+          let sortedPlaces;
+          if (isRadiusMode) {
+            // Radius mode: sort by distance from center (closest first), then by rating as tiebreaker
+            sortedPlaces = fetchedPlaces
+              .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
+              .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+              .slice(0, neededForInterest);
+          } else {
+            // Area mode: sort by rating (original behavior)
+            sortedPlaces = fetchedPlaces
+              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+              .slice(0, neededForInterest);
+          }
           
           // Track results
           interestResults[interest] = {
@@ -1570,8 +1662,10 @@
           
           if (canAddMore > 0) {
             // This interest has more places we can use
+            const ratingSort = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
+            const distSort = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
             const morePlaces = result.allPlaces
-              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+              .sort(isRadiusMode ? distSort : ratingSort)
               .slice(alreadyUsed, alreadyUsed + canAddMore);
             
             additionalPlaces.push(...morePlaces);
@@ -1579,8 +1673,10 @@
         }
         
         // Add additional places up to the missing amount
+        const ratingSort2 = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
+        const distSort2 = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
         const sorted = additionalPlaces
-          .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
+          .sort(isRadiusMode ? distSort2 : ratingSort2)
           .slice(0, missing);
         
         uniqueStops = [...uniqueStops, ...sorted];
@@ -1613,17 +1709,47 @@
         showToast(`שגיאות בקבלת מקומות: ${errorMsg}`, 'warning');
       }
       
+      // In radius mode: detect area for each stop + filter out places outside known areas + add distance
+      if (isRadiusMode) {
+        const beforeCount = uniqueStops.length;
+        uniqueStops = uniqueStops.map(stop => {
+          const detectedArea = detectAreaFromCoords(stop.lat, stop.lng);
+          const distFromCenter = Math.round(calcDistance(formData.currentLat, formData.currentLng, stop.lat, stop.lng));
+          return { ...stop, detectedArea, distFromCenter };
+        }).filter(stop => {
+          if (stop.detectedArea) return true;
+          console.log('[RADIUS] Filtered out (outside known areas):', stop.name);
+          return false;
+        });
+        const filtered = beforeCount - uniqueStops.length;
+        if (filtered > 0) {
+          addDebugLog('ROUTE', `Radius: filtered ${filtered} places outside known areas`);
+        }
+      } else {
+        // In area mode: set detectedArea = formData.area for all
+        uniqueStops = uniqueStops.map(stop => ({ ...stop, detectedArea: formData.area }));
+      }
+      
       if (uniqueStops.length === 0) {
-        showToast('לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.', 'error');
+        showToast(isRadiusMode 
+          ? 'לא נמצאו מקומות באזורים המוכרים ברדיוס שנבחר. נסה להגדיל רדיוס.' 
+          : 'לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.', 'error');
         setIsGenerating(false);
         return;
       }
 
-      const selectedArea = areaOptions.find(a => a.id === formData.area);
-      
-      // Generate default name: "Area - interests #number"
-      const areaName = selectedArea?.label || 'בנקוק';
-      const interestsText = formData.interests
+      // Route name and area info
+      let areaName, interestsText;
+      if (isRadiusMode) {
+        const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
+          ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || 'מקום שלי'
+          : 'מיקום נוכחי';
+        areaName = `${formData.radiusMeters}מ' מ-${sourceName}`;
+      } else {
+        const selectedArea = areaOptions.find(a => a.id === formData.area);
+        areaName = selectedArea?.label || 'בנקוק';
+      }
+      interestsText = formData.interests
         .map(id => allInterestOptions.filter(o => o && o.id).find(o => o.id === id)?.label)
         .filter(Boolean)
         .join(', ');
@@ -1704,7 +1830,21 @@
       const fetchCount = formData.fetchMoreCount || 3;
       console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
       
-      let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+      const isRadiusMode = formData.searchMode === 'radius';
+      const radiusOverride = isRadiusMode ? { 
+        lat: formData.currentLat, 
+        lng: formData.currentLng, 
+        radius: formData.radiusMeters 
+      } : null;
+      let newPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+      
+      // In radius mode: filter out places outside known areas + add detected area
+      if (isRadiusMode) {
+        newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
+          .filter(p => p.detectedArea);
+      } else {
+        newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+      }
       
       // Filter blacklisted places and duplicates of custom locations
       newPlaces = filterBlacklist(newPlaces);
@@ -1714,8 +1854,12 @@
       const existingNames = route.stops.map(s => s.name.toLowerCase());
       newPlaces = newPlaces.filter(p => !existingNames.includes(p.name.toLowerCase()));
       
-      // Sort by rating (descending) - rating is for prioritization only
-      newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+      // Sort: by distance in radius mode, by rating in area mode
+      if (isRadiusMode && formData.currentLat) {
+        newPlaces.sort((a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng));
+      } else {
+        newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+      }
       
       // Take only what we need and mark as addedLater
       const placesToAdd = newPlaces.slice(0, fetchCount).map(p => ({
@@ -1760,7 +1904,21 @@
       const allNewPlaces = [];
       
       for (const interest of formData.interests) {
-        let newPlaces = await fetchGooglePlaces(formData.area, [interest]);
+        const isRadiusModeMore = formData.searchMode === 'radius';
+        const radiusOverrideMore = isRadiusModeMore ? { 
+          lat: formData.currentLat, 
+          lng: formData.currentLng, 
+          radius: formData.radiusMeters 
+        } : null;
+        let newPlaces = await fetchGooglePlaces(isRadiusModeMore ? null : formData.area, [interest], radiusOverrideMore);
+        
+        // In radius mode: filter by known areas
+        if (isRadiusModeMore) {
+          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
+            .filter(p => p.detectedArea);
+        } else {
+          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+        }
         
         // Filter blacklisted places and duplicates of custom locations
         newPlaces = filterBlacklist(newPlaces);
