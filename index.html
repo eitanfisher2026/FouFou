@@ -124,7 +124,7 @@
 window.BKK = window.BKK || {};
 
 // App Version
-window.BKK.VERSION = '2.8.4';
+window.BKK.VERSION = '2.8.5';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {
@@ -6195,72 +6195,43 @@ const BangkokExplorer = () => {
               </div>
             </div>
             
-            {/* Share App Section */}
-            <div className="mt-3">
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-400 rounded-lg p-3">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">📤 שתף את האפליקציה</h3>
-                <p className="text-xs text-gray-600 mb-3">
-                  אהבת את האפליקציה? שתף עם חברים!
-                </p>
-                
-                <button
-                  onClick={() => {
-                    const shareData = {
-                      title: 'Bangkok Explorer 🗺️',
-                      text: 'אפליקציה חכמה לתכנון טיולים בבנגקוק! מצא מקומות מעניינים ובנה מסלול מותאם אישית 🌏',
-                      url: window.location.href
-                    };
-                    
-                    // Try native share API (mobile)
-                    if (navigator.share) {
-                      navigator.share(shareData)
-                        .then(() => showToast('תודה על השיתוף!', 'success'))
-                        .catch((err) => {
-                          if (err.name !== 'AbortError') {
-                            console.error('Share error:', err);
-                          }
-                        });
-                    } else {
-                      // Fallback - reliable copy method
-                      try {
-                        const textArea = document.createElement('textarea');
-                        textArea.value = window.location.href;
-                        textArea.style.position = 'fixed';
-                        textArea.style.left = '-999999px';
-                        textArea.style.top = '-999999px';
-                        document.body.appendChild(textArea);
-                        textArea.focus();
-                        textArea.select();
-                        
-                        const successful = document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        
-                        if (successful) {
-                          showToast('הקישור הועתק ללוח!', 'success');
-                        } else {
-                          // Show toast with URL
-                          showToast('העתק: ' + window.location.href, 'info');
-                        }
-                      } catch (err) {
-                        console.error('Copy error:', err);
-                        // Show toast with URL
-                        showToast('העתק: ' + window.location.href, 'info');
-                      }
-                    }
-                  }}
-                  className="w-full bg-orange-500 text-white py-2.5 px-4 rounded-lg font-bold hover:bg-orange-600 transition text-sm flex items-center justify-center gap-2"
-                >
-                  <span>📤</span>
-                  <span>שתף עם חברים</span>
-                </button>
-              </div>
-            </div>
             
           </div>
         )}
 
-        {/* Copyright Footer */}
+        {/* Footer */}
         <div className="text-center py-4 mt-6 border-t border-gray-200">
+          <button
+            onClick={() => {
+              const shareData = {
+                title: 'Bangkok Explorer 🗺️',
+                text: 'אפליקציה חכמה לתכנון טיולים בבנגקוק! מצא מקומות מעניינים ובנה מסלול מותאם אישית 🌏',
+                url: window.location.href
+              };
+              if (navigator.share) {
+                navigator.share(shareData)
+                  .then(() => showToast('תודה על השיתוף! 🙏', 'success'))
+                  .catch((err) => { if (err.name !== 'AbortError') console.error('Share error:', err); });
+              } else {
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = window.location.href;
+                  ta.style.cssText = 'position:fixed;left:-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  showToast('הקישור הועתק! 📋', 'success');
+                } catch (e) {
+                  showToast('העתק: ' + window.location.href, 'info');
+                }
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100 hover:border-orange-300 transition-all text-xs font-medium mb-2"
+          >
+            <span>📤</span>
+            <span>שתף עם חברים</span>
+          </button>
           <p className="text-sm font-bold text-gray-500">© 2026 Eitan Fisher</p>
           <p className="text-[10px] text-gray-400 mt-0.5">Bangkok Explorer v{window.BKK.VERSION}</p>
         </div>
