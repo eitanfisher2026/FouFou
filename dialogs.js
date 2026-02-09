@@ -636,7 +636,7 @@
               {/* Header */}
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold">{editingCustomInterest ? `✏️ ${newInterest.icon?.startsWith?.('data:') ? '' : newInterest.icon} ${newInterest.label}` : 'הוסף תחום עניין'}</h3>
+                  <h3 className="text-base font-bold">{editingCustomInterest ? `${newInterest.icon?.startsWith?.('data:') ? '' : newInterest.icon} ${newInterest.label}` : 'הוסף תחום עניין'}</h3>
                   {editingCustomInterest && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${newInterest.builtIn ? 'bg-blue-200 text-blue-800' : 'bg-purple-200 text-purple-800'}`}>
                       {newInterest.builtIn ? '🏗️ מערכת' : '👤 אישי'}
@@ -1117,6 +1117,284 @@
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Route Dialog */}
+      {showRouteDialog && editingRoute && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold">🗺️ {editingRoute.name}</h3>
+              </div>
+              <button
+                onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
+                className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+              >✕</button>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              {/* Route info */}
+              <div className="bg-blue-50 rounded-lg p-3">
+                <div className="flex items-center gap-2 flex-wrap text-xs text-gray-600">
+                  <span>📍 {editingRoute.areaName || 'ללא איזור'}</span>
+                  <span>•</span>
+                  <span>{editingRoute.stops?.length || 0} תחנות</span>
+                  <span>•</span>
+                  <span>{editingRoute.circular ? '🔄 מעגלי' : '➡️ ליניארי'}</span>
+                  {editingRoute.savedAt && (
+                    <>
+                      <span>•</span>
+                      <span>📅 {new Date(editingRoute.savedAt).toLocaleDateString('he-IL')}</span>
+                    </>
+                  )}
+                </div>
+                {/* Interest icons */}
+                {(() => {
+                  const ids = [...new Set((editingRoute.stops || []).flatMap(s => s.interests || []))];
+                  return ids.length > 0 && (
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {ids.map((intId, idx) => {
+                        const obj = allInterestOptions.find(o => o.id === intId);
+                        return obj ? (
+                          <span key={idx} className="text-[10px] bg-white px-1.5 py-0.5 rounded" title={obj.label}>
+                            {obj.icon} {obj.label}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold mb-1">שם המסלול</label>
+                <input
+                  type="text"
+                  value={editingRoute.name || ''}
+                  onChange={(e) => setEditingRoute({...editingRoute, name: e.target.value})}
+                  className="w-full p-2 text-sm border-2 border-blue-300 rounded-lg"
+                  style={{ direction: 'rtl' }}
+                  disabled={editingRoute.locked && !isUnlocked}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-bold mb-1">💬 הערות</label>
+                <textarea
+                  value={editingRoute.notes || ''}
+                  onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
+                  placeholder="הערות..."
+                  className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg h-16 resize-none"
+                  style={{ direction: 'rtl' }}
+                  disabled={editingRoute.locked && !isUnlocked}
+                />
+              </div>
+
+              {/* Stops list */}
+              <div>
+                <label className="block text-xs font-bold mb-1">תחנות ({editingRoute.stops?.length || 0})</label>
+                <div className="max-h-32 overflow-y-auto space-y-0.5">
+                  {(editingRoute.stops || []).map((stop, idx) => (
+                    <div key={idx} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
+                      <span className="text-gray-400">{idx + 1}.</span>
+                      <span className="font-medium truncate">{stop.name}</span>
+                      {stop.rating && <span className="text-yellow-600">⭐{stop.rating}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Share buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} תחנות\n${editingRoute.circular ? '🔄 מסלול מעגלי' : '➡️ מסלול ליניארי'}\n\nתחנות:\n${(editingRoute.stops || []).map((s, i) => `${i+1}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
+                    if (navigator.share) {
+                      navigator.share({ title: editingRoute.name, text: shareText });
+                    } else {
+                      navigator.clipboard.writeText(shareText);
+                      showToast('מסלול הועתק ללוח', 'success');
+                    }
+                  }}
+                  className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
+                >
+                  📤 שתף מסלול
+                </button>
+                <button
+                  onClick={() => {
+                    const pois = (editingRoute.stops || []).map((s, i) => {
+                      let line = `${i+1}. ${s.name}`;
+                      if (s.address) line += `\n   📍 ${s.address}`;
+                      if (s.description) line += `\n   ${s.description}`;
+                      if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;
+                      if (s.rating) line += `\n   ⭐ ${s.rating}`;
+                      const mapsUrl = s.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address)}` : (s.lat && s.lng ? `https://www.google.com/maps?q=${s.lat},${s.lng}` : '');
+                      if (mapsUrl) line += `\n   🗺️ ${mapsUrl}`;
+                      return line;
+                    }).join('\n\n');
+                    const text = `📍 נקודות עניין - ${editingRoute.name}\n${'─'.repeat(30)}\n\n${pois}`;
+                    if (navigator.share) {
+                      navigator.share({ title: `נקודות עניין - ${editingRoute.name}`, text });
+                    } else {
+                      navigator.clipboard.writeText(text);
+                      showToast('נקודות העניין הועתקו ללוח', 'success');
+                    }
+                  }}
+                  className="flex-1 py-2 bg-indigo-500 text-white rounded-lg text-sm font-bold hover:bg-indigo-600"
+                >
+                  📋 שתף נקודות עניין
+                </button>
+              </div>
+
+              {/* Status toggles */}
+              <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingRoute.inProgress || false}
+                    onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
+                    className="rounded"
+                    disabled={editingRoute.locked && !isUnlocked}
+                  />
+                  <span className="text-xs">🛠️ בעבודה</span>
+                </label>
+                {isUnlocked && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingRoute.locked || false}
+                      onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
+                      className="rounded"
+                    />
+                    <span className="text-xs">🔒 נעול</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Actions: Delete */}
+              <div className="border-t border-red-200 bg-red-50 px-4 py-2">
+                {!(editingRoute.locked && !isUnlocked) ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
+                          deleteRoute(editingRoute.id);
+                          setShowRouteDialog(false);
+                          setEditingRoute(null);
+                        });
+                      }}
+                      className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                    >
+                      🗑️ מחק מסלול
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center text-xs text-yellow-700">🔒 מסלול נעול - פעולות חסומות</div>
+                )}
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
+              {(() => {
+                const isLockedRoute = editingRoute.locked && !isUnlocked;
+                return (
+                  <>
+                    {isLockedRoute ? (
+                      <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
+                        🔒 מסלול נעול - צפייה בלבד
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            updateRoute(editingRoute.id, {
+                              name: editingRoute.name,
+                              notes: editingRoute.notes,
+                              inProgress: editingRoute.inProgress,
+                              locked: editingRoute.locked
+                            });
+                            setShowRouteDialog(false);
+                            setEditingRoute(null);
+                          }}
+                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        >
+                          💾 עדכן
+                        </button>
+                        <button
+                          onClick={() => {
+                            loadSavedRoute(editingRoute);
+                            setShowRouteDialog(false);
+                            setEditingRoute(null);
+                          }}
+                          className="flex-1 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600"
+                        >
+                          📍 פתח מסלול
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
+                      className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
+                    >
+                      ✓ סגור
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Dialog */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <span>❓</span>
+                {helpContent[helpContext]?.title || 'עזרה'}
+              </h3>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+              >✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: 'rtl' }}>
+              {helpContent[helpContext]?.content.split('\n').map((line, i) => {
+                if (line.startsWith('**') && line.endsWith('**')) {
+                  return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
+                } else if (line.startsWith('**')) {
+                  const parts = line.split('**');
+                  return <p key={i} className="mb-1"><strong>{parts[1]}</strong>{parts[2]}</p>;
+                } else if (line.startsWith('• ')) {
+                  const text = line.substring(2);
+                  if (text.includes('**')) {
+                    const parts = text.split('**');
+                    return <p key={i} className="mr-3 mb-0.5">• <strong>{parts[1]}</strong>{parts[2] || ''}</p>;
+                  }
+                  return <p key={i} className="mr-3 mb-0.5">• {text}</p>;
+                } else if (line.trim() === '') {
+                  return <div key={i} className="h-2" />;
+                }
+                return <p key={i} className="mb-1">{line}</p>;
+              })}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowHelp(false)}
+                className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
+              >הבנתי ✓</button>
             </div>
           </div>
         </div>

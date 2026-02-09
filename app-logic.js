@@ -40,6 +40,9 @@
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
   const [showBlacklistLocations, setShowBlacklistLocations] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
+  const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
+  const [editingRoute, setEditingRoute] = useState(null);
+  const [showRouteDialog, setShowRouteDialog] = useState(false);
   const [newLocation, setNewLocation] = useState({
     name: '',
     description: '',
@@ -1743,7 +1746,9 @@
       ...route,
       name: routeName.trim(),
       notes: routeNotes.trim() || '',
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      inProgress: true,
+      locked: false
     };
 
     const updated = [routeToSave, ...savedRoutes];
@@ -1758,10 +1763,17 @@
   };
 
   const deleteRoute = (routeId) => {
-    // Just delete without confirmation in sandbox
     const updated = savedRoutes.filter(r => r.id !== routeId);
     setSavedRoutes(updated);
     localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    showToast('המסלול נמחק', 'success');
+  };
+
+  const updateRoute = (routeId, updates) => {
+    const updated = savedRoutes.map(r => r.id === routeId ? { ...r, ...updates } : r);
+    setSavedRoutes(updated);
+    localStorage.setItem('bangkok_saved_routes', JSON.stringify(updated));
+    showToast('המסלול עודכן', 'success');
   };
 
   const loadSavedRoute = (savedRoute) => {

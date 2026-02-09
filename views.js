@@ -1378,94 +1378,111 @@
         )}
 
         {currentView === 'saved' && (
-          <div className="bg-white rounded-xl shadow-lg p-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white rounded-xl shadow-lg p-3">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">מסלולים שמורים</h2>
+                <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                  {savedRoutes.length}
+                </span>
                 <button
                   onClick={() => showHelpFor('saved')}
                   className="text-gray-400 hover:text-blue-500 text-sm"
                   title="עזרה"
-                >
-                  ❓
-                </button>
+                >❓</button>
               </div>
-              <button
-                onClick={() => setCurrentView('form')}
-                className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300"
-              >
-                ← חזרה
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Sort toggle */}
+                <div className="flex bg-gray-200 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setRoutesSortBy('area')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'area' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                  >לפי איזור</button>
+                  <button
+                    onClick={() => setRoutesSortBy('name')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'name' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                  >לפי שם</button>
+                </div>
+              </div>
             </div>
             
             {savedRoutes.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">🗺️</div>
-                <p className="text-gray-600 mb-4">עדיין אין מסלולים שמורים</p>
+              <div className="text-center py-8">
+                <div className="text-4xl mb-2">🗺️</div>
+                <p className="text-gray-600 mb-3 text-sm">עדיין אין מסלולים שמורים</p>
                 <button
                   onClick={() => setCurrentView('form')}
-                  className="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600"
-                >
-                  צור מסלול חדש
-                </button>
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-orange-600"
+                >צור מסלול חדש</button>
               </div>
             ) : (
-              <div className="space-y-4">
-                {savedRoutes.map(savedRoute => (
-                  <div key={savedRoute.id} className="border-2 border-gray-200 rounded-lg p-4 hover:border-orange-300 transition">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-800">{savedRoute.name}</h3>
-                        <p className="text-sm text-gray-600">{savedRoute.areaName} • {savedRoute.interestsText || 'כללי'}</p>
-                        {savedRoute.notes && (
-                          <p className="text-xs text-gray-500 mt-1 italic">📝 {savedRoute.notes}</p>
-                        )}
-                        <p className="text-xs text-gray-500 mt-1">
-                          {savedRoute.stops.length} תחנות • 
-                          נשמר: {new Date(savedRoute.savedAt).toLocaleDateString('he-IL')}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => deleteRoute(savedRoute.id)}
-                        className="text-red-500 hover:text-red-700 text-sm ml-2"
-                      >
-                        🗑️ מחק
-                      </button>
-                    </div>
+              <div className="space-y-1">
+                {(() => {
+                  const sorted = [...savedRoutes].sort((a, b) => {
+                    if (routesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'he');
+                    return (a.areaName || '').localeCompare(b.areaName || '', 'he');
+                  });
+                  
+                  let lastGroup = null;
+                  return sorted.map(savedRoute => {
+                    const groupKey = routesSortBy === 'area' ? (savedRoute.areaName || 'ללא איזור') : null;
+                    const showGroupHeader = routesSortBy === 'area' && groupKey !== lastGroup;
+                    if (showGroupHeader) lastGroup = groupKey;
                     
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => loadSavedRoute(savedRoute)}
-                        className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600"
-                      >
-                        📍 פתח מסלול
-                      </button>
-                      <button
-                        onClick={() => {
-                          const shareText = `🗺️ ${savedRoute.name}\n📍 ${savedRoute.areaName}\n🎯 ${savedRoute.stops.length} תחנות\n\nתחנות:\n${savedRoute.stops.map((s, i) => `${i+1}. ${s.name}`).join('\n')}`;
-                          if (navigator.share) {
-                            navigator.share({
-                              title: savedRoute.name,
-                              text: shareText
-                            });
-                          } else {
-                            navigator.clipboard.writeText(shareText);
-                            showToast('הועתק ללוח', 'success');
-                          }
-                        }}
-                        className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600"
-                      >
-                        📤 שתף
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    // Collect interest icons from route stops
+                    const routeInterestIds = [...new Set((savedRoute.stops || []).flatMap(s => s.interests || []))];
+                    
+                    return (
+                      <React.Fragment key={savedRoute.id}>
+                        {showGroupHeader && (
+                          <div className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded mt-2 mb-1">
+                            📍 {groupKey}
+                          </div>
+                        )}
+                        <div
+                          className={`flex items-center justify-between gap-2 rounded-lg p-2 border ${
+                            savedRoute.inProgress ? 'border-orange-300 bg-orange-50' : 'border-gray-200 bg-white'
+                          } hover:bg-blue-50 cursor-pointer`}
+                          onClick={() => {
+                            setEditingRoute({...savedRoute});
+                            setShowRouteDialog(true);
+                          }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="font-medium text-sm truncate">{savedRoute.name}</span>
+                              {savedRoute.locked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
+                              {savedRoute.inProgress && <span title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
+                              {routeInterestIds.slice(0, 5).map((intId, idx) => {
+                                const obj = allInterestOptions.find(o => o.id === intId);
+                                return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '12px' }}>{obj.icon}</span> : null;
+                              })}
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} תחנות</span>
+                            </div>
+                            {savedRoute.notes && (
+                              <div className="text-[10px] text-gray-500 truncate mt-0.5">📝 {savedRoute.notes}</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingRoute({...savedRoute});
+                              setShowRouteDialog(true);
+                            }}
+                            className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
+                            title="פרטים / ערוך"
+                          >✏️</button>
+                        </div>
+                      </React.Fragment>
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>
         )}
 
-        {/* My Content View */}
+                {/* My Content View */}
         {/* My Content View - Compact Design */}
         {currentView === 'myPlaces' && (
           <div className="bg-white rounded-xl shadow-lg p-3">
