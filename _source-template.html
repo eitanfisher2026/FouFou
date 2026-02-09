@@ -13,8 +13,20 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>Bangkok Explorer 🇹🇭</title>
+    <title>Bangkok Explorer</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180x180.png">
+    <meta name="theme-color" content="#ea580c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BKK Explorer">
     <style>
+      /* Disable pull-to-refresh on mobile */
+      html, body {
+        overscroll-behavior-y: contain;
+      }
       @keyframes slideUp {
         from {
           transform: translateY(100px);
@@ -68,6 +80,33 @@
       .overflow-y-auto {
         scrollbar-width: thin;
         scrollbar-color: #cbd5e1 #f1f5f9;
+        -webkit-overflow-scrolling: touch;
+        will-change: scroll-position;
+        transform: translateZ(0);
+      }
+      
+      /* GPU-accelerated scroll containers */
+      .overflow-auto, .overflow-y-auto, .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Contain layout for list items to prevent cascade reflows */
+      .space-y-0\.5 > *, .space-y-1 > *, .space-y-2 > *, .space-y-3 > * {
+        contain: layout style;
+      }
+      
+      /* Reduce paint during scroll - disable hover effects on touch */
+      @media (hover: none) and (pointer: coarse) {
+        .hover\:bg-emerald-100:hover,
+        .hover\:bg-orange-50:hover,
+        .hover\:bg-blue-100:hover,
+        .hover\:bg-red-100:hover,
+        .hover\:bg-gray-100:hover {
+          background-color: inherit !important;
+        }
+        .hover\:underline:hover {
+          text-decoration: inherit !important;
+        }
       }
     </style>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -141,7 +180,7 @@
     <div id="root"></div>
     
     <script type="text/babel">
-const { useState, useEffect } = React;
+const { useState, useEffect, useMemo, useCallback } = React;
 
 // Firebase Configuration - loaded from config.js
 const firebaseConfig = window.BKK.firebaseConfig;

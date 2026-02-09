@@ -5,7 +5,7 @@
       {!isDataLoaded && (
         <div className="fixed inset-0 bg-gradient-to-br from-orange-50 to-pink-50 z-[100] flex flex-col items-center justify-center">
           <div className="text-center">
-            <div className="text-5xl mb-4 animate-bounce">🇹🇭</div>
+            <div className="text-5xl mb-4 animate-bounce">🗺️</div>
             <h2 className="text-xl font-bold text-gray-700 mb-2">Bangkok Explorer</h2>
             <div className="flex items-center justify-center gap-2 text-gray-500">
               <svg className="animate-spin h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -20,7 +20,7 @@
 
       <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Bangkok Explorer 🇹🇭</h1>
+          <h1 className="text-2xl font-bold">Bangkok Explorer</h1>
           <div className="text-left">
             <span className="text-xs opacity-70 block">v{window.BKK.VERSION}</span>
             <span className="text-xs font-medium opacity-80">© 2026 Eitan Fisher</span>
@@ -295,7 +295,7 @@
                                 }`}
                               >
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[8px]">{areaOptions.find(a => a.id === loc.area)?.icon || '📍'}</span>
+                                  <span className="text-[8px]">{areaMap[loc.area]?.icon || '📍'}</span>
                                   <span className="truncate">{loc.name}</span>
                                 </div>
                               </button>
@@ -474,7 +474,7 @@
                     ❓
                   </button>
                 </div>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
                   {(() => {
                     // Group stops by interest
                     const groupedStops = {};
@@ -492,7 +492,7 @@
                     });
                     
                     return Object.entries(groupedStops).map(([interest, stops]) => {
-                      const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                      const interestObj = interestMap[interest];
                       if (!interestObj) return null;
                       
                       return (
@@ -659,7 +659,7 @@
                                       <span>{stop.name}</span>
                                       {stop.detectedArea && formData.searchMode === 'radius' && (
                                         <span className="text-[8px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded font-bold">
-                                          {areaOptions.find(a => a.id === stop.detectedArea)?.label || stop.detectedArea}
+                                          {areaMap[stop.detectedArea]?.label || stop.detectedArea}
                                         </span>
                                       )}
                                       {stop.distFromCenter != null && formData.searchMode === 'radius' && (
@@ -696,7 +696,7 @@
                                       )}
                                       {/* Interest icons */}
                                       {stop.interests?.map((int, idx) => {
-                                        const intObj = allInterestOptions.find(opt => opt.id === int);
+                                        const intObj = interestMap[int];
                                         return intObj?.icon ? (
                                           <span 
                                             key={idx}
@@ -831,17 +831,31 @@
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">📍 נקודת התחלה (אופציונלי)</label>
                       <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={formData.startPoint}
-                          onChange={(e) => {
-                            setFormData({...formData, startPoint: e.target.value});
-                            setStartPointCoords(null);
-                          }}
-                          placeholder="לדוגמה: BTS Asok, שם מלון..."
-                          className="flex-1 p-1.5 border border-gray-300 rounded-lg text-xs"
-                          style={{ direction: 'rtl' }}
-                        />
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            value={formData.startPoint}
+                            onChange={(e) => {
+                              setFormData({...formData, startPoint: e.target.value});
+                              setStartPointCoords(null);
+                            }}
+                            placeholder="לדוגמה: BTS Asok, שם מלון..."
+                            className="w-full p-1.5 border border-gray-300 rounded-lg text-xs"
+                            style={{ direction: 'rtl', paddingLeft: (formData.startPoint?.trim() || startPointCoords) ? '28px' : '8px' }}
+                          />
+                          {(formData.startPoint?.trim() || startPointCoords) && (
+                            <button
+                              onClick={() => {
+                                setFormData({...formData, startPoint: ''});
+                                setStartPointCoords(null);
+                              }}
+                              className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-gray-300 text-gray-600 hover:bg-red-400 hover:text-white text-[10px] font-bold"
+                              title="נקה נקודת התחלה"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
                         <button
                           onClick={validateStartPoint}
                           disabled={isLocating || !formData.startPoint?.trim()}
@@ -860,18 +874,6 @@
                         >
                           {isLocating ? '⏳' : '📍'}
                         </button>
-                        {(formData.startPoint?.trim() || startPointCoords) && (
-                          <button
-                            onClick={() => {
-                              setFormData({...formData, startPoint: ''});
-                              setStartPointCoords(null);
-                            }}
-                            className="px-1.5 py-1.5 rounded-lg text-xs font-bold bg-gray-200 text-gray-600 hover:bg-red-100 hover:text-red-600"
-                            title="נקה נקודת התחלה"
-                          >
-                            ✕
-                          </button>
-                        )}
                       </div>
                       {startPointCoords ? (
                         <p style={{ fontSize: '10px', color: '#16a34a', marginTop: '3px', fontWeight: 'bold' }}>
@@ -1169,7 +1171,7 @@
                             </a>
                             {stop.detectedArea && route.preferences?.searchMode === 'radius' && (
                               <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold mr-1">
-                                {areaOptions.find(a => a.id === stop.detectedArea)?.label || stop.detectedArea}
+                                {areaMap[stop.detectedArea]?.label || stop.detectedArea}
                               </span>
                             )}
                             {stop.distFromCenter != null && route.preferences?.searchMode === 'radius' && (
@@ -1189,7 +1191,7 @@
                             {stop.interests && stop.interests.length > 0 && (
                               <>
                                 {stop.interests.map((interest, idx) => {
-                                  const interestObj = allInterestOptions.find(opt => opt.id === interest);
+                                  const interestObj = interestMap[interest];
                                   return interestObj?.icon ? (
                                     <span 
                                       key={idx}
@@ -1584,7 +1586,7 @@
                     {loc.interests && loc.interests.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {loc.interests.map(intId => {
-                          const interest = allInterestOptions.find(opt => opt.id === intId);
+                          const interest = interestMap[intId];
                           return interest ? (
                             <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
                               {interest.icon} {interest.label}
@@ -1692,7 +1694,7 @@
                               {savedRoute.locked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
                               {savedRoute.inProgress && <span title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
-                                const obj = allInterestOptions.find(o => o.id === intId);
+                                const obj = interestMap[intId];
                                 return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '12px' }}>{obj.icon}</span> : null;
                               })}
                               <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} תחנות</span>
@@ -1780,167 +1782,122 @@
                 </div>
               ) : (
                 <>
-                  {/* Active Locations - Grouped */}
-                  {(() => {
-                    const activeLocations = customLocations.filter(loc => loc.status !== 'blacklist');
-                    if (activeLocations.length === 0) return null;
-                    
-                    // Group locations
-                    const groups = {};
-                    const ungrouped = [];
-                    
-                    activeLocations.forEach(loc => {
-                      if (placesGroupBy === 'interest') {
-                        const interests = loc.interests || [];
-                        if (interests.length === 0) {
-                          ungrouped.push(loc);
-                        } else {
-                          interests.forEach(int => {
-                            if (!groups[int]) groups[int] = [];
-                            groups[int].push(loc);
-                          });
-                        }
-                      } else {
-                        // Group by area
-                        const area = loc.area || 'unknown';
-                        if (!groups[area]) groups[area] = [];
-                        groups[area].push(loc);
-                      }
-                    });
-                    
-                    // Sort groups
-                    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-                      if (placesGroupBy === 'interest') {
-                        const aObj = allInterestOptions.find(o => o.id === a);
-                        const bObj = allInterestOptions.find(o => o.id === b);
-                        return (aObj?.label || a).localeCompare(bObj?.label || b, 'he');
-                      } else {
-                        const aObj = areaOptions.find(o => o.id === a);
-                        const bObj = areaOptions.find(o => o.id === b);
-                        return (aObj?.label || a).localeCompare(bObj?.label || b, 'he');
-                      }
-                    });
-                    
-                    // Sort locations within each group by the secondary dimension
-                    const sortWithin = (locs) => {
-                      return [...locs].sort((a, b) => {
-                        if (placesGroupBy === 'interest') {
-                          // Sort by area within interest group
-                          const aArea = areaOptions.find(o => o.id === a.area)?.label || '';
-                          const bArea = areaOptions.find(o => o.id === b.area)?.label || '';
-                          return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
-                        } else {
-                          // Sort by interest within area group
-                          const aInt = (a.interests?.[0]) || '';
-                          const bInt = (b.interests?.[0]) || '';
-                          return aInt.localeCompare(bInt) || a.name.localeCompare(b.name, 'he');
-                        }
-                      });
-                    };
-                    
-                    // Render a single location row
-                    const renderLocationRow = (loc) => {
-                      const mapUrl = loc.address?.trim() 
-                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
-                        : (loc.lat && loc.lng) 
-                          ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
-                          : null;
-                      const canEdit = !loc.locked || isUnlocked;
-                      return (
-                      <div
-                        key={loc.id}
-                        className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 hover:bg-emerald-100"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {mapUrl ? (
-                              <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-                                className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
-                              >{loc.name}</a>
-                            ) : (
-                              <span className="font-medium text-sm truncate">{loc.name}</span>
-                            )}
-                            {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
-                            {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
-                            {loc.outsideArea && <span className="text-orange-500 text-xs" title="מחוץ לגבולות">🔺</span>}
-                            {loc.missingCoordinates && <span className="text-red-500 text-xs" title="אין מיקום">⚠️</span>}
-                            {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
-                              const obj = allInterestOptions.find(o => o.id === int);
-                              return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
-                            })}
-                            {placesGroupBy === 'interest' && loc.area && (
-                              <span className="text-[10px] bg-gray-200 text-gray-600 px-1 rounded">{areaOptions.find(a => a.id === loc.area)?.label || loc.area}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-0.5">
-                          <button onClick={() => handleEditLocation(loc)}
-                            className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
-                            title="פרטים / ערוך">✏️</button>
-                        </div>
-                      </div>
-                    );
-                    };
-                    
-                    return (
-                      <div className="mb-3">
-                        <h4 className="text-sm font-bold text-green-700 mb-2">
-                          ✅ מקומות כלולים ({activeLocations.length})
-                        </h4>
-                        <div className="space-y-2 max-h-[55vh] overflow-y-auto">
-                          {sortedGroupKeys.map(key => {
-                            const locs = sortWithin(groups[key]);
-                            let groupLabel, groupIcon;
-                            if (placesGroupBy === 'interest') {
-                              const obj = allInterestOptions.find(o => o.id === key);
-                              groupLabel = obj?.label || key;
-                              groupIcon = obj?.icon || '🏷️';
-                            } else {
-                              const obj = areaOptions.find(o => o.id === key);
-                              groupLabel = obj?.label || key;
-                              groupIcon = '📍';
-                            }
-                            return (
-                              <div key={key} className="border border-gray-200 rounded-lg overflow-hidden">
-                                <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
-                                  <span>{groupIcon}</span>
-                                  <span>{groupLabel}</span>
-                                  <span className="text-gray-400 font-normal">({locs.length})</span>
-                                </div>
-                                <div className="space-y-0.5 p-1">
-                                  {locs.map(renderLocationRow)}
-                                </div>
+                  {/* Active Locations - Grouped (using memoized groupedPlaces) */}
+                  {groupedPlaces.activeCount > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-bold text-green-700 mb-2">
+                        ✅ מקומות כלולים ({groupedPlaces.activeCount})
+                      </h4>
+                      <div className="max-h-[55vh] overflow-y-auto" style={{ contain: 'content' }}>
+                        {groupedPlaces.sortedKeys.map(key => {
+                          const locs = groupedPlaces.groups[key];
+                          const obj = placesGroupBy === 'interest' ? interestMap[key] : areaMap[key];
+                          const groupLabel = obj?.label || key;
+                          const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
+                          return (
+                            <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
+                              <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
+                                <span>{groupIcon}</span>
+                                <span>{groupLabel}</span>
+                                <span className="text-gray-400 font-normal">({locs.length})</span>
                               </div>
-                            );
-                          })}
-                          {ungrouped.length > 0 && (
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                              <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                                ללא תחום ({ungrouped.length})
-                              </div>
-                              <div className="space-y-0.5 p-1">
-                                {sortWithin(ungrouped).map(renderLocationRow)}
+                              <div className="p-1">
+                                {locs.map(loc => {
+                                  const mapUrl = loc.address?.trim() 
+                                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
+                                    : (loc.lat && loc.lng) 
+                                      ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
+                                      : null;
+                                  return (
+                                    <div key={loc.id}
+                                      className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 mb-0.5"
+                                      style={{ contain: 'layout style' }}
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                          {mapUrl ? (
+                                            <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                              className="font-medium text-sm text-blue-600 truncate"
+                                            >{loc.name}</a>
+                                          ) : (
+                                            <span className="font-medium text-sm truncate">{loc.name}</span>
+                                          )}
+                                          {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                          {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
+                                          {loc.outsideArea && <span className="text-orange-500 text-xs" title="מחוץ לגבולות">🔺</span>}
+                                          {loc.missingCoordinates && <span className="text-red-500 text-xs" title="אין מיקום">⚠️</span>}
+                                          {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
+                                            const obj2 = interestMap[int];
+                                            return obj2?.icon ? <span key={idx} title={obj2.label} style={{ fontSize: '13px' }}>{obj2.icon}</span> : null;
+                                          })}
+                                          {placesGroupBy === 'interest' && loc.area && (
+                                            <span className="text-[10px] bg-gray-200 text-gray-600 px-1 rounded">{areaMap[loc.area]?.label || loc.area}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <button onClick={() => handleEditLocation(loc)}
+                                        className="text-xs px-1 py-0.5 rounded"
+                                        title="פרטים / ערוך">✏️</button>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
-                          )}
-                        </div>
+                          );
+                        })}
+                        {groupedPlaces.ungrouped.length > 0 && (
+                          <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
+                            <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
+                              ללא תחום ({groupedPlaces.ungrouped.length})
+                            </div>
+                            <div className="p-1">
+                              {groupedPlaces.ungrouped.map(loc => {
+                                const mapUrl = loc.address?.trim() 
+                                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
+                                  : (loc.lat && loc.lng) 
+                                    ? `https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.lng}`
+                                    : null;
+                                return (
+                                  <div key={loc.id}
+                                    className="flex items-center justify-between gap-2 border border-emerald-300 rounded p-1.5 bg-emerald-50 mb-0.5"
+                                    style={{ contain: 'layout style' }}
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        {mapUrl ? (
+                                          <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                            className="font-medium text-sm text-blue-600 truncate"
+                                          >{loc.name}</a>
+                                        ) : (
+                                          <span className="font-medium text-sm truncate">{loc.name}</span>
+                                        )}
+                                        {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                        {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
+                                      </div>
+                                    </div>
+                                    <button onClick={() => handleEditLocation(loc)}
+                                      className="text-xs px-1 py-0.5 rounded"
+                                      title="פרטים / ערוך">✏️</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    );
-                  })()}
+                    </div>
+                  )}
                   
                   {/* Blacklisted Locations - Collapsible */}
-                  {(() => {
-                    const blacklistedLocations = customLocations.filter(loc => loc.status === 'blacklist');
-                    
-                    return blacklistedLocations.length > 0 && (
+                  {groupedPlaces.blacklistedLocations.length > 0 && (
                       <div className="border-2 border-red-300 rounded-lg p-2 bg-red-50">
                         <button
                           onClick={() => setShowBlacklistLocations(!showBlacklistLocations)}
-                          className="w-full flex items-center justify-between text-sm font-bold text-red-700 hover:text-red-900"
+                          className="w-full flex items-center justify-between text-sm font-bold text-red-700"
                         >
                           <span className="flex items-center gap-1">
                             <span>{showBlacklistLocations ? '▼' : '◀'}</span>
-                            <span>🚫 מקומות שמדלגים עליהם ({blacklistedLocations.length})</span>
+                            <span>🚫 מקומות שמדלגים עליהם ({groupedPlaces.blacklistedLocations.length})</span>
                           </span>
                           <span className="text-[10px] text-red-600">
                             {showBlacklistLocations ? 'הסתר' : 'הצג'}
@@ -1948,8 +1905,8 @@
                         </button>
                         
                         {showBlacklistLocations && (
-                          <div className="space-y-1 mt-2 max-h-40 overflow-y-auto">
-                            {blacklistedLocations.map(loc => {
+                          <div className="mt-2 max-h-40 overflow-y-auto">
+                            {groupedPlaces.blacklistedLocations.map(loc => {
                               const mapUrl = loc.address?.trim() 
                                 ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.trim())}`
                                 : (loc.lat && loc.lng) 
@@ -1958,37 +1915,35 @@
                               return (
                               <div
                                 key={loc.id}
-                                className="flex items-center justify-between gap-2 border border-red-300 rounded p-1.5 bg-white hover:bg-red-50"
+                                className="flex items-center justify-between gap-2 border border-red-300 rounded p-1.5 bg-white mb-0.5"
+                                style={{ contain: 'layout style' }}
                               >
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {mapUrl ? (
                                       <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-                                        className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                        className="font-medium text-sm text-blue-600 truncate"
                                       >{loc.name}</a>
                                     ) : (
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
                                     {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                     {loc.interests?.map((int, idx) => {
-                                      const obj = allInterestOptions.find(o => o.id === int);
+                                      const obj = interestMap[int];
                                       return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
                                     })}
                                   </div>
                                 </div>
-                                <div className="flex gap-0.5">
-                                  <button onClick={() => handleEditLocation(loc)}
-                                    className="text-xs px-1 py-0.5 rounded hover:bg-blue-100"
-                                    title="פרטים / ערוך">✏️</button>
-                                </div>
+                                <button onClick={() => handleEditLocation(loc)}
+                                  className="text-xs px-1 py-0.5 rounded"
+                                  title="פרטים / ערוך">✏️</button>
                               </div>
                               );
                             })}
                           </div>
                         )}
                       </div>
-                    );
-                  })()}
+                  )}
                 </>
               )}
             </div>
