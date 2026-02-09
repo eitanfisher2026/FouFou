@@ -32,7 +32,7 @@
         {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
-            onClick={() => setCurrentView('form')}
+            onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
               currentView === 'form' || currentView === 'route' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
@@ -40,23 +40,23 @@
             <div className="truncate text-center">🗺️ מסלול</div>
           </button>
           <button
-            onClick={() => setCurrentView('saved')}
+            onClick={() => { setCurrentView('saved'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
-              currentView === 'saved' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'saved' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <div className="truncate text-center">💾 {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
           </button>
           <button
-            onClick={() => setCurrentView('myPlaces')}
+            onClick={() => { setCurrentView('myPlaces'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
-              currentView === 'myPlaces' || currentView === 'search' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'myPlaces' || currentView === 'search' ? 'bg-teal-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <div className="truncate text-center">📍 {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
           </button>
           <button
-            onClick={() => setCurrentView('myInterests')}
+            onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
               currentView === 'myInterests' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
@@ -70,15 +70,16 @@
               } else {
                 setShowPasswordDialog(true);
               }
+              window.scrollTo(0, 0);
             }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
-              currentView === 'settings' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'settings' ? 'bg-slate-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center relative">
+            <div className="text-center relative inline-flex items-center justify-center w-full">
               {(isUnlocked || !adminPassword) ? '🔓' : '🔒'}
               {(hasNewFeedback || hasNewEntries) && isCurrentUserAdmin && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute -top-1 left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
               )}
             </div>
           </button>
@@ -88,7 +89,7 @@
 
         {/* === VIEWS (from views.js) === */}
         {currentView === 'form' && (
-          <div className="bg-white rounded-xl shadow-lg p-3 space-y-3">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
               <button
@@ -771,7 +772,7 @@
         )}
 
         {currentView === 'route' && route && (
-          <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-4">
             <button
               onClick={() => setCurrentView('form')}
               style={getButtonStyle(false)}
@@ -882,7 +883,7 @@
                     setNewLocation(prev => ({...prev, area: formData.area}));
                     setShowAddLocationDialog(true);
                   }}
-                  className="bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-600"
+                  className="bg-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-600"
                 >
                   ➕ הוסף מקום
                 </button>
@@ -1251,7 +1252,7 @@
         {/* Saved Routes View */}
         {/* Search View */}
         {currentView === 'search' && (
-          <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
               <button
@@ -1267,7 +1268,7 @@
                 type="text"
                 placeholder="חפש בשם, תיאור או הערות..."
                 value={searchQuery}
-                className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
                 style={{ textAlign: 'right', direction: 'rtl' }}
                 onChange={(e) => {
                   const query = e.target.value;
@@ -1377,7 +1378,7 @@
         )}
 
         {currentView === 'saved' && (
-          <div className="bg-white rounded-xl shadow-lg p-3">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
@@ -1482,7 +1483,7 @@
                 {/* My Content View */}
         {/* My Content View - Compact Design */}
         {currentView === 'myPlaces' && (
-          <div className="bg-white rounded-xl shadow-lg p-3">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">📍 המקומות שלי</h2>
               <button
@@ -1523,7 +1524,7 @@
                   </button>
                   <button
                     onClick={() => setShowAddLocationDialog(true)}
-                    className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-600"
+                    className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                   >
                     ➕ הוסף מקום
                   </button>
@@ -1756,7 +1757,7 @@
 
         {/* My Interests View */}
         {currentView === 'myInterests' && (
-          <div className="bg-white rounded-xl shadow-lg p-3">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
@@ -1866,7 +1867,7 @@
 
         {/* Settings View - Compact Design */}
         {currentView === 'settings' && (
-          <div className="bg-white rounded-xl shadow-lg p-3">
+          <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">הגדרות</h2>
               <button
@@ -2263,56 +2264,6 @@
               </div>
             </div>
             
-            {/* Admin Access Log Section */}
-            <div className="mt-4 pt-3 border-t border-gray-200 text-center">
-              {/* Admin Access Log Button */}
-              <div className="mt-2">
-                <button
-                  onClick={() => {
-                    setShowAccessLog(true);
-                    markLogsAsSeen();
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
-                    hasNewEntries 
-                      ? 'bg-red-500 text-white shadow-lg' 
-                      : 'bg-gray-400 text-white shadow-md'
-                  }`}
-                >
-                  🔒 לוג כניסות
-                  {hasNewEntries && (
-                    <span className="mr-1">🔔</span>
-                  )}
-                </button>
-                
-                {/* Admin Status */}
-                <div className="text-[9px] text-gray-400 mt-1 flex items-center justify-center gap-2">
-                  {accessLogs.length > 0 ? (
-                    <span>👑 Admin Mode - {accessLogs.length} כניסות</span>
-                  ) : (
-                    <span>אין כניסות עדיין</span>
-                  )}
-                  
-                  {/* Clear Log Button */}
-                  {accessLogs.length > 0 && (
-                    <button
-                      onClick={() => {
-                        showConfirm('למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.', () => {
-                          database.ref('accessLog').remove();
-                          localStorage.setItem('bangkok_last_seen', Date.now().toString());
-                          setAccessLogs([]);
-                            setHasNewEntries(false);
-                            showToast('הלוג נוקה', 'success');
-                          });
-                        }}
-                        className="text-red-500 hover:text-red-700 text-lg p-1"
-                        title="מחק לוג כניסות"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
-                </div>
-            </div>
           </div>
         )}
 
