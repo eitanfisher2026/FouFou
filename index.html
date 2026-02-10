@@ -4437,13 +4437,27 @@ const BangkokExplorer = () => {
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-4 shadow-lg">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Bangkok Explorer</h1>
-          <div className="text-left">
-            <span className="text-xs opacity-70 block">v{window.BKK.VERSION}</span>
-            <span className="text-xs font-medium opacity-80">© 2026 Eitan Fisher</span>
-          </div>
+      <div style={{
+        background: 'linear-gradient(135deg, #ea580c 0%, #db2777 50%, #7c3aed 100%)',
+        padding: '10px 16px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.15)'
+      }}>
+        <div className="flex items-center justify-center gap-2">
+          <span style={{ fontSize: '22px' }}>📍</span>
+          <h1 style={{ 
+            fontSize: '18px', 
+            fontWeight: '800', 
+            color: 'white',
+            letterSpacing: '0.5px',
+            margin: 0
+          }}>Bangkok Explorer</h1>
+          <span style={{ 
+            fontSize: '9px', 
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: '500',
+            alignSelf: 'flex-end',
+            marginBottom: '2px'
+          }}>v{window.BKK.VERSION}</span>
         </div>
       </div>
 
