@@ -1743,7 +1743,7 @@
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className="font-medium text-sm truncate">{savedRoute.name}</span>
-                              {savedRoute.locked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
+                              {savedRoute.locked && isUnlocked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
                               {savedRoute.inProgress && <span title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
                                 const obj = interestMap[intId];
@@ -1874,7 +1874,7 @@
                                           ) : (
                                             <span className="font-medium text-sm truncate">{loc.name}</span>
                                           )}
-                                          {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                          {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                           {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
                                           {loc.outsideArea && <span className="text-orange-500 text-xs" title="מחוץ לגבולות">🔺</span>}
                                           {loc.missingCoordinates && <span className="text-red-500 text-xs" title="אין מיקום">⚠️</span>}
@@ -1924,7 +1924,7 @@
                                         ) : (
                                           <span className="font-medium text-sm truncate">{loc.name}</span>
                                         )}
-                                        {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                        {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                         {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
                                         {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title="חסרים פרטים">❌</span>}
                                       </div>
@@ -1981,7 +1981,7 @@
                                     ) : (
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
-                                    {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                    {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                     {loc.interests?.map((int, idx) => {
                                       const obj = interestMap[int];
                                       return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
@@ -2073,7 +2073,7 @@
                       {isCustom && <span className="text-[10px] bg-purple-200 text-purple-800 px-1 py-0.5 rounded flex-shrink-0">מותאם</span>}
                       {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title="חסר הגדרות חיפוש">⚠️</span>}
                       {interest.inProgress && <span className="text-orange-600 flex-shrink-0" title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
-                      {interest.locked && <span title="נעול" style={{ fontSize: '11px' }} className="flex-shrink-0">🔒</span>}
+                      {interest.locked && isUnlocked && <span title="נעול" style={{ fontSize: '11px' }} className="flex-shrink-0">🔒</span>}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       {/* Toggle button */}

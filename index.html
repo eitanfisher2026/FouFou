@@ -3610,12 +3610,6 @@ const BangkokExplorer = () => {
   
   // Handle edit location - populate form with existing data
   const handleEditLocation = (loc) => {
-    console.log('[EDIT] ====== Opening edit ======');
-    console.log('[EDIT] Location object:', JSON.stringify(loc, null, 2));
-    console.log('[EDIT] Name:', loc.name);
-    console.log('[EDIT] Description:', loc.description);
-    console.log('[EDIT] Interests:', loc.interests);
-    
     setEditingLocation(loc);
     const editFormData = {
       name: loc.name || '',
@@ -3634,12 +3628,9 @@ const BangkokExplorer = () => {
       locked: loc.locked || false
     };
     
-    console.log('[EDIT] Form data prepared:', JSON.stringify(editFormData, null, 2));
     setNewLocation(editFormData);
-    console.log('[EDIT] newLocation state updated');
     setGooglePlaceInfo(null);
     setShowEditLocationDialog(true);
-    console.log('[EDIT] Dialog opened');
   };
   
   // Add Google place to My Locations
@@ -4217,21 +4208,23 @@ const BangkokExplorer = () => {
       return;
     }
     
-    // Check if anything actually changed
+    // Check if anything actually changed (normalize null/undefined)
     const hasChanges = (() => {
       const e = editingLocation;
       const n = newLocation;
-      if ((n.name || '').trim() !== (e.name || '').trim()) return true;
-      if ((n.description || '').trim() !== (e.description || '').trim()) return true;
-      if ((n.notes || '').trim() !== (e.notes || '').trim()) return true;
+      const s = (v) => (v || '').toString().trim(); // normalize strings
+      const nn = (v) => v ?? null; // normalize null/undefined
+      if (s(n.name) !== s(e.name)) return true;
+      if (s(n.description) !== s(e.description)) return true;
+      if (s(n.notes) !== s(e.notes)) return true;
       if (JSON.stringify(n.areas || []) !== JSON.stringify(e.areas || (e.area ? [e.area] : []))) return true;
       if (JSON.stringify(n.interests || []) !== JSON.stringify(e.interests || [])) return true;
-      if (n.lat !== e.lat || n.lng !== e.lng) return true;
-      if ((n.mapsUrl || '') !== (e.mapsUrl || '')) return true;
-      if ((n.address || '') !== (e.address || '')) return true;
+      if (nn(n.lat) !== nn(e.lat) || nn(n.lng) !== nn(e.lng)) return true;
+      if (s(n.mapsUrl) !== s(e.mapsUrl)) return true;
+      if (s(n.address) !== s(e.address)) return true;
       if (!!n.inProgress !== !!e.inProgress) return true;
       if (!!n.locked !== !!e.locked) return true;
-      if (n.uploadedImage !== e.uploadedImage) return true;
+      if (nn(n.uploadedImage) !== nn(e.uploadedImage)) return true;
       return false;
     })();
     
@@ -6374,7 +6367,7 @@ const BangkokExplorer = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className="font-medium text-sm truncate">{savedRoute.name}</span>
-                              {savedRoute.locked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
+                              {savedRoute.locked && isUnlocked && <span title="נעול" style={{ fontSize: '11px' }}>🔒</span>}
                               {savedRoute.inProgress && <span title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
                                 const obj = interestMap[intId];
@@ -6505,7 +6498,7 @@ const BangkokExplorer = () => {
                                           ) : (
                                             <span className="font-medium text-sm truncate">{loc.name}</span>
                                           )}
-                                          {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                          {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                           {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
                                           {loc.outsideArea && <span className="text-orange-500 text-xs" title="מחוץ לגבולות">🔺</span>}
                                           {loc.missingCoordinates && <span className="text-red-500 text-xs" title="אין מיקום">⚠️</span>}
@@ -6555,7 +6548,7 @@ const BangkokExplorer = () => {
                                         ) : (
                                           <span className="font-medium text-sm truncate">{loc.name}</span>
                                         )}
-                                        {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                        {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                         {loc.inProgress && <span className="text-orange-600" title="בעבודה" style={{ fontSize: '14px' }}>🛠️</span>}
                                         {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title="חסרים פרטים">❌</span>}
                                       </div>
@@ -6612,7 +6605,7 @@ const BangkokExplorer = () => {
                                     ) : (
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
-                                    {loc.locked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
+                                    {loc.locked && isUnlocked && <span title="נעול" style={{ fontSize: '12px' }}>🔒</span>}
                                     {loc.interests?.map((int, idx) => {
                                       const obj = interestMap[int];
                                       return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
@@ -6704,7 +6697,7 @@ const BangkokExplorer = () => {
                       {isCustom && <span className="text-[10px] bg-purple-200 text-purple-800 px-1 py-0.5 rounded flex-shrink-0">מותאם</span>}
                       {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title="חסר הגדרות חיפוש">⚠️</span>}
                       {interest.inProgress && <span className="text-orange-600 flex-shrink-0" title="בעבודה" style={{ fontSize: '12px' }}>🛠️</span>}
-                      {interest.locked && <span title="נעול" style={{ fontSize: '11px' }} className="flex-shrink-0">🔒</span>}
+                      {interest.locked && isUnlocked && <span title="נעול" style={{ fontSize: '11px' }} className="flex-shrink-0">🔒</span>}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       {/* Toggle button */}
@@ -7283,8 +7276,11 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Content - Scrollable - COMPACT */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5"
-                style={showEditLocationDialog && editingLocation?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+                <div style={{ position: 'relative' }}>
+                {showEditLocationDialog && editingLocation?.locked && !isUnlocked && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                )}
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
@@ -7673,6 +7669,7 @@ const BangkokExplorer = () => {
                     rows="2"
                   />
                 </div>
+                </div>{/* close inner wrapper */}
 
                 {/* Status toggles - only show if not locked for non-admin */}
                 {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
@@ -7749,22 +7746,24 @@ const BangkokExplorer = () => {
 
               </div>
               
-              {/* Footer - Compact */}
+              {/* Footer */}
               {(() => {
                 const isLockedPlace = showEditLocationDialog && editingLocation?.locked && !isUnlocked;
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
                   <>
-                    <a
-                      href={newLocation.lat && newLocation.lng ? `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}` : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold text-center ${newLocation.lat ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 pointer-events-none'}`}
-                    >
-                      🗺️ פתח בגוגל
-                    </a>
-                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                    {newLocation.lat && newLocation.lng && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2.5 rounded-lg text-sm font-bold text-center bg-green-500 text-white hover:bg-green-600"
+                      >
+                        🗺️ פתח בגוגל
+                      </a>
+                    )}
+                    <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
                       🔒 צפייה בלבד
                     </div>
                   </>
@@ -7805,27 +7804,11 @@ const BangkokExplorer = () => {
                 )}
                 <button
                   onClick={() => {
-                    // Save if there's valid content, then close
-                    if (newLocation.name?.trim() && newLocation.interests?.length > 0) {
-                      const exists = customLocations.find(loc => 
-                        loc.name.toLowerCase() === newLocation.name.trim().toLowerCase() &&
-                        (!editingLocation || loc.id !== editingLocation.id)
-                      );
-                      if (!exists) {
-                        if (showEditLocationDialog) {
-                          updateCustomLocation(true); // Save and close
-                        } else {
-                          addCustomLocation(true); // Save and close
-                        }
-                        return;
-                      }
-                    }
-                    // Just close if nothing to save or invalid
                     setShowAddLocationDialog(false);
                     setShowEditLocationDialog(false);
                     setEditingLocation(null);
                     setNewLocation({ 
-                      name: '', description: '', notes: '', area: formData.area, interests: [], 
+                      name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], 
                       lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], inProgress: true
                     });
                   }}
@@ -7875,8 +7858,11 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
-                style={editingCustomInterest?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <div style={{ position: 'relative' }}>
+                {editingCustomInterest?.locked && !isUnlocked && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                )}
                 {/* Name + Icon row */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="col-span-3">
@@ -7888,7 +7874,7 @@ const BangkokExplorer = () => {
                       placeholder="לדוגמה: בתי קולנוע"
                       className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
                       style={{ direction: 'rtl' }}
-                      disabled={newInterest.builtIn}
+                      disabled={newInterest.builtIn && !isUnlocked}
                       autoFocus={!newInterest.builtIn}
                     />
                   </div>
@@ -7912,10 +7898,10 @@ const BangkokExplorer = () => {
                         }}
                         placeholder="📍"
                         className="w-full p-2 text-xl border-2 border-gray-300 rounded-lg text-center"
-                        disabled={newInterest.builtIn}
+                        disabled={newInterest.builtIn && !isUnlocked}
                       />
                     )}
-                    {!newInterest.builtIn && (
+                    {(!newInterest.builtIn || isUnlocked) && (
                       <label className="block w-full mt-1 p-1 border border-dashed border-gray-300 rounded text-center cursor-pointer hover:bg-gray-50 text-[9px] text-gray-500">
                         📁 קובץ
                         <input
@@ -7997,6 +7983,7 @@ const BangkokExplorer = () => {
                     />
                   </div>
                 </div>
+                </div>{/* close inner wrapper */}
 
                 {/* Status toggles - hidden for locked non-admin */}
                 {!(editingCustomInterest?.locked && !isUnlocked) && (
@@ -8077,8 +8064,8 @@ const BangkokExplorer = () => {
                 {(() => {
                   const isLockedInterest = editingCustomInterest?.locked && !isUnlocked;
                   return isLockedInterest ? (
-                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                      🔒 תחום נעול - צפייה בלבד
+                    <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
+                      🔒 צפייה בלבד
                     </div>
                   ) : (
                     <button
@@ -8099,8 +8086,8 @@ const BangkokExplorer = () => {
                           // EDIT MODE
                           const interestId = editingCustomInterest.id;
                           
-                          if (!newInterest.builtIn) {
-                            // Custom interest - update name/icon too
+                          if (!newInterest.builtIn || isUnlocked) {
+                            // Custom interest OR admin editing built-in - update name/icon too
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
@@ -8122,7 +8109,7 @@ const BangkokExplorer = () => {
                               localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             }
                           } else {
-                            // Built-in interest - save search config only
+                            // Non-admin built-in interest - save search config only
                             if (isFirebaseAvailable && database) {
                               database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
                             } else {
@@ -8168,7 +8155,7 @@ const BangkokExplorer = () => {
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      {editingCustomInterest ? '💾 שמור' : '➕ הוסף'}
+                      {editingCustomInterest ? '💾 עדכן' : '➕ הוסף'}
                     </button>
                   );
                 })()}
@@ -8351,6 +8338,10 @@ const BangkokExplorer = () => {
             
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div style={{ position: 'relative' }}>
+              {editingRoute?.locked && !isUnlocked && (
+                <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+              )}
               {/* Route info */}
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
                 {/* Area */}
@@ -8423,8 +8414,9 @@ const BangkokExplorer = () => {
                   ))}
                 </div>
               </div>
+              </div>{/* close inner wrapper */}
 
-              {/* Share buttons */}
+              {/* Share buttons - always available */}
               <div className="flex gap-2">
                 <button
                   onClick={() => {

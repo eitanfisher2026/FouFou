@@ -2589,12 +2589,6 @@
   
   // Handle edit location - populate form with existing data
   const handleEditLocation = (loc) => {
-    console.log('[EDIT] ====== Opening edit ======');
-    console.log('[EDIT] Location object:', JSON.stringify(loc, null, 2));
-    console.log('[EDIT] Name:', loc.name);
-    console.log('[EDIT] Description:', loc.description);
-    console.log('[EDIT] Interests:', loc.interests);
-    
     setEditingLocation(loc);
     const editFormData = {
       name: loc.name || '',
@@ -2613,12 +2607,9 @@
       locked: loc.locked || false
     };
     
-    console.log('[EDIT] Form data prepared:', JSON.stringify(editFormData, null, 2));
     setNewLocation(editFormData);
-    console.log('[EDIT] newLocation state updated');
     setGooglePlaceInfo(null);
     setShowEditLocationDialog(true);
-    console.log('[EDIT] Dialog opened');
   };
   
   // Add Google place to My Locations
@@ -3196,21 +3187,23 @@
       return;
     }
     
-    // Check if anything actually changed
+    // Check if anything actually changed (normalize null/undefined)
     const hasChanges = (() => {
       const e = editingLocation;
       const n = newLocation;
-      if ((n.name || '').trim() !== (e.name || '').trim()) return true;
-      if ((n.description || '').trim() !== (e.description || '').trim()) return true;
-      if ((n.notes || '').trim() !== (e.notes || '').trim()) return true;
+      const s = (v) => (v || '').toString().trim(); // normalize strings
+      const nn = (v) => v ?? null; // normalize null/undefined
+      if (s(n.name) !== s(e.name)) return true;
+      if (s(n.description) !== s(e.description)) return true;
+      if (s(n.notes) !== s(e.notes)) return true;
       if (JSON.stringify(n.areas || []) !== JSON.stringify(e.areas || (e.area ? [e.area] : []))) return true;
       if (JSON.stringify(n.interests || []) !== JSON.stringify(e.interests || [])) return true;
-      if (n.lat !== e.lat || n.lng !== e.lng) return true;
-      if ((n.mapsUrl || '') !== (e.mapsUrl || '')) return true;
-      if ((n.address || '') !== (e.address || '')) return true;
+      if (nn(n.lat) !== nn(e.lat) || nn(n.lng) !== nn(e.lng)) return true;
+      if (s(n.mapsUrl) !== s(e.mapsUrl)) return true;
+      if (s(n.address) !== s(e.address)) return true;
       if (!!n.inProgress !== !!e.inProgress) return true;
       if (!!n.locked !== !!e.locked) return true;
-      if (n.uploadedImage !== e.uploadedImage) return true;
+      if (nn(n.uploadedImage) !== nn(e.uploadedImage)) return true;
       return false;
     })();
     

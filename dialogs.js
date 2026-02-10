@@ -34,8 +34,11 @@
               </div>
               
               {/* Content - Scrollable - COMPACT */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5"
-                style={showEditLocationDialog && editingLocation?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+                <div style={{ position: 'relative' }}>
+                {showEditLocationDialog && editingLocation?.locked && !isUnlocked && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                )}
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
@@ -424,6 +427,7 @@
                     rows="2"
                   />
                 </div>
+                </div>{/* close inner wrapper */}
 
                 {/* Status toggles - only show if not locked for non-admin */}
                 {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
@@ -500,22 +504,24 @@
 
               </div>
               
-              {/* Footer - Compact */}
+              {/* Footer */}
               {(() => {
                 const isLockedPlace = showEditLocationDialog && editingLocation?.locked && !isUnlocked;
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
                   <>
-                    <a
-                      href={newLocation.lat && newLocation.lng ? `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}` : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold text-center ${newLocation.lat ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 pointer-events-none'}`}
-                    >
-                      🗺️ פתח בגוגל
-                    </a>
-                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                    {newLocation.lat && newLocation.lng && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2.5 rounded-lg text-sm font-bold text-center bg-green-500 text-white hover:bg-green-600"
+                      >
+                        🗺️ פתח בגוגל
+                      </a>
+                    )}
+                    <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
                       🔒 צפייה בלבד
                     </div>
                   </>
@@ -556,27 +562,11 @@
                 )}
                 <button
                   onClick={() => {
-                    // Save if there's valid content, then close
-                    if (newLocation.name?.trim() && newLocation.interests?.length > 0) {
-                      const exists = customLocations.find(loc => 
-                        loc.name.toLowerCase() === newLocation.name.trim().toLowerCase() &&
-                        (!editingLocation || loc.id !== editingLocation.id)
-                      );
-                      if (!exists) {
-                        if (showEditLocationDialog) {
-                          updateCustomLocation(true); // Save and close
-                        } else {
-                          addCustomLocation(true); // Save and close
-                        }
-                        return;
-                      }
-                    }
-                    // Just close if nothing to save or invalid
                     setShowAddLocationDialog(false);
                     setShowEditLocationDialog(false);
                     setEditingLocation(null);
                     setNewLocation({ 
-                      name: '', description: '', notes: '', area: formData.area, interests: [], 
+                      name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], 
                       lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], inProgress: true
                     });
                   }}
@@ -626,8 +616,11 @@
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
-                style={editingCustomInterest?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <div style={{ position: 'relative' }}>
+                {editingCustomInterest?.locked && !isUnlocked && (
+                  <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                )}
                 {/* Name + Icon row */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="col-span-3">
@@ -639,7 +632,7 @@
                       placeholder="לדוגמה: בתי קולנוע"
                       className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
                       style={{ direction: 'rtl' }}
-                      disabled={newInterest.builtIn}
+                      disabled={newInterest.builtIn && !isUnlocked}
                       autoFocus={!newInterest.builtIn}
                     />
                   </div>
@@ -663,10 +656,10 @@
                         }}
                         placeholder="📍"
                         className="w-full p-2 text-xl border-2 border-gray-300 rounded-lg text-center"
-                        disabled={newInterest.builtIn}
+                        disabled={newInterest.builtIn && !isUnlocked}
                       />
                     )}
-                    {!newInterest.builtIn && (
+                    {(!newInterest.builtIn || isUnlocked) && (
                       <label className="block w-full mt-1 p-1 border border-dashed border-gray-300 rounded text-center cursor-pointer hover:bg-gray-50 text-[9px] text-gray-500">
                         📁 קובץ
                         <input
@@ -748,6 +741,7 @@
                     />
                   </div>
                 </div>
+                </div>{/* close inner wrapper */}
 
                 {/* Status toggles - hidden for locked non-admin */}
                 {!(editingCustomInterest?.locked && !isUnlocked) && (
@@ -828,8 +822,8 @@
                 {(() => {
                   const isLockedInterest = editingCustomInterest?.locked && !isUnlocked;
                   return isLockedInterest ? (
-                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                      🔒 תחום נעול - צפייה בלבד
+                    <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
+                      🔒 צפייה בלבד
                     </div>
                   ) : (
                     <button
@@ -850,8 +844,8 @@
                           // EDIT MODE
                           const interestId = editingCustomInterest.id;
                           
-                          if (!newInterest.builtIn) {
-                            // Custom interest - update name/icon too
+                          if (!newInterest.builtIn || isUnlocked) {
+                            // Custom interest OR admin editing built-in - update name/icon too
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
@@ -873,7 +867,7 @@
                               localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             }
                           } else {
-                            // Built-in interest - save search config only
+                            // Non-admin built-in interest - save search config only
                             if (isFirebaseAvailable && database) {
                               database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
                             } else {
@@ -919,7 +913,7 @@
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      {editingCustomInterest ? '💾 שמור' : '➕ הוסף'}
+                      {editingCustomInterest ? '💾 עדכן' : '➕ הוסף'}
                     </button>
                   );
                 })()}
@@ -1102,6 +1096,10 @@
             
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div style={{ position: 'relative' }}>
+              {editingRoute?.locked && !isUnlocked && (
+                <div style={{ position: 'absolute', inset: 0, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+              )}
               {/* Route info */}
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
                 {/* Area */}
@@ -1174,8 +1172,9 @@
                   ))}
                 </div>
               </div>
+              </div>{/* close inner wrapper */}
 
-              {/* Share buttons */}
+              {/* Share buttons - always available */}
               <div className="flex gap-2">
                 <button
                   onClick={() => {
