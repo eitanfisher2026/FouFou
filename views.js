@@ -111,7 +111,7 @@
           >
             <div className="text-center relative inline-flex items-center justify-center w-full">
               {(isUnlocked || !adminPassword) ? '🔓' : '🔒'}
-              {(hasNewFeedback || hasNewEntries) && isCurrentUserAdmin && (
+              {hasNewFeedback && isCurrentUserAdmin && (
                 <span className="absolute -top-1 left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
               )}
             </div>
@@ -1763,8 +1763,8 @@
                               setShowRouteDialog(true);
                             }}
                             className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
-                            title="פרטים / ערוך"
-                          >✏️</button>
+                            title={savedRoute.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}
+                          >{savedRoute.locked && !isUnlocked ? '👁️' : '✏️'}</button>
                         </div>
                       </React.Fragment>
                     );
@@ -1890,7 +1890,7 @@
                                       </div>
                                       <button onClick={() => handleEditLocation(loc)}
                                         className="text-xs px-1 py-0.5 rounded"
-                                        title="פרטים / ערוך">✏️</button>
+                                        title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                                     </div>
                                   );
                                 })}
@@ -1931,7 +1931,7 @@
                                     </div>
                                     <button onClick={() => handleEditLocation(loc)}
                                       className="text-xs px-1 py-0.5 rounded"
-                                      title="פרטים / ערוך">✏️</button>
+                                      title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                                   </div>
                                 );
                               })}
@@ -1990,7 +1990,7 @@
                                 </div>
                                 <button onClick={() => handleEditLocation(loc)}
                                   className="text-xs px-1 py-0.5 rounded"
-                                  title="פרטים / ערוך">✏️</button>
+                                  title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                               </div>
                               );
                             })}
@@ -2092,8 +2092,8 @@
                       <button
                         onClick={() => openInterestDialog(interest, isCustom)}
                         className="text-xs px-1 py-0.5 rounded flex-shrink-0"
-                        title="פרטים / ערוך"
-                      >✏️</button>
+                        title={interest.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}
+                      >{interest.locked && !isUnlocked ? '👁️' : '✏️'}</button>
                     </div>
                   </div>
                 );

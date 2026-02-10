@@ -922,7 +922,6 @@
           const hasNew = logsArray.some(log => log.timestamp > lastSeen);
           if (hasNew && lastSeen > 0) {
             setHasNewEntries(true);
-            showToast('יש כניסות חדשות!', 'info');
           }
         } else {
           setAccessLogs([]);
@@ -3195,6 +3194,32 @@
     if (exists) {
       showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
       return;
+    }
+    
+    // Check if anything actually changed
+    const hasChanges = (() => {
+      const e = editingLocation;
+      const n = newLocation;
+      if ((n.name || '').trim() !== (e.name || '').trim()) return true;
+      if ((n.description || '').trim() !== (e.description || '').trim()) return true;
+      if ((n.notes || '').trim() !== (e.notes || '').trim()) return true;
+      if (JSON.stringify(n.areas || []) !== JSON.stringify(e.areas || (e.area ? [e.area] : []))) return true;
+      if (JSON.stringify(n.interests || []) !== JSON.stringify(e.interests || [])) return true;
+      if (n.lat !== e.lat || n.lng !== e.lng) return true;
+      if ((n.mapsUrl || '') !== (e.mapsUrl || '')) return true;
+      if ((n.address || '') !== (e.address || '')) return true;
+      if (!!n.inProgress !== !!e.inProgress) return true;
+      if (!!n.locked !== !!e.locked) return true;
+      if (n.uploadedImage !== e.uploadedImage) return true;
+      return false;
+    })();
+    
+    if (!hasChanges) {
+      if (closeAfter) {
+        setShowEditLocationDialog(false);
+        setEditingLocation(null);
+      }
+      return; // No toast, no save
     }
     
     // Use provided coordinates (can be null)

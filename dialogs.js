@@ -34,7 +34,8 @@
               </div>
               
               {/* Content - Scrollable - COMPACT */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5"
+                style={showEditLocationDialog && editingLocation?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
@@ -424,7 +425,8 @@
                   />
                 </div>
 
-                {/* Status toggles */}
+                {/* Status toggles - only show if not locked for non-admin */}
+                {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -447,57 +449,52 @@
                     </label>
                   )}
                 </div>
+                )}
 
-                {/* Actions: Skip permanently + Delete (edit mode only) */}
-                {showEditLocationDialog && editingLocation && (
+                {/* Actions: Skip permanently + Delete (edit mode only) - hidden for locked non-admin */}
+                {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    {!(editingLocation.locked && !isUnlocked) && (
-                      <div className="flex gap-2">
-                        {editingLocation.status === 'blacklist' ? (
-                          <button
-                            onClick={() => {
-                              // Restore and mark as inProgress
-                              const loc = customLocations.find(l => l.id === editingLocation.id);
-                              if (loc && isFirebaseAvailable && database) {
-                                database.ref(`customLocations/${loc.firebaseId || loc.id}`).update({ inProgress: true });
-                              }
-                              toggleLocationStatus(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            }}
-                            className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
-                          >
-                            ✅ החזר כמקום פעיל
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              toggleLocationStatus(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            }}
-                            className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                          >
-                            🚫 דלג לצמיתות
-                          </button>
-                        )}
+                    <div className="flex gap-2">
+                      {editingLocation.status === 'blacklist' ? (
                         <button
                           onClick={() => {
-                            showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
-                              deleteCustomLocation(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            });
+                            const loc = customLocations.find(l => l.id === editingLocation.id);
+                            if (loc && isFirebaseAvailable && database) {
+                              database.ref(`customLocations/${loc.firebaseId || loc.id}`).update({ inProgress: true });
+                            }
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
                           }}
-                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
                         >
-                          🗑️ מחק מקום
+                          ✅ החזר כמקום פעיל
                         </button>
-                      </div>
-                    )}
-                    {editingLocation.locked && !isUnlocked && (
-                      <div className="text-center text-xs text-yellow-700">🔒 מקום נעול - פעולות חסומות</div>
-                    )}
+                      ) : (
+                        <button
+                          onClick={() => {
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          }}
+                          className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        >
+                          🚫 דלג לצמיתות
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
+                            deleteCustomLocation(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          });
+                        }}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                      >
+                        🗑️ מחק מקום
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -509,9 +506,19 @@
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
-                  <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                    🔒 מקום נעול - צפייה בלבד
-                  </div>
+                  <>
+                    <a
+                      href={newLocation.lat && newLocation.lng ? `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}` : '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold text-center ${newLocation.lat ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 pointer-events-none'}`}
+                    >
+                      🗺️ פתח בגוגל
+                    </a>
+                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                      🔒 צפייה בלבד
+                    </div>
+                  </>
                 ) : (
                 <button
                   onClick={() => {
@@ -619,7 +626,8 @@
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+                style={editingCustomInterest?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
                 {/* Name + Icon row */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="col-span-3">
@@ -741,7 +749,8 @@
                   </div>
                 </div>
 
-                {/* Status toggles */}
+                {/* Status toggles - hidden for locked non-admin */}
+                {!(editingCustomInterest?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -764,56 +773,52 @@
                     </label>
                   )}
                 </div>
+                )}
 
-                {/* Actions: Enable/Disable + Delete (edit mode only) */}
-                {editingCustomInterest && (
+                {/* Actions: Enable/Disable + Delete (edit mode only) - hidden for locked non-admin */}
+                {editingCustomInterest && !(editingCustomInterest.locked && !isUnlocked) && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    {!(editingCustomInterest.locked && !isUnlocked) ? (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          toggleInterestStatus(editingCustomInterest.id);
+                          setShowAddInterestDialog(false);
+                          setEditingCustomInterest(null);
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold ${
+                          interestStatus[editingCustomInterest.id] === false 
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                      >
+                        {interestStatus[editingCustomInterest.id] === false ? '✅ הפעל' : '⏸️ השבת'}
+                      </button>
+                      {(!newInterest.builtIn || isUnlocked) && (
                         <button
                           onClick={() => {
-                            toggleInterestStatus(editingCustomInterest.id);
-                            setShowAddInterestDialog(false);
-                            setEditingCustomInterest(null);
-                          }}
-                          className={`flex-1 py-2 rounded-lg text-sm font-bold ${
-                            interestStatus[editingCustomInterest.id] === false 
-                              ? 'bg-green-500 text-white hover:bg-green-600'
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
-                          }`}
-                        >
-                          {interestStatus[editingCustomInterest.id] === false ? '✅ הפעל' : '⏸️ השבת'}
-                        </button>
-                        {(!newInterest.builtIn || isUnlocked) && (
-                          <button
-                            onClick={() => {
-                              const msg = newInterest.builtIn 
-                                ? `⚠️ אתה עומד למחוק תחום מערכת "${newInterest.label}". פעולה זו תסיר אותו לצמיתות. להמשיך?`
-                                : `אתה עומד למחוק תחום אישי "${newInterest.label}". להמשיך?`;
-                              showConfirm(msg, () => {
-                                if (newInterest.builtIn) {
-                                  // For built-in: toggle off + remove config
-                                  toggleInterestStatus(editingCustomInterest.id);
-                                  if (isFirebaseAvailable && database) {
-                                    database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
-                                  }
-                                  showToast('תחום מערכת הוסר', 'success');
-                                } else {
-                                  deleteCustomInterest(editingCustomInterest.id);
+                            const msg = newInterest.builtIn 
+                              ? `⚠️ אתה עומד למחוק תחום מערכת "${newInterest.label}". פעולה זו תסיר אותו לצמיתות. להמשיך?`
+                              : `אתה עומד למחוק תחום אישי "${newInterest.label}". להמשיך?`;
+                            showConfirm(msg, () => {
+                              if (newInterest.builtIn) {
+                                toggleInterestStatus(editingCustomInterest.id);
+                                if (isFirebaseAvailable && database) {
+                                  database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
                                 }
-                                setShowAddInterestDialog(false);
-                                setEditingCustomInterest(null);
-                              });
-                            }}
-                            className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-                          >
-                            🗑️ מחק תחום
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs text-yellow-700">🔒 תחום נעול - פעולות חסומות</div>
-                    )}
+                                showToast('תחום מערכת הוסר', 'success');
+                              } else {
+                                deleteCustomInterest(editingCustomInterest.id);
+                              }
+                              setShowAddInterestDialog(false);
+                              setEditingCustomInterest(null);
+                            });
+                          }}
+                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                        >
+                          🗑️ מחק תחום
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1212,7 +1217,8 @@
                 </button>
               </div>
 
-              {/* Status toggles */}
+              {/* Status toggles - hidden for locked non-admin */}
+              {!(editingRoute.locked && !isUnlocked) && (
               <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -1220,7 +1226,6 @@
                     checked={editingRoute.inProgress || false}
                     onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
                     className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                    disabled={editingRoute.locked && !isUnlocked}
                   />
                   <span className="text-xs">🛠️ בעבודה</span>
                 </label>
@@ -1236,28 +1241,27 @@
                   </label>
                 )}
               </div>
+              )}
 
-              {/* Actions: Delete */}
+              {/* Actions: Delete - hidden for locked non-admin */}
+              {!(editingRoute.locked && !isUnlocked) && (
               <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                {!(editingRoute.locked && !isUnlocked) ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
-                          deleteRoute(editingRoute.id);
-                          setShowRouteDialog(false);
-                          setEditingRoute(null);
-                        });
-                      }}
-                      className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-                    >
-                      🗑️ מחק מסלול
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center text-xs text-yellow-700">🔒 מסלול נעול - פעולות חסומות</div>
-                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
+                        deleteRoute(editingRoute.id);
+                        setShowRouteDialog(false);
+                        setEditingRoute(null);
+                      });
+                    }}
+                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                  >
+                    🗑️ מחק מסלול
+                  </button>
+                </div>
               </div>
+              )}
             </div>
             
             {/* Footer */}
@@ -1267,9 +1271,21 @@
                 return (
                   <>
                     {isLockedRoute ? (
-                      <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                        🔒 מסלול נעול - צפייה בלבד
-                      </div>
+                      <>
+                        <button
+                          onClick={() => {
+                            loadSavedRoute(editingRoute);
+                            setShowRouteDialog(false);
+                            setEditingRoute(null);
+                          }}
+                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        >
+                          📍 פתח מסלול
+                        </button>
+                        <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                          🔒 צפייה בלבד
+                        </div>
+                      </>
                     ) : (
                       <>
                         <button

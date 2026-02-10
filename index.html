@@ -1943,7 +1943,6 @@ const BangkokExplorer = () => {
           const hasNew = logsArray.some(log => log.timestamp > lastSeen);
           if (hasNew && lastSeen > 0) {
             setHasNewEntries(true);
-            showToast('יש כניסות חדשות!', 'info');
           }
         } else {
           setAccessLogs([]);
@@ -4218,6 +4217,32 @@ const BangkokExplorer = () => {
       return;
     }
     
+    // Check if anything actually changed
+    const hasChanges = (() => {
+      const e = editingLocation;
+      const n = newLocation;
+      if ((n.name || '').trim() !== (e.name || '').trim()) return true;
+      if ((n.description || '').trim() !== (e.description || '').trim()) return true;
+      if ((n.notes || '').trim() !== (e.notes || '').trim()) return true;
+      if (JSON.stringify(n.areas || []) !== JSON.stringify(e.areas || (e.area ? [e.area] : []))) return true;
+      if (JSON.stringify(n.interests || []) !== JSON.stringify(e.interests || [])) return true;
+      if (n.lat !== e.lat || n.lng !== e.lng) return true;
+      if ((n.mapsUrl || '') !== (e.mapsUrl || '')) return true;
+      if ((n.address || '') !== (e.address || '')) return true;
+      if (!!n.inProgress !== !!e.inProgress) return true;
+      if (!!n.locked !== !!e.locked) return true;
+      if (n.uploadedImage !== e.uploadedImage) return true;
+      return false;
+    })();
+    
+    if (!hasChanges) {
+      if (closeAfter) {
+        setShowEditLocationDialog(false);
+        setEditingLocation(null);
+      }
+      return; // No toast, no save
+    }
+    
     // Use provided coordinates (can be null)
     let hasCoordinates = (newLocation.lat !== null && newLocation.lng !== null && 
                           newLocation.lat !== 0 && newLocation.lng !== 0);
@@ -4717,7 +4742,7 @@ const BangkokExplorer = () => {
           >
             <div className="text-center relative inline-flex items-center justify-center w-full">
               {(isUnlocked || !adminPassword) ? '🔓' : '🔒'}
-              {(hasNewFeedback || hasNewEntries) && isCurrentUserAdmin && (
+              {hasNewFeedback && isCurrentUserAdmin && (
                 <span className="absolute -top-1 left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
               )}
             </div>
@@ -6369,8 +6394,8 @@ const BangkokExplorer = () => {
                               setShowRouteDialog(true);
                             }}
                             className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
-                            title="פרטים / ערוך"
-                          >✏️</button>
+                            title={savedRoute.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}
+                          >{savedRoute.locked && !isUnlocked ? '👁️' : '✏️'}</button>
                         </div>
                       </React.Fragment>
                     );
@@ -6496,7 +6521,7 @@ const BangkokExplorer = () => {
                                       </div>
                                       <button onClick={() => handleEditLocation(loc)}
                                         className="text-xs px-1 py-0.5 rounded"
-                                        title="פרטים / ערוך">✏️</button>
+                                        title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                                     </div>
                                   );
                                 })}
@@ -6537,7 +6562,7 @@ const BangkokExplorer = () => {
                                     </div>
                                     <button onClick={() => handleEditLocation(loc)}
                                       className="text-xs px-1 py-0.5 rounded"
-                                      title="פרטים / ערוך">✏️</button>
+                                      title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                                   </div>
                                 );
                               })}
@@ -6596,7 +6621,7 @@ const BangkokExplorer = () => {
                                 </div>
                                 <button onClick={() => handleEditLocation(loc)}
                                   className="text-xs px-1 py-0.5 rounded"
-                                  title="פרטים / ערוך">✏️</button>
+                                  title={loc.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
                               </div>
                               );
                             })}
@@ -6698,8 +6723,8 @@ const BangkokExplorer = () => {
                       <button
                         onClick={() => openInterestDialog(interest, isCustom)}
                         className="text-xs px-1 py-0.5 rounded flex-shrink-0"
-                        title="פרטים / ערוך"
-                      >✏️</button>
+                        title={interest.locked && !isUnlocked ? "צפייה בלבד" : "פרטים / ערוך"}
+                      >{interest.locked && !isUnlocked ? '👁️' : '✏️'}</button>
                     </div>
                   </div>
                 );
@@ -7258,7 +7283,8 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Content - Scrollable - COMPACT */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5"
+                style={showEditLocationDialog && editingLocation?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
@@ -7648,7 +7674,8 @@ const BangkokExplorer = () => {
                   />
                 </div>
 
-                {/* Status toggles */}
+                {/* Status toggles - only show if not locked for non-admin */}
+                {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -7671,57 +7698,52 @@ const BangkokExplorer = () => {
                     </label>
                   )}
                 </div>
+                )}
 
-                {/* Actions: Skip permanently + Delete (edit mode only) */}
-                {showEditLocationDialog && editingLocation && (
+                {/* Actions: Skip permanently + Delete (edit mode only) - hidden for locked non-admin */}
+                {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    {!(editingLocation.locked && !isUnlocked) && (
-                      <div className="flex gap-2">
-                        {editingLocation.status === 'blacklist' ? (
-                          <button
-                            onClick={() => {
-                              // Restore and mark as inProgress
-                              const loc = customLocations.find(l => l.id === editingLocation.id);
-                              if (loc && isFirebaseAvailable && database) {
-                                database.ref(`customLocations/${loc.firebaseId || loc.id}`).update({ inProgress: true });
-                              }
-                              toggleLocationStatus(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            }}
-                            className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
-                          >
-                            ✅ החזר כמקום פעיל
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              toggleLocationStatus(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            }}
-                            className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                          >
-                            🚫 דלג לצמיתות
-                          </button>
-                        )}
+                    <div className="flex gap-2">
+                      {editingLocation.status === 'blacklist' ? (
                         <button
                           onClick={() => {
-                            showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
-                              deleteCustomLocation(editingLocation.id);
-                              setShowEditLocationDialog(false);
-                              setEditingLocation(null);
-                            });
+                            const loc = customLocations.find(l => l.id === editingLocation.id);
+                            if (loc && isFirebaseAvailable && database) {
+                              database.ref(`customLocations/${loc.firebaseId || loc.id}`).update({ inProgress: true });
+                            }
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
                           }}
-                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
                         >
-                          🗑️ מחק מקום
+                          ✅ החזר כמקום פעיל
                         </button>
-                      </div>
-                    )}
-                    {editingLocation.locked && !isUnlocked && (
-                      <div className="text-center text-xs text-yellow-700">🔒 מקום נעול - פעולות חסומות</div>
-                    )}
+                      ) : (
+                        <button
+                          onClick={() => {
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          }}
+                          className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        >
+                          🚫 דלג לצמיתות
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
+                            deleteCustomLocation(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          });
+                        }}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                      >
+                        🗑️ מחק מקום
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -7733,9 +7755,19 @@ const BangkokExplorer = () => {
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
-                  <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                    🔒 מקום נעול - צפייה בלבד
-                  </div>
+                  <>
+                    <a
+                      href={newLocation.lat && newLocation.lng ? `https://www.google.com/maps/search/?api=1&query=${newLocation.lat},${newLocation.lng}` : '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex-1 py-2.5 rounded-lg text-sm font-bold text-center ${newLocation.lat ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 pointer-events-none'}`}
+                    >
+                      🗺️ פתח בגוגל
+                    </a>
+                    <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                      🔒 צפייה בלבד
+                    </div>
+                  </>
                 ) : (
                 <button
                   onClick={() => {
@@ -7843,7 +7875,8 @@ const BangkokExplorer = () => {
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+                style={editingCustomInterest?.locked && !isUnlocked ? { pointerEvents: 'none', opacity: 0.7 } : {}}>
                 {/* Name + Icon row */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="col-span-3">
@@ -7965,7 +7998,8 @@ const BangkokExplorer = () => {
                   </div>
                 </div>
 
-                {/* Status toggles */}
+                {/* Status toggles - hidden for locked non-admin */}
+                {!(editingCustomInterest?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
@@ -7988,56 +8022,52 @@ const BangkokExplorer = () => {
                     </label>
                   )}
                 </div>
+                )}
 
-                {/* Actions: Enable/Disable + Delete (edit mode only) */}
-                {editingCustomInterest && (
+                {/* Actions: Enable/Disable + Delete (edit mode only) - hidden for locked non-admin */}
+                {editingCustomInterest && !(editingCustomInterest.locked && !isUnlocked) && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    {!(editingCustomInterest.locked && !isUnlocked) ? (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          toggleInterestStatus(editingCustomInterest.id);
+                          setShowAddInterestDialog(false);
+                          setEditingCustomInterest(null);
+                        }}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold ${
+                          interestStatus[editingCustomInterest.id] === false 
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                      >
+                        {interestStatus[editingCustomInterest.id] === false ? '✅ הפעל' : '⏸️ השבת'}
+                      </button>
+                      {(!newInterest.builtIn || isUnlocked) && (
                         <button
                           onClick={() => {
-                            toggleInterestStatus(editingCustomInterest.id);
-                            setShowAddInterestDialog(false);
-                            setEditingCustomInterest(null);
-                          }}
-                          className={`flex-1 py-2 rounded-lg text-sm font-bold ${
-                            interestStatus[editingCustomInterest.id] === false 
-                              ? 'bg-green-500 text-white hover:bg-green-600'
-                              : 'bg-blue-500 text-white hover:bg-blue-600'
-                          }`}
-                        >
-                          {interestStatus[editingCustomInterest.id] === false ? '✅ הפעל' : '⏸️ השבת'}
-                        </button>
-                        {(!newInterest.builtIn || isUnlocked) && (
-                          <button
-                            onClick={() => {
-                              const msg = newInterest.builtIn 
-                                ? `⚠️ אתה עומד למחוק תחום מערכת "${newInterest.label}". פעולה זו תסיר אותו לצמיתות. להמשיך?`
-                                : `אתה עומד למחוק תחום אישי "${newInterest.label}". להמשיך?`;
-                              showConfirm(msg, () => {
-                                if (newInterest.builtIn) {
-                                  // For built-in: toggle off + remove config
-                                  toggleInterestStatus(editingCustomInterest.id);
-                                  if (isFirebaseAvailable && database) {
-                                    database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
-                                  }
-                                  showToast('תחום מערכת הוסר', 'success');
-                                } else {
-                                  deleteCustomInterest(editingCustomInterest.id);
+                            const msg = newInterest.builtIn 
+                              ? `⚠️ אתה עומד למחוק תחום מערכת "${newInterest.label}". פעולה זו תסיר אותו לצמיתות. להמשיך?`
+                              : `אתה עומד למחוק תחום אישי "${newInterest.label}". להמשיך?`;
+                            showConfirm(msg, () => {
+                              if (newInterest.builtIn) {
+                                toggleInterestStatus(editingCustomInterest.id);
+                                if (isFirebaseAvailable && database) {
+                                  database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
                                 }
-                                setShowAddInterestDialog(false);
-                                setEditingCustomInterest(null);
-                              });
-                            }}
-                            className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-                          >
-                            🗑️ מחק תחום
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs text-yellow-700">🔒 תחום נעול - פעולות חסומות</div>
-                    )}
+                                showToast('תחום מערכת הוסר', 'success');
+                              } else {
+                                deleteCustomInterest(editingCustomInterest.id);
+                              }
+                              setShowAddInterestDialog(false);
+                              setEditingCustomInterest(null);
+                            });
+                          }}
+                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                        >
+                          🗑️ מחק תחום
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -8436,7 +8466,8 @@ const BangkokExplorer = () => {
                 </button>
               </div>
 
-              {/* Status toggles */}
+              {/* Status toggles - hidden for locked non-admin */}
+              {!(editingRoute.locked && !isUnlocked) && (
               <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input
@@ -8444,7 +8475,6 @@ const BangkokExplorer = () => {
                     checked={editingRoute.inProgress || false}
                     onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
                     className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                    disabled={editingRoute.locked && !isUnlocked}
                   />
                   <span className="text-xs">🛠️ בעבודה</span>
                 </label>
@@ -8460,28 +8490,27 @@ const BangkokExplorer = () => {
                   </label>
                 )}
               </div>
+              )}
 
-              {/* Actions: Delete */}
+              {/* Actions: Delete - hidden for locked non-admin */}
+              {!(editingRoute.locked && !isUnlocked) && (
               <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                {!(editingRoute.locked && !isUnlocked) ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
-                          deleteRoute(editingRoute.id);
-                          setShowRouteDialog(false);
-                          setEditingRoute(null);
-                        });
-                      }}
-                      className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-                    >
-                      🗑️ מחק מסלול
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center text-xs text-yellow-700">🔒 מסלול נעול - פעולות חסומות</div>
-                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
+                        deleteRoute(editingRoute.id);
+                        setShowRouteDialog(false);
+                        setEditingRoute(null);
+                      });
+                    }}
+                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                  >
+                    🗑️ מחק מסלול
+                  </button>
+                </div>
               </div>
+              )}
             </div>
             
             {/* Footer */}
@@ -8491,9 +8520,21 @@ const BangkokExplorer = () => {
                 return (
                   <>
                     {isLockedRoute ? (
-                      <div className="flex-1 py-2.5 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold text-center">
-                        🔒 מסלול נעול - צפייה בלבד
-                      </div>
+                      <>
+                        <button
+                          onClick={() => {
+                            loadSavedRoute(editingRoute);
+                            setShowRouteDialog(false);
+                            setEditingRoute(null);
+                          }}
+                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        >
+                          📍 פתח מסלול
+                        </button>
+                        <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
+                          🔒 צפייה בלבד
+                        </div>
+                      </>
                     ) : (
                       <>
                         <button
