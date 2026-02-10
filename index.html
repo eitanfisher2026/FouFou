@@ -4668,35 +4668,39 @@ const BangkokExplorer = () => {
         <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'form' || currentView === 'route' ? 'bg-rose-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">🗺️ מסלול</div>
+            <div className="text-center">🗺️</div>
+            <div className="truncate text-center text-[8px]">מסלול</div>
           </button>
           <button
             onClick={() => { setCurrentView('saved'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'saved' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">💾 {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
+            <div className="text-center">💾</div>
+            <div className="truncate text-center text-[8px]">שמורים {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myPlaces'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'myPlaces' || currentView === 'search' ? 'bg-teal-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">📍 {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
+            <div className="text-center">📍</div>
+            <div className="truncate text-center text-[8px]">מקומות {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'myInterests' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">🏷️ {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
+            <div className="text-center">🏷️</div>
+            <div className="truncate text-center text-[8px]">תחומים {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
           </button>
           <button
             onClick={() => {
@@ -4707,7 +4711,7 @@ const BangkokExplorer = () => {
               }
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'settings' ? 'bg-slate-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -4717,6 +4721,7 @@ const BangkokExplorer = () => {
                 <span className="absolute -top-1 left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
               )}
             </div>
+            <div className="truncate text-center text-[8px]">הגדרות</div>
           </button>
         </div>
 
@@ -6463,7 +6468,7 @@ const BangkokExplorer = () => {
                                       : null;
                                   return (
                                     <div key={loc.id}
-                                      className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-emerald-300 bg-emerald-50" : "border-red-400 bg-red-50"}`}
+                                      className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
                                       style={{ contain: 'layout style' }}
                                     >
                                       <div className="flex-1 min-w-0">
@@ -6513,7 +6518,7 @@ const BangkokExplorer = () => {
                                     : null;
                                 return (
                                   <div key={loc.id}
-                                    className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-emerald-300 bg-emerald-50" : "border-red-400 bg-red-50"}`}
+                                    className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
                                     style={{ contain: 'layout style' }}
                                   >
                                     <div className="flex-1 min-w-0">
@@ -6664,7 +6669,7 @@ const BangkokExplorer = () => {
                 const effectiveActive = isValid ? isActive : false; // Invalid always inactive
                 const borderClass = !effectiveActive ? 'border border-gray-300 bg-gray-50 opacity-60'
                   : isCustom ? (isValid ? 'border-2 border-purple-400 bg-purple-50' : 'border-2 border-red-400 bg-red-50')
-                  : (isValid ? 'border border-green-300 bg-green-50' : 'border-2 border-red-400 bg-red-50');
+                  : (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
                 
                 return (
                   <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
@@ -7256,9 +7261,9 @@ const BangkokExplorer = () => {
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
                 
                 {/* Row 1: Name + Area */}
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Name - 2 columns */}
-                  <div className="col-span-2">
+                <div className="space-y-2">
+                  {/* Name - full width */}
+                  <div>
                     <label className="block text-xs font-bold mb-1">
                       שם <span className="text-red-500">*</span>
                     </label>
@@ -7282,10 +7287,9 @@ const BangkokExplorer = () => {
                     />
                   </div>
                   
-                  {/* Areas - multi-select */}
+                  {/* Areas - full width multi-select */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold">אזורים</label>
                       <button
                         onClick={() => {
                           const lat = newLocation.lat;
@@ -7294,6 +7298,7 @@ const BangkokExplorer = () => {
                             const detected = window.BKK.getAreasForCoordinates(lat, lng);
                             if (detected.length > 0) {
                               setNewLocation({...newLocation, areas: detected, area: detected[0]});
+                              showToast(`זוהו ${detected.length} אזורים`, 'success');
                             } else {
                               alert('המיקום לא נמצא בתוך אף אזור מוגדר');
                             }
@@ -7303,8 +7308,9 @@ const BangkokExplorer = () => {
                         }}
                         className="text-[9px] px-2 py-0.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 font-bold"
                       >📍 זהה אוטומטית</button>
+                      <label className="text-xs font-bold">אזורים</label>
                     </div>
-                    <div className="grid grid-cols-4 gap-1 p-1.5 bg-gray-50 rounded-lg max-h-28 overflow-y-auto border-2 border-gray-300">
+                    <div className="grid grid-cols-6 gap-1 p-1.5 bg-gray-50 rounded-lg overflow-y-auto border-2 border-gray-300" style={{ maxHeight: '120px' }}>
                       {areaOptions.map(area => {
                         const isSelected = (newLocation.areas || [newLocation.area]).includes(area.id);
                         return (
@@ -7315,10 +7321,10 @@ const BangkokExplorer = () => {
                               const updated = current.includes(area.id)
                                 ? current.filter(a => a !== area.id)
                                 : [...current, area.id];
-                              if (updated.length === 0) return; // must have at least one
+                              if (updated.length === 0) return;
                               setNewLocation({...newLocation, areas: updated, area: updated[0]});
                             }}
-                            className={`p-1 rounded text-[9px] font-bold transition-all text-center ${
+                            className={`p-1 rounded text-[8px] font-bold transition-all text-center ${
                               isSelected
                                 ? 'bg-purple-500 text-white shadow-md'
                                 : 'bg-white text-gray-500 hover:bg-gray-100'
@@ -7649,7 +7655,7 @@ const BangkokExplorer = () => {
                       type="checkbox"
                       checked={newLocation.inProgress || false}
                       onChange={(e) => setNewLocation({...newLocation, inProgress: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🛠️ בעבודה</span>
                   </label>
@@ -7659,7 +7665,7 @@ const BangkokExplorer = () => {
                         type="checkbox"
                         checked={newLocation.locked || false}
                         onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
-                        className="rounded"
+                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
                       <span className="text-xs">🔒 נעול</span>
                     </label>
@@ -7966,7 +7972,7 @@ const BangkokExplorer = () => {
                       type="checkbox"
                       checked={newInterest.inProgress || false}
                       onChange={(e) => setNewInterest({...newInterest, inProgress: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🛠️ בעבודה</span>
                   </label>
@@ -7976,7 +7982,7 @@ const BangkokExplorer = () => {
                         type="checkbox"
                         checked={newInterest.locked || false}
                         onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
-                        className="rounded"
+                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
                       <span className="text-xs">🔒 נעול</span>
                     </label>
@@ -8437,7 +8443,7 @@ const BangkokExplorer = () => {
                     type="checkbox"
                     checked={editingRoute.inProgress || false}
                     onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
-                    className="rounded"
+                    className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     disabled={editingRoute.locked && !isUnlocked}
                   />
                   <span className="text-xs">🛠️ בעבודה</span>
@@ -8448,7 +8454,7 @@ const BangkokExplorer = () => {
                       type="checkbox"
                       checked={editingRoute.locked || false}
                       onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🔒 נעול</span>
                   </label>

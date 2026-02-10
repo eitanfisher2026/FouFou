@@ -37,9 +37,9 @@
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
                 
                 {/* Row 1: Name + Area */}
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Name - 2 columns */}
-                  <div className="col-span-2">
+                <div className="space-y-2">
+                  {/* Name - full width */}
+                  <div>
                     <label className="block text-xs font-bold mb-1">
                       שם <span className="text-red-500">*</span>
                     </label>
@@ -63,10 +63,9 @@
                     />
                   </div>
                   
-                  {/* Areas - multi-select */}
+                  {/* Areas - full width multi-select */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold">אזורים</label>
                       <button
                         onClick={() => {
                           const lat = newLocation.lat;
@@ -75,6 +74,7 @@
                             const detected = window.BKK.getAreasForCoordinates(lat, lng);
                             if (detected.length > 0) {
                               setNewLocation({...newLocation, areas: detected, area: detected[0]});
+                              showToast(`זוהו ${detected.length} אזורים`, 'success');
                             } else {
                               alert('המיקום לא נמצא בתוך אף אזור מוגדר');
                             }
@@ -84,8 +84,9 @@
                         }}
                         className="text-[9px] px-2 py-0.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 font-bold"
                       >📍 זהה אוטומטית</button>
+                      <label className="text-xs font-bold">אזורים</label>
                     </div>
-                    <div className="grid grid-cols-4 gap-1 p-1.5 bg-gray-50 rounded-lg max-h-28 overflow-y-auto border-2 border-gray-300">
+                    <div className="grid grid-cols-6 gap-1 p-1.5 bg-gray-50 rounded-lg overflow-y-auto border-2 border-gray-300" style={{ maxHeight: '120px' }}>
                       {areaOptions.map(area => {
                         const isSelected = (newLocation.areas || [newLocation.area]).includes(area.id);
                         return (
@@ -96,10 +97,10 @@
                               const updated = current.includes(area.id)
                                 ? current.filter(a => a !== area.id)
                                 : [...current, area.id];
-                              if (updated.length === 0) return; // must have at least one
+                              if (updated.length === 0) return;
                               setNewLocation({...newLocation, areas: updated, area: updated[0]});
                             }}
-                            className={`p-1 rounded text-[9px] font-bold transition-all text-center ${
+                            className={`p-1 rounded text-[8px] font-bold transition-all text-center ${
                               isSelected
                                 ? 'bg-purple-500 text-white shadow-md'
                                 : 'bg-white text-gray-500 hover:bg-gray-100'
@@ -430,7 +431,7 @@
                       type="checkbox"
                       checked={newLocation.inProgress || false}
                       onChange={(e) => setNewLocation({...newLocation, inProgress: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🛠️ בעבודה</span>
                   </label>
@@ -440,7 +441,7 @@
                         type="checkbox"
                         checked={newLocation.locked || false}
                         onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
-                        className="rounded"
+                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
                       <span className="text-xs">🔒 נעול</span>
                     </label>
@@ -747,7 +748,7 @@
                       type="checkbox"
                       checked={newInterest.inProgress || false}
                       onChange={(e) => setNewInterest({...newInterest, inProgress: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🛠️ בעבודה</span>
                   </label>
@@ -757,7 +758,7 @@
                         type="checkbox"
                         checked={newInterest.locked || false}
                         onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
-                        className="rounded"
+                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
                       <span className="text-xs">🔒 נעול</span>
                     </label>
@@ -1218,7 +1219,7 @@
                     type="checkbox"
                     checked={editingRoute.inProgress || false}
                     onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
-                    className="rounded"
+                    className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     disabled={editingRoute.locked && !isUnlocked}
                   />
                   <span className="text-xs">🛠️ בעבודה</span>
@@ -1229,7 +1230,7 @@
                       type="checkbox"
                       checked={editingRoute.locked || false}
                       onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
-                      className="rounded"
+                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
                     <span className="text-xs">🔒 נעול</span>
                   </label>

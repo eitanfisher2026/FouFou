@@ -62,35 +62,39 @@
         <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'form' || currentView === 'route' ? 'bg-rose-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">🗺️ מסלול</div>
+            <div className="text-center">🗺️</div>
+            <div className="truncate text-center text-[8px]">מסלול</div>
           </button>
           <button
             onClick={() => { setCurrentView('saved'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'saved' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">💾 {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
+            <div className="text-center">💾</div>
+            <div className="truncate text-center text-[8px]">שמורים {savedRoutes.length > 0 ? `(${savedRoutes.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myPlaces'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'myPlaces' || currentView === 'search' ? 'bg-teal-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">📍 {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
+            <div className="text-center">📍</div>
+            <div className="truncate text-center text-[8px]">מקומות {customLocations.length > 0 ? `(${customLocations.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'myInterests' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            <div className="truncate text-center">🏷️ {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
+            <div className="text-center">🏷️</div>
+            <div className="truncate text-center text-[8px]">תחומים {Object.values(interestStatus).filter(Boolean).length > 0 ? `(${Object.values(interestStatus).filter(Boolean).length})` : ''}</div>
           </button>
           <button
             onClick={() => {
@@ -101,7 +105,7 @@
               }
               window.scrollTo(0, 0);
             }}
-            className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
+            className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg font-medium transition text-[9px] sm:text-xs leading-tight ${
               currentView === 'settings' ? 'bg-slate-500 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -111,6 +115,7 @@
                 <span className="absolute -top-1 left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
               )}
             </div>
+            <div className="truncate text-center text-[8px]">הגדרות</div>
           </button>
         </div>
 
@@ -1857,7 +1862,7 @@
                                       : null;
                                   return (
                                     <div key={loc.id}
-                                      className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-emerald-300 bg-emerald-50" : "border-red-400 bg-red-50"}`}
+                                      className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
                                       style={{ contain: 'layout style' }}
                                     >
                                       <div className="flex-1 min-w-0">
@@ -1907,7 +1912,7 @@
                                     : null;
                                 return (
                                   <div key={loc.id}
-                                    className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-emerald-300 bg-emerald-50" : "border-red-400 bg-red-50"}`}
+                                    className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
                                     style={{ contain: 'layout style' }}
                                   >
                                     <div className="flex-1 min-w-0">
@@ -2058,7 +2063,7 @@
                 const effectiveActive = isValid ? isActive : false; // Invalid always inactive
                 const borderClass = !effectiveActive ? 'border border-gray-300 bg-gray-50 opacity-60'
                   : isCustom ? (isValid ? 'border-2 border-purple-400 bg-purple-50' : 'border-2 border-red-400 bg-red-50')
-                  : (isValid ? 'border border-green-300 bg-green-50' : 'border-2 border-red-400 bg-red-50');
+                  : (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
                 
                 return (
                   <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
