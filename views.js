@@ -19,12 +19,12 @@
       )}
 
       <div style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+        background: 'linear-gradient(135deg, #0d9488 0%, #0891b2 100%)',
         padding: '8px 16px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
       }}>
         <div className="flex items-center justify-center gap-2">
-          <span style={{ fontSize: '16px' }}>📍</span>
+          <span style={{ fontSize: '16px' }}>🌴</span>
           <h1 style={{ 
             fontSize: '16px', 
             fontWeight: '700', 
@@ -32,9 +32,10 @@
             letterSpacing: '0.3px',
             margin: 0
           }}>Bangkok Explorer</h1>
+          <span style={{ fontSize: '16px' }}>✈️</span>
           <span style={{ 
             fontSize: '8px', 
-            color: 'rgba(255,255,255,0.35)',
+            color: 'rgba(255,255,255,0.4)',
             alignSelf: 'flex-end',
             marginBottom: '2px'
           }}>v{window.BKK.VERSION}</span>
@@ -59,7 +60,7 @@
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
             className={`flex-1 min-w-0 py-2 px-1 rounded-lg font-medium transition text-[10px] sm:text-xs leading-tight ${
-              currentView === 'form' || currentView === 'route' ? 'bg-slate-700 text-white' : 'text-gray-600 hover:bg-gray-100'
+              currentView === 'form' || currentView === 'route' ? 'bg-cyan-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <div className="truncate text-center">🗺️ מסלול</div>
