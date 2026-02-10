@@ -1131,12 +1131,12 @@ const BangkokExplorer = () => {
               '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
               '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
             );
-            // Name label instead of icon
+            // Name label with background for readability
             L.marker([c.lat, c.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';text-shadow:0 0 3px white,0 0 3px white,0 0 3px white;white-space:nowrap;line-height:1.1;">' + area.icon + '<br/>' + area.label + '</div>',
-                iconSize: [60, 30], iconAnchor: [30, 15]
+                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.icon + ' ' + area.label + '</div>',
+                iconSize: [80, 22], iconAnchor: [40, 11]
               })
             }).addTo(map);
           });
@@ -4712,30 +4712,30 @@ const BangkokExplorer = () => {
                       className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                         formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                       }`}
-                    >🗺️ איזור</button>
+                    >איזור</button>
                     <button
                       onClick={() => setFormData({...formData, searchMode: 'radius'})}
                       className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                         formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                       }`}
-                    >📍 רדיוס</button>
+                    >רדיוס</button>
                   </div>
                 </div>
                 
                 {formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
-                    <div className="flex items-center justify-center gap-1 mb-1.5">
-                      <label className="font-medium text-xs block text-center">🗺️ איזור</label>
-                      <button
-                        onClick={detectArea}
-                        disabled={isLocating}
-                        className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                        title="זהה איזור לפי מיקום נוכחי"
-                      >
-                        {isLocating ? '⏳' : '📍'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={detectArea}
+                      disabled={isLocating}
+                      className={`w-full mb-1.5 py-1 rounded-lg text-[9px] font-bold border transition ${
+                        isLocating 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200' 
+                          : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      {isLocating ? '⏳ מאתר...' : '📍 זהה לפי מיקום'}
+                    </button>
                     <div className="border border-gray-200 rounded-lg p-1">
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                         {areaOptions.map(area => (

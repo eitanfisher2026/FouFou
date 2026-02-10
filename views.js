@@ -151,30 +151,30 @@
                       className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                         formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                       }`}
-                    >🗺️ איזור</button>
+                    >איזור</button>
                     <button
                       onClick={() => setFormData({...formData, searchMode: 'radius'})}
                       className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                         formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                       }`}
-                    >📍 רדיוס</button>
+                    >רדיוס</button>
                   </div>
                 </div>
                 
                 {formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
-                    <div className="flex items-center justify-center gap-1 mb-1.5">
-                      <label className="font-medium text-xs block text-center">🗺️ איזור</label>
-                      <button
-                        onClick={detectArea}
-                        disabled={isLocating}
-                        className={`px-1 py-0.5 rounded text-[10px] ${isLocating ? 'bg-gray-200 text-gray-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                        title="זהה איזור לפי מיקום נוכחי"
-                      >
-                        {isLocating ? '⏳' : '📍'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={detectArea}
+                      disabled={isLocating}
+                      className={`w-full mb-1.5 py-1 rounded-lg text-[9px] font-bold border transition ${
+                        isLocating 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200' 
+                          : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      {isLocating ? '⏳ מאתר...' : '📍 זהה לפי מיקום'}
+                    </button>
                     <div className="border border-gray-200 rounded-lg p-1">
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                         {areaOptions.map(area => (

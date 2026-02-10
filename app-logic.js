@@ -139,12 +139,12 @@
               '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
               '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
             );
-            // Name label instead of icon
+            // Name label with background for readability
             L.marker([c.lat, c.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';text-shadow:0 0 3px white,0 0 3px white,0 0 3px white;white-space:nowrap;line-height:1.1;">' + area.icon + '<br/>' + area.label + '</div>',
-                iconSize: [60, 30], iconAnchor: [30, 15]
+                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.icon + ' ' + area.label + '</div>',
+                iconSize: [80, 22], iconAnchor: [40, 11]
               })
             }).addTo(map);
           });
