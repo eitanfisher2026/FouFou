@@ -251,11 +251,11 @@
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
-  const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false });
+  const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false, routes: false });
   const markLoaded = (key) => {
     dataLoadTracker.current[key] = true;
     const t = dataLoadTracker.current;
-    if (t.locations && t.interests && t.config && t.status) {
+    if (t.locations && t.interests && t.config && t.status && t.routes) {
       setIsDataLoaded(true);
     }
   };
@@ -436,14 +436,56 @@
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
+  // Load saved routes from Firebase (shared)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('bangkok_saved_routes');
-      if (saved) {
-        setSavedRoutes(JSON.parse(saved));
+    if (isFirebaseAvailable && database) {
+      const routesRef = database.ref('savedRoutes');
+      
+      const unsubscribe = routesRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          const routesArray = Object.keys(data).map(key => ({
+            ...data[key],
+            firebaseId: key
+          }));
+          setSavedRoutes(routesArray);
+          console.log('[FIREBASE] Loaded', routesArray.length, 'saved routes');
+        } else {
+          setSavedRoutes([]);
+        }
+        markLoaded('routes');
+      });
+      
+      // One-time migration: push localStorage routes to Firebase then clear
+      try {
+        const localRoutes = localStorage.getItem('bangkok_saved_routes');
+        if (localRoutes) {
+          const parsed = JSON.parse(localRoutes);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            console.log('[MIGRATION] Migrating', parsed.length, 'routes from localStorage to Firebase');
+            parsed.forEach(route => {
+              const stripped = stripRouteForStorage(route);
+              database.ref('savedRoutes').push(stripped);
+            });
+            localStorage.removeItem('bangkok_saved_routes');
+            console.log('[MIGRATION] localStorage routes migrated and cleared');
+          }
+        }
+      } catch (e) {
+        console.error('[MIGRATION] Error migrating routes:', e);
       }
-    } catch (e) {
-      // Silent fail
+      
+      return () => routesRef.off('value', unsubscribe);
+    } else {
+      try {
+        const saved = localStorage.getItem('bangkok_saved_routes');
+        if (saved) {
+          setSavedRoutes(JSON.parse(saved));
+        }
+      } catch (e) {
+        // Silent fail
+      }
+      markLoaded('routes');
     }
   }, []);
 
@@ -657,15 +699,34 @@
     console.log('[REFRESH] Starting full data refresh...');
     
     try {
-      // 1. Saved Routes (localStorage)
-      try {
-        const saved = localStorage.getItem('bangkok_saved_routes');
-        if (saved) {
-          setSavedRoutes(JSON.parse(saved));
-          console.log('[REFRESH] Saved routes loaded from localStorage');
+      // 1. Saved Routes
+      if (isFirebaseAvailable && database) {
+        try {
+          const routeSnap = await database.ref('savedRoutes').once('value');
+          const routeData = routeSnap.val();
+          if (routeData) {
+            const routesArray = Object.keys(routeData).map(key => ({
+              ...routeData[key],
+              firebaseId: key
+            }));
+            setSavedRoutes(routesArray);
+            console.log('[REFRESH] Loaded', routesArray.length, 'saved routes from Firebase');
+          } else {
+            setSavedRoutes([]);
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading saved routes:', e);
         }
-      } catch (e) {
-        console.error('[REFRESH] Error loading saved routes:', e);
+      } else {
+        try {
+          const saved = localStorage.getItem('bangkok_saved_routes');
+          if (saved) {
+            setSavedRoutes(JSON.parse(saved));
+            console.log('[REFRESH] Saved routes loaded from localStorage');
+          }
+        } catch (e) {
+          console.error('[REFRESH] Error loading saved routes:', e);
+        }
       }
       
       if (isFirebaseAvailable && database) {
@@ -2332,6 +2393,10 @@
   };
 
   const saveRoutesToStorage = (routes) => {
+    if (isFirebaseAvailable && database) {
+      // Firebase mode: no-op, individual operations handle persistence
+      return;
+    }
     try {
       const stripped = routes.map(stripRouteForStorage);
       localStorage.setItem('bangkok_saved_routes', JSON.stringify(stripped));
@@ -2353,31 +2418,76 @@
       locked: false
     };
 
-    const updated = [routeToSave, ...savedRoutes];
-    setSavedRoutes(updated);
-    saveRoutesToStorage(updated);
-    
-    setRoute(routeToSave);
-    showToast('המסלול נשמר!', 'success');
-    
-    // Open new route dialog
-    setEditingRoute({...routeToSave});
-    setRouteDialogMode('add');
-    setShowRouteDialog(true);
+    if (isFirebaseAvailable && database) {
+      const stripped = stripRouteForStorage(routeToSave);
+      database.ref('savedRoutes').push(stripped)
+        .then((ref) => {
+          console.log('[FIREBASE] Route saved');
+          const savedWithFbId = { ...routeToSave, firebaseId: ref.key };
+          setRoute(savedWithFbId);
+          setEditingRoute({...savedWithFbId});
+          setRouteDialogMode('add');
+          setShowRouteDialog(true);
+          showToast('המסלול נשמר!', 'success');
+        })
+        .catch((error) => {
+          console.error('[FIREBASE] Error saving route:', error);
+          showToast('שגיאה בשמירת מסלול', 'error');
+        });
+    } else {
+      const updated = [routeToSave, ...savedRoutes];
+      setSavedRoutes(updated);
+      saveRoutesToStorage(updated);
+      setRoute(routeToSave);
+      showToast('המסלול נשמר!', 'success');
+      setEditingRoute({...routeToSave});
+      setRouteDialogMode('add');
+      setShowRouteDialog(true);
+    }
   };
 
   const deleteRoute = (routeId) => {
-    const updated = savedRoutes.filter(r => r.id !== routeId);
-    setSavedRoutes(updated);
-    saveRoutesToStorage(updated);
-    showToast('המסלול נמחק', 'success');
+    if (isFirebaseAvailable && database) {
+      const routeToDelete = savedRoutes.find(r => r.id === routeId);
+      if (routeToDelete && routeToDelete.firebaseId) {
+        database.ref(`savedRoutes/${routeToDelete.firebaseId}`).remove()
+          .then(() => {
+            console.log('[FIREBASE] Route deleted');
+            showToast('המסלול נמחק', 'success');
+          })
+          .catch((error) => {
+            console.error('[FIREBASE] Error deleting route:', error);
+            showToast('שגיאה במחיקה', 'error');
+          });
+      }
+    } else {
+      const updated = savedRoutes.filter(r => r.id !== routeId);
+      setSavedRoutes(updated);
+      saveRoutesToStorage(updated);
+      showToast('המסלול נמחק', 'success');
+    }
   };
 
   const updateRoute = (routeId, updates) => {
-    const updated = savedRoutes.map(r => r.id === routeId ? { ...r, ...updates } : r);
-    setSavedRoutes(updated);
-    saveRoutesToStorage(updated);
-    showToast('המסלול עודכן', 'success');
+    if (isFirebaseAvailable && database) {
+      const routeToUpdate = savedRoutes.find(r => r.id === routeId);
+      if (routeToUpdate && routeToUpdate.firebaseId) {
+        database.ref(`savedRoutes/${routeToUpdate.firebaseId}`).update(updates)
+          .then(() => {
+            console.log('[FIREBASE] Route updated');
+            showToast('המסלול עודכן', 'success');
+          })
+          .catch((error) => {
+            console.error('[FIREBASE] Error updating route:', error);
+            showToast('שגיאה בעדכון', 'error');
+          });
+      }
+    } else {
+      const updated = savedRoutes.map(r => r.id === routeId ? { ...r, ...updates } : r);
+      setSavedRoutes(updated);
+      saveRoutesToStorage(updated);
+      showToast('המסלול עודכן', 'success');
+    }
   };
 
   const loadSavedRoute = (savedRoute) => {
@@ -2905,27 +3015,28 @@
         }
       }
       
-      // 5. Import saved routes
-      const newRoutes = [...savedRoutes];
-      (importedData.savedRoutes || []).forEach(route => {
-        if (!route.name) return;
+      // 5. Import saved routes (to Firebase)
+      for (const route of (importedData.savedRoutes || [])) {
+        if (!route.name) continue;
         
-        const exists = newRoutes.find(r => r.name.toLowerCase() === route.name.toLowerCase());
+        const exists = savedRoutes.find(r => r.name.toLowerCase() === route.name.toLowerCase());
         if (exists) {
           skippedRoutes++;
-          return;
+          continue;
         }
         
-        newRoutes.push({
-          ...route,
-          id: route.id || Date.now() + Math.floor(Math.random() * 1000),
-          importedAt: new Date().toISOString()
-        });
-        addedRoutes++;
-      });
-      
-      setSavedRoutes(newRoutes);
-      saveRoutesToStorage(newRoutes);
+        try {
+          const routeToSave = stripRouteForStorage({
+            ...route,
+            id: route.id || Date.now() + Math.floor(Math.random() * 1000),
+            importedAt: new Date().toISOString()
+          });
+          await database.ref('savedRoutes').push(routeToSave);
+          addedRoutes++;
+        } catch (error) {
+          console.error('[FIREBASE] Error importing route:', error);
+        }
+      }
       
     } else {
       // STATIC MODE: localStorage (local)
