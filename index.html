@@ -966,7 +966,8 @@ window.BKK.hashPassword = async function(password) {
 
 /**
  * Build the best Google Maps URL for a place.
- * Priority: Place ID → address → labeled pin (custom with name) → raw coords.
+ * Priority: Place ID → address → raw coords.
+ * For Google Places results with Place ID, opens the full place page.
  */
 window.BKK.getGoogleMapsUrl = (place) => {
   if (!place) return '#';
@@ -984,13 +985,7 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address.trim())}`;
   }
   
-  // Custom place with name but no address: search by name near coords
-  // This shows the name in Google Maps search bar and pins near the location
-  if (place.name && hasCoords) {
-    return `https://www.google.com/maps/search/${encodeURIComponent(place.name)}/@${place.lat},${place.lng},18z`;
-  }
-  
-  // Last resort: raw coordinates
+  // Last resort: raw coordinates (pin on map)
   if (hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
   }
