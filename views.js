@@ -2014,7 +2014,7 @@
                 <button
                   onClick={() => {
                     setEditingCustomInterest(null);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', inProgress: true, locked: false, builtIn: false });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: true, locked: false, builtIn: false });
                     setShowAddInterestDialog(true);
                   }}
                   className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
@@ -2038,6 +2038,7 @@
                   types: (config.types || []).join(', '),
                   textSearch: config.textSearch || '',
                   blacklist: (config.blacklist || []).join(', '),
+                  privateOnly: interest.privateOnly || false,
                   inProgress: interest.inProgress || false,
                   locked: interest.locked || false,
                   builtIn: !isCustom

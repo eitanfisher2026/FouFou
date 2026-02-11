@@ -606,7 +606,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', inProgress: false, locked: false });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
                     setEditingCustomInterest(null);
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -738,6 +738,22 @@
                       style={{ direction: 'ltr' }}
                     />
                   </div>
+                  
+                  {/* Private Only toggle - only for custom interests */}
+                  {!newInterest.builtIn && (
+                  <div className="mt-2 pt-2 border-t border-blue-200">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newInterest.privateOnly || false}
+                        onChange={(e) => setNewInterest({...newInterest, privateOnly: e.target.checked})}
+                        className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
+                      />
+                      <span className="text-xs font-bold text-blue-800">🔒 תחום פרטי</span>
+                      <span className="text-[9px] text-gray-500">— רק מקומות שלי, בלי פנייה לגוגל</span>
+                    </label>
+                  </div>
+                  )}
                 </div>
                 </div>{/* close inner wrapper */}
 
@@ -863,6 +879,7 @@
                               label: newInterest.label.trim(),
                               name: newInterest.label.trim(),
                               icon: newInterest.icon || '📍',
+                              privateOnly: newInterest.privateOnly || false,
                               inProgress: newInterest.inProgress || false,
                               locked: newInterest.locked || false
                             };
@@ -889,6 +906,7 @@
                             label: newInterest.label.trim(),
                             name: newInterest.label.trim(),
                             icon: newInterest.icon || '📍',
+                            privateOnly: newInterest.privateOnly || false,
                             inProgress: newInterest.inProgress || false,
                             locked: newInterest.locked || false
                           };
@@ -908,7 +926,7 @@
                         }
                         
                         setShowAddInterestDialog(false);
-                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', inProgress: false, locked: false });
+                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
                         setEditingCustomInterest(null);
                       }}
                       disabled={!newInterest.label?.trim()}
@@ -925,7 +943,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', inProgress: false, locked: false });
+                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, inProgress: false, locked: false });
                     setEditingCustomInterest(null);
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"

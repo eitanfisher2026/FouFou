@@ -87,6 +87,9 @@
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
   const leafletMapRef = React.useRef(null);
+  
+  // Cache for unused Google Places results per interest (avoids redundant API calls)
+  const googleCacheRef = React.useRef({});
 
   // Leaflet Map initialization
   React.useEffect(() => {
@@ -1925,7 +1928,10 @@
       const allStops = [...customStops]; // Start with custom stops (highest priority)
       let fetchErrors = [];
       
-      // ROUND 1: Get places from Google Places API
+      // Clear Google cache for fresh route generation
+      googleCacheRef.current = {};
+      
+      // ROUND 1: Fill from custom locations first, API only for gaps
       for (const interest of formData.interests) {
         // Check how many custom stops we already have for this interest
         const customStopsForInterest = customStops.filter(stop => 
@@ -1935,10 +1941,17 @@
         const neededForInterest = Math.max(0, stopsPerInterest - customStopsForInterest.length);
         
         if (neededForInterest > 0) {
+          // Check if this is a private-only interest (no Google API calls)
+          const interestObj = allInterestOptions.find(o => o.id === interest);
+          const interestPrivateOnly = interestObj?.privateOnly || false;
+          
           let fetchedPlaces = [];
           
+          if (interestPrivateOnly) {
+            console.log(`[ROUTE] Skipping API for private interest: ${interest}`);
+          } else {
           try {
-            console.log(`[ROUTE] Fetching for interest: ${interest}`);
+            console.log(`[ROUTE] Fetching for interest: ${interest} (need ${neededForInterest}, have ${customStopsForInterest.length} custom)`);
             const radiusOverride = isRadiusMode ? { 
               lat: formData.currentLat, 
               lng: formData.currentLng, 
@@ -1955,6 +1968,7 @@
             console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
             fetchedPlaces = [];
           }
+          } // end if !privateOnly
           
           // Filter blacklisted places (status='blacklist') BEFORE sorting
           fetchedPlaces = filterBlacklist(fetchedPlaces);
@@ -1976,20 +1990,24 @@
             }
           }
           
-          // Sort and take what we need
-          let sortedPlaces;
+          // Sort
+          let sortedAll;
           if (isRadiusMode) {
-            // Radius mode: sort by distance from center (closest first), then by rating as tiebreaker
-            sortedPlaces = fetchedPlaces
+            sortedAll = fetchedPlaces
               .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
-              .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
-              .slice(0, neededForInterest);
+              .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
           } else {
-            // Area mode: sort by rating (original behavior)
-            sortedPlaces = fetchedPlaces
-              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)))
-              .slice(0, neededForInterest);
+            sortedAll = fetchedPlaces
+              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
           }
+          
+          // Take what we need, cache the rest
+          const sortedPlaces = sortedAll.slice(0, neededForInterest);
+          const cachedPlaces = sortedAll.slice(neededForInterest);
+          
+          // Store unused places in cache for "find more"
+          googleCacheRef.current[interest] = cachedPlaces;
+          console.log(`[CACHE] Stored ${cachedPlaces.length} unused places for ${interest}`);
           
           // Track results
           interestResults[interest] = {
@@ -1997,13 +2015,15 @@
             custom: customStopsForInterest.length,
             fetched: sortedPlaces.length,
             total: customStopsForInterest.length + sortedPlaces.length,
-            allPlaces: fetchedPlaces // Keep all for round 2
+            allPlaces: sortedAll // Keep all for round 2
           };
           
           // Add to allStops
           allStops.push(...sortedPlaces);
         } else {
-          // Already have enough from custom
+          // Already have enough from custom - no API call needed!
+          console.log(`[ROUTE] Skipping API for ${interest}: ${customStopsForInterest.length} custom stops suffice`);
+          googleCacheRef.current[interest] = []; // Empty cache
           interestResults[interest] = {
             requested: stopsPerInterest,
             custom: customStopsForInterest.length,
@@ -2084,6 +2104,15 @@
         uniqueStops = finalStops;
         
         console.log('[ROUTE] Round 2 complete:', { added: sorted.length, total: uniqueStops.length });
+        
+        // Update Google cache: remove places that Round 2 used
+        const usedInRound2 = new Set(sorted.map(s => s.name.toLowerCase().trim()));
+        for (const interest of formData.interests) {
+          if (googleCacheRef.current[interest]?.length > 0) {
+            googleCacheRef.current[interest] = googleCacheRef.current[interest]
+              .filter(p => !usedInRound2.has(p.name.toLowerCase().trim()));
+          }
+        }
       }
       
       // Show errors if any occurred
@@ -2206,6 +2235,7 @@
   };
 
   // Fetch more places for a specific interest
+  // Priority: 1) unused custom locations  2) Google cache  3) new API call
   const fetchMoreForInterest = async (interest) => {
     if (!route) return;
     
@@ -2213,60 +2243,121 @@
     
     try {
       const fetchCount = formData.fetchMoreCount || 3;
-      console.log(`[FETCH_MORE] Fetching ${fetchCount} more for interest: ${interest}`);
-      
       const isRadiusMode = formData.searchMode === 'radius';
-      const radiusOverride = isRadiusMode ? { 
-        lat: formData.currentLat, 
-        lng: formData.currentLng, 
-        radius: formData.radiusMeters 
-      } : null;
-      let newPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+      const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
+      const interestLabel = allInterestOptions.find(o => o.id === interest)?.label || interest;
+      let placesToAdd = [];
+      let source = '';
       
-      // In radius mode: filter out places outside known areas + add detected area
-      if (isRadiusMode) {
-        newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
-          .filter(p => p.detectedArea);
-        // Hard filter by actual distance
-        newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
-      } else {
-        newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+      console.log(`[FETCH_MORE] Need ${fetchCount} more for ${interest}`);
+      
+      // LAYER 1: Unused custom locations for this interest
+      const unusedCustom = customLocations.filter(loc => {
+        if (loc.status === 'blacklist') return false;
+        if (!isLocationValid(loc)) return false;
+        if (!loc.interests || !loc.interests.some(li => {
+          if (li === interest) return true;
+          const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
+          return ci && li === ci.baseCategory;
+        })) return false;
+        // Must be in area/radius
+        if (isRadiusMode) {
+          if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
+          if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+        } else {
+          const locAreas = loc.areas || (loc.area ? [loc.area] : []);
+          if (!locAreas.includes(formData.area)) return false;
+        }
+        // Not already in route
+        return !existingNames.includes(loc.name.toLowerCase().trim());
+      });
+      
+      if (unusedCustom.length > 0) {
+        const toAdd = unusedCustom.slice(0, fetchCount);
+        placesToAdd = toAdd.map(p => ({ ...p, addedLater: true }));
+        source = 'מהמקומות שלך';
+        console.log(`[FETCH_MORE] Found ${toAdd.length} from unused custom locations`);
       }
       
-      // Filter blacklisted places and duplicates of custom locations
-      newPlaces = filterBlacklist(newPlaces);
-      newPlaces = filterDuplicatesOfCustom(newPlaces);
-      
-      // Filter duplicates of places already in route (by name)
-      const existingNames = route.stops.map(s => s.name.toLowerCase());
-      newPlaces = newPlaces.filter(p => !existingNames.includes(p.name.toLowerCase()));
-      
-      // Sort: by distance in radius mode, by rating in area mode
-      if (isRadiusMode && formData.currentLat) {
-        newPlaces.sort((a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng));
-      } else {
-        newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+      // LAYER 2: Google cache (unused results from initial route generation)
+      if (placesToAdd.length < fetchCount) {
+        const cached = googleCacheRef.current[interest] || [];
+        const allUsedNames = [...existingNames, ...placesToAdd.map(p => p.name.toLowerCase().trim())];
+        const unusedCached = cached.filter(p => !allUsedNames.includes(p.name.toLowerCase().trim()));
+        
+        if (unusedCached.length > 0) {
+          const needed = fetchCount - placesToAdd.length;
+          const fromCache = unusedCached.slice(0, needed).map(p => ({
+            ...p,
+            addedLater: true,
+            detectedArea: isRadiusMode ? detectAreaFromCoords(p.lat, p.lng) : formData.area
+          }));
+          placesToAdd.push(...fromCache);
+          // Update cache: remove used ones
+          googleCacheRef.current[interest] = unusedCached.slice(needed);
+          source = source ? `${source} ומגוגל (cache)` : 'מגוגל';
+          console.log(`[FETCH_MORE] Added ${fromCache.length} from Google cache (${googleCacheRef.current[interest].length} remaining)`);
+        }
       }
       
-      // Take only what we need and mark as addedLater
-      const placesToAdd = newPlaces.slice(0, fetchCount).map(p => ({
-        ...p,
-        addedLater: true
-      }));
+      // LAYER 3: New API call (only if still need more AND not private-only)
+      if (placesToAdd.length < fetchCount) {
+        // Check privateOnly
+        const interestObjFM = allInterestOptions.find(o => o.id === interest);
+        const isPrivate = interestObjFM?.privateOnly || false;
+        
+        if (isPrivate) {
+          console.log(`[FETCH_MORE] Private interest ${interest} - skipping API call`);
+        } else {
+        const needed = fetchCount - placesToAdd.length;
+        console.log(`[FETCH_MORE] Cache exhausted, calling API for ${needed} more`);
+        
+        const radiusOverride = isRadiusMode ? { 
+          lat: formData.currentLat, lng: formData.currentLng, radius: formData.radiusMeters 
+        } : null;
+        let newPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+        
+        if (isRadiusMode) {
+          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
+            .filter(p => p.detectedArea);
+          newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
+        } else {
+          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+        }
+        
+        newPlaces = filterBlacklist(newPlaces);
+        newPlaces = filterDuplicatesOfCustom(newPlaces);
+        
+        const allUsedNames = [...existingNames, ...placesToAdd.map(p => p.name.toLowerCase().trim())];
+        newPlaces = newPlaces.filter(p => !allUsedNames.includes(p.name.toLowerCase().trim()));
+        
+        if (isRadiusMode && formData.currentLat) {
+          newPlaces.sort((a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng));
+        } else {
+          newPlaces.sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+        }
+        
+        const fromApi = newPlaces.slice(0, needed).map(p => ({ ...p, addedLater: true }));
+        // Cache remaining for future use
+        googleCacheRef.current[interest] = newPlaces.slice(needed);
+        placesToAdd.push(...fromApi);
+        source = source ? `${source} ומגוגל` : 'מגוגל';
+        console.log(`[FETCH_MORE] Got ${fromApi.length} from API, cached ${googleCacheRef.current[interest].length}`);
+        } // end if !isPrivate
+      }
       
       if (placesToAdd.length === 0) {
-        showToast(`לא נמצאו עוד מקומות ב${allInterestOptions.find(o => o.id === interest)?.label}`, 'warning');
+        showToast(`לא נמצאו עוד מקומות ב${interestLabel}`, 'warning');
         return;
       }
       
-      // Append new places at the end of the route
       const updatedRoute = {
         ...route,
         stops: [...route.stops, ...placesToAdd]
       };
       
       setRoute(updatedRoute);
-      showToast(`נוספו ${placesToAdd.length} מקומות ל${allInterestOptions.find(o => o.id === interest)?.label}!`, 'success');
+      showToast(`נוספו ${placesToAdd.length} מקומות ל${interestLabel} (${source})`, 'success');
       
     } catch (error) {
       console.error('[FETCH_MORE] Error:', error);
@@ -2276,7 +2367,7 @@
     }
   };
 
-  // Fetch more places for all interests
+  // Fetch more places for all interests - delegates to fetchMoreForInterest per interest
   const fetchMoreAll = async () => {
     if (!route) return;
     
@@ -2285,39 +2376,101 @@
     try {
       const fetchCount = formData.fetchMoreCount || 3;
       const perInterest = Math.ceil(fetchCount / formData.interests.length);
+      const isRadiusMode = formData.searchMode === 'radius';
+      const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       
-      console.log(`[FETCH_MORE_ALL] Fetching ${perInterest} per interest, total: ${fetchCount}`);
+      console.log(`[FETCH_MORE_ALL] Need ${perInterest} per interest, total target: ${fetchCount}`);
       
       const allNewPlaces = [];
+      let fromCustom = 0;
+      let fromCache = 0;
+      let fromApi = 0;
       
       for (const interest of formData.interests) {
-        const isRadiusModeMore = formData.searchMode === 'radius';
-        const radiusOverrideMore = isRadiusModeMore ? { 
-          lat: formData.currentLat, 
-          lng: formData.currentLng, 
-          radius: formData.radiusMeters 
-        } : null;
-        let newPlaces = await fetchGooglePlaces(isRadiusModeMore ? null : formData.area, [interest], radiusOverrideMore);
+        const allUsedNames = [...existingNames, ...allNewPlaces.map(p => p.name.toLowerCase().trim())];
+        let placesForInterest = [];
         
-        // In radius mode: filter by known areas
-        if (isRadiusModeMore) {
-          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
-            .filter(p => p.detectedArea);
-          // Hard filter by actual distance
-          newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
-        } else {
-          newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+        // LAYER 1: Unused custom locations
+        const unusedCustom = customLocations.filter(loc => {
+          if (loc.status === 'blacklist') return false;
+          if (!isLocationValid(loc)) return false;
+          if (!loc.interests || !loc.interests.some(li => {
+            if (li === interest) return true;
+            const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
+            return ci && li === ci.baseCategory;
+          })) return false;
+          if (isRadiusMode) {
+            if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
+            if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+          } else {
+            const locAreas = loc.areas || (loc.area ? [loc.area] : []);
+            if (!locAreas.includes(formData.area)) return false;
+          }
+          return !allUsedNames.includes(loc.name.toLowerCase().trim());
+        });
+        
+        if (unusedCustom.length > 0) {
+          const toAdd = unusedCustom.slice(0, perInterest).map(p => ({ ...p, addedLater: true }));
+          placesForInterest.push(...toAdd);
+          fromCustom += toAdd.length;
         }
         
-        // Filter blacklisted places and duplicates of custom locations
-        newPlaces = filterBlacklist(newPlaces);
-        newPlaces = filterDuplicatesOfCustom(newPlaces);
+        // LAYER 2: Google cache
+        if (placesForInterest.length < perInterest) {
+          const cached = googleCacheRef.current[interest] || [];
+          const usedNames = [...allUsedNames, ...placesForInterest.map(p => p.name.toLowerCase().trim())];
+          const unusedCached = cached.filter(p => !usedNames.includes(p.name.toLowerCase().trim()));
+          
+          if (unusedCached.length > 0) {
+            const needed = perInterest - placesForInterest.length;
+            const fromC = unusedCached.slice(0, needed).map(p => ({
+              ...p, addedLater: true,
+              detectedArea: isRadiusMode ? detectAreaFromCoords(p.lat, p.lng) : formData.area
+            }));
+            placesForInterest.push(...fromC);
+            googleCacheRef.current[interest] = unusedCached.slice(needed);
+            fromCache += fromC.length;
+          }
+        }
         
-        // Filter duplicates
-        const existingNames = [...route.stops, ...allNewPlaces].map(s => s.name.toLowerCase());
-        newPlaces = newPlaces.filter(p => !existingNames.includes(p.name.toLowerCase()));
+        // LAYER 3: API (only if still need more)
+        if (placesForInterest.length < perInterest) {
+          // Check privateOnly
+          const interestObjFA = allInterestOptions.find(o => o.id === interest);
+          const isPrivateAll = interestObjFA?.privateOnly || false;
+          
+          if (!isPrivateAll) {
+          const needed = perInterest - placesForInterest.length;
+          console.log(`[FETCH_MORE_ALL] API call for ${interest} (need ${needed} more)`);
+          
+          const radiusOverride = isRadiusMode ? { 
+            lat: formData.currentLat, lng: formData.currentLng, radius: formData.radiusMeters 
+          } : null;
+          let newPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+          
+          if (isRadiusMode) {
+            newPlaces = newPlaces.map(p => ({ ...p, detectedArea: detectAreaFromCoords(p.lat, p.lng) }))
+              .filter(p => p.detectedArea);
+            newPlaces = newPlaces.filter(p => calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) <= formData.radiusMeters);
+          } else {
+            newPlaces = newPlaces.map(p => ({ ...p, detectedArea: formData.area }));
+          }
+          
+          newPlaces = filterBlacklist(newPlaces);
+          newPlaces = filterDuplicatesOfCustom(newPlaces);
+          const usedNames = [...allUsedNames, ...placesForInterest.map(p => p.name.toLowerCase().trim())];
+          newPlaces = newPlaces.filter(p => !usedNames.includes(p.name.toLowerCase().trim()));
+          
+          const fromA = newPlaces.slice(0, needed).map(p => ({ ...p, addedLater: true }));
+          googleCacheRef.current[interest] = newPlaces.slice(needed);
+          placesForInterest.push(...fromA);
+          fromApi += fromA.length;
+          } else {
+            console.log(`[FETCH_MORE_ALL] Private interest ${interest} - skipping API`);
+          }
+        }
         
-        allNewPlaces.push(...newPlaces.slice(0, perInterest));
+        allNewPlaces.push(...placesForInterest);
       }
       
       if (allNewPlaces.length === 0) {
@@ -2331,9 +2484,14 @@
       };
       
       setRoute(updatedRoute);
-      showToast(`נוספו ${allNewPlaces.length} מקומות!`, 'success');
       
-      // Scroll to results
+      // Build source message
+      const sources = [];
+      if (fromCustom > 0) sources.push(`${fromCustom} מהמקומות שלך`);
+      if (fromCache > 0) sources.push(`${fromCache} מגוגל (cache)`);
+      if (fromApi > 0) sources.push(`${fromApi} מגוגל`);
+      showToast(`נוספו ${allNewPlaces.length} מקומות (${sources.join(', ')})`, 'success');
+      
       setTimeout(() => {
         document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -2609,6 +2767,10 @@
 
   // Check if interest has valid search config
   const isInterestValid = (interestId) => {
+    // Private interests are always valid (no Google search needed)
+    const interestObj = allInterestOptions.find(o => o.id === interestId);
+    if (interestObj?.privateOnly) return true;
+    
     const config = interestConfig[interestId];
     if (!config) return false;
     
