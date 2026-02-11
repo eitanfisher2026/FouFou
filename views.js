@@ -755,7 +755,7 @@
                                             title={intObj.label}
                                             style={{ fontSize: '11px' }}
                                           >
-                                            {intObj.icon}
+                                            {intObj.icon?.startsWith?.('data:') ? <img src={intObj.icon} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', display: 'inline' }} /> : intObj.icon}
                                           </span>
                                         ) : null;
                                       })}
@@ -2051,7 +2051,7 @@
                 const isValid = isInterestValid(interest.id);
                 const effectiveActive = isValid ? isActive : false; // Invalid always inactive
                 const borderClass = !effectiveActive ? 'border border-gray-300 bg-gray-50 opacity-60'
-                  : isCustom ? (isValid ? 'border-2 border-purple-400 bg-purple-50' : 'border-2 border-red-400 bg-red-50')
+                  : isCustom ? (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50')
                   : (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
                 
                 return (

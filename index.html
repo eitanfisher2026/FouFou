@@ -5713,7 +5713,7 @@ const BangkokExplorer = () => {
                                             title={intObj.label}
                                             style={{ fontSize: '11px' }}
                                           >
-                                            {intObj.icon}
+                                            {intObj.icon?.startsWith?.('data:') ? <img src={intObj.icon} alt="" style={{ width: '14px', height: '14px', objectFit: 'contain', display: 'inline' }} /> : intObj.icon}
                                           </span>
                                         ) : null;
                                       })}
@@ -7009,7 +7009,7 @@ const BangkokExplorer = () => {
                 const isValid = isInterestValid(interest.id);
                 const effectiveActive = isValid ? isActive : false; // Invalid always inactive
                 const borderClass = !effectiveActive ? 'border border-gray-300 bg-gray-50 opacity-60'
-                  : isCustom ? (isValid ? 'border-2 border-purple-400 bg-purple-50' : 'border-2 border-red-400 bg-red-50')
+                  : isCustom ? (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50')
                   : (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
                 
                 return (
@@ -8216,7 +8216,7 @@ const BangkokExplorer = () => {
                         <img src={newInterest.icon} alt="icon" className="w-full h-10 object-contain rounded-lg border-2 border-gray-300 bg-white" />
                         <button
                           onClick={() => setNewInterest({...newInterest, icon: '📍'})}
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] font-bold"
+                          className="absolute -top-1 -right-1 bg-gray-600 text-white rounded-full w-3.5 h-3.5 text-[8px] font-bold flex items-center justify-center leading-none"
                         >✕</button>
                       </div>
                     ) : (

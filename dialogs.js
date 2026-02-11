@@ -641,7 +641,7 @@
                         <img src={newInterest.icon} alt="icon" className="w-full h-10 object-contain rounded-lg border-2 border-gray-300 bg-white" />
                         <button
                           onClick={() => setNewInterest({...newInterest, icon: '📍'})}
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] font-bold"
+                          className="absolute -top-1 -right-1 bg-gray-600 text-white rounded-full w-3.5 h-3.5 text-[8px] font-bold flex items-center justify-center leading-none"
                         >✕</button>
                       </div>
                     ) : (
