@@ -439,7 +439,7 @@
                       }}
                       className="p-1.5 rounded-lg text-xs"
                     >
-                      <div className="text-lg mb-1">{option.icon}</div>
+                      <div className="text-lg mb-1">{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-6 h-6 object-contain mx-auto" /> : option.icon}</div>
                       <div style={{
                         fontWeight: '600',
                         fontSize: '10px',
@@ -552,7 +552,7 @@
                           {/* Interest header with fetch-more button */}
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
-                              <span style={{ fontSize: '14px' }}>{interestObj.icon}</span>
+                              <span style={{ fontSize: '14px' }}>{interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}</span>
                               <span>{interestObj.label} ({stops.length})</span>
                             </div>
                             <button
@@ -1250,7 +1250,7 @@
                                       title={interestObj.label}
                                       style={{ fontSize: '16px' }}
                                     >
-                                      {interestObj.icon}
+                                      {interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}
                                     </span>
                                   ) : null;
                                 })}
@@ -1641,7 +1641,7 @@
                           const interest = interestMap[intId];
                           return interest ? (
                             <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                              {interest.icon} {interest.label}
+                              {interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-3.5 h-3.5 object-contain inline" /> : interest.icon} {interest.label}
                             </span>
                           ) : null;
                         })}
@@ -1849,7 +1849,7 @@
                           return (
                             <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                               <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
-                                <span>{groupIcon}</span>
+                                <span>{groupIcon?.startsWith?.('data:') ? <img src={groupIcon} alt="" className="w-4 h-4 object-contain inline" /> : groupIcon}</span>
                                 <span>{groupLabel}</span>
                                 <span className="text-gray-400 font-normal">({locs.length})</span>
                               </div>
@@ -2057,7 +2057,7 @@
                 return (
                   <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-lg flex-shrink-0">{interest.icon}</span>
+                      <span className="text-lg flex-shrink-0">{interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-5 h-5 object-contain" /> : interest.icon}</span>
                       <span className={`font-medium text-sm truncate ${!effectiveActive ? 'text-gray-500' : ''}`}>{interest.label || interest.name}</span>
                       {isCustom && <span className="text-[10px] bg-purple-200 text-purple-800 px-1 py-0.5 rounded flex-shrink-0">מותאם</span>}
                       {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title="חסר הגדרות חיפוש">⚠️</span>}

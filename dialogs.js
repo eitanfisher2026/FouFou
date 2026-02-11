@@ -143,7 +143,7 @@
                         }`}
                         title={option.label}
                       >
-                        <span className="text-lg block">{option.icon}</span>
+                        <span className="text-lg block">{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-5 h-5 object-contain mx-auto" /> : option.icon}</span>
                       </button>
                     ))}
                   </div>
@@ -1139,7 +1139,7 @@
                         const obj = allInterestOptions.find(o => o.id === intId);
                         return obj ? (
                           <span key={idx} className="text-[10px] bg-white px-1.5 py-0.5 rounded" title={obj.label}>
-                            {obj.icon} {obj.label}
+                            {obj.icon?.startsWith?.('data:') ? <img src={obj.icon} alt="" className="w-3.5 h-3.5 object-contain inline" /> : obj.icon} {obj.label}
                           </span>
                         ) : null;
                       })}
