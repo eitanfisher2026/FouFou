@@ -225,8 +225,8 @@
                         style={{ accentColor: '#ea580c' }}
                       />
                       <div className="flex justify-between text-[8px] text-gray-400 mt-0.5">
-                        <span>2ק"מ</span>
                         <span>100מ'</span>
+                        <span>2ק"מ</span>
                       </div>
                     </div>
 
@@ -690,16 +690,13 @@
                                   
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
-                                    target={hasValidCoords && (stop.googlePlaceId || !stop.custom) ? "_blank" : undefined}
+                                    target={hasValidCoords ? "_blank" : undefined}
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className="block hover:bg-gray-100 transition pr-2"
                                     onClick={(e) => {
                                       if (!hasValidCoords) {
                                         e.preventDefault();
                                         showToast('למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.', 'warning');
-                                      } else if (stop.custom && !stop.googlePlaceId) {
-                                        e.preventDefault();
-                                        setShowPlaceCard(stop);
                                       }
                                     }}
                                   >
@@ -742,11 +739,11 @@
                                             setModalImage(stop.uploadedImage);
                                             setShowImageModal(true);
                                           }}
-                                          className="hover:scale-110 transition"
-                                          title="הצג תמונה"
-                                          style={{ fontSize: '11px' }}
+                                          className="hover:scale-110 transition bg-blue-100 hover:bg-blue-200 rounded px-0.5"
+                                          title="לחץ לצפייה בתמונה"
+                                          style={{ fontSize: '11px', cursor: 'pointer' }}
                                         >
-                                          📷
+                                          🖼️
                                         </button>
                                       )}
                                       {/* Interest icons */}
@@ -1212,16 +1209,13 @@
                             )}
                             <a
                               href={window.BKK.getGoogleMapsUrl(stop)}
-                              target={hasValidCoords && (stop.googlePlaceId || !stop.custom) ? "_blank" : undefined}
+                              target={hasValidCoords ? "_blank" : undefined}
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
                               onClick={(e) => {
                                 if (!hasValidCoords) {
                                   e.preventDefault();
                                   showToast('למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.', 'warning');
-                                } else if (stop.custom && !stop.googlePlaceId) {
-                                  e.preventDefault();
-                                  setShowPlaceCard(stop);
                                 }
                               }}
                             >

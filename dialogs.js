@@ -1339,99 +1339,11 @@
           className="fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4"
           onClick={() => { setShowImageModal(false); setModalImage(null); }}
         >
+          <button
+            onClick={() => { setShowImageModal(false); setModalImage(null); }}
+            className="absolute top-4 right-4 bg-white bg-opacity-90 text-black rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold shadow-lg hover:bg-opacity-100 z-10"
+          >✕</button>
           <img src={modalImage} alt="enlarged" className="max-w-full max-h-full rounded-lg shadow-2xl" />
-        </div>
-      )}
-
-      {/* Place Card Modal - for custom places without Google Place ID */}
-      {showPlaceCard && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-60 z-[100] flex items-end sm:items-center justify-center"
-          onClick={() => setShowPlaceCard(null)}
-        >
-          <div 
-            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[85vh] overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            style={{ direction: 'rtl' }}
-          >
-            {/* Image */}
-            {showPlaceCard.uploadedImage && (
-              <div className="w-full h-40 overflow-hidden">
-                <img 
-                  src={showPlaceCard.uploadedImage} 
-                  alt={showPlaceCard.name}
-                  className="w-full h-full object-cover cursor-pointer"
-                  onClick={() => { setModalImage(showPlaceCard.uploadedImage); setShowImageModal(true); }}
-                />
-              </div>
-            )}
-            
-            {/* Content */}
-            <div className="p-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">{showPlaceCard.name}</h3>
-              
-              {showPlaceCard.description && showPlaceCard.description !== 'נוסף מ-Google' && (
-                <p className="text-sm text-gray-600 mb-2">{showPlaceCard.description}</p>
-              )}
-              
-              {showPlaceCard.notes && (
-                <p className="text-sm text-gray-500 mb-2 bg-yellow-50 p-2 rounded">📝 {showPlaceCard.notes}</p>
-              )}
-              
-              {showPlaceCard.address && (
-                <p className="text-xs text-gray-400 mb-2">📍 {showPlaceCard.address}</p>
-              )}
-              
-              {showPlaceCard.rating > 0 && (
-                <p className="text-xs text-gray-500 mb-2">⭐ {showPlaceCard.rating.toFixed ? showPlaceCard.rating.toFixed(1) : showPlaceCard.rating} ({showPlaceCard.ratingCount || 0} ביקורות)</p>
-              )}
-              
-              {showPlaceCard.todayHours && (
-                <p className="text-xs mb-2" style={{ color: showPlaceCard.openNow ? '#059669' : '#dc2626' }}>
-                  🕐 {showPlaceCard.openNow ? 'פתוח' : 'סגור'} · {showPlaceCard.todayHours}
-                </p>
-              )}
-              
-              {showPlaceCard.interests?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {showPlaceCard.interests.map((int, idx) => {
-                    const intObj = interestMap[int];
-                    return intObj ? (
-                      <span key={idx} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                        {intObj.icon} {intObj.label}
-                      </span>
-                    ) : null;
-                  })}
-                </div>
-              )}
-            </div>
-            
-            {/* Actions */}
-            <div className="px-4 pb-4 flex gap-2">
-              {showPlaceCard.lat && showPlaceCard.lng && (
-                <a
-                  href={(() => {
-                    if (showPlaceCard.googlePlaceId) {
-                      const q = encodeURIComponent(showPlaceCard.name || '');
-                      return `https://www.google.com/maps/search/?api=1&query=${q}&query_place_id=${showPlaceCard.googlePlaceId}`;
-                    }
-                    return `https://www.google.com/maps/search/?api=1&query=${showPlaceCard.lat},${showPlaceCard.lng}`;
-                  })()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 py-2.5 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 text-center"
-                >
-                  🗺️ פתח בגוגל מפות
-                </a>
-              )}
-              <button
-                onClick={() => setShowPlaceCard(null)}
-                className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-300"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -84,7 +84,6 @@
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [showPlaceCard, setShowPlaceCard] = useState(null); // Place object to show in card modal
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapMode, setMapMode] = useState('areas'); // 'areas' or 'radius'
   const leafletMapRef = React.useRef(null);
