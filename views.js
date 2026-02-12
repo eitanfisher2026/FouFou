@@ -1053,6 +1053,8 @@
                           // Check URL length and warn
                           if (mapUrl.length > 2000) {
                             showToast(`⚠️ כתובת ארוכה (${mapUrl.length} תווים). ייתכן שחלק מהנקודות לא יוצגו במסלול`, 'warning');
+                          } else if (routeType === 'circular') {
+                            showToast('🔄 מסלול מעגלי — חוזר לנקודת ההתחלה', 'info');
                           }
 
                           // Open in new tab

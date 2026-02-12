@@ -3132,8 +3132,8 @@
       address: loc.address || '',
       uploadedImage: loc.uploadedImage || null,
       imageUrls: loc.imageUrls || [],
-      inProgress: loc.inProgress || false,
-      locked: loc.locked || false
+      inProgress: !!loc.inProgress,
+      locked: !!loc.locked
     };
     
     setNewLocation(editFormData);
@@ -3337,8 +3337,8 @@
             label: label,
             name: label,
             icon: interest.icon || '📍',
-            inProgress: interest.inProgress || false,
-            locked: interest.locked || false
+            inProgress: !!interest.inProgress,
+            locked: !!interest.locked
           };
           await database.ref(`customInterests/${interestId}`).set(newInterest);
           addedInterests++;
@@ -3401,8 +3401,8 @@
             duration: loc.duration || 45,
             custom: true,
             status: loc.status || 'active',
-            inProgress: loc.inProgress || false,
-            locked: loc.locked || false,
+            inProgress: !!loc.inProgress,
+            locked: !!loc.locked,
             rating: loc.rating || null,
             ratingCount: loc.ratingCount || null,
             fromGoogle: loc.fromGoogle || false,
@@ -3463,8 +3463,8 @@
           label: label,
           name: label,
           icon: interest.icon || '📍',
-          inProgress: interest.inProgress || false,
-          locked: interest.locked || false
+          inProgress: !!interest.inProgress,
+          locked: !!interest.locked
         });
         addedInterests++;
       });
@@ -3514,8 +3514,8 @@
           duration: loc.duration || 45,
           custom: true,
           status: loc.status || 'active',
-          inProgress: loc.inProgress || false,
-          locked: loc.locked || false,
+          inProgress: !!loc.inProgress,
+          locked: !!loc.locked,
           rating: loc.rating || null,
           ratingCount: loc.ratingCount || null,
           fromGoogle: loc.fromGoogle || false,

@@ -4094,8 +4094,8 @@ const BangkokExplorer = () => {
       address: loc.address || '',
       uploadedImage: loc.uploadedImage || null,
       imageUrls: loc.imageUrls || [],
-      inProgress: loc.inProgress || false,
-      locked: loc.locked || false
+      inProgress: !!loc.inProgress,
+      locked: !!loc.locked
     };
     
     setNewLocation(editFormData);
@@ -4299,8 +4299,8 @@ const BangkokExplorer = () => {
             label: label,
             name: label,
             icon: interest.icon || '📍',
-            inProgress: interest.inProgress || false,
-            locked: interest.locked || false
+            inProgress: !!interest.inProgress,
+            locked: !!interest.locked
           };
           await database.ref(`customInterests/${interestId}`).set(newInterest);
           addedInterests++;
@@ -4363,8 +4363,8 @@ const BangkokExplorer = () => {
             duration: loc.duration || 45,
             custom: true,
             status: loc.status || 'active',
-            inProgress: loc.inProgress || false,
-            locked: loc.locked || false,
+            inProgress: !!loc.inProgress,
+            locked: !!loc.locked,
             rating: loc.rating || null,
             ratingCount: loc.ratingCount || null,
             fromGoogle: loc.fromGoogle || false,
@@ -4425,8 +4425,8 @@ const BangkokExplorer = () => {
           label: label,
           name: label,
           icon: interest.icon || '📍',
-          inProgress: interest.inProgress || false,
-          locked: interest.locked || false
+          inProgress: !!interest.inProgress,
+          locked: !!interest.locked
         });
         addedInterests++;
       });
@@ -4476,8 +4476,8 @@ const BangkokExplorer = () => {
           duration: loc.duration || 45,
           custom: true,
           status: loc.status || 'active',
-          inProgress: loc.inProgress || false,
-          locked: loc.locked || false,
+          inProgress: !!loc.inProgress,
+          locked: !!loc.locked,
           rating: loc.rating || null,
           ratingCount: loc.ratingCount || null,
           fromGoogle: loc.fromGoogle || false,
@@ -6153,6 +6153,8 @@ const BangkokExplorer = () => {
                           // Check URL length and warn
                           if (mapUrl.length > 2000) {
                             showToast(`⚠️ כתובת ארוכה (${mapUrl.length} תווים). ייתכן שחלק מהנקודות לא יוצגו במסלול`, 'warning');
+                          } else if (routeType === 'circular') {
+                            showToast('🔄 מסלול מעגלי — חוזר לנקודת ההתחלה', 'info');
                           }
 
                           // Open in new tab
@@ -8229,7 +8231,7 @@ const BangkokExplorer = () => {
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={newLocation.locked || false}
+                        checked={!!newLocation.locked}
                         onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
@@ -8559,7 +8561,7 @@ const BangkokExplorer = () => {
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={newInterest.locked || false}
+                        checked={!!newInterest.locked}
                         onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
@@ -9041,7 +9043,7 @@ const BangkokExplorer = () => {
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={editingRoute.locked || false}
+                      checked={!!editingRoute.locked}
                       onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
                       className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />

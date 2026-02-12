@@ -443,7 +443,7 @@
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={newLocation.locked || false}
+                        checked={!!newLocation.locked}
                         onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
@@ -773,7 +773,7 @@
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={newInterest.locked || false}
+                        checked={!!newInterest.locked}
                         onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
@@ -1255,7 +1255,7 @@
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={editingRoute.locked || false}
+                      checked={!!editingRoute.locked}
                       onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
                       className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
