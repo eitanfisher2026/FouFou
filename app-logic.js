@@ -129,7 +129,7 @@
         if (mapMode === 'areas') {
           // All areas mode
           const map = L.map(container).setView([13.7500, 100.5350], 12);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
             attribution: '© CartoDB © OSM', maxZoom: 18
           }).addTo(map);
           
@@ -164,7 +164,7 @@
           if (!lat || !lng) return;
           
           const map = L.map(container).setView([lat, lng], 15);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
             attribution: '© CartoDB © OSM', maxZoom: 18
           }).addTo(map);
           

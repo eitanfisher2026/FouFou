@@ -147,7 +147,8 @@
                       setMapMode(formData.searchMode === 'radius' && formData.currentLat ? 'radius' : 'areas'); 
                       setShowMapModal(true); 
                     }}
-                    className="px-1.5 py-1 rounded-lg text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-bold flex-shrink-0"
+                    className="px-2 py-1.5 rounded-lg text-xs font-bold flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 2px 4px rgba(5,150,105,0.3)' }}
                     title="הצג מפה"
                   >🗺️</button>
                   <div className="flex bg-gray-200 rounded-lg p-0.5 flex-1">
@@ -311,14 +312,27 @@
                     ) : (
                       /* My Place Mode */
                       <div className="space-y-1">
-                        <input
-                          type="text"
-                          value={placeSearchQuery}
-                          onChange={(e) => setPlaceSearchQuery(e.target.value)}
-                          placeholder="🔍 חפש מקום שלי..."
-                          className="w-full p-1.5 border border-blue-200 rounded-lg text-[10px] focus:border-blue-400 focus:outline-none"
-                          dir="rtl"
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type="text"
+                            value={placeSearchQuery}
+                            onChange={(e) => setPlaceSearchQuery(e.target.value)}
+                            placeholder="🔍 חפש מקום שלי..."
+                            className="w-full p-1.5 border border-blue-200 rounded-lg text-[10px] focus:border-blue-400 focus:outline-none"
+                            dir="rtl"
+                            style={{ paddingLeft: '24px' }}
+                          />
+                          {(placeSearchQuery || formData.radiusPlaceId) && (
+                            <button
+                              onClick={() => {
+                                setPlaceSearchQuery('');
+                                setFormData(prev => ({ ...prev, radiusPlaceId: null, radiusPlaceName: '', currentLat: null, currentLng: null }));
+                              }}
+                              style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', background: '#9ca3af', color: 'white', border: 'none', borderRadius: '50%', width: '16px', height: '16px', fontSize: '9px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              title="נקה בחירה"
+                            >✕</button>
+                          )}
+                        </div>
                         <div className="max-h-48 overflow-y-auto bg-white rounded border border-gray-200">
                           {customLocations
                             .filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist')
@@ -582,12 +596,10 @@
                               
                               return (
                                 <div key={stop.originalIndex} className="p-1.5 rounded border relative" style={{ 
-                                  borderColor: isStartPoint ? '#16a34a' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : isDisabled ? '#9ca3af' : '#e5e7eb',
-                                  borderWidth: isStartPoint ? '2px' : isAddedLater ? '2px' : '1px',
+                                  borderColor: isStartPoint ? '#e5e7eb' : !hasValidCoords ? '#ef4444' : isAddedLater ? '#60a5fa' : '#e5e7eb',
+                                  borderWidth: isAddedLater ? '2px' : '1px',
                                   borderStyle: isAddedLater ? 'dashed' : 'solid',
-                                  backgroundColor: isStartPoint ? '#f0fdf4' : !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : isDisabled ? '#f3f4f6' : '#fafafa',
-                                  opacity: isDisabled ? 0.45 : 1,
-                                  filter: isDisabled ? 'grayscale(0.6)' : 'none'
+                                  backgroundColor: !hasValidCoords ? '#fef2f2' : isAddedLater ? '#eff6ff' : '#fafafa'
                                 }}>
                                   {/* Action buttons - absolute left */}
                                   <div className="absolute top-0.5 left-0.5 flex gap-0.5">
@@ -708,7 +720,8 @@
                                     }}
                                   >
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
-                                      color: hasValidCoords ? '#2563eb' : '#dc2626',
+                                      color: isDisabled ? '#9ca3af' : hasValidCoords ? '#2563eb' : '#dc2626',
+                                      textDecoration: isDisabled ? 'line-through' : 'none',
                                       flexWrap: 'wrap'
                                     }}>
                                       {route?.optimized && !isDisabled && hasValidCoords && (
@@ -841,6 +854,11 @@
                       if (activeStops.length === 0) {
                         e.preventDefault();
                         showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
+                        return;
+                      }
+                      const url = e.currentTarget.href;
+                      if (url.length > 2000) {
+                        showToast(`⚠️ כתובת ארוכה (${url.length} תווים). ייתכן שחלק מהנקודות לא יוצגו במפה`, 'warning');
                       }
                     }}
                     style={{
@@ -863,15 +881,6 @@
                   
                   
                   {/* URL limit note */}
-                  <p style={{
-                    fontSize: '10px',
-                    color: '#6b7280',
-                    textAlign: 'center',
-                    marginBottom: '8px',
-                    fontStyle: 'italic'
-                  }}>
-                    מגבלת טלפון: עד ~6 מקומות (250 תווים)
-                  </p>
                   
                   {/* Route Type + Button */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -956,15 +965,7 @@
                           {isLocating ? '⏳' : '📍'}
                         </button>
                       </div>
-                      {startPointCoords ? (
-                        <p style={{ fontSize: '10px', color: '#16a34a', marginTop: '3px', fontWeight: 'bold' }}>
-                          ✅ {startPointCoords.address || `${startPointCoords.lat.toFixed(4)}, ${startPointCoords.lng.toFixed(4)}`}
-                        </p>
-                      ) : formData.startPoint?.trim() ? (
-                        <p style={{ fontSize: '10px', color: '#d97706', marginTop: '3px' }}>
-                          ⚠️ לחץ 🔍 לאימות הכתובת
-                        </p>
-                      ) : (
+                      {!startPointCoords && !formData.startPoint?.trim() && (
                         <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
                           💡 לחץ 🔍 לחיפוש כתובת, 📍 למיקום נוכחי, או בחר 📌 ממקום ברשימה
                         </p>
@@ -1051,6 +1052,11 @@
                             mapUrl += '&travelmode=walking';
                           }
 
+                          // Check URL length and warn
+                          if (mapUrl.length > 2000) {
+                            showToast(`⚠️ כתובת ארוכה (${mapUrl.length} תווים). ייתכן שחלק מהנקודות לא יוצגו במסלול`, 'warning');
+                          }
+
                           // Open in new tab
                           window.open(mapUrl, '_blank');
                         }}
@@ -1121,15 +1127,6 @@
                     </div>
                     
                     {/* Waypoints limit note */}
-                    <p style={{
-                      fontSize: '10px',
-                      color: '#6b7280',
-                      textAlign: 'center',
-                      marginTop: '4px',
-                      fontStyle: 'italic'
-                    }}>
-                      מגבלת טלפון: עד 25 מקומות
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1489,6 +1486,11 @@
                   if (activeStops.length === 0) {
                     e.preventDefault();
                     showToast('אין מקומות עם קואורדינטות תקינות', 'warning');
+                    return;
+                  }
+                  const url = e.currentTarget.href;
+                  if (url.length > 2000) {
+                    showToast(`⚠️ כתובת ארוכה (${url.length} תווים). ייתכן שחלק מהנקודות לא יוצגו במפה`, 'warning');
                   }
                 }}
                 style={{
@@ -1510,15 +1512,6 @@
               </a>
               
               {/* URL limit note */}
-              <p style={{
-                fontSize: '10px',
-                color: '#6b7280',
-                textAlign: 'center',
-                marginBottom: '12px',
-                fontStyle: 'italic'
-              }}>
-                מגבלת טלפון: עד ~6 מקומות (250 תווים)
-              </p>
 
               {/* Route Type + Button */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1593,6 +1586,12 @@
                   })()}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    const url = e.currentTarget.href;
+                    if (url.length > 2000) {
+                      showToast(`⚠️ כתובת ארוכה (${url.length} תווים). ייתכן שהמסלול לא יוצג כראוי`, 'warning');
+                    }
+                  }}
                   style={{
                     width: '100%',
                     backgroundColor: '#22c55e',
@@ -1611,15 +1610,6 @@
                   🗺️ פתח מסלול בגוגל
                 </a>
                 
-                {/* Waypoints limit note */}
-                <p style={{
-                  fontSize: '10px',
-                  color: '#6b7280',
-                  textAlign: 'center',
-                  fontStyle: 'italic'
-                }}>
-                  מגבלת טלפון: עד 25 מקומות
-                </p>
               </div>
             </div>
           </div>
