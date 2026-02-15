@@ -1046,7 +1046,10 @@
                       cursor: 'pointer'
                     }}
                   >
-<a
+                    ➕ הוסף ידנית נקודה למסלול
+                  </button>
+                  
+                  <a
                     href={(() => {
                       // Filter active stops with valid coordinates
                       const activeStops = route.stops.filter((s, i) => {
