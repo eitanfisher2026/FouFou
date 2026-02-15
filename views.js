@@ -1027,8 +1027,7 @@
                 </div>
                 
                 <div className="mt-3 space-y-2">
-                  {/* Add manual stop button - hidden in wizard */}
-                  {!wizardMode && (
+                  {/* Add manual stop button */}
                   <button
                     onClick={() => setShowManualAddDialog(true)}
                     style={{
@@ -1047,11 +1046,7 @@
                       cursor: 'pointer'
                     }}
                   >
-                    ➕ הוסף ידנית נקודה למסלול
-                  </button>
-                  )}
-                  
-                  <a
+<a
                     href={(() => {
                       // Filter active stops with valid coordinates
                       const activeStops = route.stops.filter((s, i) => {
