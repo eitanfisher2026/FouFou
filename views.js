@@ -108,6 +108,30 @@
                   ))}
                 </div>
                 
+                {/* Radius - search near me */}
+                <button
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          setFormData({...formData, searchMode: 'radius', radiusMeters: 1000, currentLat: pos.coords.latitude, currentLng: pos.coords.longitude, radiusPlaceName: 'המיקום שלי', radiusSource: 'gps'});
+                          showToast('📍 מיקום נמצא!', 'success');
+                        },
+                        () => showToast('לא ניתן לגשת למיקום', 'warning')
+                      );
+                    }
+                  }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    border: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                    background: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '#eff6ff' : 'white',
+                    marginBottom: '8px', transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#2563eb' }}>📍 קרוב אליי</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>חיפוש לפי GPS (1 ק"מ)</div>
+                </button>
+
                 {/* All Bangkok option */}
                 <button
                   onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
@@ -131,7 +155,7 @@
                     background: formData.area || formData.searchMode === 'radius' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
                     color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                   }}
-                >המשך →</button>
+                >← המשך</button>
                 
                 {/* Switch to advanced */}
                 <p style={{ textAlign: 'center', marginTop: '12px' }}>
@@ -183,7 +207,7 @@
                   <button
                     onClick={() => setWizardStep(1)}
                     style={{ flex: '0 0 auto', padding: '12px 20px', borderRadius: '12px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}
-                  >← חזרה</button>
+                  >חזרה →</button>
                   <button
                     onClick={() => { generateRoute(); setWizardStep(3); }}
                     disabled={formData.interests.length === 0}
@@ -194,7 +218,7 @@
                       color: 'white', fontSize: '16px', fontWeight: 'bold',
                       boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >🔍 מצא {formData.interests.length > 0 ? `(${formData.interests.length} תחומים)` : 'נקודות עניין'}</button>
+                  >🔍 מצא נקודות עניין {formData.interests.length > 0 ? `(${formData.interests.length} תחומים)` : ''}</button>
                 </div>
               </div>
             )}
@@ -276,11 +300,11 @@
         {wizardMode && wizardStep === 3 && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <button
-              onClick={() => { setWizardStep(2); setRoute(null); }}
+              onClick={() => { setWizardStep(2); setRoute(null); setCurrentView('form'); }}
               style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
-            >← חזרה</button>
+            >חזרה →</button>
             <button
-              onClick={() => { setWizardStep(1); setRoute(null); setFormData(prev => ({...prev, interests: []})); }}
+              onClick={() => { setWizardStep(1); setRoute(null); setCurrentView('form'); setFormData(prev => ({...prev, interests: []})); }}
               style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
             >🔄 התחל מחדש</button>
             <div style={{ flex: 1 }}></div>

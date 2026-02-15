@@ -2419,6 +2419,11 @@
       console.log('[ROUTE] Route set, staying in form view');
       console.log('[ROUTE] Route object:', newRoute);
       
+      // In wizard mode, switch to route view
+      if (wizardMode) {
+        setCurrentView('route');
+      }
+      
       // Scroll to results
       setTimeout(() => {
         document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
