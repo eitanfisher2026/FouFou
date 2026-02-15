@@ -95,18 +95,18 @@ window.BKK.interestTooltips = {
 
 // Area options
 window.BKK.areaOptions = [
-  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit' },
-  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town' },
-  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown' },
-  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor' },
-  { id: 'ari', label: 'ארי', labelEn: 'Ari' },
-  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside' },
-  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam' },
-  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak' },
-  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn' },
-  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada' },
-  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut' },
-  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak' }
+  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', desc: 'חיי לילה, מסעדות, קניונים' },
+  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', desc: 'מקדשים, ארמון המלך, היסטוריה' },
+  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', desc: 'אוכל רחוב, שווקים, מקדשים סיניים' },
+  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', desc: 'קפה, גלריות, בוטיקים' },
+  { id: 'ari', label: 'ארי', labelEn: 'Ari', desc: 'שכונתי, קפה, אמנות רחוב' },
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', desc: 'נהר, מקדשים, שווקי לילה' },
+  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam', desc: 'קניות, קניונים, מרכז העיר' },
+  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak', desc: 'שוק ענק, פארקים, אמנות' },
+  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn', desc: 'עסקים, מקדשים, חיי לילה' },
+  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada', desc: 'שווקי לילה, אוכל, בידור' },
+  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut', desc: 'מקומי, אוכל זול, שווקים' },
+  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak', desc: 'אמנות, גלריות, אוכל' }
 ];
 
 // Area coordinates (center points + radius)

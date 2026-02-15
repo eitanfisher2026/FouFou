@@ -58,7 +58,153 @@
           </button>
         </div>
       )}      <div className="max-w-4xl mx-auto p-4 pb-32">
-        {/* Navigation Tabs */}
+        {/* WIZARD MODE */}
+        {wizardMode && wizardStep < 3 && (
+          <div className="view-fade-in">
+            {/* Wizard Header */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+                {[1, 2, 3].map(step => (
+                  <div key={step} style={{
+                    width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '14px', fontWeight: 'bold',
+                    background: wizardStep === step ? '#e11d48' : wizardStep > step ? '#22c55e' : '#e5e7eb',
+                    color: wizardStep >= step ? 'white' : '#9ca3af',
+                    transition: 'all 0.3s'
+                  }}>{wizardStep > step ? '✓' : step}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 1: Choose Area */}
+            {wizardStep === 1 && (
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>📍 איפה מטיילים?</h2>
+                <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>בחר אזור בבנגקוק</p>
+                
+                {/* Map button */}
+                <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                  <button
+                    onClick={() => { setMapMode('areas'); setShowMapModal(true); }}
+                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '12px', padding: '8px 20px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 6px rgba(5,150,105,0.3)' }}
+                  >🗺️ הצג מפה</button>
+                </div>
+
+                {/* Area Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                  {(window.BKK.areaOptions || []).map(area => (
+                    <button
+                      key={area.id}
+                      onClick={() => setFormData({...formData, area: area.id, searchMode: 'area'})}
+                      style={{
+                        padding: '12px 8px', borderRadius: '12px', border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                        background: formData.area === area.id && formData.searchMode === 'area' ? '#eff6ff' : 'white',
+                        cursor: 'pointer', textAlign: 'right', direction: 'rtl', transition: 'all 0.2s'
+                      }}
+                    >
+                      <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1f2937' }}>{area.label}</div>
+                      <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{area.desc || area.labelEn}</div>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* All Bangkok option */}
+                <button
+                  onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #8b5cf6' : '2px solid #e5e7eb',
+                    background: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
+                    marginBottom: '12px', transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#7c3aed' }}>🌏 כל בנגקוק</div>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>חיפוש בכל העיר</div>
+                </button>
+
+                {/* Continue button */}
+                <button
+                  onClick={() => setWizardStep(2)}
+                  disabled={!formData.area && formData.searchMode !== 'radius'}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' ? 'pointer' : 'not-allowed',
+                    background: formData.area || formData.searchMode === 'radius' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                  }}
+                >המשך →</button>
+                
+                {/* Switch to advanced */}
+                <p style={{ textAlign: 'center', marginTop: '12px' }}>
+                  <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>
+                    ⚙️ מצב מתקדם
+                  </button>
+                </p>
+              </div>
+            )}
+
+            {/* Step 2: Choose Interests */}
+            {wizardStep === 2 && (
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>⭐ מה מעניין אותך?</h2>
+                <p style={{ textAlign: 'center', fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>בחר תחום אחד או יותר</p>
+                
+                {/* Interest Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+                  {allInterestOptions.filter(option => {
+                    const status = interestStatus[option.id];
+                    if (option.uncovered) return status === true;
+                    return status !== false;
+                  }).filter(option => isInterestValid(option.id)).map(option => {
+                    const isSelected = formData.interests.includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          const newInterests = isSelected
+                            ? formData.interests.filter(id => id !== option.id)
+                            : [...formData.interests, option.id];
+                          setFormData({...formData, interests: newInterests});
+                        }}
+                        style={{
+                          padding: '12px 6px', borderRadius: '12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                          border: isSelected ? '2px solid #2563eb' : '2px solid #e5e7eb',
+                          background: isSelected ? '#eff6ff' : 'white'
+                        }}
+                      >
+                        <div style={{ fontSize: '24px', marginBottom: '4px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '28px', height: '28px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                        <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{option.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected count + buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <button
+                    onClick={() => setWizardStep(1)}
+                    style={{ flex: '0 0 auto', padding: '12px 20px', borderRadius: '12px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}
+                  >← חזרה</button>
+                  <button
+                    onClick={() => { generateRoute(); setWizardStep(3); }}
+                    disabled={formData.interests.length === 0}
+                    style={{
+                      flex: 1, padding: '14px', borderRadius: '12px', border: 'none',
+                      cursor: formData.interests.length > 0 ? 'pointer' : 'not-allowed',
+                      background: formData.interests.length > 0 ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                      color: 'white', fontSize: '16px', fontWeight: 'bold',
+                      boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                    }}
+                  >🔍 מצא {formData.interests.length > 0 ? `(${formData.interests.length} תחומים)` : 'נקודות עניין'}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Wizard Step 3 = results, or normal mode */}
+        
+        {/* Navigation Tabs - hidden in wizard mode */}
+        {!wizardMode && (
         <div className="flex flex-wrap gap-1 mb-4 bg-white rounded-lg p-1.5 shadow">
           <button
             onClick={() => { setCurrentView('form'); window.scrollTo(0, 0); }}
@@ -124,11 +270,30 @@
             <div className="truncate text-center text-[8px]">הגדרות</div>
           </button>
         </div>
+        )}
+
+        {/* Wizard Step 3: Back/restart buttons */}
+        {wizardMode && wizardStep === 3 && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <button
+              onClick={() => { setWizardStep(2); setRoute(null); }}
+              style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
+            >← חזרה</button>
+            <button
+              onClick={() => { setWizardStep(1); setRoute(null); setFormData(prev => ({...prev, interests: []})); }}
+              style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
+            >🔄 התחל מחדש</button>
+            <div style={{ flex: 1 }}></div>
+            <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>
+              ⚙️ מתקדם
+            </button>
+          </div>
+        )}
 
         {/* Form View */}
 
         {/* === VIEWS (from views.js) === */}
-        {currentView === 'form' && (
+        {currentView === 'form' && !wizardMode && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
@@ -663,7 +828,7 @@
                                       </button>
                                     )}
                                     
-                                    {!isCustom && (
+                                    {!isCustom && !wizardMode && (
                                       (() => {
                                         const placeId = stop.id || stop.name;
                                         const isAdding = addingPlaceIds.includes(placeId);
@@ -808,7 +973,8 @@
                 </div>
                 
                 <div className="mt-3 space-y-2">
-                  {/* Add manual stop button */}
+                  {/* Add manual stop button - hidden in wizard */}
+                  {!wizardMode && (
                   <button
                     onClick={() => setShowManualAddDialog(true)}
                     style={{
@@ -829,6 +995,7 @@
                   >
                     ➕ הוסף ידנית נקודה למסלול
                   </button>
+                  )}
                   
                   <a
                     href={(() => {
@@ -1087,8 +1254,8 @@
                         🗺️ פתח מסלול בגוגל
                       </button>
                       
-                      {/* Save Route Button - styled */}
-                      {route.name ? (
+                      {/* Save Route Button - styled - hidden in wizard */}
+                      {!wizardMode && (route.name ? (
                         <button
                           disabled
                           style={{
@@ -1133,10 +1300,8 @@
                         >
                           💾 שמור
                         </button>
-                      )}
+                      ))}
                     </div>
-                    
-                    {/* Waypoints limit note */}
                   </div>
                 </div>
               </div>
@@ -1146,6 +1311,7 @@
 
         {currentView === 'route' && route && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-4">
+            {!wizardMode && (
             <button
               onClick={() => setCurrentView('form')}
               style={getButtonStyle(false)}
@@ -1153,9 +1319,10 @@
             >
               ← חזרה לטופס
             </button>
+            )}
 
-            {/* Save Route Button */}
-            {!route.name && (
+            {/* Save Route Button - hidden in wizard */}
+            {!route.name && !wizardMode && (
               <button
                 onClick={() => quickSaveRoute()}
                 className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
@@ -1164,7 +1331,7 @@
               </button>
             )}
 
-            {route.name && (
+            {route.name && !wizardMode && (
               <div className="bg-green-50 border-2 border-green-500 p-3 rounded-lg mb-4">
                 <p className="text-green-800 font-medium">📌 {route.name}</p>
                 {route.notes && (

@@ -37,6 +37,10 @@
   };
 
   const [currentView, setCurrentView] = useState('form');
+  const [wizardMode, setWizardMode] = useState(() => {
+    try { return localStorage.getItem('bangkok_wizard_mode') !== 'false'; } catch(e) { return true; }
+  });
+  const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
