@@ -62,8 +62,14 @@
         {wizardMode && wizardStep < 3 && (
           <div className="view-fade-in">
             {/* Wizard Header */}
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+              {/* Advanced mode toggle at top */}
+              <div style={{ textAlign: 'left', marginBottom: '4px' }}>
+                <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '10px', cursor: 'pointer', textDecoration: 'underline' }}>
+                  ⚙️ מצב מתקדם
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
                 {[1, 2, 3].map(step => (
                   <div key={step} style={{
                     width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -79,7 +85,10 @@
             {/* Step 1: Choose Area */}
             {wizardStep === 1 && (
               <div className="bg-white rounded-xl shadow-lg p-3">
-                <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '2px' }}>📍 איפה מטיילים?</h2>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                  <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>📍 איפה מטיילים?</h2>
+                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '14px', cursor: 'pointer', color: '#9ca3af' }}>❓</button>
+                </div>
                 <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>בחר אזור בבנגקוק</p>
                 
                 {/* Map button */}
@@ -156,13 +165,6 @@
                     color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                   }}
                 >← המשך</button>
-                
-                {/* Switch to advanced */}
-                <p style={{ textAlign: 'center', marginTop: '12px' }}>
-                  <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>
-                    ⚙️ מצב מתקדם
-                  </button>
-                </p>
               </div>
             )}
 
@@ -307,10 +309,6 @@
               onClick={() => { setWizardStep(1); setRoute(null); setCurrentView('form'); setFormData(prev => ({...prev, interests: []})); window.scrollTo(0, 0); }}
               style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
             >🔄 התחל מחדש</button>
-            <div style={{ flex: 1 }}></div>
-            <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}>
-              ⚙️ מתקדם
-            </button>
           </div>
         )}
 
@@ -344,65 +342,54 @@
               
               {/* Right Column: Search Mode */}
               <div className="flex-shrink-0 flex flex-col" style={{ width: rightColWidth + 'px' }}>
-                {/* Map button + Mode Toggle */}
-                <div className="flex items-center gap-1 mb-2">
+                {/* Map button - prominent */}
+                <button
+                  onClick={() => { 
+                    setMapMode(formData.searchMode === 'radius' && formData.currentLat ? 'radius' : 'areas'); 
+                    setShowMapModal(true); 
+                  }}
+                  className="w-full mb-2 py-1.5 rounded-lg text-[10px] font-bold"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 2px 4px rgba(5,150,105,0.3)' }}
+                >🗺️ הצג מפה</button>
+
+                {/* 3-way mode toggle: הכל / איזור / רדיוס */}
+                <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2">
                   <button
-                    onClick={() => { 
-                      setMapMode(formData.searchMode === 'radius' && formData.currentLat ? 'radius' : 'areas'); 
-                      setShowMapModal(true); 
-                    }}
-                    className="px-2 py-1.5 rounded-lg text-xs font-bold flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', boxShadow: '0 2px 4px rgba(5,150,105,0.3)' }}
-                    title="הצג מפה"
-                  >🗺️</button>
-                  <div className="flex bg-gray-200 rounded-lg p-0.5 flex-1">
-                    <button
-                      onClick={() => setFormData({...formData, searchMode: 'area'})}
-                      className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                        formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
-                      }`}
-                    >איזור</button>
-                    <button
-                      onClick={() => setFormData({...formData, searchMode: 'radius'})}
-                      className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                        formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
-                      }`}
-                    >רדיוס</button>
-                  </div>
+                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                    className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                      formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'bg-white shadow text-purple-600' : 'text-gray-500'
+                    }`}
+                  >🌏 הכל</button>
+                  <button
+                    onClick={() => setFormData({...formData, searchMode: 'area'})}
+                    className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                      formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+                    }`}
+                  >איזור</button>
+                  <button
+                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: formData.radiusMeters === 15000 ? 1000 : formData.radiusMeters})}
+                    className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
+                      formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+                    }`}
+                  >רדיוס</button>
                 </div>
                 
                 {formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
-                    <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
-                      <button
-                        onClick={() => { setMapMode('areas'); setShowMapModal(true); }}
-                        className="flex-1 py-1 rounded-lg text-[9px] font-bold border transition bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
-                      >🗺️ מפה</button>
-                      <button
-                        onClick={detectArea}
-                        disabled={isLocating}
-                        className={`flex-1 py-1 rounded-lg text-[9px] font-bold border transition ${
-                          isLocating 
-                            ? 'bg-gray-100 text-gray-400 border-gray-200' 
-                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
-                        }`}
-                      >
-                        {isLocating ? '⏳ מאתר...' : '📍 זהה מיקום'}
-                      </button>
-                    </div>
+                    <button
+                      onClick={detectArea}
+                      disabled={isLocating}
+                      className={`w-full mb-1.5 py-1 rounded-lg text-[9px] font-bold border transition ${
+                        isLocating 
+                          ? 'bg-gray-100 text-gray-400 border-gray-200' 
+                          : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                      }`}
+                    >
+                      {isLocating ? '⏳ מאתר...' : '📍 זהה מיקום'}
+                    </button>
                     <div className="border border-gray-200 rounded-lg p-1">
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                        <button
-                          onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
-                          style={{
-                            border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #7c3aed' : '1.5px solid #e5e7eb',
-                            backgroundColor: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '#ede9fe' : '#ffffff',
-                            padding: '4px 2px', borderRadius: '6px', textAlign: 'center', lineHeight: '1.1', gridColumn: 'span 2'
-                          }}
-                        >
-                          <div style={{ fontWeight: '700', fontSize: '10px', color: '#7c3aed' }}>🌏 הכל</div>
-                        </button>
                         {areaOptions.map(area => (
                           <button
                             key={area.id}
