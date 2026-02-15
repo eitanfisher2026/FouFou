@@ -977,6 +977,8 @@ const BangkokExplorer = () => {
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         // Add radius search fields if not present
         if (!prefs.searchMode) prefs.searchMode = 'area';
+        // Handle legacy 'all' that was stored as radius with 15000
+        if (prefs.searchMode === 'radius' && prefs.radiusMeters === 15000 && prefs.radiusPlaceName === 'כל בנגקוק') prefs.searchMode = 'all';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
         if (!prefs.radiusPlaceName) prefs.radiusPlaceName = '';
@@ -2852,7 +2854,7 @@ const BangkokExplorer = () => {
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
-    const isRadiusMode = formData.searchMode === 'radius';
+    const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
     // Filter custom locations that match current area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
@@ -3028,11 +3030,22 @@ const BangkokExplorer = () => {
   };
 
   const generateRoute = async () => {
-    const isRadiusMode = formData.searchMode === 'radius';
+    const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
     // Clear old start point to avoid stale data
     setStartPointCoords(null);
     setFormData(prev => ({...prev, startPoint: ''}));
+    
+    // For 'all' mode, auto-set Bangkok center and large radius
+    if (formData.searchMode === 'all') {
+      if (!formData.currentLat) {
+        setFormData(prev => ({...prev, currentLat: 13.7563, currentLng: 100.5018, radiusMeters: 15000, radiusPlaceName: 'כל בנגקוק'}));
+        formData.currentLat = 13.7563;
+        formData.currentLng = 100.5018;
+        formData.radiusMeters = 15000;
+        formData.radiusPlaceName = 'כל בנגקוק';
+      }
+    }
     
     if (isRadiusMode) {
       if (!formData.currentLat || !formData.currentLng) {
@@ -3304,7 +3317,7 @@ const BangkokExplorer = () => {
       // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
-        if (formData.radiusPlaceName === 'כל בנגקוק') {
+        if (formData.searchMode === 'all' || formData.radiusPlaceName === 'כל בנגקוק') {
           areaName = 'כל בנגקוק';
         } else {
           const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
@@ -3463,7 +3476,7 @@ const BangkokExplorer = () => {
     
     try {
       const fetchCount = formData.fetchMoreCount || 3;
-      const isRadiusMode = formData.searchMode === 'radius';
+      const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
       const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       const interestLabel = allInterestOptions.find(o => o.id === interest)?.label || interest;
       let placesToAdd = [];
@@ -3596,7 +3609,7 @@ const BangkokExplorer = () => {
     try {
       const fetchCount = formData.fetchMoreCount || 3;
       const perInterest = Math.ceil(fetchCount / formData.interests.length);
-      const isRadiusMode = formData.searchMode === 'radius';
+      const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
       const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       
       console.log(`[FETCH_MORE_ALL] Need ${perInterest} per interest, total target: ${fetchCount}`);
@@ -5247,11 +5260,13 @@ const BangkokExplorer = () => {
             {/* Step 1: Choose Area */}
             {wizardStep === 1 && (
               <div className="bg-white rounded-xl shadow-lg p-3">
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                  <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>📍 איפה מטיילים?</h2>
-                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '14px', cursor: 'pointer', color: '#9ca3af' }}>❓</button>
-                </div>
-                <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>בחר אזור בבנגקוק</p>
+                <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '2px' }}>📍 איפה מטיילים?</h2>
+                <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>
+                  בחר אזור בבנגקוק
+                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', marginRight: '4px', textDecoration: 'underline' }}>
+                    איך זה עובד?
+                  </button>
+                </p>
                 
                 {/* Map button */}
                 <div style={{ textAlign: 'center', marginBottom: '12px' }}>
@@ -5294,8 +5309,8 @@ const BangkokExplorer = () => {
                   }}
                   style={{
                     width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
-                    background: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '#eff6ff' : 'white',
+                    border: formData.searchMode === 'radius' ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
+                    background: formData.searchMode === 'radius' ? '#eff6ff' : 'white',
                     marginBottom: '6px', transition: 'all 0.2s'
                   }}
                 >
@@ -5305,11 +5320,11 @@ const BangkokExplorer = () => {
 
                 {/* All Bangkok option */}
                 <button
-                  onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                  onClick={() => setFormData({...formData, searchMode: 'all'})}
                   style={{
                     width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
-                    background: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
+                    border: formData.searchMode === 'all' ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
+                    background: formData.searchMode === 'all' ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
                     marginBottom: '8px', transition: 'all 0.2s'
                   }}
                 >
@@ -5320,11 +5335,11 @@ const BangkokExplorer = () => {
                 {/* Continue button */}
                 <button
                   onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
-                  disabled={!formData.area && formData.searchMode !== 'radius'}
+                  disabled={!formData.area && formData.searchMode !== 'radius' && formData.searchMode !== 'all'}
                   style={{
-                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' ? 'pointer' : 'not-allowed',
-                    background: formData.area || formData.searchMode === 'radius' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
-                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'pointer' : 'not-allowed',
+                    background: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                   }}
                 >← המשך</button>
               </div>
@@ -5488,7 +5503,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
               <button
                 onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
@@ -5517,9 +5532,9 @@ const BangkokExplorer = () => {
                 {/* 3-way mode toggle: הכל / איזור / רדיוס */}
                 <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2">
                   <button
-                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                    onClick={() => setFormData({...formData, searchMode: 'all'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'bg-white shadow text-purple-600' : 'text-gray-500'
+                      formData.searchMode === 'all' ? 'bg-white shadow text-purple-600' : 'text-gray-500'
                     }`}
                   >🌏 הכל</button>
                   <button
@@ -5529,14 +5544,18 @@ const BangkokExplorer = () => {
                     }`}
                   >איזור</button>
                   <button
-                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: formData.radiusMeters === 15000 ? 1000 : formData.radiusMeters})}
+                    onClick={() => setFormData({...formData, searchMode: 'radius'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+                      formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
                   >רדיוס</button>
                 </div>
                 
-                {formData.searchMode === 'area' ? (
+                {formData.searchMode === 'all' ? (
+                  <div style={{ padding: '8px', textAlign: 'center', color: '#7c3aed', fontSize: '11px', fontWeight: 'bold' }}>
+                    🌏 חיפוש בכל בנגקוק
+                  </div>
+                ) : formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
                     <button
@@ -5903,11 +5922,8 @@ const BangkokExplorer = () => {
                   <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
                   <button
                     onClick={() => showHelpFor('placesListing')}
-                    className="text-blue-400 hover:text-blue-600 text-sm"
-                    title="עזרה"
-                  >
-                    ❓
-                  </button>
+                    style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', lineHeight: '1' }}
+                  >i</button>
                 </div>
                 {/* Help link instead of inline legend */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
@@ -6550,7 +6566,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-2">
@@ -7136,7 +7152,7 @@ const BangkokExplorer = () => {
                   onClick={() => showHelpFor('saved')}
                   className="text-gray-400 hover:text-blue-500 text-sm"
                   title="עזרה"
-                >❓</button>
+                style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
               </div>
               <div className="flex items-center gap-2">
                 {/* Sort toggle */}
@@ -7238,7 +7254,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             
@@ -7451,7 +7467,7 @@ const BangkokExplorer = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה">❓</button>
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
@@ -7602,7 +7618,7 @@ const BangkokExplorer = () => {
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             
@@ -9666,22 +9682,19 @@ const BangkokExplorer = () => {
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: 'rtl' }}>
               {helpContent[helpContext]?.content.split('\n').map((line, i) => {
+                // Render inline **bold** anywhere in the line
+                const renderBold = (text) => {
+                  const parts = text.split(/\*\*(.*?)\*\*/g);
+                  return parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part);
+                };
                 if (line.startsWith('**') && line.endsWith('**')) {
                   return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                } else if (line.startsWith('**')) {
-                  const parts = line.split('**');
-                  return <p key={i} className="mb-1"><strong>{parts[1]}</strong>{parts[2]}</p>;
                 } else if (line.startsWith('• ')) {
-                  const text = line.substring(2);
-                  if (text.includes('**')) {
-                    const parts = text.split('**');
-                    return <p key={i} className="mr-3 mb-0.5">• <strong>{parts[1]}</strong>{parts[2] || ''}</p>;
-                  }
-                  return <p key={i} className="mr-3 mb-0.5">• {text}</p>;
+                  return <p key={i} className="mr-3 mb-0.5">• {renderBold(line.substring(2))}</p>;
                 } else if (line.trim() === '') {
                   return <div key={i} className="h-2" />;
                 }
-                return <p key={i} className="mb-1">{line}</p>;
+                return <p key={i} className="mb-1">{renderBold(line)}</p>;
               })}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">

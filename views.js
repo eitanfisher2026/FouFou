@@ -85,11 +85,13 @@
             {/* Step 1: Choose Area */}
             {wizardStep === 1 && (
               <div className="bg-white rounded-xl shadow-lg p-3">
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                  <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>📍 איפה מטיילים?</h2>
-                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '14px', cursor: 'pointer', color: '#9ca3af' }}>❓</button>
-                </div>
-                <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>בחר אזור בבנגקוק</p>
+                <h2 style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '2px' }}>📍 איפה מטיילים?</h2>
+                <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>
+                  בחר אזור בבנגקוק
+                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', marginRight: '4px', textDecoration: 'underline' }}>
+                    איך זה עובד?
+                  </button>
+                </p>
                 
                 {/* Map button */}
                 <div style={{ textAlign: 'center', marginBottom: '12px' }}>
@@ -132,8 +134,8 @@
                   }}
                   style={{
                     width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
-                    background: formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? '#eff6ff' : 'white',
+                    border: formData.searchMode === 'radius' ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
+                    background: formData.searchMode === 'radius' ? '#eff6ff' : 'white',
                     marginBottom: '6px', transition: 'all 0.2s'
                   }}
                 >
@@ -143,11 +145,11 @@
 
                 {/* All Bangkok option */}
                 <button
-                  onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                  onClick={() => setFormData({...formData, searchMode: 'all'})}
                   style={{
                     width: '100%', padding: '10px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
-                    border: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
-                    background: formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
+                    border: formData.searchMode === 'all' ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
+                    background: formData.searchMode === 'all' ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
                     marginBottom: '8px', transition: 'all 0.2s'
                   }}
                 >
@@ -158,11 +160,11 @@
                 {/* Continue button */}
                 <button
                   onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
-                  disabled={!formData.area && formData.searchMode !== 'radius'}
+                  disabled={!formData.area && formData.searchMode !== 'radius' && formData.searchMode !== 'all'}
                   style={{
-                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' ? 'pointer' : 'not-allowed',
-                    background: formData.area || formData.searchMode === 'radius' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
-                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none', cursor: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'pointer' : 'not-allowed',
+                    background: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                    color: 'white', fontSize: '16px', fontWeight: 'bold', boxShadow: formData.area || formData.searchMode === 'radius' || formData.searchMode === 'all' ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                   }}
                 >← המשך</button>
               </div>
@@ -326,7 +328,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
               <button
                 onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
@@ -355,9 +357,9 @@
                 {/* 3-way mode toggle: הכל / איזור / רדיוס */}
                 <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2">
                   <button
-                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: 15000, currentLat: 13.7563, currentLng: 100.5018, radiusPlaceName: 'כל בנגקוק'})}
+                    onClick={() => setFormData({...formData, searchMode: 'all'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'radius' && formData.radiusMeters === 15000 ? 'bg-white shadow text-purple-600' : 'text-gray-500'
+                      formData.searchMode === 'all' ? 'bg-white shadow text-purple-600' : 'text-gray-500'
                     }`}
                   >🌏 הכל</button>
                   <button
@@ -367,14 +369,18 @@
                     }`}
                   >איזור</button>
                   <button
-                    onClick={() => setFormData({...formData, searchMode: 'radius', radiusMeters: formData.radiusMeters === 15000 ? 1000 : formData.radiusMeters})}
+                    onClick={() => setFormData({...formData, searchMode: 'radius'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
-                      formData.searchMode === 'radius' && formData.radiusMeters !== 15000 ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+                      formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
                   >רדיוס</button>
                 </div>
                 
-                {formData.searchMode === 'area' ? (
+                {formData.searchMode === 'all' ? (
+                  <div style={{ padding: '8px', textAlign: 'center', color: '#7c3aed', fontSize: '11px', fontWeight: 'bold' }}>
+                    🌏 חיפוש בכל בנגקוק
+                  </div>
+                ) : formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
                   <div>
                     <button
@@ -741,11 +747,8 @@
                   <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
                   <button
                     onClick={() => showHelpFor('placesListing')}
-                    className="text-blue-400 hover:text-blue-600 text-sm"
-                    title="עזרה"
-                  >
-                    ❓
-                  </button>
+                    style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', lineHeight: '1' }}
+                  >i</button>
                 </div>
                 {/* Help link instead of inline legend */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
@@ -1388,7 +1391,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-2">
@@ -1974,7 +1977,7 @@
                   onClick={() => showHelpFor('saved')}
                   className="text-gray-400 hover:text-blue-500 text-sm"
                   title="עזרה"
-                >❓</button>
+                style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
               </div>
               <div className="flex items-center gap-2">
                 {/* Sort toggle */}
@@ -2076,7 +2079,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             
@@ -2289,7 +2292,7 @@
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
-                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה">❓</button>
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title="עזרה"style={{ width: "18px", height: "18px", borderRadius: "50%", background: "#3b82f6", color: "white", fontSize: "11px", fontWeight: "bold", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", lineHeight: "1" }}>i</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (customInterests || []).length} סה"כ
                 </span>
@@ -2440,7 +2443,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title="עזרה"
               >
-                ❓
+                ℹ️
               </button>
             </div>
             

@@ -10,6 +10,8 @@
         if (!prefs.fetchMoreCount) prefs.fetchMoreCount = 3;
         // Add radius search fields if not present
         if (!prefs.searchMode) prefs.searchMode = 'area';
+        // Handle legacy 'all' that was stored as radius with 15000
+        if (prefs.searchMode === 'radius' && prefs.radiusMeters === 15000 && prefs.radiusPlaceName === 'כל בנגקוק') prefs.searchMode = 'all';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
         if (!prefs.radiusPlaceName) prefs.radiusPlaceName = '';
@@ -1885,7 +1887,7 @@
 
   const getStopsForInterests = () => {
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
-    const isRadiusMode = formData.searchMode === 'radius';
+    const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
     // Filter custom locations that match current area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
@@ -2061,11 +2063,22 @@
   };
 
   const generateRoute = async () => {
-    const isRadiusMode = formData.searchMode === 'radius';
+    const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
     // Clear old start point to avoid stale data
     setStartPointCoords(null);
     setFormData(prev => ({...prev, startPoint: ''}));
+    
+    // For 'all' mode, auto-set Bangkok center and large radius
+    if (formData.searchMode === 'all') {
+      if (!formData.currentLat) {
+        setFormData(prev => ({...prev, currentLat: 13.7563, currentLng: 100.5018, radiusMeters: 15000, radiusPlaceName: 'כל בנגקוק'}));
+        formData.currentLat = 13.7563;
+        formData.currentLng = 100.5018;
+        formData.radiusMeters = 15000;
+        formData.radiusPlaceName = 'כל בנגקוק';
+      }
+    }
     
     if (isRadiusMode) {
       if (!formData.currentLat || !formData.currentLng) {
@@ -2337,7 +2350,7 @@
       // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
-        if (formData.radiusPlaceName === 'כל בנגקוק') {
+        if (formData.searchMode === 'all' || formData.radiusPlaceName === 'כל בנגקוק') {
           areaName = 'כל בנגקוק';
         } else {
           const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
@@ -2496,7 +2509,7 @@
     
     try {
       const fetchCount = formData.fetchMoreCount || 3;
-      const isRadiusMode = formData.searchMode === 'radius';
+      const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
       const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       const interestLabel = allInterestOptions.find(o => o.id === interest)?.label || interest;
       let placesToAdd = [];
@@ -2629,7 +2642,7 @@
     try {
       const fetchCount = formData.fetchMoreCount || 3;
       const perInterest = Math.ceil(fetchCount / formData.interests.length);
-      const isRadiusMode = formData.searchMode === 'radius';
+      const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
       const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       
       console.log(`[FETCH_MORE_ALL] Need ${perInterest} per interest, total target: ${fetchCount}`);

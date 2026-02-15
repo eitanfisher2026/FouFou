@@ -1627,22 +1627,19 @@
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: 'rtl' }}>
               {helpContent[helpContext]?.content.split('\n').map((line, i) => {
+                // Render inline **bold** anywhere in the line
+                const renderBold = (text) => {
+                  const parts = text.split(/\*\*(.*?)\*\*/g);
+                  return parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part);
+                };
                 if (line.startsWith('**') && line.endsWith('**')) {
                   return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                } else if (line.startsWith('**')) {
-                  const parts = line.split('**');
-                  return <p key={i} className="mb-1"><strong>{parts[1]}</strong>{parts[2]}</p>;
                 } else if (line.startsWith('• ')) {
-                  const text = line.substring(2);
-                  if (text.includes('**')) {
-                    const parts = text.split('**');
-                    return <p key={i} className="mr-3 mb-0.5">• <strong>{parts[1]}</strong>{parts[2] || ''}</p>;
-                  }
-                  return <p key={i} className="mr-3 mb-0.5">• {text}</p>;
+                  return <p key={i} className="mr-3 mb-0.5">• {renderBold(line.substring(2))}</p>;
                 } else if (line.trim() === '') {
                   return <div key={i} className="h-2" />;
                 }
-                return <p key={i} className="mb-1">{line}</p>;
+                return <p key={i} className="mb-1">{renderBold(line)}</p>;
               })}
             </div>
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
