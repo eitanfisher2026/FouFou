@@ -80,6 +80,7 @@
   const [interestConfig, setInterestConfig] = useState({});
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
+  const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
   const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
@@ -142,7 +143,7 @@
               fillOpacity: 0.15, weight: 2
             }).addTo(map).bindPopup(
               '<div style="text-align:center;direction:rtl;font-size:13px;">' +
-              '<b>' + area.icon + ' ' + area.label + '</b><br/>' +
+              '<b>' + area.label + '</b><br/>' +
               '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
               '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
             );
@@ -150,7 +151,7 @@
             L.marker([c.lat, c.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.icon + ' ' + area.label + '</div>',
+                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.label + '</div>',
                 iconSize: [80, 22], iconAnchor: [40, 11]
               })
             }).addTo(map);
@@ -3138,6 +3139,7 @@
     
     setNewLocation(editFormData);
     setGooglePlaceInfo(null);
+    setLocationSearchResults(null);
     setShowEditLocationDialog(true);
   };
   
@@ -4010,6 +4012,43 @@
     } catch (error) {
       console.error('[GEOCODING] Error:', error);
       showToast('שגיאה בחיפוש הכתובת. נסה באמצעות קישור Google Maps', 'error');
+    }
+  };
+
+  // Search places by name - returns multiple results for picking
+  const searchPlacesByName = async (query) => {
+    if (!query || !query.trim()) return;
+    try {
+      setLocationSearchResults([]); // show loading state
+      const searchQuery = query.toLowerCase().includes('bangkok') ? query : `${query}, Bangkok, Thailand`;
+      const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount'
+        },
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 5 })
+      });
+      const data = await response.json();
+      if (data.places && data.places.length > 0) {
+        setLocationSearchResults(data.places.map(p => ({
+          name: p.displayName?.text || '',
+          lat: p.location?.latitude,
+          lng: p.location?.longitude,
+          address: p.formattedAddress || '',
+          rating: p.rating,
+          ratingCount: p.userRatingCount,
+          googlePlaceId: p.id
+        })));
+      } else {
+        setLocationSearchResults([]);
+        showToast('לא נמצאו תוצאות', 'warning');
+      }
+    } catch (err) {
+      console.error('[SEARCH] Error:', err);
+      showToast('שגיאה בחיפוש', 'error');
+      setLocationSearchResults(null);
     }
   };
 

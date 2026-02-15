@@ -42,29 +42,72 @@
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
-                  {/* Name - full width */}
+                  {/* Name - full width with search */}
                   <div>
                     <label className="block text-xs font-bold mb-1">
                       שם <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={newLocation.name}
-                      onChange={(e) => {
-                        setNewLocation({...newLocation, name: e.target.value});
-                        if (e.target.value.trim()) {
-                          const exists = customLocations.find(loc => 
-                            loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
-                            (!editingLocation || loc.id !== editingLocation.id)
-                          );
-                          if (exists) showToast('שם זה כבר קיים', 'warning');
-                        }
-                      }}
-                      placeholder="שם המקום"
-                      className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: 'rtl' }}
-                      autoFocus
-                    />
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={newLocation.name}
+                        onChange={(e) => {
+                          setNewLocation({...newLocation, name: e.target.value});
+                          setLocationSearchResults(null);
+                          if (e.target.value.trim()) {
+                            const exists = customLocations.find(loc => 
+                              loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
+                              (!editingLocation || loc.id !== editingLocation.id)
+                            );
+                            if (exists) showToast('שם זה כבר קיים', 'warning');
+                          }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
+                        placeholder="שם המקום"
+                        className="flex-1 p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: 'rtl' }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => searchPlacesByName(newLocation.name)}
+                        disabled={!newLocation.name?.trim()}
+                        style={{
+                          padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: newLocation.name?.trim() ? 'pointer' : 'not-allowed',
+                          background: newLocation.name?.trim() ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : '#d1d5db', color: 'white', fontSize: '16px'
+                        }}
+                        title="חפש מקום בגוגל"
+                      >🔍</button>
+                    </div>
+                    {/* Search Results Dropdown */}
+                    {locationSearchResults !== null && (
+                      <div style={{ marginTop: '4px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', background: 'white' }}>
+                        {locationSearchResults.length === 0 ? (
+                          <p style={{ textAlign: 'center', padding: '8px', color: '#9ca3af', fontSize: '11px' }}>⏳ מחפש...</p>
+                        ) : locationSearchResults.map((result, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setNewLocation({
+                                ...newLocation,
+                                name: result.name,
+                                lat: result.lat, lng: result.lng,
+                                address: result.address,
+                                mapsUrl: `https://maps.google.com/?q=${result.lat},${result.lng}`,
+                                googlePlaceId: result.googlePlaceId
+                              });
+                              setLocationSearchResults(null);
+                              showToast(`✅ ${result.name} נבחר`, 'success');
+                            }}
+                            style={{ width: '100%', textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: 'rtl' }}
+                            onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                            onMouseLeave={(e) => e.target.style.background = 'none'}
+                          >
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#1f2937' }}>{result.name}</div>
+                            <div style={{ fontSize: '10px', color: '#6b7280' }}>{result.address}{result.rating ? ` ⭐ ${result.rating}` : ''}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Areas - full width multi-select */}
@@ -111,7 +154,6 @@
                             }`}
                             style={{ lineHeight: '1.1' }}
                           >
-                            <div style={{ fontSize: '14px' }}>{area.icon}</div>
                             <div>{area.label}</div>
                           </button>
                         );

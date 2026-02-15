@@ -202,10 +202,9 @@
                               lineHeight: '1.1'
                             }}
                           >
-                            <div style={{ fontSize: '14px' }}>{area.icon}</div>
                             <div style={{
                               fontWeight: '700',
-                              fontSize: '9px',
+                              fontSize: '10px',
                               color: formData.area === area.id ? '#1e40af' : '#374151',
                               wordBreak: 'break-word'
                             }}>{area.label}</div>
@@ -362,7 +361,6 @@
                                 }`}
                               >
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[8px]">{areaMap[loc.area]?.icon || '📍'}</span>
                                   <span className="truncate">{loc.name}</span>
                                 </div>
                               </button>
@@ -568,13 +566,19 @@
                       const interestObj = isManualGroup ? { id: '_manual', label: 'נוספו ידנית', icon: '📍' } : interestMap[interest];
                       if (!interestObj) return null;
                       
+                      // For manual group, filter out stops that now have real interests
+                      const filteredStops = isManualGroup 
+                        ? stops.filter(s => !s.interests || s.interests.length === 0 || (s.interests.length === 1 && s.interests[0] === '_manual'))
+                        : stops;
+                      if (filteredStops.length === 0) return null;
+                      
                       return (
                         <div key={interest} className="bg-white rounded-lg p-2 border border-gray-200">
                           {/* Interest header with fetch-more button */}
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
                               <span style={{ fontSize: '14px' }}>{interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}</span>
-                              <span>{interestObj.label} ({stops.length})</span>
+                              <span>{interestObj.label} ({filteredStops.length})</span>
                             </div>
                             {!isManualGroup && (
                             <button
@@ -592,7 +596,7 @@
                           
                           {/* Stops in this interest */}
                           <div className="space-y-1.5">
-                            {stops.map((stop) => {
+                            {filteredStops.map((stop) => {
                               const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
                               const stopId = (stop.name || '').toLowerCase().trim();
                               const isDisabled = disabledStops.includes(stopId);
@@ -1628,7 +1632,7 @@
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
               <button
-                onClick={() => setCurrentView('myContent')}
+                onClick={() => setCurrentView('myPlaces')}
                 className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 flex items-center gap-1"
               >
                 ← חזרה

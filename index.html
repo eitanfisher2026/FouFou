@@ -259,18 +259,18 @@ window.BKK.interestTooltips = {
 
 // Area options
 window.BKK.areaOptions = [
-  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
-  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
-  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
-  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
-  { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' },
-  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam', icon: '🛍️' },
-  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak', icon: '🏪' },
-  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn', icon: '🌃' },
-  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada', icon: '🌙' },
-  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut', icon: '🍜' },
-  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak', icon: '🎭' }
+  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit' },
+  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town' },
+  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown' },
+  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor' },
+  { id: 'ari', label: 'ארי', labelEn: 'Ari' },
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside' },
+  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam' },
+  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak' },
+  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn' },
+  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada' },
+  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut' },
+  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak' }
 ];
 
 // Area coordinates (center points + radius)
@@ -1042,6 +1042,7 @@ const BangkokExplorer = () => {
   const [interestConfig, setInterestConfig] = useState({});
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
+  const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
   const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '' });
@@ -1104,7 +1105,7 @@ const BangkokExplorer = () => {
               fillOpacity: 0.15, weight: 2
             }).addTo(map).bindPopup(
               '<div style="text-align:center;direction:rtl;font-size:13px;">' +
-              '<b>' + area.icon + ' ' + area.label + '</b><br/>' +
+              '<b>' + area.label + '</b><br/>' +
               '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
               '<span style="color:#999;font-size:10px;">רדיוס: ' + c.radius + ' מ\'</span></div>'
             );
@@ -1112,7 +1113,7 @@ const BangkokExplorer = () => {
             L.marker([c.lat, c.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.icon + ' ' + area.label + '</div>',
+                html: '<div style="font-size:10px;font-weight:bold;text-align:center;color:' + color + ';background:rgba(255,255,255,0.88);padding:2px 5px;border-radius:4px;border:1.5px solid ' + color + ';white-space:nowrap;line-height:1.2;box-shadow:0 1px 3px rgba(0,0,0,0.15);">' + area.label + '</div>',
                 iconSize: [80, 22], iconAnchor: [40, 11]
               })
             }).addTo(map);
@@ -4100,6 +4101,7 @@ const BangkokExplorer = () => {
     
     setNewLocation(editFormData);
     setGooglePlaceInfo(null);
+    setLocationSearchResults(null);
     setShowEditLocationDialog(true);
   };
   
@@ -4975,6 +4977,43 @@ const BangkokExplorer = () => {
     }
   };
 
+  // Search places by name - returns multiple results for picking
+  const searchPlacesByName = async (query) => {
+    if (!query || !query.trim()) return;
+    try {
+      setLocationSearchResults([]); // show loading state
+      const searchQuery = query.toLowerCase().includes('bangkok') ? query : `${query}, Bangkok, Thailand`;
+      const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount'
+        },
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 5 })
+      });
+      const data = await response.json();
+      if (data.places && data.places.length > 0) {
+        setLocationSearchResults(data.places.map(p => ({
+          name: p.displayName?.text || '',
+          lat: p.location?.latitude,
+          lng: p.location?.longitude,
+          address: p.formattedAddress || '',
+          rating: p.rating,
+          ratingCount: p.userRatingCount,
+          googlePlaceId: p.id
+        })));
+      } else {
+        setLocationSearchResults([]);
+        showToast('לא נמצאו תוצאות', 'warning');
+      }
+    } catch (err) {
+      console.error('[SEARCH] Error:', err);
+      showToast('שגיאה בחיפוש', 'error');
+      setLocationSearchResults(null);
+    }
+  };
+
   // Search coordinates by place name
   const geocodeByName = async (name) => {
     if (!name || !name.trim()) {
@@ -5302,10 +5341,9 @@ const BangkokExplorer = () => {
                               lineHeight: '1.1'
                             }}
                           >
-                            <div style={{ fontSize: '14px' }}>{area.icon}</div>
                             <div style={{
                               fontWeight: '700',
-                              fontSize: '9px',
+                              fontSize: '10px',
                               color: formData.area === area.id ? '#1e40af' : '#374151',
                               wordBreak: 'break-word'
                             }}>{area.label}</div>
@@ -5462,7 +5500,6 @@ const BangkokExplorer = () => {
                                 }`}
                               >
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[8px]">{areaMap[loc.area]?.icon || '📍'}</span>
                                   <span className="truncate">{loc.name}</span>
                                 </div>
                               </button>
@@ -5668,13 +5705,19 @@ const BangkokExplorer = () => {
                       const interestObj = isManualGroup ? { id: '_manual', label: 'נוספו ידנית', icon: '📍' } : interestMap[interest];
                       if (!interestObj) return null;
                       
+                      // For manual group, filter out stops that now have real interests
+                      const filteredStops = isManualGroup 
+                        ? stops.filter(s => !s.interests || s.interests.length === 0 || (s.interests.length === 1 && s.interests[0] === '_manual'))
+                        : stops;
+                      if (filteredStops.length === 0) return null;
+                      
                       return (
                         <div key={interest} className="bg-white rounded-lg p-2 border border-gray-200">
                           {/* Interest header with fetch-more button */}
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
                               <span style={{ fontSize: '14px' }}>{interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}</span>
-                              <span>{interestObj.label} ({stops.length})</span>
+                              <span>{interestObj.label} ({filteredStops.length})</span>
                             </div>
                             {!isManualGroup && (
                             <button
@@ -5692,7 +5735,7 @@ const BangkokExplorer = () => {
                           
                           {/* Stops in this interest */}
                           <div className="space-y-1.5">
-                            {stops.map((stop) => {
+                            {filteredStops.map((stop) => {
                               const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
                               const stopId = (stop.name || '').toLowerCase().trim();
                               const isDisabled = disabledStops.includes(stopId);
@@ -6728,7 +6771,7 @@ const BangkokExplorer = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
               <button
-                onClick={() => setCurrentView('myContent')}
+                onClick={() => setCurrentView('myPlaces')}
                 className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 flex items-center gap-1"
               >
                 ← חזרה
@@ -7841,29 +7884,72 @@ const BangkokExplorer = () => {
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
-                  {/* Name - full width */}
+                  {/* Name - full width with search */}
                   <div>
                     <label className="block text-xs font-bold mb-1">
                       שם <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={newLocation.name}
-                      onChange={(e) => {
-                        setNewLocation({...newLocation, name: e.target.value});
-                        if (e.target.value.trim()) {
-                          const exists = customLocations.find(loc => 
-                            loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
-                            (!editingLocation || loc.id !== editingLocation.id)
-                          );
-                          if (exists) showToast('שם זה כבר קיים', 'warning');
-                        }
-                      }}
-                      placeholder="שם המקום"
-                      className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: 'rtl' }}
-                      autoFocus
-                    />
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <input
+                        type="text"
+                        value={newLocation.name}
+                        onChange={(e) => {
+                          setNewLocation({...newLocation, name: e.target.value});
+                          setLocationSearchResults(null);
+                          if (e.target.value.trim()) {
+                            const exists = customLocations.find(loc => 
+                              loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
+                              (!editingLocation || loc.id !== editingLocation.id)
+                            );
+                            if (exists) showToast('שם זה כבר קיים', 'warning');
+                          }
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
+                        placeholder="שם המקום"
+                        className="flex-1 p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: 'rtl' }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => searchPlacesByName(newLocation.name)}
+                        disabled={!newLocation.name?.trim()}
+                        style={{
+                          padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: newLocation.name?.trim() ? 'pointer' : 'not-allowed',
+                          background: newLocation.name?.trim() ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : '#d1d5db', color: 'white', fontSize: '16px'
+                        }}
+                        title="חפש מקום בגוגל"
+                      >🔍</button>
+                    </div>
+                    {/* Search Results Dropdown */}
+                    {locationSearchResults !== null && (
+                      <div style={{ marginTop: '4px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', background: 'white' }}>
+                        {locationSearchResults.length === 0 ? (
+                          <p style={{ textAlign: 'center', padding: '8px', color: '#9ca3af', fontSize: '11px' }}>⏳ מחפש...</p>
+                        ) : locationSearchResults.map((result, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setNewLocation({
+                                ...newLocation,
+                                name: result.name,
+                                lat: result.lat, lng: result.lng,
+                                address: result.address,
+                                mapsUrl: `https://maps.google.com/?q=${result.lat},${result.lng}`,
+                                googlePlaceId: result.googlePlaceId
+                              });
+                              setLocationSearchResults(null);
+                              showToast(`✅ ${result.name} נבחר`, 'success');
+                            }}
+                            style={{ width: '100%', textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: 'rtl' }}
+                            onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                            onMouseLeave={(e) => e.target.style.background = 'none'}
+                          >
+                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#1f2937' }}>{result.name}</div>
+                            <div style={{ fontSize: '10px', color: '#6b7280' }}>{result.address}{result.rating ? ` ⭐ ${result.rating}` : ''}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Areas - full width multi-select */}
@@ -7910,7 +7996,6 @@ const BangkokExplorer = () => {
                             }`}
                             style={{ lineHeight: '1.1' }}
                           >
-                            <div style={{ fontSize: '14px' }}>{area.icon}</div>
                             <div>{area.label}</div>
                           </button>
                         );

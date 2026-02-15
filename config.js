@@ -95,18 +95,18 @@ window.BKK.interestTooltips = {
 
 // Area options
 window.BKK.areaOptions = [
-  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit', icon: '🏙️' },
-  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town', icon: '🏰' },
-  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown', icon: '🏮' },
-  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor', icon: '☕' },
-  { id: 'ari', label: 'ארי', labelEn: 'Ari', icon: '🎨' },
-  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside', icon: '🌊' },
-  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam', icon: '🛍️' },
-  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak', icon: '🏪' },
-  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn', icon: '🌃' },
-  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada', icon: '🌙' },
-  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut', icon: '🍜' },
-  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak', icon: '🎭' }
+  { id: 'sukhumvit', label: 'סוקומווית', labelEn: 'Sukhumvit' },
+  { id: 'old-town', label: 'העיר העתיקה', labelEn: 'Old Town' },
+  { id: 'chinatown', label: 'צ\'יינה טאון', labelEn: 'Chinatown' },
+  { id: 'thonglor', label: 'תונגלור', labelEn: 'Thonglor' },
+  { id: 'ari', label: 'ארי', labelEn: 'Ari' },
+  { id: 'riverside', label: 'ריברסייד', labelEn: 'Riverside' },
+  { id: 'siam', label: 'סיאם', labelEn: 'Siam / Pratunam' },
+  { id: 'chatuchak', label: 'צ\'אטוצ\'אק', labelEn: 'Chatuchak' },
+  { id: 'silom', label: 'סילום', labelEn: 'Silom / Sathorn' },
+  { id: 'ratchada', label: 'ראצ\'אדה', labelEn: 'Ratchada' },
+  { id: 'onnut', label: 'און נאט', labelEn: 'On Nut' },
+  { id: 'bangrak', label: 'באנג ראק', labelEn: 'Bang Rak' }
 ];
 
 // Area coordinates (center points + radius)
