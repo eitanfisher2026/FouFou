@@ -65,19 +65,19 @@ window.BKK.cities = {
     ],
 
     interests: [
-      { id: 'temples', label: 'מקדשים', icon: '🛕' },
-      { id: 'food', label: 'אוכל', icon: '🍜' },
+      { id: 'temples', label: 'מקדשים', labelEn: 'Temples', icon: '🛕' },
+      { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
       { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
       { id: 'artisans', label: 'מלאכה', icon: '🔨' },
-      { id: 'galleries', label: 'גלריות', icon: '🖼️' },
-      { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
+      { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
+      { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏛️' },
       { id: 'canals', label: 'תעלות', icon: '🚤' },
       { id: 'cafes', label: 'קפה', icon: '☕' },
-      { id: 'markets', label: 'שווקים', icon: '🏪' },
+      { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
       { id: 'nightlife', label: 'לילה', icon: '🌃' },
-      { id: 'parks', label: 'פארקים', icon: '🌳' },
+      { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
       { id: 'rooftop', label: 'גגות', icon: '🌆' },
-      { id: 'entertainment', label: 'בידור', icon: '🎭' }
+      { id: 'entertainment', label: 'בידור', labelEn: 'Entertainment', icon: '🎭' }
     ],
 
     interestToGooglePlaces: {
@@ -146,16 +146,16 @@ window.BKK.cities = {
     ],
 
     interests: [
-      { id: 'food', label: 'אוכל', icon: '🍽️' },
+      { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍽️' },
       { id: 'cafes', label: 'קפה', icon: '☕' },
-      { id: 'beaches', label: 'חופים', icon: '🏖️' },
+      { id: 'beaches', label: 'חופים', labelEn: 'Beaches', icon: '🏖️' },
       { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
-      { id: 'galleries', label: 'גלריות', icon: '🖼️' },
+      { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
       { id: 'architecture', label: 'באוהאוס', icon: '🏛️' },
-      { id: 'markets', label: 'שווקים', icon: '🏪' },
+      { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
       { id: 'nightlife', label: 'לילה', icon: '🌃' },
-      { id: 'parks', label: 'פארקים', icon: '🌳' },
-      { id: 'shopping', label: 'קניות', icon: '🛍️' },
+      { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
+      { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
       { id: 'culture', label: 'תרבות', icon: '🎭' },
       { id: 'history', label: 'היסטוריה', icon: '🏚️' }
     ],
@@ -213,17 +213,17 @@ window.BKK.cities = {
     ],
 
     interests: [
-      { id: 'food', label: 'אוכל', icon: '🍜' },
+      { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
       { id: 'cafes', label: 'קפה', icon: '☕' },
       { id: 'hawkers', label: 'הוקרס', icon: '🥘' },
-      { id: 'temples', label: 'מקדשים', icon: '🛕' },
+      { id: 'temples', label: 'מקדשים', labelEn: 'Temples', icon: '🛕' },
       { id: 'gardens', label: 'גנים', icon: '🌺' },
-      { id: 'architecture', label: 'ארכיטקטורה', icon: '🏛️' },
+      { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏛️' },
       { id: 'graffiti', label: 'גרפיטי', icon: '🎨' },
-      { id: 'galleries', label: 'גלריות', icon: '🖼️' },
-      { id: 'markets', label: 'שווקים', icon: '🏪' },
+      { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
+      { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
       { id: 'nightlife', label: 'לילה', icon: '🌃' },
-      { id: 'shopping', label: 'קניות', icon: '🛍️' },
+      { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
       { id: 'rooftop', label: 'גגות', icon: '🌆' }
     ],
 

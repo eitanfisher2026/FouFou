@@ -278,7 +278,7 @@
                       onClick={() => setNewLocation({...newLocation, imageUrls: [...(newLocation.imageUrls || []), '']})}
                       className="w-full p-1.5 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50"
                     >
-                      + קישור
+                      + Link
                     </button>
                   </div>
                 </div>

@@ -66,7 +66,7 @@
               {/* Advanced mode toggle and language toggle at top */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px' }}>
                 <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '10px', cursor: 'pointer', textDecoration: 'underline' }}>
-                  ⚙️ מצב מתקדם
+                  {`⚙️ ${t("nav.advancedMode")}`}
                 </button>
                 <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
                   {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
@@ -181,7 +181,7 @@
                   }}
                 >
                   <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#7c3aed' }}>{`🌏 ${t('general.all')} ${tLabel(window.BKK.selectedCity) || t('general.city')}`}</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>חיפוש בכל העיר</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>{t("general.all")} יר</div>
                 </button>
 
                 {/* Continue button */}
@@ -383,7 +383,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title={t("general.help")}
               >
-                עזרה
+                {t("general.help")}
               </button>
               <button
                 onClick={() => { setWizardMode(true); setWizardStep(1); localStorage.setItem('bangkok_wizard_mode', 'true'); setRoute(null); }}
@@ -1447,7 +1447,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title={t("general.help")}
               >
-                עזרה
+                {t("general.help")}
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-2">
@@ -2041,11 +2041,11 @@
                   <button
                     onClick={() => setRoutesSortBy('area')}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'area' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
-                  >By area</button>
+                  >{t("places.byArea")}</button>
                   <button
                     onClick={() => setRoutesSortBy('name')}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'name' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
-                  >לפי שם</button>
+                  >{t("places.byName")}</button>
                 </div>
               </div>
             </div>
@@ -2057,7 +2057,7 @@
                 <button
                   onClick={() => setCurrentView('form')}
                   className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
-                >New route</button>
+                >{t("route.newRoute")}</button>
               </div>
             ) : (
               <div className="space-y-1">
@@ -2098,7 +2098,7 @@
                                 const obj = interestMap[intId];
                                 return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '12px' }}>{obj.icon}</span> : null;
                               })}
-                              <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} תחנות</span>
+                              <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} stops</span>
                             </div>
                             {savedRoute.notes && (
                               <div className="text-[10px] text-gray-500 truncate mt-0.5">📝 {savedRoute.notes}</div>
@@ -2135,7 +2135,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title={t("general.help")}
               >
-                עזרה
+                {t("general.help")}
               </button>
             </div>
             
@@ -2347,7 +2347,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">🏷️ התחומים שלי</h2>
+                <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
                 <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title={t("general.help")}style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>{t("general.help")}</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (cityCustomInterests || []).length} סה"כ
@@ -2499,7 +2499,7 @@
                 className="text-gray-400 hover:text-blue-500 text-sm"
                 title={t("general.help")}
               >
-                עזרה
+                {t("general.help")}
               </button>
             </div>
             
