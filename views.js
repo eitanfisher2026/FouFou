@@ -87,7 +87,7 @@
               <div className="bg-white rounded-xl shadow-lg p-3">
                 {/* City Selector */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                  {Object.values(window.BKK.cities).map(city => (
+                  {Object.values(window.BKK.cities).filter(c => c.active !== false).map(city => (
                     <button
                       key={city.id}
                       onClick={() => switchCity(city.id)}
@@ -357,6 +357,22 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
             {/* Form inputs - hidden in wizard step 3 */}
             {!wizardMode && (<>
+            {/* City selector for advanced mode */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              {Object.values(window.BKK.cities).filter(c => c.active !== false).map(city => (
+                <button
+                  key={city.id}
+                  onClick={() => switchCity(city.id)}
+                  style={{
+                    padding: '3px 10px', borderRadius: '16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold',
+                    border: selectedCityId === city.id ? '2px solid #e11d48' : '1.5px solid #e5e7eb',
+                    background: selectedCityId === city.id ? '#fef2f2' : 'white',
+                    color: selectedCityId === city.id ? '#e11d48' : '#6b7280',
+                    transition: 'all 0.2s'
+                  }}
+                >{city.icon} {city.name}</button>
+              ))}
+            </div>
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-base font-bold text-center">תכנן את הטיול</h2>
               <button
@@ -2481,26 +2497,69 @@
               </button>
             </div>
             
-            {/* City Selector */}
+            {/* City & Area Management */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-rose-50 to-orange-50 border-2 border-rose-400 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">🌍 בחר עיר</h3>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <h3 className="text-sm font-bold text-gray-800 mb-2">🌍 ערים ואזורים</h3>
+                
+                {/* City pills - all cities, with active/inactive toggle */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                   {Object.values(window.BKK.cities).map(city => (
-                    <button
-                      key={city.id}
-                      onClick={() => switchCity(city.id)}
-                      style={{
-                        padding: '6px 12px', borderRadius: '16px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold',
-                        border: selectedCityId === city.id ? '2px solid #e11d48' : '1.5px solid #e5e7eb',
-                        background: selectedCityId === city.id ? '#fef2f2' : 'white',
-                        color: selectedCityId === city.id ? '#e11d48' : '#6b7280',
-                        transition: 'all 0.2s'
-                      }}
-                    >{city.icon} {city.name}</button>
+                    <div key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <button
+                        onClick={() => switchCity(city.id)}
+                        style={{
+                          padding: '5px 10px', borderRadius: '16px 0 0 16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold',
+                          border: selectedCityId === city.id ? '2px solid #e11d48' : '1.5px solid #e5e7eb',
+                          borderRight: 'none',
+                          background: selectedCityId === city.id ? '#fef2f2' : city.active === false ? '#f3f4f6' : 'white',
+                          color: selectedCityId === city.id ? '#e11d48' : city.active === false ? '#9ca3af' : '#6b7280',
+                          opacity: city.active === false ? 0.6 : 1,
+                          transition: 'all 0.2s'
+                        }}
+                      >{city.icon} {city.name}</button>
+                      {isUnlocked && (
+                        <button
+                          onClick={() => {
+                            city.active = city.active === false ? true : false;
+                            showToast(city.name + (city.active ? ' ✅ פעיל' : ' ⏸️ מושבת'), 'info');
+                            setFormData(prev => ({...prev})); // force re-render
+                          }}
+                          style={{
+                            padding: '5px 6px', borderRadius: '0 16px 16px 0', cursor: 'pointer', fontSize: '10px',
+                            border: '1.5px solid #e5e7eb', borderLeft: 'none',
+                            background: city.active === false ? '#fee2e2' : '#dcfce7',
+                            color: city.active === false ? '#ef4444' : '#16a34a'
+                          }}
+                          title={city.active === false ? 'הפעל עיר' : 'השבת עיר'}
+                        >{city.active === false ? '⏸️' : '▶️'}</button>
+                      )}
+                    </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">{window.BKK.selectedCity?.areas?.length || 0} אזורים · {window.BKK.selectedCity?.interests?.length || 0} תחומי עניין</p>
+                
+                <p className="text-[10px] text-gray-500 mb-2">
+                  {window.BKK.selectedCity?.icon} {window.BKK.selectedCity?.name}: {window.BKK.selectedCity?.areas?.length || 0} אזורים · {window.BKK.selectedCity?.interests?.length || 0} תחומי עניין
+                </p>
+
+                {/* Areas list for selected city */}
+                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
+                  {(window.BKK.selectedCity?.areas || []).map((area, i) => {
+                    const safetyColors = { safe: '#22c55e', caution: '#f59e0b', danger: '#ef4444' };
+                    const safetyLabels = { safe: 'בטוח', caution: 'זהירות', danger: 'מסוכן' };
+                    return (
+                      <div key={area.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
+                        <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{area.label}</span>
+                        <span style={{ fontSize: '9px', color: '#6b7280' }}>{area.labelEn}</span>
+                        <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.radius}מ'</span>
+                        <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.size}</span>
+                        <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '4px', background: safetyColors[area.safety || 'safe'] + '20', color: safetyColors[area.safety || 'safe'], fontWeight: 'bold' }}>
+                          {safetyLabels[area.safety || 'safe']}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

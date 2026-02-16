@@ -128,26 +128,25 @@
         const coords = window.BKK.areaCoordinates || {};
         const areas = window.BKK.areaOptions || [];
         
-        // Area colors
-        const areaColors = {
-          'sukhumvit': '#3b82f6', 'old-town': '#f59e0b', 'chinatown': '#ef4444',
-          'thonglor': '#10b981', 'ari': '#ec4899', 'riverside': '#6366f1',
-          'siam': '#8b5cf6', 'chatuchak': '#06b6d4', 'silom': '#f97316',
-          'ratchada': '#a855f7', 'onnut': '#14b8a6', 'bangrak': '#e11d48'
-        };
+        // Generate area colors dynamically from palette
+        const colorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
+        const areaColors = {};
+        areas.forEach((area, i) => { areaColors[area.id] = colorPalette[i % colorPalette.length]; });
         
         if (mapMode === 'areas') {
-          // All areas mode
-          const map = L.map(container).setView([13.7500, 100.5350], 12);
+          // All areas mode - center on selected city
+          const cityCenter = window.BKK.selectedCity?.center || { lat: 13.7500, lng: 100.5350 };
+          const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
             attribution: '© CartoDB © OSM', maxZoom: 18
           }).addTo(map);
           
+          const allCircles = [];
           areas.forEach(area => {
             const c = coords[area.id];
             if (!c) return;
             const color = areaColors[area.id] || '#6b7280';
-            L.circle([c.lat, c.lng], {
+            const circle = L.circle([c.lat, c.lng], {
               radius: c.radius, color: color, fillColor: color,
               fillOpacity: 0.15, weight: 2
             }).addTo(map).bindPopup(
@@ -164,7 +163,14 @@
                 iconSize: [80, 22], iconAnchor: [40, 11]
               })
             }).addTo(map);
+            allCircles.push(circle);
           });
+          
+          // Auto-fit to show all areas
+          if (allCircles.length > 0) {
+            const group = L.featureGroup(allCircles);
+            map.fitBounds(group.getBounds().pad(0.1));
+          }
           
           leafletMapRef.current = map;
         } else {
