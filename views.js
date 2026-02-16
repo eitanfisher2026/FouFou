@@ -167,7 +167,7 @@
                   }}
                 >
                   <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#2563eb' }}>📍 קרוב אליי</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>חיפוש לפי GPS (1 ק"מ)</div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>GPS search (1km)</div>
                 </button>
 
                 {/* All Bangkok option */}
@@ -227,7 +227,7 @@
                         }}
                       >
                         <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                        <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{option.label}</div>
+                        <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
                       </button>
                     );
                   })}
@@ -704,7 +704,7 @@
                   // Built-in/uncovered shown only if active
                   return interestStatus[option.id] !== false;
                 }).map(option => {
-                  const tooltip = interestTooltips[option.id] || option.label;
+                  const tooltip = interestTooltips[option.id] || tLabel(option);
                   const customInterest = cityCustomInterests.find(ci => ci.id === option.id);
                   const isCustom = !!customInterest;
                   
@@ -731,7 +731,7 @@
                         lineHeight: '1.2',
                         maxHeight: '2.4em',
                         overflow: 'hidden'
-                      }}>{option.label}</div>
+                      }}>{tLabel(option)}</div>
                     </button>
                   );
                 })}
@@ -1015,7 +1015,7 @@
                                       )}
                                       {stop.detectedArea && formData.searchMode === 'radius' && (
                                         <span className="text-[8px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded font-bold">
-                                          {areaMap[stop.detectedArea]?.label || stop.detectedArea}
+                                          {tLabel(areaMap[stop.detectedArea]) || stop.detectedArea}
                                         </span>
                                       )}
                                       {stop.distFromCenter != null && formData.searchMode === 'radius' && (
@@ -1579,7 +1579,7 @@
                             </a>
                             {stop.detectedArea && route.preferences?.searchMode === 'radius' && (
                               <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold mr-1">
-                                {areaMap[stop.detectedArea]?.label || stop.detectedArea}
+                                {tLabel(areaMap[stop.detectedArea]) || stop.detectedArea}
                               </span>
                             )}
                             {stop.distFromCenter != null && route.preferences?.searchMode === 'radius' && (
@@ -2246,7 +2246,7 @@
                         {groupedPlaces.ungrouped.length > 0 && (
                           <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                             <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                              ללא תחום / נוספו ידנית ({groupedPlaces.ungrouped.length})
+                              No interest / manually added ({groupedPlaces.ungrouped.length})
                             </div>
                             <div className="p-1">
                               {groupedPlaces.ungrouped.map(loc => {
@@ -2591,12 +2591,12 @@
                         </div>
                         {isUnlocked && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
-                            <label style={{ fontSize: '9px', color: '#6b7280' }}>רדיוס:
+                            <label style={{ fontSize: '9px', color: '#6b7280' }}>{t("form.radiusMode")}:
                               <input type="number" value={area.radius} style={{ width: '55px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
                                 onChange={(e) => { area.radius = parseInt(e.target.value) || area.radius; if (areaCoord) areaCoord.radius = area.radius; setFormData(prev => ({...prev})); }}
                               />
                             </label>
-                            <label style={{ fontSize: '9px', color: '#6b7280' }}>מכפיל:
+                            <label style={{ fontSize: '9px', color: '#6b7280' }}>Multiplier:
                               <input type="number" step="0.1" value={area.distanceMultiplier || window.BKK.selectedCity?.distanceMultiplier || 1.2} style={{ width: '40px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
                                 onChange={(e) => { area.distanceMultiplier = parseFloat(e.target.value) || 1.2; if (areaCoord) areaCoord.distanceMultiplier = area.distanceMultiplier; setFormData(prev => ({...prev})); }}
                               />
@@ -2627,7 +2627,7 @@
             {/* Max Stops Setting */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-1">📍 מספר מקומות במסלול</h3>
+                <h3 className="text-sm font-bold text-gray-800 mb-1">{`📍 ${t("settings.maxStops")}`}</h3>
                 <input
                   type="number"
                   min="1"
@@ -2667,8 +2667,8 @@
             {/* Default Radius Setting */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-1">📍 רדיוס ברירת מחדל</h3>
-                <p className="text-[10px] text-gray-600 mb-1">רדיוס חיפוש מסביב למיקום נוכחי (מטרים)</p>
+                <h3 className="text-sm font-bold text-gray-800 mb-1">{`📍 ${t("settings.defaultRadius")}`}</h3>
+                <p className="text-[10px] text-gray-600 mb-1">{t("settings.radiusDescription")}</p>
                 <input
                   type="range"
                   min="100"
@@ -2690,9 +2690,9 @@
             {/* Refresh Data Button */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">🔄 רענון נתונים</h3>
+                <h3 className="text-base font-bold text-gray-800 mb-1">{`🔄 ${t("settings.refreshData")}`}</h3>
                 <p className="text-xs text-gray-600 mb-2">
-                  טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות
+                  {t("settings.refreshDescription")}
                 </p>
                 <button
                   onClick={refreshAllData}
@@ -2710,7 +2710,7 @@
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">📍 מקומות</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">🏷️ תחומים</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">💾 מסלולים</span>
-                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ הגדרות חיפוש</span>
+                  <span className="bg-cyan-100 px-1.5 py-0.5 rounded">⚙️ Search settings</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">👑 הרשאות</span>
                 </div>
               </div>
@@ -2985,13 +2985,13 @@
                 else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
               }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
-            >📤 שתף</button>
+            >📤 Share</button>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>🔄 רענן</button>
+            <button onClick={applyUpdate} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>🔄 Refresh</button>
           </div>
         </div>
 
@@ -3040,7 +3040,7 @@
                     mapMode === 'radius' ? 'bg-rose-500 text-white shadow' : 'text-gray-500 hover:bg-gray-200'
                   } ${!formData.currentLat ? 'opacity-30' : ''}`}
                   title={!formData.currentLat ? t('form.needGpsFirst') : t('form.showSearchRadius')}
-                >📍 רדיוס</button>
+                >{`📍 ${t("form.radiusMode")}`}</button>
               </div>
             </div>
             {/* Map Container */}
