@@ -1,0 +1,818 @@
+// ============================================================================
+// City Explorer - Internationalization (i18n)
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+// ============================================================================
+// TRANSLATION ENGINE
+// ============================================================================
+
+window.BKK.i18n = {
+  currentLang: localStorage.getItem('city_explorer_lang') || 'he',
+  
+  setLang(lang) {
+    this.currentLang = lang;
+    localStorage.setItem('city_explorer_lang', lang);
+    // Update document direction
+    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  },
+  
+  isRTL() {
+    return this.currentLang === 'he';
+  },
+  
+  // Get supported languages
+  languages: {
+    he: { name: 'עברית', nameEn: 'Hebrew', dir: 'rtl', flag: '🇮🇱' },
+    en: { name: 'English', nameEn: 'English', dir: 'ltr', flag: '🇬🇧' }
+  }
+};
+
+// Global translate function
+// Usage: t('toast.placeAdded') or t('toast.placeAddedWithName', { name: 'Cafe' })
+window.t = function(key, params) {
+  const lang = window.BKK.i18n.currentLang;
+  const dict = window.BKK.i18n.strings?.[lang];
+  if (!dict) return key;
+  
+  // Navigate nested keys: 'toast.placeAdded' -> dict.toast.placeAdded
+  const parts = key.split('.');
+  let val = dict;
+  for (const part of parts) {
+    if (val && typeof val === 'object' && part in val) {
+      val = val[part];
+    } else {
+      // Fallback to Hebrew if key missing in current lang
+      val = null;
+      break;
+    }
+  }
+  
+  // Fallback to Hebrew
+  if (val === null || val === undefined) {
+    const heDict = window.BKK.i18n.strings?.he;
+    if (heDict) {
+      val = heDict;
+      for (const part of parts) {
+        if (val && typeof val === 'object' && part in val) {
+          val = val[part];
+        } else {
+          val = key; // Return key as last resort
+          break;
+        }
+      }
+    } else {
+      val = key;
+    }
+  }
+  
+  // Replace parameters: {name} -> params.name
+  if (params && typeof val === 'string') {
+    for (const [k, v] of Object.entries(params)) {
+      val = val.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
+    }
+  }
+  
+  return val;
+};
+
+// Helper: get label for area/interest based on current language
+// Uses labelEn/nameEn fields from config data
+window.tLabel = function(obj) {
+  if (!obj) return '';
+  const lang = window.BKK.i18n.currentLang;
+  if (lang === 'he') return obj.label || obj.name || '';
+  // For non-Hebrew: prefer labelEn/nameEn, fallback to label/name
+  return obj.labelEn || obj.nameEn || obj.label || obj.name || '';
+};
+
+// Helper: get description based on current language
+window.tDesc = function(obj) {
+  if (!obj) return '';
+  const lang = window.BKK.i18n.currentLang;
+  if (lang === 'he') return obj.desc || obj.description || '';
+  return obj.descEn || obj.descriptionEn || obj.desc || obj.description || '';
+};
+
+// ============================================================================
+// HEBREW STRINGS (Source of truth)
+// ============================================================================
+
+window.BKK.i18n.strings = {
+he: {
+
+// --- General / Common ---
+general: {
+  appName: 'City Explorer',
+  city: 'עיר',
+  all: 'כל',
+  allCity: 'כל העיר',
+  close: 'סגור',
+  cancel: 'ביטול',
+  save: 'שמור',
+  update: '💾 עדכן',
+  add: '➕ הוסף',
+  delete: 'מחק',
+  deleteAll: 'מחק הכל',
+  edit: 'ערוך',
+  show: 'הצג',
+  hide: 'הסתר',
+  search: 'חיפוש',
+  clear: 'נקה',
+  clearSelection: 'נקה בחירה',
+  help: 'עזרה',
+  loading: '⏳ טוען...',
+  searching: 'מחפש...',
+  refreshing: 'מרענן...',
+  password: 'סיסמה',
+  general: 'כללי',
+  static: 'סטטי',
+  open: 'פתוח',
+  viewOnly: 'צפייה בלבד',
+  locked: 'נעול',
+  error: 'שגיאה',
+  unknownError: 'שגיאה לא ידועה',
+  safeArea: 'בטוח',
+  cautionArea: 'צריך להזהר',
+  dangerArea: 'מסוכן',
+  enabled: '✅ פעיל',
+  disabled: '⏸️ מושבת',
+  enable: '✅ הפעל',
+  enableAlt: '▶️ הפעל',
+  disable: '⏸️ השבת',
+  enableCity: 'הפעל עיר',
+  disableCity: 'השבת עיר',
+  included: '✅ כלול',
+  custom: 'מותאם',
+  private: '👤 אישי',
+  system: '🏗️ מערכת',
+  generalFeedback: '💭 כללי',
+  personalNote: '👤 אישי',
+  idea: '💡 רעיון',
+  bug: '🐛 באג',
+  mine: '🎖️ שלי',
+  inProgress: 'בעבודה',
+  underReview: '🛠️ בבדיקה',
+  noDescription: 'אין תיאור',
+  noLocation: 'אין מיקום',
+  noArea: 'ללא איזור',
+  outsideBoundary: 'מחוץ לגבולות',
+  clickForDetails: 'לחץ לפרטים מלאים',
+  clickForImage: 'לחץ לצפייה בתמונה',
+  fromGoogle: 'מגוגל',
+  fromGoogleApi: 'מ-Google API',
+  addedFromSearch: 'נוסף מחיפוש',
+  addedFromGoogle: 'נוסף מ-Google',
+  addedManually: 'נוספו ידנית',
+  addedByUser: 'מקום שהוספתי',
+  fromMyPlaces: 'מהמקומות שלך',
+  addedViaMore: 'נוסף ב+עוד',
+  customPlace: 'מקום מותאם אישית',
+  meters100: '>100מ',
+  meters2000: '>2000מ',
+},
+
+// --- Navigation & Views ---
+nav: {
+  form: 'תכנן',
+  route: 'מסלול',
+  search: 'חיפוש',
+  saved: 'שמורים',
+  myPlaces: 'מקומות',
+  myInterests: 'תחומים',
+  settings: 'הגדרות',
+  quickMode: 'מצב מהיר',
+  advancedMode: 'מצב מתקדם',
+  switchToQuick: 'עבור למצב מהיר',
+},
+
+// --- Wizard / Quick Mode ---
+wizard: {
+  step1Title: 'איפה מטיילים?',
+  step2Title: 'מה מעניין אותך?',
+  step2Subtitle: 'בחר תחום אחד או יותר',
+  step3Title: 'תוצאות',
+  myLocation: 'המיקום שלי',
+  locationFound: '📍 מיקום נמצא!',
+  findPlaces: 'מצא נקודות עניין',
+  findPlacesCount: '🔍 מצא נקודות עניין ({count} מקומות)',
+  showMap: '🗺️ הצג מפה',
+  allAreasMap: '🗺️ מפת כל האזורים',
+},
+
+// --- Form / Search ---
+form: {
+  whatInterests: '⭐ מה מעניין?',
+  searchRadius: '📍 רדיוס חיפוש',
+  radiusLabel: 'רדיוס:',
+  gpsSearch: 'חיפוש לפי GPS',
+  gps: 'GPS',
+  myPlace: 'מקום שלי',
+  searchMyPlace: '🔍 חפש מקום שלי...',
+  allMode: 'הכל',
+  areaMode: 'איזור',
+  radiusMode: 'רדיוס',
+  currentLocation: 'מיקום נוכחי',
+  findCurrentLocation: 'מצא מיקום נוכחי',
+  locateMe: '📍 זהה מיקום',
+  locationDetected: '📍 מיקום נקלט',
+  locationDetectedFull: '📍 מיקום נוכחי נקלט!',
+  locationDetectedShort: '📍 מיקום נקלט!',
+  locationDetectedNoAddr: '📍 מיקום נקלט (לא נמצאה כתובת)',
+  locating: '⏳ מאתר...',
+  searchingLocation: 'מחפש מיקום...',
+  searchAddress: 'חפש כתובת',
+  searchByAddress: 'חפש לפי כתובת',
+  searchByName: 'חפש לפי שם המקום',
+  searchingByName: 'מחפש לפי שם...',
+  searchPlaceGoogle: 'חפש מקום בגוגל',
+  enterAddress: 'אנא הזן כתובת',
+  enterPlaceName: 'אנא הזן שם מקום',
+  enterAddressOrName: 'הזן כתובת או שם מקום',
+  typeAddress: 'הקלד כתובת, שם מלון, מקום...',
+  typeAddressAlt: 'הקלד כתובת, שם מקום, מלון...',
+  extractFromLink: 'חלץ מקישור',
+  selectStartPoint: 'בחר נקודת התחלה',
+  startPointFirst: 'התחלה מהמקום הראשון ברשימה',
+  setStartPoint: 'קבע כנקודת התחלה',
+  chooseStartBeforeCalc: 'בחר נקודת התחלה לפני חישוב מסלול',
+  findLocationFirst: 'אנא מצא את המיקום הנוכחי שלך תחילה',
+  needGpsFirst: 'צריך להגדיר מיקום GPS קודם',
+  selectAreaAndInterest: 'אנא בחר איזור ולפחות תחום עניין אחד',
+  selectAtLeastOneInterest: 'אנא בחר לפחות תחום עניין אחד',
+  showSearchRadius: 'הצג רדיוס חיפוש',
+  gpsRadiusHint: 'חיפוש לפי GPS (1 ק"מ)',
+  useGpsForRadius: '📍 לחץ GPS או הגדר מיקום כדי להשתמש במצב רדיוס',
+},
+
+// --- Route ---
+route: {
+  calcRoute: '🧭 חשב מסלול',
+  recalcRoute: '🔄 חשב מסלול מחדש',
+  saveRoute: 'שמור מסלול',
+  editSavedRoute: '🗺️ ערוך מסלול שמור',
+  addSavedRoute: '🗺️ הוסף מסלול שמור',
+  linear: 'ליניארי',
+  linearRoute: '➡️ ליניארי',
+  linearDesc: '➡️ מסלול ליניארי',
+  circular: 'מעגלי',
+  circularRoute: '🔄 מסלול מעגלי',
+  circularDesc: '🔄 מסלול מעגלי — חוזר לנקודת ההתחלה',
+  routeDeleted: 'המסלול נמחק',
+  routeUpdated: 'המסלול עודכן',
+  routeSaved: 'המסלול נשמר!',
+  routeCopied: 'מסלול הועתק ללוח',
+  calcRoutePrevious: 'חשב מסלול קודם',
+  returnToRoute: 'החזר למסלול',
+  removeFromRoute: 'הסר מהמסלול',
+  skipPlace: 'דלג על מקום',
+  skipTemporarily: 'דלג זמנית',
+  skipPermanently: '🚫 דלג תמיד',
+  cancelPermanentSkip: 'בטל דילוג קבוע',
+  returnPlace: 'החזר מקום',
+  addToMyList: 'הוסף לרשימה שלי',
+  openedSuccess: 'נפתח בהצלחה!',
+  linkCopied: 'הקישור הועתק! 📋',
+  pointsCopied: 'נקודות העניין הועתקו ללוח',
+  addManualStop: '➕ הוסף ידנית נקודה למסלול',
+  moreFromCategory: '+ עוד',
+},
+
+// --- Places ---
+places: {
+  addPlace: 'הוסף מקום',
+  editPlace: 'ערוך מקום',
+  placeName: 'שם המקום',
+  enterPlaceName: 'אנא הזן שם למקום',
+  nameExists: 'שם זה כבר קיים',
+  placeExists: 'מקום עם שם זה כבר קיים',
+  address: 'כתובת',
+  notes: 'הערות...',
+  description: 'תיאור קצר של המקום',
+  findLocation: '📍 מצא מיקום',
+  updateLocation: '✅ עדכן מיקום',
+  googleInfo: '🔎 מידע מגוגל',
+  searchingAddress: 'מחפש כתובת...',
+  searchByNameHint: 'חפש בשם, תיאור או הערות...',
+  placeAdded: 'המקום נוסף!',
+  placeUpdated: 'המקום עודכן!',
+  placeDeleted: 'המקום נמחק!',
+  placeAddedShared: 'המקום נוסף ונשמר לכולם!',
+  detailsEdit: 'פרטים / ערוך',
+  editAddedToList: 'ערוך (נוסף לרשימה)',
+  missingDetails: 'חסרים פרטים',
+  missingDetailsLong: 'חסרים פרטים (כתובת/קורדינטות/תחום)',
+  noCoordinates: 'אין קואורדינטות - לא יכלל במסלול',
+  noCoordinatesWarning: '⚠️ חסרות קואורדינטות',
+  noCoordinatesWarnLong: '⚠️ חסרות קואורדינטות - לא יכלל במסלול',
+  noLocationPermission: 'אין הרשאת מיקום',
+  outsideArea: 'מקום מחוץ לגבולות האזור',
+  placeNotOnGoogle: 'המקום לא נמצא ב-Google',
+  notEnoughInfo: 'אין מספיק מידע על המקום',
+  noPlacesFound: 'לא נמצאו תוצאות',
+  noMorePlaces: 'לא נמצאו עוד מקומות',
+  noMatchingPlaces: 'לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.',
+  notEnoughInArea: 'אין מספיק מקומות תואמים בתחום זה באזור הנבחר',
+  notEnoughPartial: 'לא נמצאו מספיק מקומות תואמים בחלק מתחומי העניין באזור הנבחר',
+  alreadyInRoute: 'כבר קיים במסלול',
+  alreadyInList: 'כבר קיים ברשימה',
+  alreadyInMyList: 'כבר קיים ברשימה שלך',
+  alreadyBlacklisted: 'כבר ברשימת דילוג',
+  addedToSkipList: 'נוסף לדילוג קבוע',
+  addedToYourList: 'נוסף לרשימה שלך!',
+  returnedToList: 'חזר לרשימה הרגילה',
+  markHandled: 'סמן כטופל',
+  markUnhandled: 'סמן כלא טופל',
+  selectImageFile: 'אנא בחר קובץ תמונה',
+  noPlacesWithCoords: 'אין מקומות עם קואורדינטות תקינות',
+  noPlacesInCity: 'אין מקומות ב{cityName}',
+  youHavePlaces: 'יש לך {count} מקומות ב{cityName}',
+  noSavedRoutesInCity: 'אין מסלולים שמורים ב{cityName}',
+  googlePlaces: 'ממקומות Google Places',
+  moreInCategory: '➕ מקומות נוספים ב',
+  editNoCoordsHint: 'למקום זה אין קואורדינטות. לחץ על ✏️ כדי לערוך.',
+  editNoCoordsHint2: 'למקום זה אין קואורדינטות. ערוך את המקום כדי להוסיף.',
+  noResultsFor: 'לא נמצאו תוצאות עבור',
+  searchError: 'שגיאה בחיפוש',
+  addressNotFound: 'לא נמצאה כתובת תואמת',
+  addressNotFoundRetry: 'לא נמצאה כתובת. נסה כתובת אחרת',
+  placeNotFoundRetry: 'לא נמצא מקום. נסה שם אחר או כתובת',
+  locationNotInAnyArea: 'המיקום לא נמצא בתוך אף אזור מוגדר',
+  locationOutsideSelection: 'המיקום הנוכחי שלך נמצא מחוץ לאזורי הבחירה',
+  noPlacesInRadius: 'לא נמצאו מקומות באזורים המוכרים ברדיוס שנבחר. נסה להגדיל רדיוס.',
+  needCoordsForAreas: 'צריך קואורדינטות כדי לזהות אזורים',
+  badCoords: 'לא זיהיתי קואורדינטות. נסה קישור Google Maps או: 13.7465,100.4927',
+  shortLinksHint: 'קישורים מקוצרים: פתח בדפדפן והעתק את הקישור המלא',
+},
+
+// --- Interests ---
+interests: {
+  addInterest: 'הוסף תחום עניין',
+  interestName: 'שם התחום',
+  interestAdded: 'התחום נוסף!',
+  interestUpdated: 'התחום עודכן!',
+  interestDeleted: 'תחום נמחק!',
+  interestInvalid: 'תחום לא וולידי',
+  missingSearchConfig: 'חסר הגדרות חיפוש',
+  builtInRemoved: 'תחום מערכת הוסר',
+  resetToDefault: 'אפס לברירת מחדל',
+  interestsReset: 'התחומים אופסו לברירת מחדל',
+  exampleTypes: 'לדוגמה: בתי קולנוע',
+  privateOnly: 'תחום פרטי',
+},
+
+// --- Toasts & Messages ---
+toast: {
+  saveError: 'שגיאה בשמירה',
+  deleteError: 'שגיאה במחיקה',
+  updateError: 'שגיאה בעדכון',
+  searchError: 'שגיאה בחיפוש',
+  exportError: 'שגיאה בייצוא',
+  importError: 'שגיאה בייבוא',
+  sendError: 'שגיאה בשליחה',
+  locationError: 'שגיאה באיתור מיקום',
+  addressSearchError: 'שגיאה בחיפוש כתובת',
+  routeSaveError: 'שגיאה בשמירת מסלול',
+  imageUploadError: 'שגיאה בהעלאת התמונה',
+  addPlacesError: 'שגיאה בהוספת מקומות',
+  googleInfoError: 'שגיאה בשליפת מידע מ-Google',
+  resetError: 'שגיאה באיפוס',
+  logClearError: 'שגיאה בניקוי הלוג',
+  fileReadError: 'שגיאה בקריאת הקובץ',
+  refreshError: '❌ שגיאה ברענון הנתונים',
+  addressSearchErrorHint: 'שגיאה בחיפוש הכתובת. נסה באמצעות קישור Google Maps',
+  storageFull: 'שגיאה בשמירה - אחסון מלא. נסה למחוק מסלולים ישנים',
+  locationNotAvailable: 'המיקום לא זמין כרגע. נסה שוב.',
+  locationTimeout: 'תם הזמן לקבלת המיקום. נסה שוב.',
+  locationFailed: 'לא הצלחתי לקבל את המיקום.',
+  locationNoPermission: 'אין הרשאת מיקום - אנא אשר גישה למיקום',
+  locationNoPermissionBrowser: 'נדרשת הרשאה למיקום. אנא אפשר גישה במיקום בהגדרות הדפדפן.',
+  locationUnavailable: 'לא ניתן לאתר מיקום',
+  locationInaccessible: 'לא ניתן לגשת למיקום',
+  browserNoLocation: 'הדפדפן לא תומך במיקום',
+  browserNoGps: 'הדפדפן שלך לא תומך במיקום GPS',
+  noImportItems: 'לא נמצאו פריטים לייבוא',
+  invalidFile: 'קובץ לא תקין - לא נמצאו נתונים',
+  feedbackDeleted: 'משוב נמחק',
+  feedbackThanks: 'תודה על המשוב! 🙏',
+  userRemoved: 'משתמש הוסר',
+  passwordSaved: 'סיסמה נשמרה!',
+  passwordRemoved: 'סיסמה הוסרה - גישה פתוחה',
+  logCleared: 'הלוג נוקה',
+  allFeedbackDeleted: 'כל המשובים נמחקו',
+  appUpToDate: 'האפליקציה מעודכנת ✅',
+  cannotCheckUpdates: 'לא ניתן לבדוק עדכונים',
+  dataRefreshed: '🔄 כל הנתונים רועננו בהצלחה!',
+  dataRefreshedLocal: '🔄 נתונים רועננו (localStorage בלבד - Firebase לא זמין)',
+  debugOn: '✅ Debug מופעל',
+  debugOff: '❌ Debug כבוי',
+  addedNoteSuccess: '✅ נוסף! ניתן להוסיף מקום נוסף או לסגור',
+  firebaseUnavailable: 'Firebase לא זמין',
+},
+
+// --- Settings ---
+settings: {
+  title: 'הגדרות',
+  sendFeedback: 'שלח משוב',
+  writeFeedback: 'אנא כתוב משוב',
+  feedbackPlaceholder: 'ספר לנו מה חשבת...',
+  setPassword: 'הגדר סיסמה',
+  changePassword: 'שנה סיסמת מערכת:',
+  setNewPassword: 'הגדר סיסמת מערכת:',
+  wrongPassword: 'סיסמה שגויה',
+  newPasswordPlaceholder: 'סיסמה חדשה...',
+  noPassword: '🔓 ללא סיסמה - גישה פתוחה לכולם',
+  systemProtected: '🔒 מערכת מוגנת בסיסמה',
+  refreshData: 'רענן את כל הנתונים',
+  deleteAllConfirm: 'למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.',
+  deleteAllFeedback: 'למחוק את כל המשובים?',
+  appDescription: 'אפליקציה לתכנון טיולים',
+  language: 'שפה',
+},
+
+// --- Help ---
+help: {
+  main: {
+    title: 'איך להשתמש?',
+    content: "**City Explorer** עוזר לך לגלות מקומות מעניינים ולתכנן מסלול טיול.\n\n**שני מצבי שימוש:**\n• **מצב מהיר** (ברירת מחדל) — בחר אזור ← בחר תחומים ← קבל תוצאות\n• **מצב מתקדם** — שליטה מלאה: הוסף מקומות, ערוך, שמור מסלולים\n\n**איך מתחילים:**\n1. בחר עיר ואזור (או \"הכל\", או GPS לקרוב אליך) ותחומי עניין, ולחץ \"מצא נקודות עניין\"\n2. ברשימת התוצאות: דלג על מקומות שלא מתאימים (⏸️) ובחר 📌 נקודת התחלה\n3. בחר סוג מסלול (מעגלי / לינארי) ולחץ \"חשב מסלול\"\n4. לחץ \"פתח מסלול בגוגל\" לניווט!\n\n**רוצה עוד מקומות?**\n• **\"+ עוד\"** ליד כל קטגוריה — מביא מקומות נוספים מגוגל מאותו תחום\n• **\"➕ הוסף ידנית נקודה למסלול\"** — חפש מקום לפי שם כפי שהוא מופיע בגוגל מפות והוסף אותו ישירות\n\n**טיפ:** לחץ על שם מקום כדי לפתוח אותו בגוגל מפות"
+  },
+  placesListing: {
+    title: 'רשימת המקומות',
+    content: "**איך המקומות נבחרים?**\nקודם מופיעים מקומות שהוספו ע\"י המשתמשים (דרך \"מצב מתקדם\"), ואחר כך מקומות מגוגל לפי דירוג.\n\n**כפתורים ליד כל מקום:**\n• ⏸️ — דלג על מקום (לא ייכלל במסלול). לחץ ▶️ כדי להחזיר\n• 📌 — קבע מקום כנקודת התחלה\n\n**במצב מתקדם גם:**\n• + — הוסף למקומות שלי\n• ✏️ — ערוך פרטים\n• 🗑️ — הסר (רק מקומות שנוספו ידנית)\n\n**רוצה עוד מקומות?**\n• **\"+ עוד\"** ליד כל קטגוריה — מביא מקומות נוספים מגוגל מאותו תחום עניין\n• **\"➕ הוסף ידנית נקודה למסלול\"** — חפש מקום לפי שם כפי שהוא מופיע בגוגל מפות והוסף אותו ישירות למסלול\n\n**לחיצה על שם המקום** פותחת אותו בגוגל מפות.\n\n**נקודת התחלה:**\nבחר 📌 ממקום ברשימה, או השתמש ב-🔍 (חיפוש כתובת) / 📍 (מיקום GPS) בתחתית העמוד.\nלשינוי — בחר מקום אחר או לחץ ✕ ליד שורת \"נקודת התחלה\" למטה.\n\n**חישוב מסלול:**\nבחר לינארי (מנקודה לנקודה) או מעגלי (חוזר להתחלה), ולחץ \"חשב מסלול\".\nאחרי חישוב לחץ \"פתח מסלול בגוגל\" לניווט."
+  },
+  route: {
+    title: 'תוצאות המסלול',
+    content: "**אחרי \"מצא נקודות עניין\"** מופיעה רשימת מקומות מחולקת לפי תחום.\n\n**כדי לבנות מסלול:**\n1. בחר 📌 נקודת התחלה (מהרשימה, חיפוש כתובת, או מיקום GPS)\n2. לחץ \"חשב מסלול\" — המערכת תסדר את הנקודות בסדר הכי הגיוני\n\n**רוצה להוסיף מקומות?**\n• **\"+ עוד\"** ליד כל קטגוריה — מביא מקומות נוספים מגוגל מאותו תחום\n• **\"➕ הוסף ידנית\"** — חפש מקום לפי שם בגוגל והוסף אותו ישירות למסלול\n\n**פעולות נוספות:**\n• 💾 **שמור** — שומר את המסלול לשימוש עתידי\n• 🗺️ **פתח בגוגל** — מציג את המסלול המחושב בגוגל מפות\n• ⏸️ **השהה** מקומות שלא מתאימים לך כרגע"
+  },
+  myContent: { title: 'התוכן שלי', content: "כאן אפשר לנהל את המקומות והתחומים שלך.\n\n**📍 המקומות שלי** — מקומות שהוספת בעצמך. הם מקבלים עדיפות על מקומות מגוגל!\n\n**🏷️ התחומים שלי** — בחר אילו תחומי עניין יופיעו בחיפוש. אפשר גם ליצור תחומים חדשים." },
+  myPlaces: { title: 'המקומות שלי', content: "**מקומות שהוספת** מופיעים ראשונים בתוצאות החיפוש!\n\n**להוספת מקום:** לחץ \"➕ הוסף מקום\", הזן שם ובחר תחום עניין.\n\n**פעולות:**\n• ✏️ ערוך פרטים\n• 🗑️ מחק מקום\n• 🚫 רשימה שחורה — מקום שלא תרצה לראות יותר\n\n**טיפ:** אפשר גם להוסיף מקומות ישירות מתוצאות החיפוש בלחיצה על כפתור +" },
+  myInterests: { title: 'התחומים שלי', content: "**תחומי העניין** קובעים אילו סוגי מקומות יופיעו בחיפוש.\n\n**להוסיף תחום חדש:** לחץ \"➕ הוסף תחום\", בחר שם ואייקון, והגדר מה לחפש.\n\n**לשנות סטטוס:** לחץ \"השבת\" כדי להסתיר תחום מהחיפוש, או \"הפעל\" להחזיר.\n\n**לערוך הגדרות:** לחץ ✏️ ליד תחום כדי לשנות את שם, אייקון, או הגדרות חיפוש.\n\n**תחום עם מסגרת אדומה** — חסר הגדרות חיפוש ולא יעבוד עד שתגדיר." },
+  interestConfig: { title: 'הגדרות תחום', content: "**הגדרות החיפוש של התחום**\n\n**שם התחום:**\nהשם שיופיע ברשימת התחומים.\n\n**סוג חיפוש (Place Types):**\nקטגוריות של Google למשל: temple, restaurant, museum.\nהמערכת מביאה מקומות שהסוג שלהם מתאים לאחת הקטגוריות.\n\n**חיפוש טקסט (Text Search):**\nחיפוש חופשי, למשל: \"street art\", \"rooftop bar\".\nהמערכת מביאה מקומות שגוגל מצא לפי הטקסט, ומסננת כאלה שהשם שלהם לא מכיל את הביטוי.\n\n**מילות סינון (Blacklist):**\nמילים שאם מופיעות בשם המקום, הוא לא ייכלל. למשל: \"cannabis\", \"massage\" - כדי לסנן מקומות לא רלוונטים.\n\n**⚠️ חשוב:** תחום בלי הגדרות חיפוש לא יעבוד!" },
+  searchLogic: { title: 'איך המערכת מוצאת מקומות?', content: "**סדר המציאה:**\n1. **קודם** - המקומות שלך (מותאמים אישית) שתואמים לאזור ולתחום\n2. **אחר כך** - מקומות מ-Google Places API\n\n**סינון מקומות מגוגל:**\n• מקום עם שם שמכיל מילת סינון (blacklist) = מסונן\n• מקום ששמו זהה למקום שלך = מסונן (מניעת כפילויות)\n• מקום \"דלג לצמיתות\" = מסונן\n• חיפוש טקסט: רק מקומות שהשם שלהם מכיל את ביטוי החיפוש המלא\n\n**תיעדוף:**\n• מקומות ממוינים לפי דירוג (מהגבוה לנמוך)\n• הדירוג משמש רק לסדר, לא לסינון\n\n**כמות:**\n• מספר המקומות מחולק שווה בין התחומים שבחרת\n• ניתן לשנות בהגדרות\n\n**\"+ עוד\":**\n• מוסיף מקומות נוספים מאותו תחום (ברירת מחדל: 3)\n• המקומות החדשים מסומנים בגבול כחול מקווקו" },
+  saved: { title: 'מסלולים שמורים', content: "**מה יש כאן:**\nכל המסלולים ששמרת לשימוש עתידי.\n\n**שמירת מסלול:**\n• לחץ \"💾 שמור מסלול\" במסך המסלול\n• תן שם ייחודי (חובה)\n• הוסף הערות אם רוצה\n\n**פעולות:**\n• לחץ על מסלול לטעינה מחדש\n• 🗑️ למחיקת מסלול\n\n**טיפ:**\nמסלולים נכללים בייצוא/ייבוא בהגדרות!" },
+  settings: { title: 'הגדרות', content: "**הגדרות המערכת:**\n\n**מספר מקומות:**\n• כמות המקומות המקסימלית במסלול\n• כמות מקומות נוספים ב\"מצא עוד\"\n\n**ייבוא/ייצוא:**\n• **ייצוא** - שומר הכל לקובץ JSON\n• **ייבוא** - מוסיף מקובץ (כפילויות ידולגו)\n\n**Admin (למנהלים):**\n• צפייה בלוג כניסות\n• ניהול מכשירים מורשים\n• סיסמת Admin" },
+  addLocation: { title: 'הוספת/עריכת מקום', content: "**חובה:** שם המקום + תחום עניין אחד לפחות.\n\n**שדות נוספים (לא חובה):**\n• איזור, כתובת, הערות, תמונה\n• קישור מגוגל מפות\n\n**קואורדינטות** — נדרשות כדי שהמקום יופיע במסלול.\nהדרך הקלה: לחץ 🔤 (חיפוש לפי שם) או הדבק קישור מגוגל מפות ולחץ 🔗.\n\n**כפתורים למטה:**\n• **הוסף/עדכן** — שומר ונשאר בחלון\n• **X** למעלה — סוגר בלי לשמור" },
+  addInterest: { title: 'הוספת/עריכת תחום עניין', content: "**איך מוסיפים תחום חדש:**\n1. בחר **שם** ו**אייקון** (אימוג'י)\n2. בחר **סוג חיפוש:**\n   • **Category** — לפי סוג מקום בגוגל (למשל: museum, restaurant)\n   • **Text** — חיפוש חופשי (למשל: \"rooftop bar\")\n3. לחץ **הוסף** — התחום יופיע ברשימת התחומים\n\n**מילות סינון** — מקומות עם מילים אלו בשם לא ייכללו (למשל: cannabis)." },
+},
+
+}, // end Hebrew
+
+
+// ============================================================================
+// ENGLISH STRINGS
+// ============================================================================
+
+en: {
+
+general: {
+  appName: 'City Explorer',
+  city: 'City',
+  all: 'All',
+  allCity: 'Entire city',
+  close: 'Close',
+  cancel: 'Cancel',
+  save: 'Save',
+  update: '💾 Update',
+  add: '➕ Add',
+  delete: 'Delete',
+  deleteAll: 'Delete all',
+  edit: 'Edit',
+  show: 'Show',
+  hide: 'Hide',
+  search: 'Search',
+  clear: 'Clear',
+  clearSelection: 'Clear selection',
+  help: 'Help',
+  loading: '⏳ Loading...',
+  searching: 'Searching...',
+  refreshing: 'Refreshing...',
+  password: 'Password',
+  general: 'General',
+  static: 'Static',
+  open: 'Open',
+  viewOnly: 'View only',
+  locked: 'Locked',
+  error: 'Error',
+  unknownError: 'Unknown error',
+  safeArea: 'Safe',
+  cautionArea: 'Use caution',
+  dangerArea: 'Dangerous',
+  enabled: '✅ Active',
+  disabled: '⏸️ Disabled',
+  enable: '✅ Enable',
+  enableAlt: '▶️ Enable',
+  disable: '⏸️ Disable',
+  enableCity: 'Enable city',
+  disableCity: 'Disable city',
+  included: '✅ Included',
+  custom: 'Custom',
+  private: '👤 Private',
+  system: '🏗️ System',
+  generalFeedback: '💭 General',
+  personalNote: '👤 Personal',
+  idea: '💡 Idea',
+  bug: '🐛 Bug',
+  mine: '🎖️ Mine',
+  inProgress: 'In progress',
+  underReview: '🛠️ Under review',
+  noDescription: 'No description',
+  noLocation: 'No location',
+  noArea: 'No area',
+  outsideBoundary: 'Outside boundary',
+  clickForDetails: 'Click for full details',
+  clickForImage: 'Click to view image',
+  fromGoogle: 'From Google',
+  fromGoogleApi: 'From Google API',
+  addedFromSearch: 'Added from search',
+  addedFromGoogle: 'Added from Google',
+  addedManually: 'Added manually',
+  addedByUser: 'My place',
+  fromMyPlaces: 'From your places',
+  addedViaMore: 'Added via +more',
+  customPlace: 'Custom place',
+  meters100: '>100m',
+  meters2000: '>2000m',
+},
+
+nav: {
+  form: 'Plan',
+  route: 'Route',
+  search: 'Search',
+  saved: 'Saved',
+  myPlaces: 'Places',
+  myInterests: 'Interests',
+  settings: 'Settings',
+  quickMode: 'Quick mode',
+  advancedMode: 'Advanced mode',
+  switchToQuick: 'Switch to quick mode',
+},
+
+wizard: {
+  step1Title: 'Where are you exploring?',
+  step2Title: 'What interests you?',
+  step2Subtitle: 'Choose one or more topics',
+  step3Title: 'Results',
+  myLocation: 'My location',
+  locationFound: '📍 Location found!',
+  findPlaces: 'Find points of interest',
+  findPlacesCount: '🔍 Find points of interest ({count} places)',
+  showMap: '🗺️ Show map',
+  allAreasMap: '🗺️ All areas map',
+},
+
+form: {
+  whatInterests: '⭐ What interests you?',
+  searchRadius: '📍 Search radius',
+  radiusLabel: 'Radius:',
+  gpsSearch: 'Search by GPS',
+  gps: 'GPS',
+  myPlace: 'My place',
+  searchMyPlace: '🔍 Search my place...',
+  allMode: 'All',
+  areaMode: 'Area',
+  radiusMode: 'Radius',
+  currentLocation: 'Current location',
+  findCurrentLocation: 'Find current location',
+  locateMe: '📍 Locate me',
+  locationDetected: '📍 Location detected',
+  locationDetectedFull: '📍 Current location detected!',
+  locationDetectedShort: '📍 Location detected!',
+  locationDetectedNoAddr: '📍 Location detected (no address found)',
+  locating: '⏳ Locating...',
+  searchingLocation: 'Searching for location...',
+  searchAddress: 'Search address',
+  searchByAddress: 'Search by address',
+  searchByName: 'Search by place name',
+  searchingByName: 'Searching by name...',
+  searchPlaceGoogle: 'Search place on Google',
+  enterAddress: 'Please enter an address',
+  enterPlaceName: 'Please enter a place name',
+  enterAddressOrName: 'Enter address or place name',
+  typeAddress: 'Type address, hotel name, place...',
+  typeAddressAlt: 'Type address, place name, hotel...',
+  extractFromLink: 'Extract from link',
+  selectStartPoint: 'Choose a starting point',
+  startPointFirst: 'Start from the first place in the list',
+  setStartPoint: 'Set as starting point',
+  chooseStartBeforeCalc: 'Choose a starting point before calculating route',
+  findLocationFirst: 'Please find your current location first',
+  needGpsFirst: 'Need to set GPS location first',
+  selectAreaAndInterest: 'Please select an area and at least one interest',
+  selectAtLeastOneInterest: 'Please select at least one interest',
+  showSearchRadius: 'Show search radius',
+  gpsRadiusHint: 'Search by GPS (1 km)',
+  useGpsForRadius: '📍 Press GPS or set location to use radius mode',
+},
+
+route: {
+  calcRoute: '🧭 Calculate route',
+  recalcRoute: '🔄 Recalculate route',
+  saveRoute: 'Save route',
+  editSavedRoute: '🗺️ Edit saved route',
+  addSavedRoute: '🗺️ Add saved route',
+  linear: 'Linear',
+  linearRoute: '➡️ Linear',
+  linearDesc: '➡️ Linear route',
+  circular: 'Circular',
+  circularRoute: '🔄 Circular route',
+  circularDesc: '🔄 Circular route — returns to starting point',
+  routeDeleted: 'Route deleted',
+  routeUpdated: 'Route updated',
+  routeSaved: 'Route saved!',
+  routeCopied: 'Route copied to clipboard',
+  calcRoutePrevious: 'Calculate previous route',
+  returnToRoute: 'Return to route',
+  removeFromRoute: 'Remove from route',
+  skipPlace: 'Skip place',
+  skipTemporarily: 'Skip temporarily',
+  skipPermanently: '🚫 Skip permanently',
+  cancelPermanentSkip: 'Cancel permanent skip',
+  returnPlace: 'Return place',
+  addToMyList: 'Add to my list',
+  openedSuccess: 'Opened successfully!',
+  linkCopied: 'Link copied! 📋',
+  pointsCopied: 'Points of interest copied to clipboard',
+  addManualStop: '➕ Manually add a stop to route',
+  moreFromCategory: '+ more',
+},
+
+places: {
+  addPlace: 'Add place',
+  editPlace: 'Edit place',
+  placeName: 'Place name',
+  enterPlaceName: 'Please enter a place name',
+  nameExists: 'This name already exists',
+  placeExists: 'A place with this name already exists',
+  address: 'Address',
+  notes: 'Notes...',
+  description: 'Short description of the place',
+  findLocation: '📍 Find location',
+  updateLocation: '✅ Update location',
+  googleInfo: '🔎 Google info',
+  searchingAddress: 'Searching address...',
+  searchByNameHint: 'Search by name, description or notes...',
+  placeAdded: 'Place added!',
+  placeUpdated: 'Place updated!',
+  placeDeleted: 'Place deleted!',
+  placeAddedShared: 'Place added and saved for everyone!',
+  detailsEdit: 'Details / Edit',
+  editAddedToList: 'Edit (added to list)',
+  missingDetails: 'Missing details',
+  missingDetailsLong: 'Missing details (address/coordinates/topic)',
+  noCoordinates: 'No coordinates - will not be included in route',
+  noCoordinatesWarning: '⚠️ Missing coordinates',
+  noCoordinatesWarnLong: '⚠️ Missing coordinates - will not be included in route',
+  noLocationPermission: 'No location permission',
+  outsideArea: 'Place outside area boundaries',
+  placeNotOnGoogle: 'Place not found on Google',
+  notEnoughInfo: 'Not enough info about the place',
+  noPlacesFound: 'No results found',
+  noMorePlaces: 'No more places found',
+  noMatchingPlaces: 'No places found. Try different interests or area.',
+  notEnoughInArea: 'Not enough matching places for this interest in selected area',
+  notEnoughPartial: 'Not enough matching places for some interests in selected area',
+  alreadyInRoute: 'Already in route',
+  alreadyInList: 'Already in list',
+  alreadyInMyList: 'Already in your list',
+  alreadyBlacklisted: 'Already in skip list',
+  addedToSkipList: 'Added to permanent skip',
+  addedToYourList: 'Added to your list!',
+  returnedToList: 'Returned to regular list',
+  markHandled: 'Mark as handled',
+  markUnhandled: 'Mark as not handled',
+  selectImageFile: 'Please select an image file',
+  noPlacesWithCoords: 'No places with valid coordinates',
+  noPlacesInCity: 'No places in {cityName}',
+  youHavePlaces: 'You have {count} places in {cityName}',
+  noSavedRoutesInCity: 'No saved routes in {cityName}',
+  googlePlaces: 'From Google Places',
+  moreInCategory: '➕ More places in',
+  editNoCoordsHint: 'This place has no coordinates. Click ✏️ to edit.',
+  editNoCoordsHint2: 'This place has no coordinates. Edit the place to add them.',
+  noResultsFor: 'No results found for',
+  searchError: 'Search error',
+  addressNotFound: 'No matching address found',
+  addressNotFoundRetry: 'No address found. Try a different address',
+  placeNotFoundRetry: 'Place not found. Try another name or address',
+  locationNotInAnyArea: 'Location is not within any defined area',
+  locationOutsideSelection: 'Your current location is outside the selected areas',
+  noPlacesInRadius: 'No places found in recognized areas within selected radius. Try increasing radius.',
+  needCoordsForAreas: 'Coordinates needed to identify areas',
+  badCoords: 'Could not detect coordinates. Try a Google Maps link or: 13.7465,100.4927',
+  shortLinksHint: 'Shortened links: open in browser and copy the full link',
+},
+
+interests: {
+  addInterest: 'Add interest',
+  interestName: 'Interest name',
+  interestAdded: 'Interest added!',
+  interestUpdated: 'Interest updated!',
+  interestDeleted: 'Interest deleted!',
+  interestInvalid: 'Invalid interest',
+  missingSearchConfig: 'Missing search settings',
+  builtInRemoved: 'System interest removed',
+  resetToDefault: 'Reset to default',
+  interestsReset: 'Interests reset to default',
+  exampleTypes: 'For example: movie theaters',
+  privateOnly: 'Private interest',
+},
+
+toast: {
+  saveError: 'Save error',
+  deleteError: 'Delete error',
+  updateError: 'Update error',
+  searchError: 'Search error',
+  exportError: 'Export error',
+  importError: 'Import error',
+  sendError: 'Send error',
+  locationError: 'Location detection error',
+  addressSearchError: 'Address search error',
+  routeSaveError: 'Route save error',
+  imageUploadError: 'Image upload error',
+  addPlacesError: 'Error adding places',
+  googleInfoError: 'Error fetching Google info',
+  resetError: 'Reset error',
+  logClearError: 'Error clearing log',
+  fileReadError: 'Error reading file',
+  refreshError: '❌ Error refreshing data',
+  addressSearchErrorHint: 'Address search error. Try using a Google Maps link',
+  storageFull: 'Save error - storage full. Try deleting old routes',
+  locationNotAvailable: 'Location not available right now. Try again.',
+  locationTimeout: 'Location request timed out. Try again.',
+  locationFailed: 'Could not get location.',
+  locationNoPermission: 'No location permission - please allow location access',
+  locationNoPermissionBrowser: 'Location permission required. Please enable location access in browser settings.',
+  locationUnavailable: 'Unable to detect location',
+  locationInaccessible: 'Cannot access location',
+  browserNoLocation: 'Browser does not support location',
+  browserNoGps: 'Your browser does not support GPS location',
+  noImportItems: 'No items found to import',
+  invalidFile: 'Invalid file - no data found',
+  feedbackDeleted: 'Feedback deleted',
+  feedbackThanks: 'Thanks for the feedback! 🙏',
+  userRemoved: 'User removed',
+  passwordSaved: 'Password saved!',
+  passwordRemoved: 'Password removed - open access',
+  logCleared: 'Log cleared',
+  allFeedbackDeleted: 'All feedback deleted',
+  appUpToDate: 'App is up to date ✅',
+  cannotCheckUpdates: 'Cannot check for updates',
+  dataRefreshed: '🔄 All data refreshed successfully!',
+  dataRefreshedLocal: '🔄 Data refreshed (localStorage only - Firebase unavailable)',
+  debugOn: '✅ Debug enabled',
+  debugOff: '❌ Debug disabled',
+  addedNoteSuccess: '✅ Added! You can add another place or close',
+  firebaseUnavailable: 'Firebase unavailable',
+},
+
+settings: {
+  title: 'Settings',
+  sendFeedback: 'Send feedback',
+  writeFeedback: 'Please write feedback',
+  feedbackPlaceholder: 'Tell us what you think...',
+  setPassword: 'Set password',
+  changePassword: 'Change system password:',
+  setNewPassword: 'Set system password:',
+  wrongPassword: 'Wrong password',
+  newPasswordPlaceholder: 'New password...',
+  noPassword: '🔓 No password - open access for everyone',
+  systemProtected: '🔒 System protected by password',
+  refreshData: 'Refresh all data',
+  deleteAllConfirm: 'Delete all access logs? This action cannot be undone.',
+  deleteAllFeedback: 'Delete all feedback?',
+  appDescription: 'Trip planning app',
+  language: 'Language',
+},
+
+help: {
+  main: {
+    title: 'How to use?',
+    content: "**City Explorer** helps you discover interesting places and plan a trip route.\n\n**Two usage modes:**\n• **Quick mode** (default) — Choose area → Choose interests → Get results\n• **Advanced mode** — Full control: add places, edit, save routes\n\n**Getting started:**\n1. Choose a city and area (or \"All\", or GPS for nearby) and interests, then click \"Find points of interest\"\n2. In the results list: skip places that don't fit (⏸️) and choose 📌 starting point\n3. Choose route type (circular / linear) and click \"Calculate route\"\n4. Click \"Open route in Google\" to navigate!\n\n**Want more places?**\n• **\"+ more\"** next to each category — fetches more places from Google in that interest\n• **\"➕ Manually add stop\"** — search for a place by name as it appears on Google Maps and add it directly\n\n**Tip:** Click on a place name to open it in Google Maps"
+  },
+  placesListing: {
+    title: 'Places list',
+    content: "**How are places chosen?**\nUser-added places (from \"Advanced mode\") appear first, then Google places by rating.\n\n**Buttons next to each place:**\n• ⏸️ — Skip place (won't be included in route). Press ▶️ to restore\n• 📌 — Set as starting point\n\n**In advanced mode also:**\n• + — Add to my places\n• ✏️ — Edit details\n• 🗑️ — Remove (only manually added places)\n\n**Want more places?**\n• **\"+ more\"** next to each category — fetches more Google places in that interest\n• **\"➕ Manually add stop\"** — search by name as it appears on Google Maps and add directly to route\n\n**Clicking the place name** opens it in Google Maps.\n\n**Starting point:**\nChoose 📌 from a place in the list, or use 🔍 (address search) / 📍 (GPS location) at the bottom.\nTo change — choose another place or click ✕ next to the \"Starting point\" row below.\n\n**Route calculation:**\nChoose linear (point to point) or circular (returns to start), and click \"Calculate route\".\nAfter calculation click \"Open route in Google\" to navigate."
+  },
+  route: {
+    title: 'Route results',
+    content: "**After \"Find points of interest\"** a list of places appears divided by interest.\n\n**To build a route:**\n1. Choose 📌 starting point (from the list, address search, or GPS location)\n2. Click \"Calculate route\" — the system will arrange points in the most logical order\n\n**Want to add places?**\n• **\"+ more\"** next to each category — fetches more Google places in that interest\n• **\"➕ Add manually\"** — search by name on Google and add directly to route\n\n**Additional actions:**\n• 💾 **Save** — saves the route for future use\n• 🗺️ **Open in Google** — shows the calculated route in Google Maps\n• ⏸️ **Pause** places that don't fit right now"
+  },
+  myContent: { title: 'My content', content: "Here you can manage your places and interests.\n\n**📍 My places** — places you added yourself. They get priority over Google places!\n\n**🏷️ My interests** — choose which interests appear in search. You can also create new ones." },
+  myPlaces: { title: 'My places', content: "**Your added places** appear first in search results!\n\n**To add a place:** Click \"➕ Add place\", enter name and choose an interest.\n\n**Actions:**\n• ✏️ Edit details\n• 🗑️ Delete place\n• 🚫 Blacklist — a place you never want to see again\n\n**Tip:** You can also add places directly from search results by clicking the + button" },
+  myInterests: { title: 'My interests', content: "**Interests** determine which types of places appear in search.\n\n**To add a new interest:** Click \"➕ Add interest\", choose a name and icon, and set what to search for.\n\n**To change status:** Click \"Disable\" to hide an interest from search, or \"Enable\" to restore.\n\n**To edit settings:** Click ✏️ next to an interest to change name, icon, or search settings.\n\n**Interest with red border** — missing search settings and won't work until configured." },
+  interestConfig: { title: 'Interest settings', content: "**Search settings for the interest**\n\n**Interest name:**\nThe name that will appear in the interests list.\n\n**Category search (Place Types):**\nGoogle categories like: temple, restaurant, museum.\nThe system finds places whose type matches one of the categories.\n\n**Text search:**\nFree text search, e.g.: \"street art\", \"rooftop bar\".\nThe system finds places Google matched to the text, filtering those whose name doesn't contain the search term.\n\n**Filter words (Blacklist):**\nWords that if they appear in a place name, it won't be included. E.g.: \"cannabis\", \"massage\" — to filter irrelevant places.\n\n**⚠️ Important:** An interest without search settings won't work!" },
+  searchLogic: { title: 'How does the system find places?', content: "**Finding order:**\n1. **First** — your custom places matching the area and interest\n2. **Then** — places from Google Places API\n\n**Google places filtering:**\n• Place with name containing a filter word (blacklist) = filtered\n• Place with name identical to your place = filtered (duplicate prevention)\n• \"Skip permanently\" place = filtered\n• Text search: only places whose name contains the full search term\n\n**Priority:**\n• Places sorted by rating (highest to lowest)\n• Rating is used for ordering only, not filtering\n\n**Amount:**\n• Number of places split equally between your chosen interests\n• Can be changed in settings\n\n**\"+ more\":**\n• Adds more places from the same interest (default: 3)\n• New places are marked with a dashed blue border" },
+  saved: { title: 'Saved routes', content: "**What's here:**\nAll routes you saved for future use.\n\n**Saving a route:**\n• Click \"💾 Save route\" on the route screen\n• Give a unique name (required)\n• Add notes if you want\n\n**Actions:**\n• Click a route to reload it\n• 🗑️ to delete a route\n\n**Tip:**\nRoutes are included in export/import in settings!" },
+  settings: { title: 'Settings', content: "**System settings:**\n\n**Number of places:**\n• Maximum places in a route\n• Number of additional places in \"Find more\"\n\n**Import/Export:**\n• **Export** — saves everything to a JSON file\n• **Import** — adds from file (duplicates will be skipped)\n\n**Admin (for managers):**\n• View access log\n• Manage authorized devices\n• Admin password" },
+  addLocation: { title: 'Add/Edit place', content: "**Required:** Place name + at least one interest.\n\n**Additional fields (optional):**\n• Area, address, notes, image\n• Google Maps link\n\n**Coordinates** — required for the place to appear in the route.\nEasiest way: click 🔤 (search by name) or paste a Google Maps link and click 🔗.\n\n**Buttons at bottom:**\n• **Add/Update** — saves and stays in window\n• **X** at top — closes without saving" },
+  addInterest: { title: 'Add/Edit interest', content: "**How to add a new interest:**\n1. Choose a **name** and **icon** (emoji)\n2. Choose **search type:**\n   • **Category** — by Google place type (e.g.: museum, restaurant)\n   • **Text** — free search (e.g.: \"rooftop bar\")\n3. Click **Add** — the interest will appear in the interests list\n\n**Filter words** — places with these words in their name won't be included (e.g.: cannabis)." },
+},
+
+} // end English
+
+}; // end strings
+
+console.log('[I18N] Loaded translations: he, en');

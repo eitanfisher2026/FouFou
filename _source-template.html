@@ -7,6 +7,15 @@
   Unauthorized copying, distribution, or modification is prohibited.
 -->
 <html lang="he" dir="rtl">
+<script>
+// Set language direction before page renders to avoid flash
+(function() {
+  var lang = localStorage.getItem('city_explorer_lang') || 'he';
+  var dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dir;
+})();
+</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -160,6 +169,10 @@
     });
     </script>
     
+    <!-- I18N (translations) -->
+    <script>
+// __INSERT_I18N__
+    </script>
     <!-- Config -->
     <script>
 // __INSERT_CONFIG__

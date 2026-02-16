@@ -39,6 +39,9 @@
   };
 
   const [currentView, setCurrentView] = useState('form');
+  const [currentLang, setCurrentLang] = useState(() => {
+    return window.BKK.i18n.currentLang || 'he';
+  });
   const [selectedCityId, setSelectedCityId] = useState(() => {
     try { return localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) { return 'bangkok'; }
   });
@@ -1173,6 +1176,12 @@
     setManualStops([]);
     window.scrollTo(0, 0);
     showToast(window.BKK.selectedCity.icon + ' ' + window.BKK.selectedCity.name, 'success');
+  };
+
+  const switchLanguage = (lang) => {
+    if (lang === currentLang) return;
+    window.BKK.i18n.setLang(lang);
+    setCurrentLang(lang);
   };
   
   // Utility functions - loaded from utils.js

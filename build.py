@@ -15,6 +15,7 @@ def build():
     print("🔨 Building Bangkok Explorer...")
     
     template = read_file('_source-template.html')
+    i18n = read_file('i18n.js')
     config = read_file('config.js')
     utils = read_file('utils.js')
     app_logic = read_file('app-logic.js')
@@ -30,6 +31,7 @@ def build():
         print(f"📋 Version: {ver}")
     
     output = template
+    output = output.replace('// __INSERT_I18N__', i18n)
     output = output.replace('// __INSERT_CONFIG__', config)
     output = output.replace('// __INSERT_UTILS__', utils)
     output = output.replace('// __INSERT_APP_LOGIC__', app_logic)

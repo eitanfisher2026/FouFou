@@ -2497,6 +2497,28 @@
               </button>
             </div>
             
+            {/* Language Toggle */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-2">
+                <h3 className="text-sm font-bold text-gray-800 mb-2">🌐 {t('settings.language')}</h3>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {Object.entries(window.BKK.i18n.languages).map(([langId, langInfo]) => (
+                    <button
+                      key={langId}
+                      onClick={() => switchLanguage(langId)}
+                      style={{
+                        padding: '5px 14px', borderRadius: '16px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold',
+                        border: currentLang === langId ? '2px solid #3b82f6' : '1.5px solid #e5e7eb',
+                        background: currentLang === langId ? '#eff6ff' : 'white',
+                        color: currentLang === langId ? '#2563eb' : '#6b7280',
+                        transition: 'all 0.2s'
+                      }}
+                    >{langInfo.flag} {langInfo.name}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* City & Area Management */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-rose-50 to-orange-50 border-2 border-rose-400 rounded-lg p-2">
