@@ -1288,13 +1288,13 @@
           body: JSON.stringify({
             textQuery: searchQuery,
             maxResultCount: 20,
-            locationRestriction: {
+            locationBias: {
               circle: {
                 center: {
                   latitude: center.lat,
                   longitude: center.lng
                 },
-                radius: searchRadius * 1.2
+                radius: searchRadius
               }
             }
           })
