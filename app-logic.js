@@ -1258,8 +1258,8 @@
         }
       }
       
-      // Check if this interest uses text search
-      const textSearchQuery = config.textSearch;
+      // Check if this interest uses text search (Firebase config first, then city defaults)
+      const textSearchQuery = config.textSearch || (window.BKK.textSearchInterests || {})[validInterests[0]] || '';
       
       // Collect blacklist words from all valid interests
       const blacklistWords = validInterests
@@ -3080,11 +3080,17 @@
     if (interestObj?.privateOnly) return true;
     
     const config = interestConfig[interestId];
-    if (!config) return false;
+    if (config) {
+      // Valid if has textSearch OR has types array with items
+      if (config.textSearch && config.textSearch.trim()) return true;
+      if (config.types && Array.isArray(config.types) && config.types.length > 0) return true;
+    }
     
-    // Valid if has textSearch OR has types array with items
-    if (config.textSearch && config.textSearch.trim()) return true;
-    if (config.types && Array.isArray(config.types) && config.types.length > 0) return true;
+    // Fallback: check city's built-in interestToGooglePlaces or textSearchInterests
+    const cityPlaces = window.BKK.interestToGooglePlaces || {};
+    const cityTextSearch = window.BKK.textSearchInterests || {};
+    if (cityPlaces[interestId] && cityPlaces[interestId].length > 0) return true;
+    if (cityTextSearch[interestId]) return true;
     
     return false;
   };

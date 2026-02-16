@@ -2543,19 +2543,46 @@
                 </p>
 
                 {/* Areas list for selected city */}
-                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
                   {(window.BKK.selectedCity?.areas || []).map((area, i) => {
                     const safetyColors = { safe: '#22c55e', caution: '#f59e0b', danger: '#ef4444' };
                     const safetyLabels = { safe: 'בטוח', caution: 'זהירות', danger: 'מסוכן' };
+                    const safetyOptions = ['safe', 'caution', 'danger'];
+                    const areaCoord = window.BKK.areaCoordinates?.[area.id] || {};
                     return (
-                      <div key={area.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
-                        <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{area.label}</span>
-                        <span style={{ fontSize: '9px', color: '#6b7280' }}>{area.labelEn}</span>
-                        <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.radius}מ'</span>
-                        <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.size}</span>
-                        <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '4px', background: safetyColors[area.safety || 'safe'] + '20', color: safetyColors[area.safety || 'safe'], fontWeight: 'bold' }}>
-                          {safetyLabels[area.safety || 'safe']}
-                        </span>
+                      <div key={area.id} style={{ padding: '5px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{area.label}</span>
+                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{area.labelEn}</span>
+                        </div>
+                        {isUnlocked && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                            <label style={{ fontSize: '9px', color: '#6b7280' }}>רדיוס:
+                              <input type="number" value={area.radius} style={{ width: '55px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
+                                onChange={(e) => { area.radius = parseInt(e.target.value) || area.radius; if (areaCoord) areaCoord.radius = area.radius; setFormData(prev => ({...prev})); }}
+                              />
+                            </label>
+                            <label style={{ fontSize: '9px', color: '#6b7280' }}>מכפיל:
+                              <input type="number" step="0.1" value={area.distanceMultiplier || window.BKK.selectedCity?.distanceMultiplier || 1.2} style={{ width: '40px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
+                                onChange={(e) => { area.distanceMultiplier = parseFloat(e.target.value) || 1.2; if (areaCoord) areaCoord.distanceMultiplier = area.distanceMultiplier; setFormData(prev => ({...prev})); }}
+                              />
+                            </label>
+                            <select value={area.safety || 'safe'} style={{ fontSize: '9px', padding: '1px 2px', border: '1px solid #d1d5db', borderRadius: '4px', color: safetyColors[area.safety || 'safe'] }}
+                              onChange={(e) => { area.safety = e.target.value; if (areaCoord) areaCoord.safety = area.safety; setFormData(prev => ({...prev})); }}
+                            >
+                              {safetyOptions.map(s => <option key={s} value={s}>{safetyLabels[s]}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {!isUnlocked && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                            <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.radius}מ'</span>
+                            <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.size}</span>
+                            <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '4px', background: safetyColors[area.safety || 'safe'] + '20', color: safetyColors[area.safety || 'safe'], fontWeight: 'bold' }}>
+                              {safetyLabels[area.safety || 'safe']}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
