@@ -1886,6 +1886,65 @@
         </div>
       )}
 
+      {/* Version Long-Press Password Dialog (does NOT add to admin list) */}
+      {showVersionPasswordDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-3 rounded-t-xl">
+              <h3 className="text-base font-bold">{`🔒 ${t("settings.lockedSettings")}`}</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-sm text-gray-600 text-center">{t("settings.enterPassword")}</p>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder={t("settings.password")}
+                className="w-full p-3 border rounded-lg text-center text-lg"
+                autoFocus
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter') {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
+                      setIsUnlocked(true);
+                      setShowVersionPasswordDialog(false);
+                      setPasswordInput('');
+                      setCurrentView('settings');
+                      showToast('🔓', 'success');
+                    } else {
+                      showToast(t('settings.wrongPassword'), 'error');
+                      setPasswordInput('');
+                    }
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const hashedInput = await window.BKK.hashPassword(passwordInput);
+                    if (hashedInput === adminPassword || passwordInput === adminPassword) {
+                      setIsUnlocked(true);
+                      setShowVersionPasswordDialog(false);
+                      setPasswordInput('');
+                      setCurrentView('settings');
+                      showToast('🔓', 'success');
+                    } else {
+                      showToast(t('settings.wrongPassword'), 'error');
+                      setPasswordInput('');
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-lg font-bold text-sm bg-blue-500 text-white hover:bg-blue-600"
+                >{t("general.ok")}</button>
+                <button
+                  onClick={() => { setShowVersionPasswordDialog(false); setPasswordInput(''); }}
+                  className="flex-1 py-2.5 rounded-lg font-bold text-sm bg-gray-200 text-gray-700 hover:bg-gray-300"
+                >{t("general.cancel")}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Password Dialog */}
       {showPasswordDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

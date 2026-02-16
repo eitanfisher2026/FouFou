@@ -309,8 +309,9 @@
   // Admin System - Password based
   const [adminPassword, setAdminPassword] = useState('');
   const [adminUsers, setAdminUsers] = useState([]);
-  const [isUnlocked, setIsUnlocked] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
@@ -862,7 +863,8 @@
           const userId = localStorage.getItem('bangkok_user_id');
           const isInAdminList = usersList.some(u => u.oderId === userId);
           const passwordEmpty = !pwSnap.val();
-          const userIsAdmin = isInAdminList || passwordEmpty;
+          const noAdminListExists = usersList.length === 0;
+          const userIsAdmin = isInAdminList || (passwordEmpty && noAdminListExists);
           setIsUnlocked(userIsAdmin);
           setIsCurrentUserAdmin(userIsAdmin);
           console.log('[REFRESH] Loaded admin settings');
@@ -939,10 +941,12 @@
         }));
         setAdminUsers(usersList);
         
-        // Check if user is admin: either in list OR password is empty
+        // Check if user is admin: must be in admin list
+        // Only if NO admin list AND NO password (first-time setup), allow access
         const isInAdminList = usersList.some(u => u.oderId === userId);
         const passwordEmpty = !storedPassword || storedPassword === '';
-        const userIsAdmin = isInAdminList || passwordEmpty;
+        const noAdminListExists = usersList.length === 0;
+        const userIsAdmin = isInAdminList || (passwordEmpty && noAdminListExists);
         
         setIsUnlocked(userIsAdmin);
         setIsCurrentUserAdmin(userIsAdmin);

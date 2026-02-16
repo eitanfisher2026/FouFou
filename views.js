@@ -250,7 +250,7 @@
                       color: 'white', fontSize: '14px', fontWeight: 'bold',
                       boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >{`🔍 ${t('wizard.findPlaces')}`}</button>
+                  >{`🔍 ${t('wizard.findPlaces')} (${formData.maxStops})`}</button>
                 </div>
               </div>
             )}
@@ -737,19 +737,6 @@
                   );
                 })}
               </div>
-              {formData.interests.length > 0 && (
-                <div style={{
-                  marginTop: '8px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  color: '#059669',
-                  backgroundColor: '#d1fae5',
-                  padding: '8px',
-                  borderRadius: '8px'
-                }}>
-                  {`✓ ${formData.interests.length} ${t('general.all')}`}
-                </div>
-              )}
               </div>
               {/* End of Left Column */}
               
@@ -2988,7 +2975,14 @@
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
             >{`📤 ${t("general.share")}`}</button>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
+            <span 
+              style={{ fontSize: '9px', color: '#9ca3af', cursor: 'default', userSelect: 'none' }}
+              onTouchStart={(e) => { e.currentTarget._lp = setTimeout(() => { if (isUnlocked) { setCurrentView('settings'); } else { setShowVersionPasswordDialog(true); } }, 2000); }}
+              onTouchEnd={(e) => { clearTimeout(e.currentTarget._lp); }}
+              onMouseDown={(e) => { e.currentTarget._lp = setTimeout(() => { if (isUnlocked) { setCurrentView('settings'); } else { setShowVersionPasswordDialog(true); } }, 2000); }}
+              onMouseUp={(e) => { clearTimeout(e.currentTarget._lp); }}
+              onMouseLeave={(e) => { clearTimeout(e.currentTarget._lp); }}
+            >v{window.BKK.VERSION}</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
