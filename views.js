@@ -6,7 +6,7 @@
         <div className="fixed inset-0 bg-gradient-to-br from-amber-50 to-rose-50 z-[9999] flex flex-col items-center justify-center">
           <div className="text-center">
             <div className="text-5xl mb-4 animate-bounce">🗺️</div>
-            <h2 className="text-xl font-bold text-gray-700 mb-2">{window.BKK.selectedCity?.name || 'City Explorer'}</h2>
+            <h2 className="text-xl font-bold text-gray-700 mb-2">{tLabel(window.BKK.selectedCity) || 'City Explorer'}</h2>
             <div className="flex items-center justify-center gap-2 text-gray-500">
               <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -34,7 +34,7 @@
             letterSpacing: '0.5px',
             margin: 0,
             textShadow: '0 1px 3px rgba(0,0,0,0.2)'
-          }}>{window.BKK.selectedCity?.name || 'City Explorer'}</h1>
+          }}>{tLabel(window.BKK.selectedCity) || 'City Explorer'}</h1>
           <span style={{ fontSize: '14px' }}>{window.BKK.selectedCity?.icon || '🗺️'}</span>
           <span style={{ 
             fontSize: '8px', 
@@ -101,13 +101,13 @@
                         color: selectedCityId === city.id ? '#e11d48' : '#6b7280',
                         transition: 'all 0.2s'
                       }}
-                    >{city.icon} {city.name}</button>
+                    >{city.icon} {tLabel(city)}</button>
                   ))}
                 </div>
 
                 <h2 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold', marginBottom: '1px' }}>{`📍 ${t("wizard.step1Title")}`}</h2>
                 <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
-                  בחר אזור ב{window.BKK.selectedCity?.name || t('general.city')}
+                  {`${t("form.selectStartPoint")} - ${tLabel(window.BKK.selectedCity) || t('general.city')}`}
                   <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', marginRight: '4px', textDecoration: 'underline' }}>
                     איך זה עובד?
                   </button>
@@ -136,11 +136,11 @@
                       }}
                     >
                       <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#1f2937' }}>
-                        {area.label}
+                        {tLabel(area)}
                         {safety === 'caution' && <span style={{ color: '#f59e0b', marginRight: '3px' }} title={t("general.cautionArea")}>⚠️</span>}
                         {safety === 'danger' && <span style={{ color: '#ef4444', marginRight: '3px' }} title={t("general.dangerArea")}>🔴</span>}
                       </div>
-                      <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '1px' }}>{area.desc || area.labelEn}</div>
+                      <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '1px' }}>{tDesc(area) || tLabel(area)}</div>
                     </button>
                     );
                   })}
@@ -180,7 +180,7 @@
                     marginBottom: '6px', transition: 'all 0.2s'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#7c3aed' }}>{`🌏 ${t('general.all')} ${window.BKK.selectedCity?.name || t('general.city')}`}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#7c3aed' }}>{`🌏 ${t('general.all')} ${tLabel(window.BKK.selectedCity) || t('general.city')}`}</div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>חיפוש בכל העיר</div>
                 </button>
 
@@ -268,7 +268,7 @@
             }`}
           >
             <div className="text-center">🗺️</div>
-            <div className="truncate text-center text-[8px]">מסלול</div>
+            <div className="truncate text-center text-[8px]">{t("nav.route")}</div>
           </button>
           <button
             onClick={() => { setCurrentView('saved'); window.scrollTo(0, 0); }}
@@ -277,7 +277,7 @@
             }`}
           >
             <div className="text-center">💾</div>
-            <div className="truncate text-center text-[8px]">שמורים {citySavedRoutes.length > 0 ? `(${citySavedRoutes.length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">{t("nav.saved")} {citySavedRoutes.length > 0 ? `(${citySavedRoutes.length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myPlaces'); window.scrollTo(0, 0); }}
@@ -286,7 +286,7 @@
             }`}
           >
             <div className="text-center">📍</div>
-            <div className="truncate text-center text-[8px]">מקומות {cityCustomLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
+            <div className="truncate text-center text-[8px]">{t("nav.myPlaces")} {cityCustomLocations.filter(l => l.status !== 'blacklist').length > 0 ? `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})` : ''}</div>
           </button>
           <button
             onClick={() => { setCurrentView('myInterests'); window.scrollTo(0, 0); }}
@@ -295,7 +295,7 @@
             }`}
           >
             <div className="text-center">🏷️</div>
-            <div className="truncate text-center text-[8px]">תחומים {(() => {
+            <div className="truncate text-center text-[8px]">{t("nav.myInterests")} {(()= => {
               const builtIn = (window.BKK.interestOptions || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
               const uncov = (window.BKK.uncoveredInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] === true);
               const cust = (cityCustomInterests || []).filter(i => isInterestValid(i.id) && interestStatus[i.id] !== false);
@@ -348,7 +348,7 @@
               <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
-            <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>🔍 מחפש נקודות עניין...</p>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>{`🔍 ${t("general.searching")}...`}</p>
             <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>זה יכול לקחת כמה שניות</p>
           </div>
         )}
@@ -373,7 +373,7 @@
                     color: selectedCityId === city.id ? '#e11d48' : '#6b7280',
                     transition: 'all 0.2s'
                   }}
-                >{city.icon} {city.name}</button>
+                >{city.icon} {tLabel(city)}</button>
               ))}
             </div>
             <div className="flex items-center justify-center gap-2">
@@ -419,24 +419,24 @@
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                       formData.searchMode === 'all' ? 'bg-white shadow text-purple-600' : 'text-gray-500'
                     }`}
-                  >🌏 הכל</button>
+                  >{`🌏 ${t("form.allMode")}`}</button>
                   <button
                     onClick={() => setFormData({...formData, searchMode: 'area'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                       formData.searchMode === 'area' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
-                  >איזור</button>
+                  >{t("form.areaMode")}</button>
                   <button
                     onClick={() => setFormData({...formData, searchMode: 'radius'})}
                     className={`flex-1 py-1 rounded text-[9px] font-bold transition ${
                       formData.searchMode === 'radius' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
                     }`}
-                  >רדיוס</button>
+                  >{t("form.radiusMode")}</button>
                 </div>
                 
                 {formData.searchMode === 'all' ? (
                   <div style={{ padding: '8px', textAlign: 'center', color: '#7c3aed', fontSize: '11px', fontWeight: 'bold' }}>
-                    🌏 חיפוש בכל {window.BKK.selectedCity?.name || t('general.city')}
+                    {`🌏 ${t("general.all")} ${tLabel(window.BKK.selectedCity) || t('general.city')}`}
                   </div>
                 ) : formData.searchMode === 'area' ? (
                   /* Area Mode - GRID layout */
@@ -472,7 +472,7 @@
                               fontSize: '10px',
                               color: formData.area === area.id ? '#1e40af' : '#374151',
                               wordBreak: 'break-word'
-                            }}>{area.label}</div>
+                            }}>{tLabel(area)}</div>
                           </button>
                         ))}
                       </div>
@@ -483,7 +483,7 @@
                   <div className="border border-blue-100 rounded-lg p-2 bg-blue-50/30 space-y-2">
                     {/* Radius slider */}
                     <div className="text-center">
-                      <label className="font-medium text-[10px] block text-center mb-0.5">📍 רדיוס חיפוש</label>
+                      <label className="font-medium text-[10px] block text-center mb-0.5">{t("form.searchRadius")}</label>
                       <div className="text-lg font-bold text-blue-600">{formData.radiusMeters}מ'</div>
                       <input
                         type="range"
@@ -632,7 +632,7 @@
                             ))
                           }
                           {cityCustomLocations.filter(loc => loc.lat && loc.lng && loc.status !== 'blacklist').length === 0 && (
-                            <div className="p-2 text-center text-[10px] text-gray-400">אין מקומות עם קואורדינטות</div>
+                            <div className="p-2 text-center text-[10px] text-gray-400">{t("places.noPlacesWithCoords")}</div>
                           )}
                         </div>
                       </div>
@@ -692,7 +692,7 @@
 
               {/* Left Column: Interests */}
               <div className="flex-1 min-w-0 flex flex-col">
-                <label className="font-medium text-xs mb-1.5 block">⭐ מה מעניין?</label>
+                <label className="font-medium text-xs mb-1.5 block">{t("form.whatInterests")}</label>
                 <div className="grid grid-cols-3 gap-2 border border-gray-200 rounded-lg p-2">
                 {allInterestOptions.filter(option => {
                   if (!option || !option.id) return false;
@@ -746,7 +746,7 @@
                   padding: '8px',
                   borderRadius: '8px'
                 }}>
-                  ✓ {formData.interests.length} נבחרו
+                  {`✓ ${formData.interests.length} ${t('general.all')}`}
                 </div>
               )}
               </div>
@@ -790,7 +790,7 @@
             </div>
             
             {formData.interests.length === 0 && (
-              <p className="text-center text-gray-500 text-xs">בחר לפחות תחום עניין אחד</p>
+              <p className="text-center text-gray-500 text-xs">{t("form.selectAtLeastOneInterest")}</p>
             )}
             {formData.searchMode === 'radius' && !formData.currentLat && formData.interests.length > 0 && (
               <p className="text-center text-blue-500 text-xs font-medium">{t("form.useGpsForRadius")}</p>
@@ -802,7 +802,7 @@
             {route && (
               <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir="rtl">
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-blue-900 text-sm">מקומות ב{route.areaName} ({route.stops.length}):</h3>
+                  <h3 className="font-bold text-blue-900 text-sm">{`${t("route.places")} - ${route.areaName}`} ({route.stops.length}):</h3>
                   <button
                     onClick={() => showHelpFor('placesListing')}
                     style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
@@ -843,7 +843,7 @@
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
                               <span style={{ fontSize: '14px' }}>{interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}</span>
-                              <span>{interestObj.label} ({filteredStops.length})</span>
+                              <span>{tLabel(interestObj)} ({filteredStops.length})</span>
                             </div>
                             {!isManualGroup && (
                             <button
@@ -852,7 +852,7 @@
                                 await fetchMoreForInterest(interest);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
-                              title={`${t("route.moreFromCategory")} ${interestObj.label}`}
+                              title={`${t("route.moreFromCategory")} ${tLabel(interestObj)}`}
                             >
                               + עוד
                             </button>
@@ -1092,7 +1092,7 @@
                       cursor: 'pointer'
                     }}
                   >
-                    ➕ הוסף ידנית נקודה למסלול
+                    {t("route.addManualStop")}
                   </button>
                   
                   <a
@@ -1151,7 +1151,7 @@
                       marginBottom: '4px'
                     }}
                   >
-                    🗺️ הצג את כל המקומות על המפה
+                    {`🗺️ ${t("wizard.showMap")}`}
                   </a>
                   
                   
@@ -1266,12 +1266,12 @@
                     </button>
                     {!startPointCoords && (
                       <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '2px' }}>
-                        ⬆️ בחר נקודת התחלה כדי לחשב מסלול
+                        {`⬆️ ${t("form.chooseStartBeforeCalc")}`}
                       </p>
                     )}
                     {route?.optimized && (
                       <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginBottom: '2px', fontWeight: 'bold' }}>
-                        ✅ המסלול מחושב! פתח בגוגל מפות ⬇️
+                        {`✅ ${t("route.routeCalculated")} ⬇️`}
                       </p>
                     )}
                     
@@ -1350,7 +1350,7 @@
                           cursor: route?.optimized ? 'pointer' : 'not-allowed'
                         }}
                       >
-                        🗺️ פתח מסלול בגוגל
+                        {`🗺️ Open in Google Maps`}
                       </button>
                       
                       {/* Save Route Button - styled - hidden in wizard */}
@@ -1426,7 +1426,7 @@
                 onClick={() => quickSaveRoute()}
                 className="w-full bg-purple-500 text-white py-3 rounded-lg font-bold hover:bg-purple-600 mb-4"
               >
-                💾 שמור מסלול זה
+                {`💾 ${t("route.saveRoute")}`}
               </button>
             )}
 
@@ -1457,7 +1457,7 @@
             {/* Stats - show breakdown of place sources */}
             {!wizardMode && route.stats && (route.stats.custom > 0 || route.stats.fetched > 0) && (
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 mb-4">
-                <div className="text-xs font-bold text-gray-700 mb-2">📊 מקורות המקומות:</div>
+                <div className="text-xs font-bold text-gray-700 mb-2">{`📊 Sources:`}</div>
                 <div className="flex gap-2 flex-wrap">
                   {route.stats.custom > 0 && (
                     <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-bold">
@@ -1481,7 +1481,7 @@
                 <div className="flex items-start gap-2">
                   <span className="text-xl">❌</span>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-red-800 mb-1">שגיאות בקבלת מקומות</p>
+                    <p className="text-sm font-bold text-red-800 mb-1">{t("toast.errorsGettingPlaces")}</p>
                     <div className="text-xs text-red-700 space-y-1">
                       {route.errors.map((err, i) => (
                         <div key={i}>• {err.interest}: {err.error}</div>
@@ -1502,7 +1502,7 @@
                   <span className="text-xl">⚠️</span>
                   <div className="flex-1">
                     <p className="text-sm font-bold text-yellow-800 mb-1">
-                      נמצאו {route.incomplete.found} מקומות במקום {route.incomplete.requested} המבוקשים
+                      {`Found ${route.incomplete.found} of ${route.incomplete.requested} requested places`}
                     </p>
                     <p className="text-xs text-yellow-700">
                       {formData.interests.length === 1 
@@ -1603,7 +1603,7 @@
                                   return interestObj?.icon ? (
                                     <span 
                                       key={idx}
-                                      title={interestObj.label}
+                                      title={tLabel(interestObj)}
                                       style={{ fontSize: '16px' }}
                                     >
                                       {interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}
@@ -1786,7 +1786,7 @@
                   marginBottom: '4px'
                 }}
               >
-                🗺️ הצג את כל המקומות על המפה
+                {`🗺️ ${t("wizard.showMap")}`}
               </a>
               
               {/* URL limit note */}
@@ -1885,7 +1885,7 @@
                     marginBottom: '4px'
                   }}
                 >
-                  🗺️ פתח מסלול בגוגל
+                  {`🗺️ Open in Google Maps`}
                 </a>
                 
               </div>
@@ -1898,7 +1898,7 @@
         {currentView === 'search' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">🔍 חיפוש במקומות שלי</h2>
+              <h2 className="text-2xl font-bold">{`🔍 ${t("places.searchResults")}`}</h2>
               <button
                 onClick={() => setCurrentView('myPlaces')}
                 className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-300 flex items-center gap-1"
@@ -1990,7 +1990,7 @@
                           const interest = interestMap[intId];
                           return interest ? (
                             <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                              {interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-3.5 h-3.5 object-contain inline" /> : interest.icon} {interest.label}
+                              {interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-3.5 h-3.5 object-contain inline" /> : interest.icon} {tLabel(interest)}
                             </span>
                           ) : null;
                         })}
@@ -2003,19 +2003,19 @@
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">🔍</div>
                 <p className="font-bold">{t("places.noResultsFor")} "{searchQuery}"</p>
-                <p className="text-sm mt-2">נסה לחפש משהו אחר</p>
+                <p className="text-sm mt-2">Try a different search</p>/p>
               </div>
             ) : cityCustomLocations.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">📍</div>
-                <p className="font-bold">אין מקומות ב{window.BKK.selectedCity?.name || t('places.thisCity')}</p>
-                <p className="text-sm mt-2">הוסף מקומות כדי לחפש בהם</p>
+                <p className="font-bold">{t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
+                <p className="text-sm mt-2">{t("places.addPlace")}</p>
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">🔍</div>
-                <p className="font-bold">התחל להקליד כדי לחפש</p>
-                <p className="text-sm mt-2">יש לך {cityCustomLocations.length} מקומות ב{window.BKK.selectedCity?.name || t('places.thisCity')}</p>
+                <p className="font-bold">Start typing to search</p>
+                <p className="text-sm mt-2">{`${cityCustomLocations.length} ${t("route.places")} - ${tLabel(window.BKK.selectedCity) || t('places.thisCity')}`}</p>
               </div>
             )}
           </div>
@@ -2025,7 +2025,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">🗺️ מסלולים שמורים</h2>
+                <h2 className="text-lg font-bold">{`🗺️ ${t("nav.saved")}`}</h2>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                   {citySavedRoutes.length}
                 </span>
@@ -2041,7 +2041,7 @@
                   <button
                     onClick={() => setRoutesSortBy('area')}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'area' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
-                  >לפי איזור</button>
+                  >By area</button>
                   <button
                     onClick={() => setRoutesSortBy('name')}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold ${routesSortBy === 'name' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
@@ -2053,11 +2053,11 @@
             {citySavedRoutes.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🗺️</div>
-                <p className="text-gray-600 mb-3 text-sm">אין מסלולים שמורים ב{window.BKK.selectedCity?.name || t('places.thisCity')}</p>
+                <p className="text-gray-600 mb-3 text-sm">{t("places.noSavedRoutesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
                 <button
                   onClick={() => setCurrentView('form')}
                   className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
-                >צור מסלול חדש</button>
+                >New route</button>
               </div>
             ) : (
               <div className="space-y-1">
@@ -2129,7 +2129,7 @@
         {currentView === 'myPlaces' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-lg font-bold">📍 המקומות שלי</h2>
+              <h2 className="text-lg font-bold">{`📍 ${t("nav.myPlaces")}`}</h2>
               <button
                 onClick={() => showHelpFor('myPlaces')}
                 className="text-gray-400 hover:text-blue-500 text-sm"
@@ -2142,7 +2142,7 @@
             {/* Custom Locations Section - Split by status */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">מקומות ({cityCustomLocations.filter(l => l.status !== 'blacklist').length})</h3>
+                <h3 className="text-base font-bold">{`${t("nav.myPlaces")} (${cityCustomLocations.filter(l => l.status !== 'blacklist').length})`}</h3>
                 <div className="flex items-center gap-2">
                   {/* Group by toggle */}
                   <div className="flex bg-gray-200 rounded-lg p-0.5">
@@ -2178,7 +2178,7 @@
               {cityCustomLocations.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
                   <div className="text-3xl mb-2">📍</div>
-                  <p className="text-gray-600 text-sm">אין מקומות ב{window.BKK.selectedCity?.name || t('places.thisCity')}</p>
+                  <p className="text-gray-600 text-sm">{t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
                   <p className="text-xs text-gray-500 mt-1">{t("places.addPlace")}</p>
                 </div>
               ) : (
@@ -2382,7 +2382,7 @@
                 setEditingCustomInterest(isCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id,
-                  label: interest.label || interest.name || '',
+                  label: tLabel(interest) || interest.name || '',
                   icon: interest.icon || '📍',
                   searchMode: config.textSearch ? 'text' : 'types',
                   types: (config.types || []).join(', '),
@@ -2408,7 +2408,7 @@
                   <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-lg flex-shrink-0">{interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-5 h-5 object-contain" /> : interest.icon}</span>
-                      <span className={`font-medium text-sm truncate ${!effectiveActive ? 'text-gray-500' : ''}`}>{interest.label || interest.name}</span>
+                      <span className={`font-medium text-sm truncate ${!effectiveActive ? 'text-gray-500' : ''}`}>{tLabel(interest)}</span>
                       {isCustom && <span className="text-[10px] bg-purple-200 text-purple-800 px-1 py-0.5 rounded flex-shrink-0">{t("general.custom")}</span>}
                       {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title={t("interests.missingSearchConfig")}>⚠️</span>}
                       {interest.inProgress && <span className="text-orange-600 flex-shrink-0" title={t("general.inProgress")} style={{ fontSize: '12px' }}>🛠️</span>}
@@ -2545,7 +2545,7 @@
                           opacity: city.active === false ? 0.6 : 1,
                           transition: 'all 0.2s'
                         }}
-                      >{city.icon} {city.name}</button>
+                      >{city.icon} {tLabel(city)}</button>
                       {isUnlocked && (
                         <button
                           onClick={() => {
@@ -2573,7 +2573,7 @@
                 </div>
                 
                 <p className="text-[10px] text-gray-500 mb-2">
-                  {window.BKK.selectedCity?.icon} {window.BKK.selectedCity?.name}: {window.BKK.selectedCity?.areas?.length || 0} אזורים · {window.BKK.selectedCity?.interests?.length || 0} תחומי עניין
+                  {window.BKK.selectedCity?.icon} {tLabel(window.BKK.selectedCity)}: {window.BKK.selectedCity?.areas?.length || 0} אזורים · {window.BKK.selectedCity?.interests?.length || 0} תחומי עניין
                 </p>
 
                 {/* Areas list for selected city */}
@@ -2586,8 +2586,8 @@
                     return (
                       <div key={area.id} style={{ padding: '5px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{area.label}</span>
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{area.labelEn}</span>
+                          <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{tLabel(area)}</span>
+                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{tLabel(area)}</span>
                         </div>
                         {isUnlocked && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>

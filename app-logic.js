@@ -1554,7 +1554,7 @@
             name: place.displayName?.text || 'Unknown Place',
             lat: place.location?.latitude || center.lat,
             lng: place.location?.longitude || center.lng,
-            description: `⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} ביקורות)`,
+            description: `⭐ ${place.rating?.toFixed(1) || 'N/A'} (${place.userRatingCount || 0} reviews)`,
             duration: 45,
             googlePlace: true,
             rating: place.rating || 0,
@@ -2136,7 +2136,7 @@
       if (!formData.currentLat) {
         const cityCenter = window.BKK.selectedCity?.center || { lat: 13.7563, lng: 100.5018 };
         const cityRadius = window.BKK.selectedCity?.allCityRadius || 15000;
-        const cityName = window.BKK.selectedCity?.name || t('general.allCity');
+        const cityName = tLabel(window.BKK.selectedCity) || t('general.allCity');
         const allCityLabel = t('general.all') + ' ' + cityName;
         setFormData(prev => ({...prev, currentLat: cityCenter.lat, currentLng: cityCenter.lng, radiusMeters: cityRadius, radiusPlaceName: allCityLabel}));
         formData.currentLat = cityCenter.lat;
@@ -2416,14 +2416,14 @@
       // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
-        const allCityLabel = t('general.all') + ' ' + (window.BKK.selectedCity?.name || t('general.city'));
+        const allCityLabel = t('general.all') + ' ' + (tLabel(window.BKK.selectedCity) || t('general.city'));
         if (formData.searchMode === 'all' || formData.radiusPlaceName === allCityLabel || formData.radiusPlaceName === t('general.allCity')) {
           areaName = allCityLabel;
         } else {
           const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
             ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || t('form.myPlace')
             : formData.radiusPlaceName || t('form.currentLocation');
-          areaName = `${formData.radiusMeters}מ' מ-${sourceName}`;
+          areaName = `${formData.radiusMeters}m - ${sourceName}`;
         }
       } else {
         const selectedArea = areaOptions.find(a => a.id === formData.area);
@@ -2453,7 +2453,7 @@
         areaName: areaName,
         interestsText: interestsText,
         title: `${areaName} - ${uniqueStops.length} ${t("route.places")}`,
-        description: `מסלול ${routeType === 'circular' ? t('route.circular') : t('route.linear')}`,
+        description: `Route ${routeType === 'circular' ? t('route.circular') : t('route.linear')}`,
         duration: formData.hours, // Keep for backward compatibility but not displayed
         circular: routeType === 'circular',
         startPoint: (startPointCoords?.address) || formData.startPoint || t('form.startPointFirst'),
@@ -2517,7 +2517,7 @@
       // Stay in form view to show compact list
     } catch (error) {
       console.error('[ROUTE] Fatal error generating route:', error);
-      showToast(`שגיאה: ${error.message || t('general.unknownError')}`, 'error');
+      showToast(`${t('general.error')}: ${error.message || t('general.unknownError')}`, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -2823,7 +2823,7 @@
       if (fromCustom > 0) sources.push(`${fromCustom} ${t("general.fromMyPlaces")}`);
       if (fromCache > 0) sources.push(`${fromCache} ${t("places.fromGoogleCache")}`);
       if (fromApi > 0) sources.push(`${fromApi} ${t("places.fromGoogle")}`);
-      showToast(`נוספו ${allNewPlaces.length} מקומות (${sources.join(', ')})`, 'success');
+      showToast(`${allNewPlaces.length} ${t("route.places")} (${sources.join(', ')})`, 'success');
       
       setTimeout(() => {
         document.getElementById('route-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3259,7 +3259,7 @@
     );
     
     if (exists) {
-      showToast(`"${place.name}" כבר קיים ברשימה שלך`, 'warning');
+      showToast(`"${place.name}" ${t("places.alreadyInMyList")}`, 'warning');
       return false;
     }
     
@@ -3298,7 +3298,7 @@
       try {
         await database.ref('customLocations').push(locationToAdd);
         addDebugLog('ADD', `Added "${place.name}" to Firebase`);
-        showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
+        showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
         setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
         return true;
       } catch (error) {
@@ -3312,7 +3312,7 @@
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast(`"${place.name}" נוסף לרשימה שלך!`, 'success');
+      showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
       setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
       return true;
     }
@@ -3328,7 +3328,7 @@
     if (exists) {
       // Already exists - just update status to blacklist
       if (exists.status === 'blacklist') {
-        showToast(`"${place.name}" כבר ברשימת דילוג`, 'warning');
+        showToast(`"${place.name}" ${t("places.alreadyBlacklisted")}`, 'warning');
         return;
       }
       
@@ -3341,7 +3341,7 @@
           inProgress: false
         })
           .then(() => {
-            showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
+            showToast(`"${place.name}" ${t("places.addedToSkipList")}`, 'success');
           })
           .catch((error) => {
             console.error('[FIREBASE] Error updating to blacklist:', error);
@@ -3356,7 +3356,7 @@
         });
         setCustomLocations(updated);
         localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-        showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
+        showToast(`"${place.name}" ${t("places.addedToSkipList")}`, 'success');
       }
       return;
     }
@@ -3392,7 +3392,7 @@
       database.ref('customLocations').push(locationToAdd)
         .then(() => {
           console.log('[FIREBASE] Place added to blacklist');
-          showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
+          showToast(`"${place.name}" ${t("places.addedToSkipList")}`, 'success');
         })
         .catch((error) => {
           console.error('[FIREBASE] Error adding to blacklist:', error);
@@ -3402,7 +3402,7 @@
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      showToast(`"${place.name}" נוסף לדילוג קבוע`, 'success');
+      showToast(`"${place.name}" ${t("places.addedToSkipList")}`, 'success');
     }
   };
   
@@ -3433,7 +3433,7 @@
       
       // 1. Import custom interests
       for (const interest of (importedData.customInterests || [])) {
-        const label = interest.label || interest.name;
+        const label = tLabel(interest) || interest.name;
         if (!label) continue;
         
         const exists = interestExistsByLabel(label);
@@ -3560,7 +3560,7 @@
       
       // 1. Import custom interests
       (importedData.customInterests || []).forEach(interest => {
-        const label = interest.label || interest.name;
+        const label = tLabel(interest) || interest.name;
         if (!label) return;
         
         const exists = newInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
@@ -3701,7 +3701,7 @@
       loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim()
     );
     if (exists) {
-      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
+      showToast(`"${newLocation.name}" ${t("places.alreadyInList")}`, 'warning');
       return;
     }
     
@@ -3828,7 +3828,7 @@
       loc.id !== editingLocation.id
     );
     if (exists) {
-      showToast(`"${newLocation.name}" כבר קיים ברשימה`, 'warning');
+      showToast(`"${newLocation.name}" ${t("places.alreadyInList")}`, 'warning');
       return;
     }
     

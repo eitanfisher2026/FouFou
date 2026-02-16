@@ -82,7 +82,7 @@
                     {locationSearchResults !== null && (
                       <div style={{ marginTop: '4px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', background: 'white' }}>
                         {locationSearchResults.length === 0 ? (
-                          <p style={{ textAlign: 'center', padding: '8px', color: '#9ca3af', fontSize: '11px' }}>⏳ מחפש...</p>
+                          <p style={{ textAlign: 'center', padding: '8px', color: '#9ca3af', fontSize: '11px' }}>{t("general.searching")}...</p>
                         ) : locationSearchResults.map((result, idx) => (
                           <button
                             key={idx}
@@ -130,8 +130,8 @@
                           }
                         }}
                         className="text-[9px] px-2 py-0.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 font-bold"
-                      >📍 זהה אוטומטית</button>
-                      <label className="text-xs font-bold">אזורים</label>
+                      >{`📍 Auto-detect`}</button>
+                      <label className="text-xs font-bold">Areas</label>
                     </div>
                     <div className="grid grid-cols-6 gap-1 p-1.5 bg-gray-50 rounded-lg overflow-y-auto border-2 border-gray-300" style={{ maxHeight: '120px' }}>
                       {areaOptions.map(area => {
@@ -154,7 +154,7 @@
                             }`}
                             style={{ lineHeight: '1.1' }}
                           >
-                            <div>{area.label}</div>
+                            <div>{tLabel(area)}</div>
                           </button>
                         );
                       })}
@@ -164,7 +164,7 @@
 
                 {/* Interests - Compact Grid */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">תחומי עניין</label>
+                  <label className="block text-xs font-bold mb-1">Interests</label>
                   <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-32 overflow-y-auto">
                     {allInterestOptions.map(option => (
                       <button
@@ -193,7 +193,7 @@
 
                 {/* Description - NEW */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">📝 תיאור</label>
+                  <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
                   <input
                     type="text"
                     value={newLocation.description || ''}
@@ -206,7 +206,7 @@
 
                 {/* Image - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">📷 תמונה</label>
+                  <label className="block text-xs font-bold mb-1">📷 Image</label>
                   {newLocation.uploadedImage ? (
                     <div className="relative">
                       <img 
@@ -228,7 +228,7 @@
                   ) : (
                     <label className="block w-full p-3 border-2 border-dashed border-purple-300 rounded-lg text-center cursor-pointer hover:bg-purple-50">
                       <span className="text-2xl">📸</span>
-                      <div className="text-xs text-gray-600 mt-1">לחץ להעלאה</div>
+                      <div className="text-xs text-gray-600 mt-1">Click to upload</div>
                       <input
                         type="file"
                         accept="image/*"
@@ -248,7 +248,7 @@
 
                 {/* Links - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">🔗 קישורים</label>
+                  <label className="block text-xs font-bold mb-1">🔗 Links</label>
                   <div className="space-y-1">
                     {(newLocation.imageUrls || []).map((url, idx) => (
                       <div key={idx} className="flex gap-1">
@@ -286,7 +286,7 @@
                 {/* Row 2: Address + Maps Link */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-bold mb-1">🏠 כתובת</label>
+                    <label className="block text-xs font-bold mb-1">{`🏠 ${t("places.address")}`}</label>
                     <input
                       type="text"
                       value={newLocation.address || ''}
@@ -297,7 +297,7 @@
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1">🔗 קישור Maps</label>
+                    <label className="block text-xs font-bold mb-1">🔗 Maps link</label>
                     <input
                       type="text"
                       value={newLocation.mapsUrl || ''}
@@ -313,7 +313,7 @@
 
                 {/* Coordinates - SUPER COMPACT */}
                 <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
-                  <label className="block text-xs font-bold mb-1.5">📍 קואורדינטות</label>
+                  <label className="block text-xs font-bold mb-1.5">📍 Coordinates</label>
                   
                   {/* Lat/Lng Inputs */}
                   <div className="grid grid-cols-2 gap-1.5 mb-1.5">
@@ -348,7 +348,7 @@
                       title={t("form.searchByName")}
                     >
                       <span className="text-sm">🔤</span>
-                      <span>שם</span>
+                      <span>Name</span>
                     </button>
                     <button
                       onClick={() => geocodeAddress(newLocation.address)}
@@ -374,7 +374,7 @@
                       title={t("form.extractFromLink")}
                     >
                       <span className="text-sm">🔗</span>
-                      <span>קישור</span>
+                      <span>Link</span>
                     </button>
                     <button
                       onClick={getCurrentLocation}
@@ -382,7 +382,7 @@
                       title={t("form.gps")}
                     >
                       <span className="text-sm">📍</span>
-                      <span>מיקום</span>
+                      <span>Location</span>
                     </button>
                   </div>
                 </div>
@@ -457,7 +457,7 @@
 
                 {/* Notes - Compact */}
                 <div>
-                  <label className="block text-xs font-bold mb-1">💭 הערות</label>
+                  <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
                   <textarea
                     value={newLocation.notes || ''}
                     onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
@@ -479,7 +479,7 @@
                       onChange={(e) => setNewLocation({...newLocation, inProgress: e.target.checked})}
                       className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
-                    <span className="text-xs">🛠️ בעבודה</span>
+                    <span className="text-xs">{t("general.inProgress")}</span>
                   </label>
                   {isUnlocked && (
                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -489,7 +489,7 @@
                         onChange={(e) => setNewLocation({...newLocation, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
-                      <span className="text-xs">🔒 נעול</span>
+                      <span className="text-xs">{t("general.locked")}</span>
                     </label>
                   )}
                 </div>
@@ -528,7 +528,7 @@
                       )}
                       <button
                         onClick={() => {
-                          showConfirm(`למחוק את "${editingLocation.name}"?`, () => {
+                          showConfirm(`Delete "${editingLocation.name}"?`, () => {
                             deleteCustomLocation(editingLocation.id);
                             setShowEditLocationDialog(false);
                             setEditingLocation(null);
@@ -637,7 +637,7 @@
                     </span>
                   )}
                   {!editingCustomInterest && (
-                    <span className="text-[10px] bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-bold">👤 אישי</span>
+                    <span className="text-[10px] bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full font-bold">{t("general.private")}</span>
                   )}
                   <button
                     onClick={() => showHelpFor('addInterest')}
@@ -677,7 +677,7 @@
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold mb-1">אייקון</label>
+                    <label className="block text-xs font-bold mb-1">Icon</label>
                     {newInterest.icon && newInterest.icon.startsWith('data:') ? (
                       <div className="relative">
                         <img src={newInterest.icon} alt="icon" className="w-full h-10 object-contain rounded-lg border-2 border-gray-300 bg-white" />
@@ -722,7 +722,7 @@
 
                 {/* Search Configuration */}
                 <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
-                  <label className="block text-xs font-bold mb-2 text-blue-800">🔍 הגדרות חיפוש</label>
+                  <label className="block text-xs font-bold mb-2 text-blue-800">🔍 Search settings</label>
                   
                   <div className="mb-2">
                     <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Search Mode:</label>
@@ -791,8 +791,8 @@
                         onChange={(e) => setNewInterest({...newInterest, privateOnly: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
-                      <span className="text-xs font-bold text-blue-800">🔒 תחום פרטי</span>
-                      <span className="text-[9px] text-gray-500">— רק מקומות שלי, בלי פנייה לגוגל</span>
+                      <span className="text-xs font-bold text-blue-800">🔒 Private interest</span>
+                      <span className="text-[9px] text-gray-500">— My places only, no Google</span>
                     </label>
                   </div>
                   )}
@@ -809,7 +809,7 @@
                       onChange={(e) => setNewInterest({...newInterest, inProgress: e.target.checked})}
                       className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
-                    <span className="text-xs">🛠️ בעבודה</span>
+                    <span className="text-xs">{t("general.inProgress")}</span>
                   </label>
                   {isUnlocked && (
                     <label className="flex items-center gap-1.5 cursor-pointer">
@@ -819,7 +819,7 @@
                         onChange={(e) => setNewInterest({...newInterest, locked: e.target.checked})}
                         className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                       />
-                      <span className="text-xs">🔒 נעול</span>
+                      <span className="text-xs">{t("general.locked")}</span>
                     </label>
                   )}
                 </div>
@@ -847,8 +847,8 @@
                         <button
                           onClick={() => {
                             const msg = newInterest.builtIn 
-                              ? `⚠️ אתה עומד למחוק תחום מערכת "${newInterest.label}". פעולה זו תסיר אותו לצמיתות. להמשיך?`
-                              : `אתה עומד למחוק תחום אישי "${newInterest.label}". להמשיך?`;
+                              ? `Delete system interest "${newInterest.label}" permanently?`
+                              : `Delete custom interest "${newInterest.label}"?`;
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
                                 toggleInterestStatus(editingCustomInterest.id);
@@ -1004,7 +1004,7 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
-              <h2 className="text-xl font-bold text-gray-800">🔒 לוג כניסות</h2>
+              <h2 className="text-xl font-bold text-gray-800">🔒 Access Log</h2>
               <button
                 onClick={() => setShowAccessLog(false)}
                 className="text-2xl font-bold text-gray-600 hover:text-gray-800"
@@ -1017,7 +1017,7 @@
               {accessLogs.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <p className="text-4xl mb-2">📭</p>
-                  <p>אין כניסות עדיין</p>
+                  <p>No entries yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1037,7 +1037,7 @@
                             <div className="flex items-center gap-2 flex-wrap">
                               {isNew && <span className="text-red-500 font-bold">🆕</span>}
                               <span className="font-bold text-sm">
-                                משתמש #{log.userId.slice(-8)}
+                                {`User #${log.userId.slice(-8)}`}
                               </span>
                               {log.country && (
                                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
@@ -1107,10 +1107,10 @@
             <div className="p-4 border-t border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div className="text-xs text-gray-600">
-                  סה"כ {accessLogs.length} כניסות
+                  {`Total: ${accessLogs.length}`}
                   {hasNewEntries && (
                     <span className="text-red-600 font-bold mr-2">
-                      • יש כניסות חדשות שלא נצפו
+                      • New entries
                     </span>
                   )}
                 </div>
@@ -1170,14 +1170,14 @@
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
                 {/* Area */}
                 <div className="text-xs text-gray-700">
-                  <span className="font-bold">📍 איזור:</span> {editingRoute.areaName || t('general.noArea')}
+                  <span className="font-bold">📍 Area:</span> {editingRoute.areaName || t('general.noArea')}
                 </div>
                 {/* Interests */}
                 {(() => {
                   const ids = [...new Set((editingRoute.stops || []).flatMap(s => s.interests || []))];
                   return ids.length > 0 && (
                     <div className="flex gap-1 flex-wrap items-center">
-                      <span className="text-xs font-bold text-gray-700">🏷️ תחומים:</span>
+                      <span className="text-xs font-bold text-gray-700">🏷️ Interests:</span>
                       {ids.map((intId, idx) => {
                         const obj = allInterestOptions.find(o => o.id === intId);
                         return obj ? (
@@ -1191,17 +1191,17 @@
                 })()}
                 {/* Circular / Linear */}
                 <div className="text-xs text-gray-700">
-                  <span className="font-bold">🔀 סוג:</span> {editingRoute.circular ? t('route.circularRoute') : t('route.linearRoute')}
+                  <span className="font-bold">{`🔀 ${t("route.routeType")}:`}</span> {editingRoute.circular ? t('route.circularRoute') : t('route.linearRoute')}
                 </div>
                 {/* Start point */}
                 <div className="text-xs text-gray-700">
-                  <span className="font-bold">🚩 נקודת התחלה:</span> {editingRoute.startPoint || editingRoute.startPointCoords?.address || t('form.startPointFirst')}
+                  <span className="font-bold">{`🚩 ${t("route.startPoint")}:`}</span> {editingRoute.startPoint || editingRoute.startPointCoords?.address || t('form.startPointFirst')}
                 </div>
               </div>
 
               {/* Name */}
               <div>
-                <label className="block text-xs font-bold mb-1">שם המסלול</label>
+                <label className="block text-xs font-bold mb-1">Route name</label>
                 <input
                   type="text"
                   value={editingRoute.name || ''}
@@ -1214,7 +1214,7 @@
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold mb-1">💬 הערות</label>
+                <label className="block text-xs font-bold mb-1">💬 Notes</label>
                 <textarea
                   value={editingRoute.notes || ''}
                   onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
@@ -1292,7 +1292,7 @@
                     onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
                     className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                   />
-                  <span className="text-xs">🛠️ בעבודה</span>
+                  <span className="text-xs">{t("general.inProgress")}</span>
                 </label>
                 {isUnlocked && (
                   <label className="flex items-center gap-1.5 cursor-pointer">
@@ -1302,7 +1302,7 @@
                       onChange={(e) => setEditingRoute({...editingRoute, locked: e.target.checked})}
                       className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
                     />
-                    <span className="text-xs">🔒 נעול</span>
+                    <span className="text-xs">{t("general.locked")}</span>
                   </label>
                 )}
               </div>
@@ -1314,7 +1314,7 @@
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      showConfirm(`למחוק את המסלול "${editingRoute.name}"?`, () => {
+                      showConfirm(`Delete route "${editingRoute.name}"?`, () => {
                         deleteRoute(editingRoute.id);
                         setShowRouteDialog(false);
                         setEditingRoute(null);
@@ -1402,7 +1402,7 @@
           const q = input?.value?.trim();
           if (!q || !resultsDiv) return;
           
-          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">⏳ מחפש...</p>';
+          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">{t("general.searching")}...</p>';
           
           try {
             const result = await window.BKK.geocodeAddress(q);
@@ -1431,7 +1431,7 @@
                 // Check duplicates against current route
                 const isDup = route?.stops?.some(s => s.name.toLowerCase().trim() === newStop.name.toLowerCase().trim());
                 if (isDup) {
-                  showToast(`"${display}" כבר קיים במסלול`, 'warning');
+                  showToast(`"${display}" ${t("places.alreadyInRoute")}`, 'warning');
                   return;
                 }
                 
@@ -1468,7 +1468,7 @@
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
               {/* Header */}
               <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
-                <h3 className="text-sm font-bold">➕ הוסף ידנית נקודה למסלול</h3>
+                <h3 className="text-sm font-bold">{t("route.addManualStop")}</h3>
                 <button
                   onClick={() => setShowManualAddDialog(false)}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -1498,12 +1498,12 @@
                 </div>
                 
                 <p className="text-[11px] text-gray-500">
-                  💡 חפש מקום והקש עליו כדי להוסיף למסלול. ניתן להוסיף כמה מקומות שרוצים.
+                  💡 Search and click to add to route. You can add multiple places.
                 </p>
                 
                 {manualStops.length > 0 && (
                   <div className="text-[11px] text-purple-600 font-bold">
-                    📍 {manualStops.length} מקומות נוספו ידנית בסשן זה
+                    {`📍 ${manualStops.length} places added manually`}
                   </div>
                 )}
                 
@@ -1523,7 +1523,7 @@
           const q = input?.value?.trim();
           if (!q || !resultsDiv) return;
           
-          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">⏳ מחפש...</p>';
+          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">{t("general.searching")}...</p>';
           
           try {
             const result = await window.BKK.geocodeAddress(q);
@@ -1557,7 +1557,7 @@
             <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
               {/* Header */}
               <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
-                <h3 className="text-sm font-bold">📍 חיפוש כתובת לנקודת התחלה</h3>
+                <h3 className="text-sm font-bold">{`📍 ${t("form.searchAddress")}`}</h3>
                 <button
                   onClick={() => setShowAddressDialog(false)}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -1587,7 +1587,7 @@
                 </div>
                 
                 <p className="text-[11px] text-gray-500">
-                  💡 הקלד כתובת מלאה, שם מלון, תחנת רכבת, או כל מקום ב{window.BKK.selectedCity?.name || t('general.city')}
+                  💡 Enter full address, hotel name, train station, or any place in {tLabel(window.BKK.selectedCity) || t('general.city')}
                 </p>
                 
                 {/* Results container */}
@@ -1685,7 +1685,7 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl">
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">💬 שלח משוב</h3>
+              <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
               <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
             </div>
             <div className="p-4 space-y-3">
@@ -1742,7 +1742,7 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">💬 משובים ({feedbackList.length})</h3>
+              <h3 className="text-base font-bold">{`💬 Feedback (`}{feedbackList.length})</h3>
               <div className="flex items-center gap-2">
                 {feedbackList.length > 0 && (
                   <button
@@ -1769,7 +1769,7 @@
               {feedbackList.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
                   <div className="text-3xl mb-2">📭</div>
-                  <p className="text-sm">אין משובים עדיין</p>
+                  <p className="text-sm">No feedback yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1783,7 +1783,7 @@
                             {item.category === 'bug' ? '🐛' : item.category === 'idea' ? '💡' : '💭'}
                           </span>
                           <span className="text-[10px] text-gray-400 font-mono">{item.userId?.slice(-8)}</span>
-                          <span className="text-[10px] text-gray-400">מ: {item.currentView || '?'}</span>
+                          <span className="text-[10px] text-gray-400">{`From: ${item.currentView || '?'}`}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
@@ -1820,38 +1820,38 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 rounded-t-xl">
-              <h3 className="text-base font-bold">📥 ייבוא נתונים</h3>
+              <h3 className="text-base font-bold">📥 Import data</h3>
             </div>
             <div className="p-4 space-y-3">
               {importedData.exportDate && (
                 <p className="text-xs text-gray-500 text-center">
-                  מתאריך: {new Date(importedData.exportDate).toLocaleDateString('he-IL')}
+                  {`Date: ${new Date(importedData.exportDate).toLocaleDateString()}`}
                   {importedData.version && ` | v${importedData.version}`}
                 </p>
               )}
               
               <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span>🏷️ תחומי עניין מותאמים</span>
+                  <span>🏷️ Custom interests</span>
                   <span className="font-bold text-purple-600">{(importedData.customInterests || []).length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>📍 מקומות</span>
+                  <span>{`📍 ${t("nav.myPlaces")}`}</span>
                   <span className="font-bold text-blue-600">{(importedData.customLocations || []).length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>🗺️ מסלולים שמורים</span>
+                  <span>{`🗺️ ${t("nav.saved")}`}</span>
                   <span className="font-bold text-blue-600">{(importedData.savedRoutes || []).length}</span>
                 </div>
                 {importedData.interestConfig && (
                   <div className="flex justify-between text-sm">
-                    <span>⚙️ הגדרות חיפוש</span>
+                    <span>⚙️ Search settings</span>
                     <span className="font-bold text-gray-600">{Object.keys(importedData.interestConfig).length}</span>
                   </div>
                 )}
                 {importedData.interestStatus && (
                   <div className="flex justify-between text-sm">
-                    <span>✅ סטטוס תחומים</span>
+                    <span>✅ Interest status</span>
                     <span className="font-bold text-gray-600">{Object.keys(importedData.interestStatus).length}</span>
                   </div>
                 )}
@@ -1859,7 +1859,7 @@
               
               <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-2">
                 <p className="text-xs text-yellow-800">
-                  💡 פריטים קיימים (לפי שם) לא יידרסו. רק פריטים חדשים יתווספו.
+                  💡 Existing items won't be overwritten. Only new items will be added.
                 </p>
               </div>
               
@@ -1890,10 +1890,10 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl">
             <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-3 rounded-t-xl">
-              <h3 className="text-base font-bold">🔒 הגדרות נעולות</h3>
+              <h3 className="text-base font-bold">🔒 Locked settings</h3>
             </div>
             <div className="p-4 space-y-4">
-              <p className="text-sm text-gray-600 text-center">הזן סיסמה לפתיחת ההגדרות</p>
+              <p className="text-sm text-gray-600 text-center">Enter password to unlock</p>
               <input
                 type="password"
                 value={passwordInput}
