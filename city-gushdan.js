@@ -7,6 +7,7 @@ window.BKK.cityData.gushdan = {
   "country": "Israel",
   "icon": "🏖️",
   "secondaryIcon": "☀️",
+  "theme": { "color": "#2980b9", "iconLeft": "🏖️", "iconRight": "🌆" },
   "active": true,
   "distanceMultiplier": 1.2,
   "center": {

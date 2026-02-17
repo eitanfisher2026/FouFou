@@ -8,6 +8,7 @@ window.BKK.cityData.singapore = {
     country: 'Singapore',
     icon: '🦁',
     secondaryIcon: '🌴',
+    theme: { color: '#c0392b', iconLeft: '🦁', iconRight: '🌺' },
     active: true,
     distanceMultiplier: 1.2,
     center: { lat: 1.3521, lng: 103.8198 },

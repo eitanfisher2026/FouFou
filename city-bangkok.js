@@ -8,6 +8,7 @@ window.BKK.cityData.bangkok = {
     country: 'Thailand',
     icon: '🛺',
     secondaryIcon: '🍜',
+    theme: { color: '#e74c3c', iconLeft: '🏯', iconRight: '🐘' },
     active: true,
     distanceMultiplier: 1.2,
     center: { lat: 13.7563, lng: 100.5018 },

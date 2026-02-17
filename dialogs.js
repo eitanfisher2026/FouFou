@@ -224,12 +224,14 @@
                           setShowImageModal(true);
                         }}
                       />
+                      {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
                       <button
                         onClick={() => setNewLocation({...newLocation, uploadedImage: null})}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold hover:bg-red-600"
                       >
                         ✕
                       </button>
+                      )}
                     </div>
                   ) : (
                     <label className="block w-full p-3 border-2 border-dashed border-purple-300 rounded-lg text-center cursor-pointer hover:bg-purple-50">
@@ -394,7 +396,7 @@
                 </div>
 
                 {/* Open in Google + Google Info */}
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2" style={{ position: 'relative', zIndex: 15 }}>
                   <div className="flex gap-2">
                     {newLocation.lat && newLocation.lng ? (
                       <a
@@ -551,13 +553,7 @@
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
                   <>
-                    <button
-                      onClick={() => { setShowEditLocationDialog(false); setEditingLocation(null); }}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-bold bg-green-500 text-white hover:bg-green-600"
-                    >
-                      ✓ {t("general.close")}
-                    </button>
-                    <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
+                    <div className="flex-1 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1">
                       🔒 {t("general.readOnly")}
                     </div>
                   </>

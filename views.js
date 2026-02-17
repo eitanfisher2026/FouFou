@@ -18,15 +18,19 @@
         </div>
       )}
 
+      {(() => {
+        const theme = window.BKK.selectedCity?.theme || { color: '#e11d48', iconLeft: '🏙️', iconRight: '🗺️' };
+        const c = theme.color || '#e11d48';
+        return (
       <div style={{
-        background: 'linear-gradient(135deg, #e11d48 0%, #f59e0b 50%, #e11d48 100%)',
+        background: `linear-gradient(135deg, ${c} 0%, ${c}dd 50%, ${c} 100%)`,
         backgroundSize: '200% 200%',
         animation: 'headerShimmer 6s ease infinite',
         padding: '6px 16px',
-        boxShadow: '0 2px 8px rgba(225, 29, 72, 0.2)'
+        boxShadow: `0 2px 8px ${c}33`
       }}>
         <div className="flex items-center justify-center gap-1.5">
-          <span style={{ fontSize: '14px' }}>{window.BKK.selectedCity?.secondaryIcon || '🛺'}</span>
+          <span style={{ fontSize: '14px' }}>{theme.iconLeft || window.BKK.selectedCity?.secondaryIcon || '🏙️'}</span>
           <h1 style={{ 
             fontSize: '16px', 
             fontWeight: '800', 
@@ -35,7 +39,7 @@
             margin: 0,
             textShadow: '0 1px 3px rgba(0,0,0,0.2)'
           }}>{tLabel(window.BKK.selectedCity) || 'City Explorer'}</h1>
-          <span style={{ fontSize: '14px' }}>{window.BKK.selectedCity?.icon || '🗺️'}</span>
+          <span style={{ fontSize: '14px' }}>{theme.iconRight || window.BKK.selectedCity?.icon || '🗺️'}</span>
           <span style={{ 
             fontSize: '8px', 
             color: 'rgba(255,255,255,0.5)',
@@ -44,6 +48,8 @@
           }}>v{window.BKK.VERSION}</span>
         </div>
       </div>
+      );
+      })()}
 
       {/* Update Banner */}
       {updateAvailable && (
@@ -2565,6 +2571,44 @@
                             }} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #fecaca', cursor: 'pointer', background: '#fef2f2', color: '#ef4444' }}
                             >🗑️ {t('general.remove')}</button>
                           )}
+                    </div>
+                  );
+                })()}
+
+                {/* Theme Editor - Color + Icons */}
+                {isUnlocked && window.BKK.selectedCity && (() => {
+                  const city = window.BKK.selectedCity;
+                  const theme = city.theme || { color: '#e11d48', iconLeft: '🏙️', iconRight: '🗺️' };
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', padding: '6px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569' }}>🎨</span>
+                      <input type="color" value={theme.color || '#e11d48'}
+                        onChange={(e) => { 
+                          if (!city.theme) city.theme = {};
+                          city.theme.color = e.target.value;
+                          setCityModified(true); setFormData(prev => ({...prev}));
+                        }}
+                        style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
+                      />
+                      <input type="text" value={theme.iconLeft || ''} placeholder="◀"
+                        onChange={(e) => {
+                          if (!city.theme) city.theme = {};
+                          city.theme.iconLeft = e.target.value;
+                          setCityModified(true); setFormData(prev => ({...prev}));
+                        }}
+                        style={{ width: '36px', fontSize: '14px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                      />
+                      <div style={{ width: '60px', height: '22px', borderRadius: '6px', background: theme.color || '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: 'white', fontSize: '9px', fontWeight: 'bold' }}>{tLabel(city)}</span>
+                      </div>
+                      <input type="text" value={theme.iconRight || ''} placeholder="▶"
+                        onChange={(e) => {
+                          if (!city.theme) city.theme = {};
+                          city.theme.iconRight = e.target.value;
+                          setCityModified(true); setFormData(prev => ({...prev}));
+                        }}
+                        style={{ width: '36px', fontSize: '14px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px' }}
+                      />
                     </div>
                   );
                 })()}
