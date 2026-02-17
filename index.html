@@ -9177,7 +9177,7 @@ const CityExplorer = () => {
                                     container._leaflet_id = null;
                                     const zoom = area.isWholeCity ? 11 : 13;
                                     const map = L.map(container).setView([area.lat, area.lng], zoom);
-                                    L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_labels_under/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB © OSM', maxZoom: 19 }).addTo(map);
+                                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB © OSM', maxZoom: 18 }).addTo(map);
                                     const color = area.isWholeCity ? '#eab308' : '#10b981';
                                     const circle = L.circle([area.lat, area.lng], { radius: area.radius, color: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
                                     const marker = L.marker([area.lat, area.lng], { draggable: true }).addTo(map);
