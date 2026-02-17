@@ -2245,6 +2245,7 @@
 
             {toastMessage && (
         <div
+          onClick={() => setToastMessage(null)}
           style={{
             position: 'fixed',
             top: '10px',
@@ -2258,7 +2259,8 @@
             border: `1px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : toastMessage.type === 'info' ? '#3b82f6' : '#22c55e'}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             zIndex: 9999,
-            animation: 'slideDown 0.15s ease-out'
+            animation: 'slideDown 0.15s ease-out',
+            cursor: toastMessage.sticky ? 'pointer' : 'default'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
@@ -2268,6 +2270,9 @@
             <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
               {toastMessage.message}
             </div>
+            {toastMessage.sticky && (
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6b7280', marginLeft: '8px' }}>✕</span>
+            )}
           </div>
         </div>
       )}

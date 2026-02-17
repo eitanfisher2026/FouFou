@@ -354,9 +354,11 @@
 
   // Toast notification helper
   const showToast = (message, type = 'success', customDuration = null) => {
-    setToastMessage({ message, type });
-    const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
-    setTimeout(() => setToastMessage(null), duration);
+    setToastMessage({ message, type, sticky: customDuration === 'sticky' });
+    if (customDuration !== 'sticky') {
+      const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
+      setTimeout(() => setToastMessage(null), duration);
+    }
   };
 
   // Get current GPS location and reverse geocode to address
@@ -2609,7 +2611,7 @@
         googleMaxWaypoints
       );
       if (testUrls.length > 1) {
-        showToast(t('route.splitRouteWarning').replace('{max}', googleMaxWaypoints).replace('{parts}', testUrls.length), 'info', 5000);
+        showToast(t('route.splitRouteWarning').replace('{max}', googleMaxWaypoints).replace('{parts}', testUrls.length), 'info', 'sticky');
       }
     }
     

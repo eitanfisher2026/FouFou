@@ -3515,9 +3515,11 @@ const CityExplorer = () => {
 
   // Toast notification helper
   const showToast = (message, type = 'success', customDuration = null) => {
-    setToastMessage({ message, type });
-    const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
-    setTimeout(() => setToastMessage(null), duration);
+    setToastMessage({ message, type, sticky: customDuration === 'sticky' });
+    if (customDuration !== 'sticky') {
+      const duration = customDuration || Math.min(4000, Math.max(1500, message.length * 50));
+      setTimeout(() => setToastMessage(null), duration);
+    }
   };
 
   // Get current GPS location and reverse geocode to address
@@ -5770,7 +5772,7 @@ const CityExplorer = () => {
         googleMaxWaypoints
       );
       if (testUrls.length > 1) {
-        showToast(t('route.splitRouteWarning').replace('{max}', googleMaxWaypoints).replace('{parts}', testUrls.length), 'info', 5000);
+        showToast(t('route.splitRouteWarning').replace('{max}', googleMaxWaypoints).replace('{parts}', testUrls.length), 'info', 'sticky');
       }
     }
     
@@ -8708,7 +8710,7 @@ const CityExplorer = () => {
                         return;
                       }
                       if (activeStops.length > googleMaxMapPoints) {
-                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 4000);
+                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 'sticky');
                       }
                       const url = e.currentTarget.href;
                       if (url.length > 2000) {
@@ -13231,6 +13233,7 @@ const CityExplorer = () => {
 
             {toastMessage && (
         <div
+          onClick={() => setToastMessage(null)}
           style={{
             position: 'fixed',
             top: '10px',
@@ -13244,7 +13247,8 @@ const CityExplorer = () => {
             border: `1px solid ${toastMessage.type === 'error' ? '#ef4444' : toastMessage.type === 'warning' ? '#f59e0b' : toastMessage.type === 'info' ? '#3b82f6' : '#22c55e'}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             zIndex: 9999,
-            animation: 'slideDown 0.15s ease-out'
+            animation: 'slideDown 0.15s ease-out',
+            cursor: toastMessage.sticky ? 'pointer' : 'default'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
@@ -13254,6 +13258,9 @@ const CityExplorer = () => {
             <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151' }}>
               {toastMessage.message}
             </div>
+            {toastMessage.sticky && (
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#6b7280', marginLeft: '8px' }}>✕</span>
+            )}
           </div>
         </div>
       )}

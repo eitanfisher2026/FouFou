@@ -1197,7 +1197,7 @@
                         return;
                       }
                       if (activeStops.length > googleMaxMapPoints) {
-                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 4000);
+                        showToast(t('route.mapPointsWarning').replace('{count}', activeStops.length), 'info', 'sticky');
                       }
                       const url = e.currentTarget.href;
                       if (url.length > 2000) {
