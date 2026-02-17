@@ -2579,8 +2579,57 @@
                   </div>
                 )}
 
-                {/* Add Area button */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                {/* Add Area + Show Map buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginBottom: '4px' }}>
+                  <button onClick={() => {
+                    setShowSettingsMap(!showSettingsMap);
+                    if (!showSettingsMap) {
+                      setTimeout(() => {
+                        const container = document.getElementById('settings-all-areas-map');
+                        if (!container || !window.L) return;
+                        container.innerHTML = '';
+                        container._leaflet_id = null;
+                        const city = window.BKK.selectedCity;
+                        if (!city) return;
+                        const coords = window.BKK.areaCoordinates || {};
+                        const areas = city.areas || [];
+                        const cityCenter = city.center || { lat: 13.75, lng: 100.53 };
+                        const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
+                        L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
+                        const colorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
+                        const allCircles = [];
+                        areas.forEach((area, i) => {
+                          const c = coords[area.id];
+                          if (!c) return;
+                          const color = colorPalette[i % colorPalette.length];
+                          const circle = L.circle([c.lat, c.lng], { radius: c.radius, color, fillColor: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
+                          allCircles.push(circle);
+                          const marker = L.marker([c.lat, c.lng], { draggable: true, title: tLabel(area) }).addTo(map);
+                          marker.bindTooltip(tLabel(area), { permanent: true, direction: 'top', className: 'area-label-tooltip', offset: [0, -10] });
+                          marker.on('dragend', () => {
+                            const pos = marker.getLatLng();
+                            const newLat = Math.round(pos.lat * 10000) / 10000;
+                            const newLng = Math.round(pos.lng * 10000) / 10000;
+                            area.lat = newLat; area.lng = newLng;
+                            c.lat = newLat; c.lng = newLng;
+                            circle.setLatLng(pos);
+                            setCityModified(true);
+                            setFormData(prev => ({...prev}));
+                          });
+                        });
+                        if (allCircles.length > 0) {
+                          const group = L.featureGroup(allCircles);
+                          map.fitBounds(group.getBounds().pad(0.1));
+                        }
+                        window._settingsMap = map;
+                        setTimeout(() => map.invalidateSize(), 200);
+                      }, 300);
+                    } else {
+                      try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); } } catch(e) {}
+                      window._settingsMap = null;
+                    }
+                  }} style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '6px', border: '1.5px solid #3b82f6', cursor: 'pointer', background: showSettingsMap ? '#3b82f6' : '#eff6ff', color: showSettingsMap ? 'white' : '#2563eb', fontWeight: 'bold' }}
+                  >{showSettingsMap ? '✕' : '🗺️'} {t('wizard.allAreasMap')}</button>
                   <button onClick={() => {
                     const city = window.BKK.selectedCity;
                     if (!city) return;
@@ -2590,7 +2639,6 @@
                     if (city.areas.some(a => a.id === id)) { showToast(t('settings.areaExists'), 'warning'); return; }
                     const newArea = { id, label: name.trim(), labelEn: name.trim(), desc: '', descEn: '', lat: city.center?.lat || 0, lng: city.center?.lng || 0, radius: 2000, size: 'medium', safety: 'safe' };
                     city.areas.push(newArea);
-                    // Update areaCoordinates
                     window.BKK.areaCoordinates[id] = { lat: newArea.lat, lng: newArea.lng, radius: newArea.radius, distanceMultiplier: city.distanceMultiplier || 1.2, size: 'medium', safety: 'safe' };
                     window.BKK.areaOptions.push({ id, label: newArea.label, labelEn: newArea.labelEn, desc: '', descEn: '' });
                     setCityModified(true);
@@ -2599,6 +2647,11 @@
                   }} style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '6px', border: '1.5px dashed #d1d5db', cursor: 'pointer', background: 'white', color: '#6b7280' }}
                   >➕ {t('settings.addArea')}</button>
                 </div>
+
+                {/* All areas map */}
+                {showSettingsMap && (
+                  <div id="settings-all-areas-map" style={{ height: '450px', borderRadius: '8px', border: '2px solid #3b82f6', marginBottom: '8px' }}></div>
+                )}
 
                 {/* Areas list for selected city */}
                 <div style={{ overflowY: 'auto', maxHeight: editingArea ? 'none' : '350px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
@@ -2700,7 +2753,7 @@
                           {/* Edit mode */}
                           {isEditing && (
                             <div style={{ marginTop: '8px', border: '2px solid #3b82f6', borderRadius: '8px', padding: '8px', background: '#f0f9ff' }}>
-                              <div id={`area-edit-map-${area.id}`} style={{ height: '250px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '8px' }}></div>
+                              <div id={`area-edit-map-${area.id}`} style={{ height: '400px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '8px' }}></div>
                               <div className="flex items-center gap-3 flex-wrap mb-2">
                                 <label className="text-[9px] text-gray-600 flex items-center gap-1">
                                   {t('settings.radius')}:

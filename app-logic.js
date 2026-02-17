@@ -316,6 +316,7 @@
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
   const [cityModified, setCityModified] = useState(false);
+  const [showSettingsMap, setShowSettingsMap] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
