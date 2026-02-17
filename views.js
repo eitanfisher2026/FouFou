@@ -872,7 +872,6 @@
                       });
                     })()}
                   </div>
-                  </div>
                 ) : (
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
                   {(() => {
