@@ -589,7 +589,7 @@ route: {
   removeFromRoute: 'הסר מהמסלול',
   skipPlace: 'דלג על מקום',
   skipTemporarily: 'דלג זמנית',
-  skipPermanently: '🚫 דלג תמיד',
+  skipPermanently: 'דלג תמיד',
   cancelPermanentSkip: 'בטל דילוג קבוע',
   returnPlace: 'החזר מקום',
   addToMyList: 'הוסף לרשימה שלי',
@@ -1191,7 +1191,7 @@ route: {
   removeFromRoute: 'Remove from route',
   skipPlace: 'Skip place',
   skipTemporarily: 'Skip temporarily',
-  skipPermanently: '🚫 Skip permanently',
+  skipPermanently: 'Skip permanently',
   cancelPermanentSkip: 'Cancel permanent skip',
   returnPlace: 'Return place',
   addToMyList: 'Add to my list',
@@ -10819,25 +10819,18 @@ const CityExplorer = () => {
                 {/* Status toggles - only show if not locked for non-admin */}
                 {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newLocation.inProgress || false}
-                      onChange={(e) => setNewLocation({...newLocation, inProgress: e.target.checked})}
-                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                    />
-                    <span className="text-xs">{t("general.inProgress")}</span>
-                  </label>
+                  <button type="button"
+                    onClick={() => setNewLocation({...newLocation, inProgress: !newLocation.inProgress})}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${newLocation.inProgress ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
+                  >
+                    {newLocation.inProgress ? '⏳' : '○'} {t("general.inProgress")}
+                  </button>
                   {isUnlocked && (
-                    <button
-                      type="button"
+                    <button type="button"
                       onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
-                        background: newLocation.locked ? '#7c3aed' : 'white',
-                        color: newLocation.locked ? 'white' : '#6b7280'
-                      }}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${newLocation.locked ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
                     >
-                      {newLocation.locked ? '🔒' : '🔓'} {t("general.locked")}
+                      {newLocation.locked ? '🔒' : '○'} {t("general.locked")}
                     </button>
                   )}
                 </div>
@@ -11150,25 +11143,18 @@ const CityExplorer = () => {
                 {/* Status toggles - hidden for locked non-admin */}
                 {!(editingCustomInterest?.locked && !isUnlocked) && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={newInterest.inProgress || false}
-                      onChange={(e) => setNewInterest({...newInterest, inProgress: e.target.checked})}
-                      className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                    />
-                    <span className="text-xs">{t("general.inProgress")}</span>
-                  </label>
+                  <button type="button"
+                    onClick={() => setNewInterest({...newInterest, inProgress: !newInterest.inProgress})}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${newInterest.inProgress ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
+                  >
+                    {newInterest.inProgress ? '⏳' : '○'} {t("general.inProgress")}
+                  </button>
                   {isUnlocked && (
-                    <button
-                      type="button"
+                    <button type="button"
                       onClick={() => setNewInterest({...newInterest, locked: !newInterest.locked})}
-                      style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
-                        background: newInterest.locked ? '#7c3aed' : 'white',
-                        color: newInterest.locked ? 'white' : '#6b7280'
-                      }}
+                      className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${newInterest.locked ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
                     >
-                      {newInterest.locked ? '🔒' : '🔓'} {t("general.locked")}
+                      {newInterest.locked ? '🔒' : '○'} {t("general.locked")}
                     </button>
                   )}
                 </div>
@@ -11635,25 +11621,18 @@ const CityExplorer = () => {
               {/* Status toggles - hidden for locked non-admin */}
               {!(editingRoute.locked && !isUnlocked) && (
               <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingRoute.inProgress || false}
-                    onChange={(e) => setEditingRoute({...editingRoute, inProgress: e.target.checked})}
-                    className="rounded" style={{ accentColor: "#7c3aed", width: "16px", height: "16px" }}
-                  />
-                  <span className="text-xs">{t("general.inProgress")}</span>
-                </label>
+                <button type="button"
+                  onClick={() => setEditingRoute({...editingRoute, inProgress: !editingRoute.inProgress})}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${editingRoute.inProgress ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
+                >
+                  {editingRoute.inProgress ? '⏳' : '○'} {t("general.inProgress")}
+                </button>
                 {isUnlocked && (
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={() => setEditingRoute({...editingRoute, locked: !editingRoute.locked})}
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', fontSize: '11px',
-                      background: editingRoute.locked ? '#7c3aed' : 'white',
-                      color: editingRoute.locked ? 'white' : '#6b7280'
-                    }}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all ${editingRoute.locked ? 'border-gray-400 bg-gray-100 text-gray-800' : 'border-gray-200 bg-white text-gray-400'}`}
                   >
-                    {editingRoute.locked ? '🔒' : '🔓'} {t("general.locked")}
+                    {editingRoute.locked ? '🔒' : '○'} {t("general.locked")}
                   </button>
                 )}
               </div>
