@@ -2585,173 +2585,145 @@
                 </p>
 
                 {/* Areas list for selected city */}
-                <div style={{ overflowY: 'auto', maxHeight: editingArea ? 'none' : '300px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
-                  {/* Whole City pseudo-area */}
+                <div style={{ overflowY: 'auto', maxHeight: editingArea ? 'none' : '350px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
+                  {/* Build combined list: whole city + areas */}
                   {(() => {
                     const city = window.BKK.selectedCity;
                     if (!city) return null;
-                    const wholeCityArea = { id: '__whole_city__', label: t('general.allCity'), labelEn: 'Whole City', lat: city.center?.lat || 0, lng: city.center?.lng || 0, radius: city.allCityRadius || 15000, safety: 'safe' };
-                    return (
-                      <div style={{ padding: '5px 6px', borderBottom: '1px solid #f3f4f6', fontSize: '11px', background: '#fefce8' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>🌐 {wholeCityArea.label}</span>
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{wholeCityArea.radius}m</span>
-                          {isUnlocked && (
-                            <button
-                              onClick={() => {
-                                try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
-                                window._editMap = null; window._editCircle = null; window._editMarker = null;
-                                setEditingArea(editingArea?.id === '__whole_city__' ? null : wholeCityArea);
-                                if (editingArea?.id === '__whole_city__') return;
-                                setTimeout(() => {
-                                  const container = document.getElementById('area-edit-map-__whole_city__');
-                                  if (!container || !window.L) return;
-                                  container.innerHTML = '';
-                                  container._leaflet_id = null;
-                                  const map = L.map(container).setView([wholeCityArea.lat, wholeCityArea.lng], 11);
-                                  L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_labels_under/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB © OSM', maxZoom: 19 }).addTo(map);
-                                  const circle = L.circle([wholeCityArea.lat, wholeCityArea.lng], { radius: wholeCityArea.radius, color: '#eab308', fillOpacity: 0.1, weight: 2 }).addTo(map);
-                                  const marker = L.marker([wholeCityArea.lat, wholeCityArea.lng], { draggable: true }).addTo(map);
-                                  marker.on('dragend', () => {
-                                    const pos = marker.getLatLng();
-                                    wholeCityArea.lat = Math.round(pos.lat * 10000) / 10000;
-                                    wholeCityArea.lng = Math.round(pos.lng * 10000) / 10000;
-                                    city.center = { lat: wholeCityArea.lat, lng: wholeCityArea.lng };
-                                    circle.setLatLng(pos);
-                                    setFormData(prev => ({...prev}));
-                                  });
-                                  window._editMap = map; window._editCircle = circle; window._editMarker = marker;
-                                  map.fitBounds(circle.getBounds().pad(0.2));
-                                  setTimeout(() => map.invalidateSize(), 100);
-                                }, 300);
-                              }}
-                              style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', border: '1px solid #eab308', background: '#fefce8', color: '#ca8a04', cursor: 'pointer' }}
-                            >🗺️</button>
-                          )}
-                        </div>
-                        {isUnlocked && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
-                            <label style={{ fontSize: '9px', color: '#6b7280' }}>{t("settings.radius")}:
-                              <input type="number" value={wholeCityArea.radius} style={{ width: '65px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
-                                onChange={(e) => { const v = parseInt(e.target.value) || 15000; wholeCityArea.radius = v; city.allCityRadius = v; if (window._editCircle && editingArea?.id === '__whole_city__') window._editCircle.setRadius(v); setFormData(prev => ({...prev})); }}
-                              />
-                            </label>
+                    const wholeCityItem = { id: '__whole_city__', label: t('general.allCity'), labelEn: 'Whole City', desc: '', descEn: '', lat: city.center?.lat || 0, lng: city.center?.lng || 0, radius: city.allCityRadius || 15000, safety: 'safe', isWholeCity: true };
+                    const allItems = [wholeCityItem, ...(city.areas || [])];
+                    
+                    return allItems.map((area, i) => {
+                      const isEditing = editingArea?.id === area.id;
+                      const safetyColors = { safe: '#22c55e', caution: '#f59e0b', danger: '#ef4444' };
+                      const safetyLabels = { safe: t('general.safeArea'), caution: t('general.caution'), danger: t('general.dangerArea') };
+                      const areaCoord = window.BKK.areaCoordinates?.[area.id] || {};
+                      
+                      return (
+                        <div key={area.id} style={{ padding: '5px 6px', borderBottom: i < allItems.length - 1 ? '1px solid #f3f4f6' : 'none', fontSize: '11px', background: area.isWholeCity ? '#fefce8' : 'transparent' }}>
+                          {/* Area header row */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{area.isWholeCity ? '🌐 ' : ''}{tLabel(area)}</span>
+                            <span style={{ fontSize: '9px', color: '#6b7280' }}>{area.radius}m</span>
+                            {!area.isWholeCity && (
+                              <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '4px', background: safetyColors[area.safety || 'safe'] + '20', color: safetyColors[area.safety || 'safe'], fontWeight: 'bold' }}>
+                                {safetyLabels[area.safety || 'safe']}
+                              </span>
+                            )}
+                            {isUnlocked && !isEditing && (
+                              <button
+                                onClick={() => {
+                                  try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
+                                  window._editMap = null; window._editCircle = null; window._editMarker = null;
+                                  // Store original values for cancel
+                                  window._editOriginal = { lat: area.lat, lng: area.lng, radius: area.radius, safety: area.safety, distanceMultiplier: area.distanceMultiplier };
+                                  setEditingArea(area);
+                                  setTimeout(() => {
+                                    const container = document.getElementById(`area-edit-map-${area.id}`);
+                                    if (!container || !window.L) return;
+                                    container.innerHTML = '';
+                                    container._leaflet_id = null;
+                                    const zoom = area.isWholeCity ? 11 : 13;
+                                    const map = L.map(container).setView([area.lat, area.lng], zoom);
+                                    L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_labels_under/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB © OSM', maxZoom: 19 }).addTo(map);
+                                    const color = area.isWholeCity ? '#eab308' : '#10b981';
+                                    const circle = L.circle([area.lat, area.lng], { radius: area.radius, color: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
+                                    const marker = L.marker([area.lat, area.lng], { draggable: true }).addTo(map);
+                                    marker.on('dragend', () => {
+                                      const pos = marker.getLatLng();
+                                      area.lat = Math.round(pos.lat * 10000) / 10000;
+                                      area.lng = Math.round(pos.lng * 10000) / 10000;
+                                      if (area.isWholeCity) { city.center = { lat: area.lat, lng: area.lng }; }
+                                      else { const ac = window.BKK.areaCoordinates?.[area.id]; if (ac) { ac.lat = area.lat; ac.lng = area.lng; } }
+                                      circle.setLatLng(pos);
+                                      setFormData(prev => ({...prev}));
+                                    });
+                                    window._editMap = map; window._editCircle = circle; window._editMarker = marker;
+                                    map.fitBounds(circle.getBounds().pad(0.3));
+                                    setTimeout(() => map.invalidateSize(), 100);
+                                  }, 300);
+                                }}
+                                style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#2563eb', cursor: 'pointer' }}
+                              >✏️ {t('general.edit')}</button>
+                            )}
                           </div>
-                        )}
-                        {editingArea?.id === '__whole_city__' && (
-                          <div style={{ marginTop: '8px' }}>
-                            <div id="area-edit-map-__whole_city__" style={{ height: '250px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '6px' }}></div>
-                            <button onClick={() => { try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {} window._editMap = null; setEditingArea(null); }} className="text-xs text-gray-500 hover:text-red-500">✕ {t('general.close')}</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                  {(window.BKK.selectedCity?.areas || []).map((area, i) => {
-                    const safetyColors = { safe: '#22c55e', caution: '#f59e0b', danger: '#ef4444' };
-                    const safetyLabels = { safe: t('general.safeArea'), caution: t('general.caution'), danger: t('general.dangerArea') };
-                    const safetyOptions = ['safe', 'caution', 'danger'];
-                    const areaCoord = window.BKK.areaCoordinates?.[area.id] || {};
-                    return (
-                      <div key={area.id} style={{ padding: '5px 6px', borderBottom: i < (window.BKK.selectedCity.areas.length - 1) ? '1px solid #f3f4f6' : 'none', fontSize: '11px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ fontWeight: 'bold', flex: 1, color: '#1f2937' }}>{tLabel(area)}</span>
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>{tDesc(area)}</span>
-                          {isUnlocked && (
-                            <button
-                              onClick={() => {
-                                try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
-                                window._editMap = null; window._editCircle = null; window._editMarker = null;
-                                setEditingArea(editingArea?.id === area.id ? null : area);
-                                if (editingArea?.id === area.id) return;
-                                setTimeout(() => {
-                                  const container = document.getElementById(`area-edit-map-${area.id}`);
-                                  if (!container || !window.L) return;
-                                  container.innerHTML = '';
-                                  container._leaflet_id = null;
-                                  const map = L.map(container).setView([area.lat, area.lng], 13);
-                                  L.tileLayer('https://{s}.basemaps.cartocdn.com/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-                                    attribution: '© CartoDB © OSM', maxZoom: 19
-                                  }).addTo(map);
-                                  const circle = L.circle([area.lat, area.lng], { radius: area.radius, color: '#10b981', fillOpacity: 0.15, weight: 2 }).addTo(map);
-                                  const marker = L.marker([area.lat, area.lng], { draggable: true }).addTo(map);
-                                  marker.on('dragend', () => {
-                                    const pos = marker.getLatLng();
-                                    area.lat = Math.round(pos.lat * 10000) / 10000;
-                                    area.lng = Math.round(pos.lng * 10000) / 10000;
-                                    const areaCoord = window.BKK.areaCoordinates?.[area.id];
-                                    if (areaCoord) { areaCoord.lat = area.lat; areaCoord.lng = area.lng; }
-                                    circle.setLatLng(pos);
-                                    setFormData(prev => ({...prev}));
-                                  });
-                                  window._editMap = map;
-                                  window._editCircle = circle;
-                                  window._editMarker = marker;
-                                  map.fitBounds(circle.getBounds().pad(0.3));
-                                  setTimeout(() => map.invalidateSize(), 100);
-                                }, 300);
-                              }}
-                              style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', border: '1px solid #10b981', background: '#ecfdf5', color: '#059669', cursor: 'pointer' }}
-                              title={t('settings.editOnMap')}
-                            >🗺️</button>
-                          )}
-                        </div>
-                        {isUnlocked && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
-                            <label style={{ fontSize: '9px', color: '#6b7280' }}>{t("form.radiusMode")}:
-                              <input type="number" value={area.radius} style={{ width: '55px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
-                                onChange={(e) => { area.radius = parseInt(e.target.value) || area.radius; if (areaCoord) areaCoord.radius = area.radius; setFormData(prev => ({...prev})); }}
-                              />
-                            </label>
-                            <label style={{ fontSize: '9px', color: '#6b7280' }}>{t("general.multiplier")}:
-                              <input type="number" step="0.1" value={area.distanceMultiplier || window.BKK.selectedCity?.distanceMultiplier || 1.2} style={{ width: '40px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px', marginRight: '2px' }}
-                                onChange={(e) => { area.distanceMultiplier = parseFloat(e.target.value) || 1.2; if (areaCoord) areaCoord.distanceMultiplier = area.distanceMultiplier; setFormData(prev => ({...prev})); }}
-                              />
-                            </label>
-                            <select value={area.safety || 'safe'} style={{ fontSize: '9px', padding: '1px 2px', border: '1px solid #d1d5db', borderRadius: '4px', color: safetyColors[area.safety || 'safe'] }}
-                              onChange={(e) => { area.safety = e.target.value; if (areaCoord) areaCoord.safety = area.safety; setFormData(prev => ({...prev})); }}
-                            >
-                              {safetyOptions.map(s => <option key={s} value={s}>{safetyLabels[s]}</option>)}
-                            </select>
-                          </div>
-                        )}
-                        {!isUnlocked && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
-                            <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.radius}m</span>
-                            <span style={{ fontSize: '9px', color: '#9ca3af' }}>{area.size}</span>
-                            <span style={{ fontSize: '9px', padding: '1px 4px', borderRadius: '4px', background: safetyColors[area.safety || 'safe'] + '20', color: safetyColors[area.safety || 'safe'], fontWeight: 'bold' }}>
-                              {safetyLabels[area.safety || 'safe']}
-                            </span>
-                          </div>
-                        )}
-                        {/* Inline map editor for this area */}
-                        {editingArea?.id === area.id && (
-                          <div style={{ marginTop: '8px' }}>
-                            <div id={`area-edit-map-${area.id}`} style={{ height: '250px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '6px' }}></div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <label className="text-[9px] text-gray-600 flex items-center gap-1">
-                                {t('settings.radius')}:
-                                <input type="range" min="500" max="10000" step="100" value={editingArea.radius}
-                                  onChange={(e) => {
-                                    const v = parseInt(e.target.value);
-                                    area.radius = v; editingArea.radius = v;
-                                    const ac = window.BKK.areaCoordinates?.[area.id];
-                                    if (ac) ac.radius = v;
-                                    if (window._editCircle) window._editCircle.setRadius(v);
+                          {/* Read-only desc */}
+                          {!isEditing && <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '1px' }}>{tDesc(area)}</div>}
+                          
+                          {/* Edit mode */}
+                          {isEditing && (
+                            <div style={{ marginTop: '8px', border: '2px solid #3b82f6', borderRadius: '8px', padding: '8px', background: '#f0f9ff' }}>
+                              <div id={`area-edit-map-${area.id}`} style={{ height: '250px', borderRadius: '8px', border: '1px solid #d1d5db', marginBottom: '8px' }}></div>
+                              <div className="flex items-center gap-3 flex-wrap mb-2">
+                                <label className="text-[9px] text-gray-600 flex items-center gap-1">
+                                  {t('settings.radius')}:
+                                  <input type="range" min={area.isWholeCity ? '5000' : '500'} max={area.isWholeCity ? '30000' : '10000'} step="100" value={area.radius}
+                                    onChange={(e) => {
+                                      const v = parseInt(e.target.value);
+                                      area.radius = v;
+                                      if (area.isWholeCity) { city.allCityRadius = v; }
+                                      else { const ac = window.BKK.areaCoordinates?.[area.id]; if (ac) ac.radius = v; }
+                                      if (window._editCircle) window._editCircle.setRadius(v);
+                                      setFormData(prev => ({...prev}));
+                                    }}
+                                    style={{ width: '100px' }}
+                                  />
+                                  <span className="font-bold">{area.radius}m</span>
+                                </label>
+                                {!area.isWholeCity && (
+                                  <label className="text-[9px] text-gray-600 flex items-center gap-1">
+                                    {t('general.multiplier')}:
+                                    <input type="number" step="0.1" value={area.distanceMultiplier || city.distanceMultiplier || 1.2}
+                                      style={{ width: '40px', fontSize: '9px', padding: '1px 3px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                      onChange={(e) => { area.distanceMultiplier = parseFloat(e.target.value) || 1.2; const ac = window.BKK.areaCoordinates?.[area.id]; if (ac) ac.distanceMultiplier = area.distanceMultiplier; setFormData(prev => ({...prev})); }}
+                                    />
+                                  </label>
+                                )}
+                                {!area.isWholeCity && (
+                                  <select value={area.safety || 'safe'} style={{ fontSize: '9px', padding: '1px 2px', border: '1px solid #d1d5db', borderRadius: '4px', color: safetyColors[area.safety || 'safe'] }}
+                                    onChange={(e) => { area.safety = e.target.value; const ac = window.BKK.areaCoordinates?.[area.id]; if (ac) ac.safety = area.safety; setFormData(prev => ({...prev})); }}
+                                  >
+                                    {['safe','caution','danger'].map(s => <option key={s} value={s}>{safetyLabels[s]}</option>)}
+                                  </select>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
+                                    window._editMap = null;
+                                    setEditingArea(null);
+                                    showToast(`✓ ${tLabel(area)}`, 'success');
+                                  }}
+                                  className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600"
+                                >✓ {t('general.save')}</button>
+                                <button
+                                  onClick={() => {
+                                    // Restore original values
+                                    const orig = window._editOriginal;
+                                    if (orig) {
+                                      area.lat = orig.lat; area.lng = orig.lng; area.radius = orig.radius; area.safety = orig.safety; area.distanceMultiplier = orig.distanceMultiplier;
+                                      if (area.isWholeCity) { city.center = { lat: orig.lat, lng: orig.lng }; city.allCityRadius = orig.radius; }
+                                      else { const ac = window.BKK.areaCoordinates?.[area.id]; if (ac) { ac.lat = orig.lat; ac.lng = orig.lng; ac.radius = orig.radius; ac.safety = orig.safety; ac.distanceMultiplier = orig.distanceMultiplier; } }
+                                    }
+                                    try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
+                                    window._editMap = null;
+                                    setEditingArea(null);
                                     setFormData(prev => ({...prev}));
                                   }}
-                                  style={{ width: '100px' }}
-                                />
-                                <span className="font-bold">{area.radius}m</span>
-                              </label>
-                              <button onClick={() => { try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {} window._editMap = null; setEditingArea(null); showToast(`${tLabel(area)}: ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}, ${area.radius}m`, 'success'); }} className="px-2 py-0.5 bg-emerald-500 text-white rounded text-[9px] font-bold">✓ {t('general.save')}</button>
-                              <button onClick={() => { try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {} window._editMap = null; setEditingArea(null); }} className="text-[9px] text-gray-400 hover:text-red-500">✕</button>
+                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-300"
+                                >✕ {t('general.cancel')}</button>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            </div>
+
                 </div>
               </div>
             </div>
