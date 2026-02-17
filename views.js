@@ -2523,11 +2523,9 @@
                       <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
                     ))}
                   </select>
-                  {isUnlocked && (
-                    <button onClick={() => setShowAddCityDialog(true)}
-                      style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px dashed #d1d5db', background: 'white', cursor: 'pointer', fontSize: '11px', color: '#6b7280' }}
-                    >➕ {t('settings.addCity')}</button>
-                  )}
+                  <button onClick={() => setShowAddCityDialog(true)}
+                    style={{ padding: '5px 10px', borderRadius: '8px', border: '1.5px dashed #d1d5db', background: 'white', cursor: 'pointer', fontSize: '11px', color: '#6b7280' }}
+                  >➕ {t('settings.addCity')}</button>
                 </div>
                 
                 {/* Selected city info bar */}
@@ -2539,8 +2537,6 @@
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: isActive ? '#ecfdf5' : '#fef2f2', borderRadius: '8px', border: `1px solid ${isActive ? '#a7f3d0' : '#fecaca'}`, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{city.icon} {tLabel(city)}</span>
                       <span style={{ fontSize: '10px', color: '#6b7280' }}>{city.areas?.length || 0} {t('general.areas')} · {city.interests?.length || 0} {t('nav.myInterests')}</span>
-                      {isUnlocked && (
-                        <>
                           <button onClick={() => {
                             city.active = !isActive;
                             try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); s[city.id] = city.active; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
@@ -2563,8 +2559,6 @@
                             }} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #fecaca', cursor: 'pointer', background: '#fef2f2', color: '#ef4444' }}
                             >🗑️ {t('general.remove')}</button>
                           )}
-                        </>
-                      )}
                     </div>
                   );
                 })()}
