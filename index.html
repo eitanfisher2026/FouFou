@@ -7131,14 +7131,14 @@ const CityExplorer = () => {
             {wizardStep === 1 && (
               <div className="bg-white rounded-xl shadow-lg p-3">
                 {/* City Selector - small button only */}
-                {Object.values(window.BKK.cities).filter(c => c.active !== false).length > 1 && (
+                {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).length > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
                     <select
                       value={selectedCityId}
                       onChange={(e) => switchCity(e.target.value)}
                       style={{ padding: '4px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
                     >
-                      {Object.values(window.BKK.cities).filter(c => c.active !== false).map(city => (
+                      {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).map(city => (
                         <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
                       ))}
                     </select>
@@ -7403,14 +7403,14 @@ const CityExplorer = () => {
             {/* Form inputs - hidden in wizard step 3 */}
             {!wizardMode && (<>
             {/* City selector for advanced mode */}
-            {Object.values(window.BKK.cities).filter(c => c.active !== false).length > 1 && (
+            {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2px' }}>
                 <select
                   value={selectedCityId}
                   onChange={(e) => switchCity(e.target.value)}
                   style={{ padding: '3px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
                 >
-                  {Object.values(window.BKK.cities).filter(c => c.active !== false).map(city => (
+                  {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).map(city => (
                     <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
                   ))}
                 </select>
@@ -9561,7 +9561,7 @@ const CityExplorer = () => {
                     onChange={(e) => switchCity(e.target.value, true)}
                     style={{ padding: '6px 10px', borderRadius: '8px', border: '2px solid #e11d48', fontSize: '13px', fontWeight: 'bold', color: '#e11d48', background: '#fef2f2', cursor: 'pointer', minWidth: '140px' }}
                   >
-                    {Object.values(window.BKK.cities).map(city => (
+                    {Object.values(window.BKK.cities || {}).map(city => (
                       <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
                     ))}
                   </select>
@@ -9589,13 +9589,13 @@ const CityExplorer = () => {
                           <button onClick={() => { window.BKK.exportCityFile(city); showToast(`📥 city-${city.id}.js`, 'success'); setCityModified(false); }}
                             style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', background: 'white', color: '#6b7280' }}
                           >📥 {t('settings.exportCity')}</button>
-                          {Object.keys(window.BKK.cities).length > 1 && (
+                          {Object.keys(window.BKK.cities || {}).length > 1 && (
                             <button onClick={() => {
                               const pw = prompt(t('settings.enterPasswordToRemove'));
                               if (pw === null) return;
                               if (adminPassword && pw !== adminPassword) { showToast(t('settings.wrongPassword'), 'error'); return; }
                               if (!confirm(`⚠️ ${t('general.remove')} ${tLabel(city)}?`)) return;
-                              const otherCity = Object.keys(window.BKK.cities).find(id => id !== city.id);
+                              const otherCity = Object.keys(window.BKK.cities || {}).find(id => id !== city.id);
                               if (otherCity) switchCity(otherCity, true);
                               window.BKK.unloadCity(city.id);
                               try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); delete s[city.id]; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
@@ -9878,7 +9878,7 @@ const CityExplorer = () => {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-2">
                 <h3 className="text-sm font-bold text-gray-800 mb-2">🌐 {t('settings.language')}</h3>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {Object.entries(window.BKK.i18n.languages).map(([langId, langInfo]) => (
+                  {Object.entries((window.BKK.i18n && window.BKK.i18n.languages) || {}).map(([langId, langInfo]) => (
                     <button
                       key={langId}
                       onClick={() => switchLanguage(langId)}
