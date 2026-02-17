@@ -5,7 +5,7 @@ window.BKK.cityData.malaga = {
   "name": "מלגה",
   "nameEn": "Malaga",
   "country": "Spain",
-  "icon": "🇪🇸",
+  "icon": "☀️",
   "secondaryIcon": "☀️",
   "active": false,
   "distanceMultiplier": 1.2,

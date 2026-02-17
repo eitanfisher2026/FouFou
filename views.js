@@ -137,7 +137,7 @@
                       style={{
                         padding: '6px 6px', borderRadius: '8px', border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
                         background: formData.area === area.id && formData.searchMode === 'area' ? '#eff6ff' : 'white',
-                        cursor: 'pointer', textAlign: 'right', direction: 'rtl', transition: 'all 0.2s'
+                        cursor: 'pointer', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', transition: 'all 0.2s'
                       }}
                     >
                       <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#1f2937' }}>
@@ -165,7 +165,7 @@
                     }
                   }}
                   style={{
-                    width: '100%', padding: '8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    width: '100%', padding: '8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr',
                     border: formData.searchMode === 'radius' ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
                     background: formData.searchMode === 'radius' ? '#eff6ff' : 'white',
                     marginBottom: '4px', transition: 'all 0.2s'
@@ -179,7 +179,7 @@
                 <button
                   onClick={() => setFormData({...formData, searchMode: 'all'})}
                   style={{
-                    width: '100%', padding: '8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: 'rtl',
+                    width: '100%', padding: '8px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr',
                     border: formData.searchMode === 'all' ? '2px solid #8b5cf6' : '1.5px solid #e5e7eb',
                     background: formData.searchMode === 'all' ? 'linear-gradient(135deg, #f5f3ff, #ede9fe)' : 'white',
                     marginBottom: '6px', transition: 'all 0.2s'
@@ -593,7 +593,7 @@
                             onChange={(e) => setPlaceSearchQuery(e.target.value)}
                             placeholder={t("form.searchMyPlace")}
                             className="w-full p-1.5 border border-blue-200 rounded-lg text-[10px] focus:border-blue-400 focus:outline-none"
-                            dir="rtl"
+                            dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"}
                             style={{ paddingLeft: '24px' }}
                           />
                           {(placeSearchQuery || formData.radiusPlaceId) && (
@@ -791,7 +791,7 @@
 
             {/* Show stops list ONLY after route is calculated */}
             {route && (
-              <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir="rtl">
+              <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"}>
                 <div className="flex items-center gap-2 mb-2">
                   <h3 className="font-bold text-blue-900 text-sm">{`${t("route.places")} - ${route.areaName}`} ({route.stops.length}):</h3>
                   <button
@@ -840,7 +840,7 @@
                               setRoute(prev => ({ ...prev, stops: newStops }));
                             }}
                             className="flex items-center gap-2 p-2 mb-1 bg-white rounded-lg border-2 border-gray-200 cursor-grab active:cursor-grabbing transition-colors" 
-                            style={{ direction: 'rtl' }}
+                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                           >
                             {/* Drag handle + Stop number */}
                             <div style={{ 
@@ -1274,7 +1274,7 @@
                             onClick={() => setShowAddressDialog(true)}
                             placeholder={t("form.selectStartPoint")}
                             className="w-full p-1.5 border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
-                            style={{ direction: 'rtl', paddingLeft: '8px', paddingRight: '8px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
+                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', paddingLeft: '8px', paddingRight: '8px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
                           />
                         </div>
                         {(formData.startPoint?.trim() || startPointCoords) && (
@@ -1957,7 +1957,7 @@
                 placeholder={t("places.searchByNameHint")}
                 value={searchQuery}
                 className="w-full p-3 border-3 border-gray-300 rounded-xl text-base focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
-                style={{ textAlign: 'right', direction: 'rtl' }}
+                style={{ textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                 onChange={(e) => {
                   const query = e.target.value;
                   setSearchQuery(query);
@@ -2600,7 +2600,7 @@
                         <React.Fragment>
                           <input type="text" value={city.icon || '📍'}
                             onChange={(e) => { city.icon = e.target.value; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = e.target.value; setCityModified(true); setCityEditCounter(c => c + 1); }}
-                            style={{ width: '32px', fontSize: '16px', textAlign: 'center', padding: '1px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff' }}
+                            style={{ width: '42px', fontSize: '18px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff' }}
                           />
                           <input type="text" value={city.name || ''}
                             onChange={(e) => { city.name = e.target.value; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].name = e.target.value; setCityModified(true); setCityEditCounter(c => c + 1); }}
@@ -2628,10 +2628,13 @@
                             style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', background: 'white', color: '#6b7280' }}
                           >📥 {t('settings.exportCity')}</button>
                           {Object.keys(window.BKK.cities || {}).length > 1 && (
-                            <button onClick={() => {
+                            <button onClick={async () => {
                               const pw = prompt(t('settings.enterPasswordToRemove'));
                               if (pw === null) return;
-                              if (adminPassword && pw !== adminPassword) { showToast(t('settings.wrongPassword'), 'error'); return; }
+                              if (adminPassword) {
+                                const hashedInput = await window.BKK.hashPassword(pw);
+                                if (hashedInput !== adminPassword && pw !== adminPassword) { showToast(t('settings.wrongPassword'), 'error'); return; }
+                              }
                               if (!confirm(`⚠️ ${t('general.remove')} ${tLabel(city)}?`)) return;
                               const otherCity = Object.keys(window.BKK.cities || {}).find(id => id !== city.id);
                               if (otherCity) switchCity(otherCity, true);

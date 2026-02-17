@@ -70,7 +70,7 @@
                         onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
                         placeholder={t("places.placeName")}
                         className="flex-1 p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: 'rtl' }}
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                         autoFocus={!showEditLocationDialog}
                       />
                       <button
@@ -103,7 +103,7 @@
                               setLocationSearchResults(null);
                               showToast(`✅ ${result.name} ${t("toast.selectedPlace")}`, 'success');
                             }}
-                            style={{ width: '100%', textAlign: 'right', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: 'rtl' }}
+                            style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                             onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
                             onMouseLeave={(e) => e.target.style.background = 'none'}
                           >
@@ -206,7 +206,7 @@
                     onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
                     placeholder={t("places.description")}
                     className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: 'rtl' }}
+                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                   />
                 </div>
 
@@ -301,7 +301,7 @@
                       onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
                       placeholder={t("places.address")}
                       className="w-full p-1.5 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: 'rtl' }}
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                     />
                   </div>
                   <div>
@@ -471,7 +471,7 @@
                     onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
                     placeholder={t("places.notes")}
                     className="w-full p-2 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: 'rtl', minHeight: '50px' }}
+                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px' }}
                     rows="2"
                   />
                 </div>
@@ -550,7 +550,7 @@
               {(() => {
                 const isLockedPlace = showEditLocationDialog && editingLocation?.locked && !isUnlocked;
                 return (
-              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
+              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 {isLockedPlace ? (
                   <>
                     <div className="flex-1 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1">
@@ -663,7 +663,7 @@
                       onChange={(e) => setNewInterest({...newInterest, label: e.target.value})}
                       placeholder={t("interests.exampleTypes")}
                       className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: 'rtl' }}
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                       disabled={newInterest.builtIn && !isUnlocked}
                       autoFocus={!newInterest.builtIn}
                     />
@@ -860,7 +860,7 @@
               </div>
               
               {/* Footer */}
-              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
+              <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 {(() => {
                   const isLockedInterest = editingCustomInterest?.locked && !isUnlocked;
                   return isLockedInterest ? (
@@ -1194,7 +1194,7 @@
                   value={editingRoute.name || ''}
                   onChange={(e) => setEditingRoute({...editingRoute, name: e.target.value})}
                   className="w-full p-2 text-sm border-2 border-blue-300 rounded-lg"
-                  style={{ direction: 'rtl' }}
+                  style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                   disabled={editingRoute.locked && !isUnlocked}
                 />
               </div>
@@ -1207,7 +1207,7 @@
                   onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
                   placeholder={t("places.notes")}
                   className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg h-16 resize-none"
-                  style={{ direction: 'rtl' }}
+                  style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                   disabled={editingRoute.locked && !isUnlocked}
                 />
               </div>
@@ -1311,7 +1311,7 @@
             </div>
             
             {/* Footer */}
-            <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
+            <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
               {(() => {
                 const isLockedRoute = editingRoute.locked && !isUnlocked;
                 return (
@@ -1446,7 +1446,7 @@
         
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3">
-            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
+            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
               {/* Header */}
               <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-sm font-bold">{t("route.addManualStop")}</h3>
@@ -1467,7 +1467,7 @@
                     onKeyDown={(e) => { if (e.key === 'Enter') searchManualPlace(); }}
                     placeholder={t("form.typeAddressAlt")}
                     className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm"
-                    style={{ direction: 'rtl' }}
+                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                     autoFocus
                   />
                   <button
@@ -1535,7 +1535,7 @@
         
         return (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3">
-            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: 'rtl' }}>
+            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
               {/* Header */}
               <div className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-sm font-bold">{`📍 ${t("form.searchAddress")}`}</h3>
@@ -1556,7 +1556,7 @@
                     onKeyDown={(e) => { if (e.key === 'Enter') searchAddress(); }}
                     placeholder={t("form.typeAddress")}
                     className="flex-1 p-2.5 border border-gray-300 rounded-lg text-sm"
-                    style={{ direction: 'rtl' }}
+                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                     autoFocus
                   />
                   <button
@@ -1699,7 +1699,7 @@
                 className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
                 rows={4}
                 autoFocus
-                dir="rtl"
+                dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"}
               />
               
               <button
