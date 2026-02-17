@@ -54,6 +54,8 @@
                       <input
                         type="text"
                         value={newLocation.name}
+                        readOnly={showEditLocationDialog && editingLocation?.locked && !isUnlocked}
+                        onFocus={(e) => { if (showEditLocationDialog && editingLocation?.locked && !isUnlocked) e.target.blur(); }}
                         onChange={(e) => {
                           setNewLocation({...newLocation, name: e.target.value});
                           setLocationSearchResults(null);
@@ -549,18 +551,14 @@
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: 'rtl' }}>
                 {isLockedPlace ? (
                   <>
-                    {newLocation.lat && newLocation.lng && (
-                      <a
-                        href={window.BKK.getGoogleMapsUrl(newLocation)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-2.5 rounded-lg text-sm font-bold text-center bg-green-500 text-white hover:bg-green-600"
-                      >
-                        {t("general.openInGoogle")}
-                      </a>
-                    )}
+                    <button
+                      onClick={() => { setShowEditLocationDialog(false); setEditingLocation(null); }}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-bold bg-green-500 text-white hover:bg-green-600"
+                    >
+                      ✓ {t("general.close")}
+                    </button>
                     <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center flex items-center">
-                      🔒 View only
+                      🔒 {t("general.readOnly")}
                     </div>
                   </>
                 ) : (
