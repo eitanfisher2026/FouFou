@@ -2544,17 +2544,21 @@
                             setFormData(prev => ({...prev}));
                           }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#ef4444', fontWeight: 'bold' }}
                           >{isActive ? `▶️ ${t('general.active')}` : `⏸️ ${t('general.inactive')}`}</button>
-                          <button onClick={() => { window.BKK.exportCityFile(city); showToast(`📥 city-${city.id}.js`, 'success'); }}
+                          <button onClick={() => { window.BKK.exportCityFile(city); showToast(`📥 city-${city.id}.js`, 'success'); setCityModified(false); }}
                             style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', cursor: 'pointer', background: 'white', color: '#6b7280' }}
                           >📥 {t('settings.exportCity')}</button>
                           {Object.keys(window.BKK.cities).length > 1 && (
                             <button onClick={() => {
-                              if (!confirm(`${t('general.remove')} ${tLabel(city)}?`)) return;
+                              const pw = prompt(t('settings.enterPasswordToRemove'));
+                              if (pw === null) return;
+                              if (adminPassword && pw !== adminPassword) { showToast(t('settings.wrongPassword'), 'error'); return; }
+                              if (!confirm(`⚠️ ${t('general.remove')} ${tLabel(city)}?`)) return;
                               const otherCity = Object.keys(window.BKK.cities).find(id => id !== city.id);
                               if (otherCity) switchCity(otherCity, true);
                               window.BKK.unloadCity(city.id);
                               try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); delete s[city.id]; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
                               showToast(`${tLabel(city)} ${t('general.removed')}`, 'info');
+                              setCityModified(false);
                               setFormData(prev => ({...prev}));
                             }} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #fecaca', cursor: 'pointer', background: '#fef2f2', color: '#ef4444' }}
                             >🗑️ {t('general.remove')}</button>
@@ -2562,6 +2566,39 @@
                     </div>
                   );
                 })()}
+
+                {/* Modified indicator + actions */}
+                {cityModified && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', padding: '6px 10px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                    <span style={{ fontSize: '11px', color: '#92400e', fontWeight: 'bold' }}>⚠️ {t('settings.unsavedChanges')}</span>
+                    <button onClick={() => { 
+                      const city = window.BKK.selectedCity;
+                      if (city) { window.BKK.exportCityFile(city); showToast(`📥 city-${city.id}.js`, 'success'); setCityModified(false); }
+                    }} style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: '#f59e0b', color: 'white', fontWeight: 'bold' }}
+                    >📥 {t('settings.exportCity')}</button>
+                  </div>
+                )}
+
+                {/* Add Area button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                  <button onClick={() => {
+                    const city = window.BKK.selectedCity;
+                    if (!city) return;
+                    const name = prompt(t('settings.newAreaName'));
+                    if (!name || !name.trim()) return;
+                    const id = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+                    if (city.areas.some(a => a.id === id)) { showToast(t('settings.areaExists'), 'warning'); return; }
+                    const newArea = { id, label: name.trim(), labelEn: name.trim(), desc: '', descEn: '', lat: city.center?.lat || 0, lng: city.center?.lng || 0, radius: 2000, size: 'medium', safety: 'safe' };
+                    city.areas.push(newArea);
+                    // Update areaCoordinates
+                    window.BKK.areaCoordinates[id] = { lat: newArea.lat, lng: newArea.lng, radius: newArea.radius, distanceMultiplier: city.distanceMultiplier || 1.2, size: 'medium', safety: 'safe' };
+                    window.BKK.areaOptions.push({ id, label: newArea.label, labelEn: newArea.labelEn, desc: '', descEn: '' });
+                    setCityModified(true);
+                    showToast(`➕ ${name.trim()}`, 'success');
+                    setFormData(prev => ({...prev}));
+                  }} style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '6px', border: '1.5px dashed #d1d5db', cursor: 'pointer', background: 'white', color: '#6b7280' }}
+                  >➕ {t('settings.addArea')}</button>
+                </div>
 
                 {/* Areas list for selected city */}
                 <div style={{ overflowY: 'auto', maxHeight: editingArea ? 'none' : '350px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '4px' }}>
@@ -2589,7 +2626,35 @@
                                 {safetyLabels[area.safety || 'safe']}
                               </span>
                             )}
-                            {isUnlocked && !isEditing && (
+                            {!area.isWholeCity && !isEditing && (
+                              <button onClick={() => {
+                                const newName = prompt(t('settings.renameArea'), tLabel(area));
+                                if (!newName || !newName.trim() || newName.trim() === tLabel(area)) return;
+                                area.label = newName.trim();
+                                area.labelEn = newName.trim();
+                                const ao = window.BKK.areaOptions?.find(a => a.id === area.id);
+                                if (ao) { ao.label = area.label; ao.labelEn = area.labelEn; }
+                                setCityModified(true);
+                                showToast(`✏️ ${newName.trim()}`, 'success');
+                                setFormData(prev => ({...prev}));
+                              }} style={{ fontSize: '8px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+                              title={t('settings.renameArea')}>✏️</button>
+                            )}
+                            {!area.isWholeCity && !isEditing && (
+                              <button onClick={() => {
+                                if (!confirm(`${t('general.remove')} ${tLabel(area)}?`)) return;
+                                const city = window.BKK.selectedCity;
+                                if (!city) return;
+                                city.areas = city.areas.filter(a => a.id !== area.id);
+                                delete window.BKK.areaCoordinates[area.id];
+                                window.BKK.areaOptions = window.BKK.areaOptions.filter(a => a.id !== area.id);
+                                setCityModified(true);
+                                showToast(`🗑️ ${tLabel(area)}`, 'info');
+                                setFormData(prev => ({...prev}));
+                              }} style={{ fontSize: '8px', color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}
+                              title={t('general.remove')}>🗑️</button>
+                            )}
+                            {!isEditing && (
                               <button
                                 onClick={() => {
                                   try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
@@ -2675,6 +2740,7 @@
                                     try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
                                     window._editMap = null;
                                     setEditingArea(null);
+                                    setCityModified(true);
                                     showToast(`✓ ${tLabel(area)}`, 'success');
                                   }}
                                   className="px-3 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600"

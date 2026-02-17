@@ -315,6 +315,7 @@
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
+  const [cityModified, setCityModified] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
@@ -1184,6 +1185,7 @@
     }
     setDisabledStops([]);
     setManualStops([]);
+    setCityModified(false);
     showToast(window.BKK.selectedCity.icon + ' ' + tLabel(window.BKK.selectedCity), 'success');
   };
 
