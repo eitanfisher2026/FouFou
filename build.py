@@ -17,6 +17,14 @@ def build():
     template = read_file('_source-template.html')
     i18n = read_file('i18n.js')
     config = read_file('config.js')
+    
+    # Load city data files
+    import glob
+    city_files = sorted(glob.glob('city-*.js'))
+    city_data = '\n'.join([read_file(f) for f in city_files])
+    if city_files:
+        print(f"📦 City files: {', '.join(city_files)}")
+    
     utils = read_file('utils.js')
     app_logic = read_file('app-logic.js')
     views = read_file('views.js')
@@ -32,6 +40,7 @@ def build():
     
     output = template
     output = output.replace('// __INSERT_I18N__', i18n)
+    output = output.replace('// __INSERT_CITY_DATA__', city_data)
     output = output.replace('// __INSERT_CONFIG__', config)
     output = output.replace('// __INSERT_UTILS__', utils)
     output = output.replace('// __INSERT_APP_LOGIC__', app_logic)

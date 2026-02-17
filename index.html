@@ -1441,48 +1441,12 @@ help: {
 console.log('[I18N] Loaded translations: he, en');
 
     </script>
-    <!-- Config -->
+    <!-- City Data Files -->
     <script>
-// ============================================================================
-// City Explorer - Configuration & Constants
-// Copyright © 2026 Eitan Fisher. All Rights Reserved.
-// ============================================================================
+// City data: Bangkok
+window.BKK.cityData = window.BKK.cityData || {};
+window.BKK.cityData.bangkok = {
 
-window.BKK = window.BKK || {};
-
-// App Version
-window.BKK.VERSION = '3.0.0';
-
-// App Name
-window.BKK.APP_NAME = 'City Explorer';
-
-// Firebase Configuration
-window.BKK.firebaseConfig = {
-  apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
-  authDomain: "bangkok-explorer.firebaseapp.com",
-  databaseURL: "https://bangkok-explorer-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bangkok-explorer",
-  storageBucket: "bangkok-explorer.firebasestorage.app",
-  messagingSenderId: "139083217994",
-  appId: "1:139083217994:web:48fc6a45028c91d177bab3",
-  measurementId: "G-QVGD0RKEHP"
-};
-
-// Google Places API Configuration
-window.BKK.GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
-window.BKK.GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
-window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
-
-// ============================================================================
-// CITIES DATABASE
-// ============================================================================
-
-window.BKK.cities = {
-
-  // =========================================================================
-  // BANGKOK
-  // =========================================================================
-  bangkok: {
     id: 'bangkok',
     name: 'בנגקוק',
     nameEn: 'Bangkok',
@@ -1561,12 +1525,12 @@ window.BKK.cities = {
       nightlife: 'ברים ומועדוני לילה', parks: 'גנים ופארקים', rooftop: 'ברים ומסעדות על גגות',
       entertainment: 'קולנוע, תיאטרון, מופעים'
     }
-  },
+};
 
-  // =========================================================================
-  // GUSH DAN (Tel Aviv Metropolitan Area)
-  // =========================================================================
-  gushdan: {
+// City data: Gush Dan (Tel Aviv Metropolitan)
+window.BKK.cityData = window.BKK.cityData || {};
+window.BKK.cityData.gushdan = {
+
     id: 'gushdan',
     name: 'גוש דן',
     nameEn: 'Gush Dan',
@@ -1627,12 +1591,12 @@ window.BKK.cities = {
       markets: 'שווקים ובזארים', nightlife: 'ברים ומועדונים', parks: 'פארקים וגנים',
       shopping: 'קניונים וחנויות', culture: 'תיאטרון, מוזיקה, מופעים', history: 'אתרים היסטוריים ומוזיאונים'
     }
-  },
+};
 
-  // =========================================================================
-  // SINGAPORE
-  // =========================================================================
-  singapore: {
+// City data: Singapore
+window.BKK.cityData = window.BKK.cityData || {};
+window.BKK.cityData.singapore = {
+
     id: 'singapore',
     name: 'סינגפור',
     nameEn: 'Singapore',
@@ -1695,22 +1659,113 @@ window.BKK.cities = {
       galleries: 'גלריות ומוזיאונים', markets: 'שווקים ובזארים',
       nightlife: 'ברים ומועדונים', shopping: 'קניונים וחנויות', rooftop: 'ברים ומסעדות על גגות'
     }
-  }
 };
 
+    </script>
+    <!-- Config -->
+    <script>
 // ============================================================================
-// CITY SELECTION & COMPATIBILITY LAYER
+// City Explorer - Configuration & Constants
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// ============================================================================
+
+window.BKK = window.BKK || {};
+
+// App Version
+window.BKK.VERSION = '3.0.0';
+
+// Tile URL - English labels for all cities
+window.BKK.getTileUrl = function() {
+  return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+};
+
+// App Name
+window.BKK.APP_NAME = 'City Explorer';
+
+// Firebase Configuration
+window.BKK.firebaseConfig = {
+  apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
+  authDomain: "bangkok-explorer.firebaseapp.com",
+  databaseURL: "https://bangkok-explorer-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bangkok-explorer",
+  storageBucket: "bangkok-explorer.firebasestorage.app",
+  messagingSenderId: "139083217994",
+  appId: "1:139083217994:web:48fc6a45028c91d177bab3",
+  measurementId: "G-QVGD0RKEHP"
+};
+
+// Google Places API Configuration
+window.BKK.GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
+window.BKK.GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
+
+// ============================================================================
+// CITIES REGISTRY (lightweight metadata only - full data loaded dynamically)
+// ============================================================================
+
+window.BKK.cityRegistry = {
+  bangkok: { id: 'bangkok', name: 'בנגקוק', nameEn: 'Bangkok', country: 'Thailand', icon: '🛺', secondaryIcon: '🍜', file: 'city-bangkok.js' },
+  gushdan: { id: 'gushdan', name: 'גוש דן', nameEn: 'Gush Dan', country: 'Israel', icon: '🏖️', secondaryIcon: '☀️', file: 'city-gushdan.js' },
+  singapore: { id: 'singapore', name: 'סינגפור', nameEn: 'Singapore', country: 'Singapore', icon: '🦁', secondaryIcon: '🌿', file: 'city-singapore.js' }
+};
+
+// Active cities (loaded from localStorage or defaults)
+window.BKK.cities = {};
+window.BKK.cityData = window.BKK.cityData || {};
+
+// ============================================================================
+// CITY LOADING & SELECTION
 // ============================================================================
 
 /**
+ * Load a city's data file dynamically, then register it.
+ * Returns a Promise that resolves when the city is ready.
+ */
+window.BKK.loadCity = function(cityId) {
+  return new Promise(function(resolve, reject) {
+    var reg = window.BKK.cityRegistry[cityId];
+    if (!reg) { reject('Unknown city: ' + cityId); return; }
+    
+    // Already loaded?
+    if (window.BKK.cityData[cityId]) {
+      window.BKK.cities[cityId] = window.BKK.cityData[cityId];
+      resolve(window.BKK.cities[cityId]);
+      return;
+    }
+    
+    // Load the script
+    var script = document.createElement('script');
+    script.src = reg.file + '?v=' + window.BKK.VERSION;
+    script.onload = function() {
+      if (window.BKK.cityData[cityId]) {
+        window.BKK.cities[cityId] = window.BKK.cityData[cityId];
+        console.log('[CONFIG] Loaded city file: ' + reg.nameEn);
+        resolve(window.BKK.cities[cityId]);
+      } else {
+        reject('City data not found after loading: ' + cityId);
+      }
+    };
+    script.onerror = function() { reject('Failed to load city file: ' + reg.file); };
+    document.head.appendChild(script);
+  });
+};
+
+/**
+ * Unload a city to free memory (keeps registry entry).
+ */
+window.BKK.unloadCity = function(cityId) {
+  delete window.BKK.cities[cityId];
+  delete window.BKK.cityData[cityId];
+  console.log('[CONFIG] Unloaded city: ' + cityId);
+};
+
+/**
  * Select a city and populate all legacy window.BKK.* variables.
- * This allows ALL existing code in app-logic.js, views.js, dialogs.js
- * to work without changes — they read from the same window.BKK.* vars.
  */
 window.BKK.selectCity = function(cityId) {
   var city = window.BKK.cities[cityId];
   if (!city) {
-    console.error('[CONFIG] Unknown city:', cityId);
+    console.error('[CONFIG] City not loaded:', cityId);
     return false;
   }
 
@@ -1740,28 +1795,34 @@ window.BKK.selectCity = function(cityId) {
   window.BKK.uncoveredInterests = city.uncoveredInterests || [];
   window.BKK.interestTooltips = city.interestTooltips || {};
 
-  // City name for search queries (replaces hardcoded "Bangkok")
+  // City name for search queries
   window.BKK.cityNameForSearch = city.nameEn;
 
   console.log('[CONFIG] City selected: ' + city.nameEn + ' (' + city.areas.length + ' areas, ' + city.interests.length + ' interests)');
   return true;
 };
 
-// Default: load saved city or Bangkok
+// Default: load saved city (synchronous for initial page load - city files are in HTML)
 (function() {
   // Restore city active/inactive states
   try {
     var states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
     Object.keys(states).forEach(function(cityId) {
-      if (window.BKK.cities[cityId]) {
-        window.BKK.cities[cityId].active = states[cityId];
+      if (window.BKK.cityRegistry[cityId]) {
+        window.BKK.cityRegistry[cityId].active = states[cityId];
       }
     });
   } catch(e) {}
+
+  // On initial load, city data files are embedded in HTML (via build.py)
+  // So cityData should already be populated
+  Object.keys(window.BKK.cityData).forEach(function(cityId) {
+    window.BKK.cities[cityId] = window.BKK.cityData[cityId];
+  });
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
-  if (!window.BKK.cities[savedCity]) savedCity = 'bangkok';
+  if (!window.BKK.cities[savedCity]) savedCity = Object.keys(window.BKK.cities)[0] || 'bangkok';
   window.BKK.selectCity(savedCity);
 })();
 
@@ -2394,8 +2455,8 @@ const CityExplorer = () => {
           // All areas mode - center on selected city
           const cityCenter = window.BKK.selectedCity?.center || { lat: 13.7500, lng: 100.5350 };
           const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-            attribution: '© CartoDB © OSM', maxZoom: 18
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
           const allCircles = [];
@@ -2437,8 +2498,8 @@ const CityExplorer = () => {
           if (!lat || !lng) return;
           
           const map = L.map(container).setView([lat, lng], 15);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-            attribution: '© CartoDB © OSM', maxZoom: 18
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
           // Radius circle FIRST (so marker is on top)
@@ -9177,7 +9238,7 @@ const CityExplorer = () => {
                                     container._leaflet_id = null;
                                     const zoom = area.isWholeCity ? 11 : 13;
                                     const map = L.map(container).setView([area.lat, area.lng], zoom);
-                                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB © OSM', maxZoom: 18 }).addTo(map);
+                                    L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
                                     const color = area.isWholeCity ? '#eab308' : '#10b981';
                                     const circle = L.circle([area.lat, area.lng], { radius: area.radius, color: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
                                     const marker = L.marker([area.lat, area.lng], { draggable: true }).addTo(map);

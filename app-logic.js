@@ -142,8 +142,8 @@
           // All areas mode - center on selected city
           const cityCenter = window.BKK.selectedCity?.center || { lat: 13.7500, lng: 100.5350 };
           const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-            attribution: '© CartoDB © OSM', maxZoom: 18
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
           const allCircles = [];
@@ -185,8 +185,8 @@
           if (!lat || !lng) return;
           
           const map = L.map(container).setView([lat, lng], 15);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
-            attribution: '© CartoDB © OSM', maxZoom: 18
+          L.tileLayer(window.BKK.getTileUrl(), {
+            attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
           // Radius circle FIRST (so marker is on top)
