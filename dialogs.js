@@ -1872,254 +1872,213 @@
           <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ maxHeight: '90vh', overflow: 'auto' }}>
             <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-3 rounded-t-xl flex justify-between items-center">
               <h3 className="text-base font-bold">{`🌍 ${t('settings.addCity')}`}</h3>
-              <button onClick={() => setShowAddCityDialog(false)} className="text-white text-lg font-bold">✕</button>
+              <button onClick={() => { setShowAddCityDialog(false); setAddCityInput(''); setAddCitySearchStatus(''); setAddCityFound(null); setAddCityGenerated(null); }} className="text-white text-lg font-bold">✕</button>
             </div>
             <div className="p-4">
-              {(() => {
-                const [cityInput, setCityInput] = React.useState('');
-                const [searchStatus, setSearchStatus] = React.useState(''); // '', 'searching', 'found', 'error', 'generating', 'done'
-                const [foundCity, setFoundCity] = React.useState(null);
-                const [generatedCity, setGeneratedCity] = React.useState(null);
-
-                const searchCity = async () => {
-                  if (!cityInput.trim()) return;
-                  setSearchStatus('searching');
-                  setFoundCity(null);
-                  setGeneratedCity(null);
-                  
-                  try {
-                    // Use Google Places Text Search to find the city
-                    const resp = await fetch(window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types,places.viewport,places.id' },
-                      body: JSON.stringify({ textQuery: cityInput + ' city', languageCode: 'en' })
-                    });
-                    const data = await resp.json();
-                    
-                    if (data.places && data.places.length > 0) {
-                      const place = data.places[0];
-                      const cityName = place.displayName?.text || cityInput;
-                      const lat = place.location?.latitude;
-                      const lng = place.location?.longitude;
-                      
-                      if (lat && lng) {
-                        // Check if already loaded
-                        const cityId = cityName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                        if (window.BKK.cities[cityId]) {
-                          setSearchStatus('error');
-                          showToast(t('settings.cityAlreadyExists'), 'warning');
-                          return;
-                        }
-                        
-                        setFoundCity({ name: cityName, lat, lng, address: place.formattedAddress, id: cityId, viewport: place.viewport });
-                        setSearchStatus('found');
-                      } else {
-                        setSearchStatus('error');
-                      }
-                    } else {
-                      setSearchStatus('error');
-                    }
-                  } catch (err) {
-                    console.error('[ADD CITY] Search error:', err);
-                    setSearchStatus('error');
-                  }
-                };
-
-                const generateCity = async () => {
-                  if (!foundCity) return;
-                  setSearchStatus('generating');
-                  
-                  try {
-                    // Step 1: Find neighborhoods/areas using Google Places
-                    const areasResp = await fetch(window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.location,places.types,places.formattedAddress' },
-                      body: JSON.stringify({ textQuery: `popular neighborhoods districts areas in ${foundCity.name}`, languageCode: 'en', maxResultCount: 10 })
-                    });
-                    const areasData = await areasResp.json();
-                    
-                    // Generate areas from results
-                    const areas = [];
-                    const seen = new Set();
-                    if (areasData.places) {
-                      areasData.places.forEach((p, i) => {
-                        const areaName = p.displayName?.text || `Area ${i+1}`;
-                        const areaId = areaName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                        if (seen.has(areaId) || !p.location) return;
-                        seen.add(areaId);
-                        areas.push({
-                          id: areaId, label: areaName, labelEn: areaName,
-                          desc: p.formattedAddress || '', descEn: p.formattedAddress || '',
-                          lat: p.location.latitude, lng: p.location.longitude,
-                          radius: 2000, size: 'medium', safety: 'safe'
-                        });
-                      });
-                    }
-                    
-                    // If no areas found, create a default one
-                    if (areas.length === 0) {
-                      areas.push({
-                        id: 'center', label: 'Center', labelEn: 'Center',
-                        desc: 'City center', descEn: 'City center',
-                        lat: foundCity.lat, lng: foundCity.lng,
-                        radius: 3000, size: 'large', safety: 'safe'
-                      });
-                    }
-                    
-                    // Default interests (universal set that works for any city)
-                    const defaultInterests = [
-                      { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
-                      { id: 'cafes', label: 'קפה', labelEn: 'Coffee', icon: '☕' },
-                      { id: 'culture', label: 'תרבות', labelEn: 'Culture', icon: '🎭' },
-                      { id: 'history', label: 'היסטוריה', labelEn: 'History', icon: '🏛️' },
-                      { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
-                      { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
-                      { id: 'nightlife', label: 'לילה', labelEn: 'Nightlife', icon: '🌃' },
-                      { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
-                      { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
-                      { id: 'graffiti', label: 'גרפיטי', labelEn: 'Street Art', icon: '🎨' },
-                      { id: 'beaches', label: 'חופים', labelEn: 'Beaches', icon: '🏖️' },
-                      { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏗️' }
-                    ];
-                    
-                    // Default place type mapping
-                    const defaultPlaceTypes = {
-                      food: ['restaurant', 'meal_takeaway'],
-                      cafes: ['cafe', 'coffee_shop'],
-                      culture: ['performing_arts_theater', 'cultural_center', 'museum'],
-                      history: ['historical_landmark', 'museum'],
-                      parks: ['park', 'national_park'],
-                      shopping: ['shopping_mall', 'store'],
-                      nightlife: ['bar', 'night_club'],
-                      galleries: ['art_gallery', 'museum'],
-                      markets: ['market'],
-                      graffiti: ['art_gallery'],
-                      beaches: ['beach'],
-                      architecture: ['historical_landmark']
-                    };
-                    
-                    // Calculate allCityRadius from viewport or default
-                    let allCityRadius = 15000;
-                    if (foundCity.viewport) {
-                      const vp = foundCity.viewport;
-                      if (vp.high && vp.low) {
-                        const latDiff = Math.abs(vp.high.latitude - vp.low.latitude);
-                        const lngDiff = Math.abs(vp.high.longitude - vp.low.longitude);
-                        allCityRadius = Math.round(Math.max(latDiff, lngDiff) * 111000 / 2);
-                      }
-                    }
-                    
-                    const newCity = {
-                      id: foundCity.id,
-                      name: foundCity.name,
-                      nameEn: foundCity.name,
-                      country: foundCity.address?.split(',').pop()?.trim() || '',
-                      icon: '📍',
-                      secondaryIcon: '🏙️',
-                      active: false, // Start inactive
-                      distanceMultiplier: 1.2,
-                      center: { lat: foundCity.lat, lng: foundCity.lng },
-                      allCityRadius: allCityRadius,
-                      areas: areas,
-                      interests: defaultInterests,
-                      interestToGooglePlaces: defaultPlaceTypes,
-                      textSearchInterests: { graffiti: 'street art' },
-                      uncoveredInterests: [],
-                      interestTooltips: {}
-                    };
-                    
-                    setGeneratedCity(newCity);
-                    setSearchStatus('done');
-                    
-                  } catch (err) {
-                    console.error('[ADD CITY] Generate error:', err);
-                    setSearchStatus('error');
-                    showToast(t('general.error'), 'error');
-                  }
-                };
-
-                const addCityToSystem = () => {
-                  if (!generatedCity) return;
-                  // Add to cities
-                  window.BKK.cities[generatedCity.id] = generatedCity;
-                  window.BKK.cityData[generatedCity.id] = generatedCity;
-                  // Add to registry
-                  window.BKK.cityRegistry[generatedCity.id] = {
-                    id: generatedCity.id, name: generatedCity.name, nameEn: generatedCity.nameEn,
-                    country: generatedCity.country, icon: generatedCity.icon, file: `city-${generatedCity.id}.js`
-                  };
-                  // Save to localStorage for persistence
-                  try {
-                    const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
-                    customCities[generatedCity.id] = generatedCity;
-                    localStorage.setItem('custom_cities', JSON.stringify(customCities));
-                  } catch(e) { console.error('Failed to save city:', e); }
-                  
-                  // Generate and download city JS file
-                  window.BKK.exportCityFile(generatedCity);
-                  
-                  showToast(`✓ ${generatedCity.nameEn} ${t('settings.cityAdded')}`, 'success');
-                  setShowAddCityDialog(false);
-                  switchCity(generatedCity.id);
-                  setFormData(prev => ({...prev}));
-                };
-
-                return (
                   <div className="space-y-4">
                     {/* Search input */}
                     <div className="flex gap-2">
                       <input
-                        type="text" value={cityInput} onChange={(e) => setCityInput(e.target.value)}
+                        type="text" value={addCityInput} onChange={(e) => setAddCityInput(e.target.value)}
                         placeholder={t('settings.enterCityName')}
                         className="flex-1 p-2 border-2 border-gray-300 rounded-lg text-sm"
                         autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Enter') searchCity(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') {
+                          const doSearch = async () => {
+                            if (!addCityInput.trim()) return;
+                            setAddCitySearchStatus('searching');
+                            setAddCityFound(null);
+                            setAddCityGenerated(null);
+                            try {
+                              const resp = await fetch(window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types,places.viewport,places.id' },
+                                body: JSON.stringify({ textQuery: addCityInput + ' city', languageCode: 'en' })
+                              });
+                              const data = await resp.json();
+                              if (data.places && data.places.length > 0) {
+                                const place = data.places[0];
+                                const cityName = place.displayName?.text || addCityInput;
+                                const lat = place.location?.latitude;
+                                const lng = place.location?.longitude;
+                                if (lat && lng) {
+                                  const cityId = cityName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                  if (window.BKK.cities[cityId]) {
+                                    setAddCitySearchStatus('error');
+                                    showToast(t('settings.cityAlreadyExists'), 'warning');
+                                    return;
+                                  }
+                                  setAddCityFound({ name: cityName, lat, lng, address: place.formattedAddress, id: cityId, viewport: place.viewport });
+                                  setAddCitySearchStatus('found');
+                                } else { setAddCitySearchStatus('error'); }
+                              } else { setAddCitySearchStatus('error'); }
+                            } catch (err) { console.error('[ADD CITY] Search error:', err); setAddCitySearchStatus('error'); }
+                          };
+                          doSearch();
+                        }}}
                       />
-                      <button onClick={searchCity} disabled={!cityInput.trim() || searchStatus === 'searching'}
+                      <button onClick={async () => {
+                            if (!addCityInput.trim()) return;
+                            setAddCitySearchStatus('searching');
+                            setAddCityFound(null);
+                            setAddCityGenerated(null);
+                            try {
+                              const resp = await fetch(window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types,places.viewport,places.id' },
+                                body: JSON.stringify({ textQuery: addCityInput + ' city', languageCode: 'en' })
+                              });
+                              const data = await resp.json();
+                              if (data.places && data.places.length > 0) {
+                                const place = data.places[0];
+                                const cityName = place.displayName?.text || addCityInput;
+                                const lat = place.location?.latitude;
+                                const lng = place.location?.longitude;
+                                if (lat && lng) {
+                                  const cityId = cityName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                  if (window.BKK.cities[cityId]) {
+                                    setAddCitySearchStatus('error');
+                                    showToast(t('settings.cityAlreadyExists'), 'warning');
+                                    return;
+                                  }
+                                  setAddCityFound({ name: cityName, lat, lng, address: place.formattedAddress, id: cityId, viewport: place.viewport });
+                                  setAddCitySearchStatus('found');
+                                } else { setAddCitySearchStatus('error'); }
+                              } else { setAddCitySearchStatus('error'); }
+                            } catch (err) { console.error('[ADD CITY] Search error:', err); setAddCitySearchStatus('error'); }
+                      }} disabled={!addCityInput.trim() || addCitySearchStatus === 'searching'}
                         className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 disabled:opacity-50"
-                      >{searchStatus === 'searching' ? '...' : `🔍 ${t('general.search')}`}</button>
+                      >{addCitySearchStatus === 'searching' ? '...' : `🔍 ${t('general.search')}`}</button>
                     </div>
 
                     {/* Search result */}
-                    {searchStatus === 'error' && (
+                    {addCitySearchStatus === 'error' && (
                       <p className="text-sm text-red-500 text-center">{t('settings.cityNotFound')}</p>
                     )}
                     
-                    {searchStatus === 'found' && foundCity && (
+                    {addCitySearchStatus === 'found' && addCityFound && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-                        <p className="font-bold text-lg">{foundCity.name}</p>
-                        <p className="text-xs text-gray-500">{foundCity.address}</p>
-                        <p className="text-xs text-gray-400 mt-1">{foundCity.lat.toFixed(4)}, {foundCity.lng.toFixed(4)}</p>
-                        <button onClick={generateCity}
+                        <p className="font-bold text-lg">{addCityFound.name}</p>
+                        <p className="text-xs text-gray-500">{addCityFound.address}</p>
+                        <p className="text-xs text-gray-400 mt-1">{addCityFound.lat.toFixed(4)}, {addCityFound.lng.toFixed(4)}</p>
+                        <button onClick={async () => {
+                          if (!addCityFound) return;
+                          setAddCitySearchStatus('generating');
+                          try {
+                            const areasResp = await fetch(window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.displayName,places.location,places.types,places.formattedAddress' },
+                              body: JSON.stringify({ textQuery: `popular neighborhoods districts areas in ${addCityFound.name}`, languageCode: 'en', maxResultCount: 10 })
+                            });
+                            const areasData = await areasResp.json();
+                            const areas = [];
+                            const seen = new Set();
+                            if (areasData.places) {
+                              areasData.places.forEach((p, i) => {
+                                const areaName = p.displayName?.text || `Area ${i+1}`;
+                                const areaId = areaName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                if (seen.has(areaId) || !p.location) return;
+                                seen.add(areaId);
+                                areas.push({ id: areaId, label: areaName, labelEn: areaName, desc: p.formattedAddress || '', descEn: p.formattedAddress || '', lat: p.location.latitude, lng: p.location.longitude, radius: 2000, size: 'medium', safety: 'safe' });
+                              });
+                            }
+                            if (areas.length === 0) {
+                              areas.push({ id: 'center', label: 'Center', labelEn: 'Center', desc: 'City center', descEn: 'City center', lat: addCityFound.lat, lng: addCityFound.lng, radius: 3000, size: 'large', safety: 'safe' });
+                            }
+                            const defaultInterests = [
+                              { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
+                              { id: 'cafes', label: 'קפה', labelEn: 'Coffee', icon: '☕' },
+                              { id: 'culture', label: 'תרבות', labelEn: 'Culture', icon: '🎭' },
+                              { id: 'history', label: 'היסטוריה', labelEn: 'History', icon: '🏛️' },
+                              { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
+                              { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
+                              { id: 'nightlife', label: 'לילה', labelEn: 'Nightlife', icon: '🌃' },
+                              { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
+                              { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
+                              { id: 'graffiti', label: 'גרפיטי', labelEn: 'Street Art', icon: '🎨' },
+                              { id: 'beaches', label: 'חופים', labelEn: 'Beaches', icon: '🏖️' },
+                              { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏗️' }
+                            ];
+                            const defaultPlaceTypes = {
+                              food: ['restaurant', 'meal_takeaway'], cafes: ['cafe', 'coffee_shop'],
+                              culture: ['performing_arts_theater', 'cultural_center', 'museum'], history: ['historical_landmark', 'museum'],
+                              parks: ['park', 'national_park'], shopping: ['shopping_mall', 'store'],
+                              nightlife: ['bar', 'night_club'], galleries: ['art_gallery', 'museum'],
+                              markets: ['market'], graffiti: ['art_gallery'], beaches: ['beach'], architecture: ['historical_landmark']
+                            };
+                            let allCityRadius = 15000;
+                            if (addCityFound.viewport) {
+                              const vp = addCityFound.viewport;
+                              if (vp.high && vp.low) {
+                                const latDiff = Math.abs(vp.high.latitude - vp.low.latitude);
+                                const lngDiff = Math.abs(vp.high.longitude - vp.low.longitude);
+                                allCityRadius = Math.round(Math.max(latDiff, lngDiff) * 111000 / 2);
+                              }
+                            }
+                            const newCity = {
+                              id: addCityFound.id, name: addCityFound.name, nameEn: addCityFound.name,
+                              country: addCityFound.address?.split(',').pop()?.trim() || '',
+                              icon: '📍', secondaryIcon: '🏙️', active: false, distanceMultiplier: 1.2,
+                              center: { lat: addCityFound.lat, lng: addCityFound.lng },
+                              allCityRadius, areas, interests: defaultInterests,
+                              interestToGooglePlaces: defaultPlaceTypes,
+                              textSearchInterests: { graffiti: 'street art' },
+                              uncoveredInterests: [], interestTooltips: {}
+                            };
+                            setAddCityGenerated(newCity);
+                            setAddCitySearchStatus('done');
+                          } catch (err) {
+                            console.error('[ADD CITY] Generate error:', err);
+                            setAddCitySearchStatus('error');
+                            showToast(t('general.error'), 'error');
+                          }
+                        }}
                           className="mt-3 px-6 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600"
                         >{`🏗️ ${t('settings.generateCity')}`}</button>
                       </div>
                     )}
 
-                    {searchStatus === 'generating' && (
+                    {addCitySearchStatus === 'generating' && (
                       <div className="text-center py-4">
                         <div className="text-2xl animate-spin inline-block">🌍</div>
                         <p className="text-sm text-gray-500 mt-2">{t('settings.generatingCity')}</p>
                       </div>
                     )}
 
-                    {searchStatus === 'done' && generatedCity && (
+                    {addCitySearchStatus === 'done' && addCityGenerated && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="font-bold text-center mb-2">{generatedCity.icon} {generatedCity.nameEn}</p>
+                        <p className="font-bold text-center mb-2">{addCityGenerated.icon} {addCityGenerated.nameEn}</p>
                         <div className="text-xs text-gray-600 space-y-1">
-                          <p>📍 {generatedCity.areas.length} {t('general.areas')}: {generatedCity.areas.map(a => a.labelEn).join(', ')}</p>
-                          <p>⭐ {generatedCity.interests.length} {t('nav.interests')}</p>
-                          <p>🔍 {t('settings.radius')}: {generatedCity.allCityRadius}m</p>
+                          <p>📍 {addCityGenerated.areas.length} {t('general.areas')}: {addCityGenerated.areas.map(a => a.labelEn).join(', ')}</p>
+                          <p>⭐ {addCityGenerated.interests.length} {t('nav.interests')}</p>
+                          <p>🔍 {t('settings.radius')}: {addCityGenerated.allCityRadius}m</p>
                         </div>
                         <p className="text-[10px] text-amber-600 mt-2 text-center">{t('settings.cityStartsInactive')}</p>
-                        <button onClick={addCityToSystem}
+                        <button onClick={() => {
+                          if (!addCityGenerated) return;
+                          window.BKK.cities[addCityGenerated.id] = addCityGenerated;
+                          window.BKK.cityData[addCityGenerated.id] = addCityGenerated;
+                          window.BKK.cityRegistry[addCityGenerated.id] = {
+                            id: addCityGenerated.id, name: addCityGenerated.name, nameEn: addCityGenerated.nameEn,
+                            country: addCityGenerated.country, icon: addCityGenerated.icon, file: `city-${addCityGenerated.id}.js`
+                          };
+                          try {
+                            const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
+                            customCities[addCityGenerated.id] = addCityGenerated;
+                            localStorage.setItem('custom_cities', JSON.stringify(customCities));
+                          } catch(e) { console.error('Failed to save city:', e); }
+                          window.BKK.exportCityFile(addCityGenerated);
+                          showToast(`✓ ${addCityGenerated.nameEn} ${t('settings.cityAdded')}`, 'success');
+                          setShowAddCityDialog(false);
+                          setAddCityInput(''); setAddCitySearchStatus(''); setAddCityFound(null); setAddCityGenerated(null);
+                          switchCity(addCityGenerated.id);
+                          setFormData(prev => ({...prev}));
+                        }}
                           className="mt-3 w-full py-2 bg-blue-500 text-white rounded-lg font-bold text-sm hover:bg-blue-600"
                         >{`✓ ${t('settings.addCityConfirm')}`}</button>
                       </div>
                     )}
                   </div>
-                );
-              })()}
             </div>
           </div>
         </div>

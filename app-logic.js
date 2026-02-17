@@ -316,6 +316,10 @@
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
   const [showAddCityDialog, setShowAddCityDialog] = useState(false);
+  const [addCityInput, setAddCityInput] = useState('');
+  const [addCitySearchStatus, setAddCitySearchStatus] = useState(''); // '', 'searching', 'found', 'error', 'generating', 'done'
+  const [addCityFound, setAddCityFound] = useState(null);
+  const [addCityGenerated, setAddCityGenerated] = useState(null);
   const [googleMaxWaypoints, setGoogleMaxWaypoints] = useState(12);
   const [googleMaxMapPoints, setGoogleMaxMapPoints] = useState(10);
   const [cityModified, setCityModified] = useState(false);
