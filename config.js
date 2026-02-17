@@ -90,6 +90,13 @@ window.BKK.loadCity = function(cityId) {
 window.BKK.unloadCity = function(cityId) {
   delete window.BKK.cities[cityId];
   delete window.BKK.cityData[cityId];
+  delete window.BKK.cityRegistry[cityId];
+  // Remove from custom cities localStorage
+  try {
+    var customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
+    delete customCities[cityId];
+    localStorage.setItem('custom_cities', JSON.stringify(customCities));
+  } catch(e) {}
   console.log('[CONFIG] Unloaded city: ' + cityId);
 };
 
@@ -138,21 +145,37 @@ window.BKK.selectCity = function(cityId) {
 
 // Default: load saved city (synchronous for initial page load - city files are in HTML)
 (function() {
-  // Restore city active/inactive states
-  try {
-    var states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
-    Object.keys(states).forEach(function(cityId) {
-      if (window.BKK.cityRegistry[cityId]) {
-        window.BKK.cityRegistry[cityId].active = states[cityId];
-      }
-    });
-  } catch(e) {}
 
   // On initial load, city data files are embedded in HTML (via build.py)
-  // So cityData should already be populated
   Object.keys(window.BKK.cityData).forEach(function(cityId) {
     window.BKK.cities[cityId] = window.BKK.cityData[cityId];
   });
+  
+  // Load custom cities from localStorage
+  try {
+    var customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
+    Object.keys(customCities).forEach(function(cityId) {
+      window.BKK.cities[cityId] = customCities[cityId];
+      window.BKK.cityData[cityId] = customCities[cityId];
+      if (!window.BKK.cityRegistry[cityId]) {
+        window.BKK.cityRegistry[cityId] = {
+          id: cityId, name: customCities[cityId].name, nameEn: customCities[cityId].nameEn,
+          country: customCities[cityId].country, icon: customCities[cityId].icon, file: null
+        };
+      }
+      console.log('[CONFIG] Loaded custom city: ' + cityId);
+    });
+  } catch(e) { console.error('[CONFIG] Error loading custom cities:', e); }
+  
+  // Apply saved active/inactive states from localStorage
+  try {
+    var states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
+    Object.keys(states).forEach(function(cityId) {
+      if (window.BKK.cities[cityId]) {
+        window.BKK.cities[cityId].active = states[cityId];
+      }
+    });
+  } catch(e) {}
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}

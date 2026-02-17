@@ -314,6 +314,7 @@
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false);
+  const [showAddCityDialog, setShowAddCityDialog] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   

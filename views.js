@@ -2538,50 +2538,70 @@
               <div className="bg-gradient-to-r from-rose-50 to-orange-50 border-2 border-rose-400 rounded-lg p-2">
                 <h3 className="text-sm font-bold text-gray-800 mb-2">{`🌍 ${t("settings.title")}`}</h3>
                 
-                {/* City pills - all cities, with active/inactive toggle */}
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                  {Object.values(window.BKK.cities).map(city => (
-                    <div key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      <button
-                        onClick={() => switchCity(city.id)}
-                        style={{
-                          padding: '5px 10px', borderRadius: '16px 0 0 16px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold',
-                          border: selectedCityId === city.id ? '2px solid #e11d48' : '1.5px solid #e5e7eb',
-                          borderRight: 'none',
-                          background: selectedCityId === city.id ? '#fef2f2' : city.active === false ? '#f3f4f6' : 'white',
-                          color: selectedCityId === city.id ? '#e11d48' : city.active === false ? '#9ca3af' : '#6b7280',
-                          opacity: city.active === false ? 0.6 : 1,
-                          transition: 'all 0.2s'
-                        }}
-                      >{city.icon} {tLabel(city)}</button>
-                      {isUnlocked && (
-                        <button
-                          onClick={() => {
-                            city.active = city.active === false ? true : false;
-                            // Persist to localStorage
-                            try {
-                              const states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
-                              states[city.id] = city.active;
-                              localStorage.setItem('city_active_states', JSON.stringify(states));
-                            } catch(e) {}
-                            showToast(city.name + (city.active ? ' ' + t('general.enabled') : ' ' + t('general.disabled')), 'info');
-                            setFormData(prev => ({...prev})); // force re-render
-                          }}
-                          style={{
-                            padding: '5px 6px', borderRadius: '0 16px 16px 0', cursor: 'pointer', fontSize: '10px',
-                            border: '1.5px solid #e5e7eb', borderLeft: 'none',
-                            background: city.active === false ? '#fee2e2' : '#dcfce7',
-                            color: city.active === false ? '#ef4444' : '#16a34a'
-                          }}
-                          title={city.active === false ? t('general.enableCity') : t('general.disableCity')}
-                        >{city.active === false ? '⏸️' : '▶️'}</button>
-                      )}
-                    </div>
-                  ))}
+                {/* City cards with management */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'stretch' }}>
+                  {Object.values(window.BKK.cities).map(city => {
+                    const areas = city.areas?.length || 0;
+                    const interests = city.interests?.length || 0;
+                    const isSelected = selectedCityId === city.id;
+                    const isActive = city.active !== false;
+                    return (
+                      <div key={city.id} style={{ 
+                        border: isSelected ? '2px solid #e11d48' : '1.5px solid #e5e7eb',
+                        borderRadius: '12px', padding: '6px 10px', cursor: 'pointer',
+                        background: isSelected ? '#fef2f2' : !isActive ? '#f3f4f6' : 'white',
+                        opacity: !isActive ? 0.6 : 1, transition: 'all 0.2s',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', minWidth: '80px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                          <button onClick={() => switchCity(city.id)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', color: isSelected ? '#e11d48' : !isActive ? '#9ca3af' : '#374151' }}>
+                            {city.icon} {tLabel(city)}
+                          </button>
+                          {isUnlocked && (
+                            <button onClick={() => {
+                              city.active = !isActive;
+                              try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); s[city.id] = city.active; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
+                              showToast(tLabel(city) + (city.active ? ' ✓' : ' ✗'), 'info');
+                              setFormData(prev => ({...prev}));
+                            }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', padding: '0 2px' }}
+                            >{isActive ? '▶️' : '⏸️'}</button>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '8px', color: '#9ca3af' }}>
+                          {areas} {t('general.areas')} · {interests} {t('nav.interests')}
+                        </div>
+                        {isUnlocked && Object.keys(window.BKK.cities).length > 1 && (
+                          <button onClick={() => {
+                            if (!confirm(`${t('general.remove')} ${tLabel(city)}?`)) return;
+                            if (isSelected) {
+                              const otherCity = Object.keys(window.BKK.cities).find(id => id !== city.id);
+                              if (otherCity) switchCity(otherCity);
+                            }
+                            window.BKK.unloadCity(city.id);
+                            try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); delete s[city.id]; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
+                            showToast(`${tLabel(city)} ${t('general.removed')}`, 'info');
+                            setFormData(prev => ({...prev}));
+                          }} style={{ fontSize: '8px', color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer' }}
+                          >🗑️</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Add City button */}
+                  {isUnlocked && (
+                    <button
+                      onClick={() => setShowAddCityDialog(true)}
+                      style={{
+                        border: '1.5px dashed #d1d5db', borderRadius: '12px', padding: '6px 14px',
+                        background: 'white', cursor: 'pointer', fontSize: '11px', color: '#6b7280',
+                        display: 'flex', alignItems: 'center', gap: '4px', minWidth: '80px', justifyContent: 'center'
+                      }}
+                    >➕ {t('settings.addCity')}</button>
+                  )}
                 </div>
                 
                 <p className="text-[10px] text-gray-500 mb-2">
-                  {window.BKK.selectedCity?.icon} {tLabel(window.BKK.selectedCity)}: {window.BKK.selectedCity?.areas?.length || 0} areas · {window.BKK.selectedCity?.interests?.length || 0} interests
+                  {window.BKK.selectedCity?.icon} {tLabel(window.BKK.selectedCity)}: {window.BKK.selectedCity?.areas?.length || 0} {t('general.areas')} · {window.BKK.selectedCity?.interests?.length || 0} {t('nav.interests')}
                 </p>
 
                 {/* Areas list for selected city */}
