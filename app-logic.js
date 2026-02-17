@@ -53,6 +53,7 @@
   const [route, setRoute] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [disabledStops, setDisabledStops] = useState([]); // Track disabled stop IDs
+  const [showRoutePreview, setShowRoutePreview] = useState(false); // Route stop reorder view
   const [manualStops, setManualStops] = useState([]); // Manually added stops (session only)
   const [showManualAddDialog, setShowManualAddDialog] = useState(false);
   const [routeType, setRouteType] = useState(() => {
@@ -1178,6 +1179,7 @@
       window.scrollTo(0, 0);
     }
     setDisabledStops([]);
+    setShowRoutePreview(false);
     setManualStops([]);
     setCityModified(false);
     showToast(window.BKK.selectedCity.icon + ' ' + tLabel(window.BKK.selectedCity), 'success');
