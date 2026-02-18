@@ -3342,7 +3342,6 @@
 
   // Check if interest has valid search config
   const isInterestValid = (interestId) => {
-  const isInterestValid = (interestId) => {
     // 1. Manual (privateOnly) interests are ALWAYS valid - no search config needed
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly) return true;
