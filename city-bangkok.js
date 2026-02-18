@@ -26,8 +26,8 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Sukhumvit & Thonglor",
       "desc": "חיי לילה, מסעדות, קניונים",
       "descEn": "Nightlife, restaurants, malls",
-      "lat": 13.735,
-      "lng": 100.5709,
+      "lat": 13.7347,
+      "lng": 100.5702,
       "radius": 2500,
       "size": "large",
       "safety": "safe"
@@ -38,8 +38,8 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Old Town",
       "desc": "מקדשים, ארמון המלך, היסטוריה",
       "descEn": "Temples, Grand Palace, history",
-      "lat": 13.7637,
-      "lng": 100.5043,
+      "lat": 13.7617,
+      "lng": 100.4992,
       "radius": 2000,
       "size": "medium",
       "safety": "safe"
@@ -50,8 +50,8 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Chinatown & Talad Noi",
       "desc": "אוכל רחוב, שווקים, מקדשים סיניים",
       "descEn": "Street food, markets, Chinese temples",
-      "lat": 13.7434,
-      "lng": 100.5208,
+      "lat": 13.7421,
+      "lng": 100.5173,
       "radius": 1300,
       "size": "medium",
       "safety": "safe"
@@ -62,8 +62,8 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Riverside & Thonburi",
       "desc": "נהר, מקדשים, שווקי לילה",
       "descEn": "River, temples, night markets",
-      "lat": 13.726,
-      "lng": 100.4981,
+      "lat": 13.7227,
+      "lng": 100.4954,
       "radius": 2000,
       "size": "medium",
       "safety": "safe"
@@ -74,9 +74,9 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Siam & Pratunam",
       "desc": "קניות, קניונים, מרכז העיר",
       "descEn": "Shopping, malls, city center",
-      "lat": 13.7517,
-      "lng": 100.5376,
-      "radius": 1500,
+      "lat": 13.7581,
+      "lng": 100.5369,
+      "radius": 2000,
       "size": "medium",
       "safety": "safe"
     },
@@ -98,9 +98,9 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Silom & Sathorn",
       "desc": "עסקים, מקדשים, חיי לילה",
       "descEn": "Business, temples, nightlife",
-      "lat": 13.7227,
-      "lng": 100.5342,
-      "radius": 1800,
+      "lat": 13.7207,
+      "lng": 100.5325,
+      "radius": 2000,
       "size": "medium",
       "safety": "safe"
     },
@@ -111,7 +111,7 @@ window.BKK.cityData.bangkok = {
       "desc": "שווקי לילה, אוכל, בידור",
       "descEn": "Night markets, food, entertainment",
       "lat": 13.7654,
-      "lng": 100.5719,
+      "lng": 100.5702,
       "radius": 1600,
       "size": "medium",
       "safety": "safe"
@@ -125,6 +125,18 @@ window.BKK.cityData.bangkok = {
       "lat": 13.7057,
       "lng": 100.5994,
       "radius": 2000,
+      "size": "medium",
+      "safety": "safe"
+    },
+    {
+      "id": "yan-nawa",
+      "label": "יאן נאווה ובאנג קו לאם",
+      "labelEn": "Yan Nawa & Bang Kho Laem",
+      "desc": "נמל, שווקים מקומיים, אוכל",
+      "descEn": "Port, local markets, food",
+      "lat": 13.684,
+      "lng": 100.518,
+      "radius": 3400,
       "size": "medium",
       "safety": "safe"
     }
