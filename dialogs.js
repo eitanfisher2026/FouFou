@@ -495,6 +495,7 @@
                     </button>
                   )}
                 </div>
+                )}
 
                 {/* Actions: Skip permanently + Delete (edit mode only) - hidden for locked non-admin */}
                 {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
