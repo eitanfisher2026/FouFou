@@ -1922,34 +1922,43 @@
   };
 
   // Combine all interests: built-in + uncovered + custom (city-filtered)
-  const allInterestOptions = [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])].map(opt => {
-    const config = interestConfig[opt.id];
-    if (!config) return opt;
-    return {
-      ...opt,
-      label: config.labelOverride || opt.label, labelEn: config.labelOverrideEn || opt.labelEn,
-      icon: config.iconOverride || opt.icon,
-      inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
-      locked: config.locked !== undefined ? config.locked : opt.locked,
-      scope: config.scope || opt.scope || 'global',
-      cityId: config.cityId || opt.cityId || ''
-    };
-  });
+  // Filter custom interests by city scope (must be before allInterestOptions)
+  const cityCustomInterests = useMemo(() => {
+    return (customInterests || []).filter(i => {
+      if (i.scope === 'local') return (i.cityId || '') === selectedCityId;
+      return true;
+    });
+  }, [customInterests, selectedCityId]);
+
+  const allInterestOptions = useMemo(() => {
+    return [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])].map(opt => {
+      const config = interestConfig[opt.id];
+      if (!config) return opt;
+      return {
+        ...opt,
+        label: config.labelOverride || opt.label, labelEn: config.labelOverrideEn || opt.labelEn,
+        icon: config.iconOverride || opt.icon,
+        inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
+        locked: config.locked !== undefined ? config.locked : opt.locked,
+        scope: config.scope || opt.scope || 'global',
+        cityId: config.cityId || opt.cityId || ''
+      };
+    });
+  }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
 
   // Debug: log custom interests in allInterestOptions
   useEffect(() => {
+    console.log(`[DEBUG-INTERESTS] allInterestOptions.length=${allInterestOptions.length} cityCustomInterests.length=${(cityCustomInterests||[]).length} customInterests.length=${(customInterests||[]).length}`);
+    console.log(`[DEBUG-INTERESTS] allInterestOptions IDs: ${allInterestOptions.map(o=>o.id).join(', ')}`);
     const customs = allInterestOptions.filter(o => o.id?.startsWith?.('custom_') || o.custom);
     if (customs.length > 0) {
-      console.log(`[DEBUG-INTERESTS] allInterestOptions has ${allInterestOptions.length} total, ${customs.length} custom:`);
+      console.log(`[DEBUG-INTERESTS] ${customs.length} custom found in allInterestOptions:`);
       customs.forEach(c => console.log(`  - ${c.id}: "${c.label}" scope=${c.scope||'?'} privateOnly=${c.privateOnly} valid=${isInterestValid?.(c.id)}`));
-    } else {
-      console.log(`[DEBUG-INTERESTS] No custom in allInterestOptions. raw customInterests=${(customInterests||[]).length} cityCustomInterests=${(cityCustomInterests||[]).length}`);
-      if ((customInterests||[]).length > 0) {
-        console.log('[DEBUG-INTERESTS] customInterests exist but NOT in allInterestOptions:');
-        customInterests.forEach(c => console.log(`  RAW: ${c.id} "${c.label}" scope=${c.scope||'?'}`));
-      }
+    } else if ((customInterests||[]).length > 0) {
+      console.log('[DEBUG-INTERESTS] BUG: customInterests exist but NOT in allInterestOptions!');
+      console.log('[DEBUG-INTERESTS] cityCustomInterests:', JSON.stringify((cityCustomInterests||[]).map(c=>({id:c.id,label:c.label}))));
     }
-  }, [customInterests, cityCustomInterests, allInterestOptions.length]);
+  }, [customInterests, cityCustomInterests, allInterestOptions]);
   useEffect(() => {
     // Don't save if data hasn't loaded yet - prevents overwriting saved interests with empty state
     if (!isDataLoaded) return;
@@ -2055,13 +2064,6 @@
     return savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
   }, [savedRoutes, selectedCityId]);
 
-  const cityCustomInterests = useMemo(() => {
-    return (customInterests || []).filter(i => {
-      // scope: 'local' = only for specific city, 'global' or undefined = show everywhere
-      if (i.scope === 'local') return (i.cityId || '') === selectedCityId;
-      return true; // global or no scope = show everywhere
-    });
-  }, [customInterests, selectedCityId]);
 
   // Memoize expensive places grouping/sorting
   const groupedPlaces = useMemo(() => {
