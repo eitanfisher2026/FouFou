@@ -608,10 +608,16 @@ window.BKK._suggestEmojisGemini = async function(description) {
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `Suggest exactly 6 different emoji icons that best represent: "${description}". Reply with ONLY the 6 emojis separated by spaces, nothing else. No text, no numbers, no explanations.`
+          text: `You are an emoji icon picker. The user wants an emoji icon for a category/place/interest called: "${description}".
+Suggest exactly 6 emoji that would work as a visual ICON for this category. 
+Rules:
+- Only single emoji characters, no text
+- Choose emoji that visually represent the concept (e.g. food→🍜, temple→🛕, coffee→☕)
+- Be specific to the description, not generic
+- Reply with ONLY 6 emoji separated by spaces`
         }]
       }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 50 }
+      generationConfig: { temperature: 0.5, maxOutputTokens: 50 }
     })
   });
   
@@ -637,7 +643,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
   
   const mapping = [
     // Food & Drink
-    { keys: ['אוכל','food','restaurant','מסעד','dining','eat'], emojis: ['🍽️','🍜','🍕','🍔','🥘','🍴'] },
+    { keys: ['אוכל','food','restaurant','מסעד','dining','eat','דוכן','stand','stall','street food','אוכל רחוב','snack'], emojis: ['🍽️','🍜','🍕','🍔','🥘','🍴'] },
     { keys: ['קפה','coffee','cafe','קפית'], emojis: ['☕','🫖','🍵','☕'] },
     { keys: ['בר','bar','drink','שתי','cocktail','beer','בירה'], emojis: ['🍺','🍸','🥂','🍻'] },
     { keys: ['wine','יין'], emojis: ['🍷','🥂','🍇'] },
@@ -694,6 +700,10 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['uk','england','אנגלי','british','london','לונדון'], emojis: ['🇬🇧','👑','🎡'] },
     { keys: ['singapore','סינגפור'], emojis: ['🇸🇬','🦁','🌿'] },
     // Misc
+    { keys: ['massage','עיסוי','spa','ספא','thai massage'], emojis: ['💆','🧖','🙏','💆‍♂️'] },
+    { keys: ['rooftop','גג','גגות','skybar'], emojis: ['🌆','🏙️','🍸','🌃'] },
+    { keys: ['canal','תעלה','תעלות','boat','סירה','שייט'], emojis: ['🚤','⛵','🛶','🌊'] },
+    { keys: ['craft','מלאכה','אומן','handmade','artisan'], emojis: ['🔨','🧵','🎨','🪡'] },
     { keys: ['kid','ילד','children','family','משפח','playground'], emojis: ['👨‍👩‍👧‍👦','🎠','🧒','🎪'] },
     { keys: ['pet','חיית מחמד','dog','כלב','cat','חתול'], emojis: ['🐕','🐈','🐾'] },
     { keys: ['book','ספר','library','ספרי'], emojis: ['📚','📖','📕'] },

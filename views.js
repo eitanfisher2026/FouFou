@@ -84,11 +84,11 @@
         </div>
       )}      <div className="max-w-4xl mx-auto p-2 sm:p-4 pb-32">
         {/* WIZARD MODE */}
-        {wizardMode && wizardStep < 3 && (
-          <div className="view-fade-in">
-            {/* Wizard Header */}
+        {wizardMode && (
+          <div className={wizardStep < 3 ? "view-fade-in" : ""}>
+            {/* Wizard Header — shown on all steps */}
             <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-              {/* Advanced mode toggle and language toggle at top */}
+              {/* Top bar: advanced mode + language */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0px' }}>
                 <button onClick={() => { setWizardMode(false); localStorage.setItem('bangkok_wizard_mode', 'false'); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '10px', cursor: 'pointer', textDecoration: 'underline' }}>
                   {`⚙️ ${t("nav.advancedMode")}`}
@@ -97,15 +97,30 @@
                   {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
                 </button>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
-                {[1, 2, 3].map(step => (
-                  <div key={step} style={{
-                    width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '12px', fontWeight: 'bold',
-                    background: wizardStep === step ? '#e11d48' : wizardStep > step ? '#22c55e' : '#e5e7eb',
-                    color: wizardStep >= step ? 'white' : '#9ca3af',
-                    transition: 'all 0.3s'
-                  }}>{wizardStep > step ? '✓' : step}</div>
+              {/* Step indicators — clickable to go back */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                {[1, 2, 3].map((step, i) => (
+                  <React.Fragment key={step}>
+                    {i > 0 && <div style={{ width: '20px', height: '2px', background: wizardStep >= step ? '#22c55e' : '#e5e7eb', borderRadius: '1px' }} />}
+                    <div
+                      onClick={() => {
+                        if (step < wizardStep) {
+                          setWizardStep(step);
+                          if (step < 3) { setRoute(null); setCurrentView('form'); }
+                          if (step === 1) setFormData(prev => ({...prev, interests: []}));
+                          window.scrollTo(0, 0);
+                        }
+                      }}
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '12px', fontWeight: 'bold',
+                        background: wizardStep === step ? '#e11d48' : wizardStep > step ? '#22c55e' : '#e5e7eb',
+                        color: wizardStep >= step ? 'white' : '#9ca3af',
+                        cursor: step < wizardStep ? 'pointer' : 'default',
+                        transition: 'all 0.3s'
+                      }}
+                    >{wizardStep > step ? '✓' : step}</div>
+                  </React.Fragment>
                 ))}
               </div>
             </div>
@@ -351,20 +366,6 @@
             <div className="truncate text-center text-[8px]">{t("settings.title")}</div>
           </button>
         </div>
-        )}
-
-        {/* Wizard Step 3: Back/restart buttons */}
-        {wizardMode && wizardStep === 3 && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button
-              onClick={() => { setWizardStep(2); setRoute(null); setCurrentView('form'); window.scrollTo(0, 0); }}
-              style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
-            >{t("general.back")}</button>
-            <button
-              onClick={() => { setWizardStep(1); setRoute(null); setCurrentView('form'); setFormData(prev => ({...prev, interests: []})); window.scrollTo(0, 0); }}
-              style={{ padding: '8px 16px', borderRadius: '10px', border: '2px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
-            >{t("general.startOver")}</button>
-          </div>
         )}
 
         {/* Wizard Step 3: Loading spinner while generating */}
@@ -3579,16 +3580,63 @@
           </div>
         </div>
 
-      {/* Floating Feedback Button */}
-      {!showFeedbackDialog && (
-        <button
-          onClick={() => setShowFeedbackDialog(true)}
-          className="fixed bottom-20 left-4 z-40 bg-white text-gray-400 hover:text-blue-500 hover:shadow-lg w-10 h-10 rounded-full shadow-md border border-gray-200 flex items-center justify-center transition-all duration-300 text-lg"
-          title={t("settings.sendFeedback")}
-        >
-          💬
-        </button>
-      )}
+      {/* Draggable Feedback Button */}
+      {!showFeedbackDialog && (() => {
+        const feedbackBtnRef = React.useRef(null);
+        const dragState = React.useRef({ dragging: false, offsetX: 0, offsetY: 0 });
+        const [feedbackPos, setFeedbackPos] = React.useState(() => {
+          try {
+            const saved = JSON.parse(localStorage.getItem('feedback_btn_pos'));
+            if (saved && saved.x !== undefined) return saved;
+          } catch(e) {}
+          // Default: top-left, under language toggle (RTL: right side)
+          return { x: window.innerWidth - 52, y: 44 };
+        });
+        
+        const onStart = (clientX, clientY) => {
+          const el = feedbackBtnRef.current;
+          if (!el) return;
+          dragState.current = { dragging: false, startX: clientX, startY: clientY, offsetX: clientX - feedbackPos.x, offsetY: clientY - feedbackPos.y };
+        };
+        const onMove = (clientX, clientY) => {
+          const ds = dragState.current;
+          if (ds.startX === undefined) return;
+          const dist = Math.abs(clientX - ds.startX) + Math.abs(clientY - ds.startY);
+          if (dist > 5) ds.dragging = true;
+          if (ds.dragging) {
+            const newX = Math.max(0, Math.min(window.innerWidth - 44, clientX - ds.offsetX));
+            const newY = Math.max(0, Math.min(window.innerHeight - 44, clientY - ds.offsetY));
+            setFeedbackPos({ x: newX, y: newY });
+          }
+        };
+        const onEnd = () => {
+          if (dragState.current.dragging) {
+            localStorage.setItem('feedback_btn_pos', JSON.stringify(feedbackPos));
+          } else {
+            setShowFeedbackDialog(true);
+          }
+          dragState.current = { dragging: false };
+        };
+        
+        return (
+          <div
+            ref={feedbackBtnRef}
+            onMouseDown={(e) => { e.preventDefault(); onStart(e.clientX, e.clientY); const mm = (ev) => onMove(ev.clientX, ev.clientY); const mu = () => { onEnd(); window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); }}
+            onTouchStart={(e) => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }}
+            onTouchMove={(e) => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }}
+            onTouchEnd={onEnd}
+            style={{
+              position: 'fixed', left: feedbackPos.x + 'px', top: feedbackPos.y + 'px',
+              zIndex: 40, width: '40px', height: '40px', borderRadius: '50%',
+              background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'grab', userSelect: 'none', touchAction: 'none',
+              fontSize: '18px', transition: dragState.current.dragging ? 'none' : 'box-shadow 0.2s'
+            }}
+            title={t("settings.sendFeedback")}
+          >💬</div>
+        );
+      })()}
 
       {/* Leaflet Map Modal */}
       {showMapModal && (

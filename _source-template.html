@@ -295,13 +295,37 @@ window.__firebaseReady.then(function(sdkLoaded) {
     return '';
   });
 
-  // Prevent accidental back/forward navigation via mouse buttons
+  // Smart back-button navigation: Android/iOS back button navigates within the app
+  // Instead of blocking, we push history entries and handle popstate to go back in-app
+  window.BKK._navHistory = []; // Stack of {view, wizardStep, wizardMode}
+  window.BKK.pushNavState = function(state) {
+    window.BKK._navHistory.push(state);
+    window.history.pushState({ appNav: true, index: window.BKK._navHistory.length }, '', window.location.href);
+  };
+  window.BKK.getNavBack = function() {
+    if (window.BKK._navHistory.length > 1) {
+      window.BKK._navHistory.pop(); // remove current
+      return window.BKK._navHistory[window.BKK._navHistory.length - 1]; // return previous
+    }
+    return null;
+  };
   window.addEventListener('popstate', function(e) {
-    // Push state back to prevent leaving
-    window.history.pushState(null, '', window.location.href);
+    if (e.state && e.state.appNav) {
+      // Navigate back within app
+      var prev = window.BKK.getNavBack();
+      if (prev) {
+        window.dispatchEvent(new CustomEvent('app-nav-back', { detail: prev }));
+      } else {
+        // At the beginning — push state to prevent exit, or let it go
+        window.history.pushState({ appNav: true, index: 0 }, '', window.location.href);
+      }
+    } else {
+      // No app state — push initial to prevent exit
+      window.history.pushState({ appNav: true, index: 0 }, '', window.location.href);
+    }
   });
-  // Initialize history state
-  window.history.pushState(null, '', window.location.href);
+  // Initialize with a base state
+  window.history.replaceState({ appNav: true, index: 0 }, '', window.location.href);
 
   ReactDOM.createRoot(document.getElementById('root')).render(<CityExplorer />);
 });

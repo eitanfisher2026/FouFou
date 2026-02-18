@@ -513,6 +513,49 @@
     return () => window.removeEventListener('firebase-connection', handler);
   }, []);
 
+  // Push navigation state when view or wizard step changes
+  useEffect(() => {
+    if (window.BKK.pushNavState) {
+      window.BKK.pushNavState({ view: currentView, wizardStep, wizardMode });
+    }
+  }, [currentView, wizardStep, wizardMode]);
+
+  // Handle Android/iOS back button
+  useEffect(() => {
+    const handler = (e) => {
+      const prev = e.detail;
+      if (!prev) return;
+      
+      if (prev.wizardMode && wizardMode) {
+        // Within wizard: go to previous step
+        if (prev.wizardStep < wizardStep) {
+          setWizardStep(prev.wizardStep);
+          if (prev.wizardStep < 3) { setRoute(null); setCurrentView('form'); }
+          if (prev.wizardStep === 1) setFormData(p => ({...p, interests: []}));
+          window.scrollTo(0, 0);
+          return;
+        }
+      }
+      
+      // Normal navigation between views
+      if (prev.view !== currentView) {
+        setCurrentView(prev.view);
+        window.scrollTo(0, 0);
+        return;
+      }
+      
+      // Wizard mode changed
+      if (prev.wizardMode !== wizardMode) {
+        setWizardMode(prev.wizardMode);
+        if (prev.wizardMode) {
+          localStorage.setItem('bangkok_wizard_mode', 'true');
+        }
+      }
+    };
+    window.addEventListener('app-nav-back', handler);
+    return () => window.removeEventListener('app-nav-back', handler);
+  }, [currentView, wizardStep, wizardMode]);
+
   // Save pending items to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('pendingLocations', JSON.stringify(pendingLocations));
