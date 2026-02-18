@@ -822,7 +822,6 @@
                     )}
                   </div>
                 </div>
-                )}
 
                 {/* Status toggles - hidden for locked non-admin */}
                 {!(editingCustomInterest?.locked && !isUnlocked) && (
