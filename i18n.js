@@ -746,6 +746,22 @@ help: {
     locations: 'מקומות:',
     routes: 'מסלולים:',
   },
+  reviews: {
+    title: 'ביקורות',
+    myReview: 'הביקורת שלי',
+    writeReview: 'כתוב ביקורת...',
+    rating: 'דירוג',
+    saved: 'הביקורת נשמרה',
+    saveError: 'שגיאה בשמירת הביקורת',
+    deleted: 'הביקורת נמחקה',
+    noReviews: 'אין עדיין ביקורות',
+    avgRating: 'דירוג ממוצע',
+    save: 'שמור',
+    cancel: 'ביטול',
+    deleteReview: 'מחק ביקורת',
+    unsavedChanges: 'יש שינויים שלא נשמרו. לשמור?',
+    allReviews: 'כל הביקורות',
+  },
 }, // end Hebrew
 
 
@@ -1394,6 +1410,22 @@ help: {
     configs: 'Settings:',
     locations: 'Places:',
     routes: 'Routes:',
+  },
+  reviews: {
+    title: 'Reviews',
+    myReview: 'My Review',
+    writeReview: 'Write a review...',
+    rating: 'Rating',
+    saved: 'Review saved',
+    saveError: 'Error saving review',
+    deleted: 'Review deleted',
+    noReviews: 'No reviews yet',
+    avgRating: 'Average rating',
+    save: 'Save',
+    cancel: 'Cancel',
+    deleteReview: 'Delete review',
+    unsavedChanges: 'You have unsaved changes. Save?',
+    allReviews: 'All Reviews',
   },
 } // end English
 

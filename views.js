@@ -970,7 +970,7 @@
                             const L = window.L;
                             if (!L || !el.offsetHeight) return;
                             const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([activeStops[0].lat, activeStops[0].lng], 13);
-                            L.tileLayer(window.BKK.getTileUrlClean(), { maxZoom: 18 }).addTo(map);
+                            L.tileLayer(window.BKK.getTileUrl(), { maxZoom: 18 }).addTo(map);
                             const colors = ['#3b82f6','#f59e0b','#ef4444','#10b981','#ec4899','#6366f1','#8b5cf6','#06b6d4','#f97316','#a855f7'];
                             const mkrs = [];
                             activeStops.forEach((stop, i) => {
@@ -1118,7 +1118,7 @@
                                           // Place was added - show edit/view button
                                           return (
                                             <button
-                                              onClick={() => handleEditLocation(existingLoc)}
+                                              onClick={() => existingLoc.locked && !isUnlocked ? openReviewDialog(existingLoc) : handleEditLocation(existingLoc)}
                                               className="text-[9px] px-1 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
                                               title={existingLoc.locked && !isUnlocked ? t("general.viewOnly") : t("places.editAddedToList")}
                                             >
@@ -1770,13 +1770,17 @@
                                   onClick={() => {
                                     const customLoc = customLocations.find(loc => loc.name === stop.name);
                                     if (customLoc) {
-                                      handleEditLocation(customLoc);
+                                      if (customLoc.locked && !isUnlocked) {
+                                        openReviewDialog(customLoc);
+                                      } else {
+                                        handleEditLocation(customLoc);
+                                      }
                                     }
                                   }}
                                   className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
                                   title={t("general.clickForDetails")}
                                 >
-                                  {sourceBadge.text}
+                                  {(() => { const cl = customLocations.find(loc => loc.name === stop.name); return cl?.locked && !isUnlocked ? '👁️ ' + sourceBadge.text : sourceBadge.text; })()}
                                 </button>
                                 
                                 {/* Hover Tooltip */}

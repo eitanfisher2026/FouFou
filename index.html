@@ -919,6 +919,22 @@ help: {
     locations: 'מקומות:',
     routes: 'מסלולים:',
   },
+  reviews: {
+    title: 'ביקורות',
+    myReview: 'הביקורת שלי',
+    writeReview: 'כתוב ביקורת...',
+    rating: 'דירוג',
+    saved: 'הביקורת נשמרה',
+    saveError: 'שגיאה בשמירת הביקורת',
+    deleted: 'הביקורת נמחקה',
+    noReviews: 'אין עדיין ביקורות',
+    avgRating: 'דירוג ממוצע',
+    save: 'שמור',
+    cancel: 'ביטול',
+    deleteReview: 'מחק ביקורת',
+    unsavedChanges: 'יש שינויים שלא נשמרו. לשמור?',
+    allReviews: 'כל הביקורות',
+  },
 }, // end Hebrew
 
 
@@ -1567,6 +1583,22 @@ help: {
     configs: 'Settings:',
     locations: 'Places:',
     routes: 'Routes:',
+  },
+  reviews: {
+    title: 'Reviews',
+    myReview: 'My Review',
+    writeReview: 'Write a review...',
+    rating: 'Rating',
+    saved: 'Review saved',
+    saveError: 'Error saving review',
+    deleted: 'Review deleted',
+    noReviews: 'No reviews yet',
+    avgRating: 'Average rating',
+    save: 'Save',
+    cancel: 'Cancel',
+    deleteReview: 'Delete review',
+    unsavedChanges: 'You have unsaved changes. Save?',
+    allReviews: 'All Reviews',
   },
 } // end English
 
@@ -2595,12 +2627,7 @@ window.BKK.stopLabel = function(i) {
 
 // Tile URL - English labels for all cities (Carto Voyager)
 window.BKK.getTileUrl = function() {
-  // Voyager with labels - for area overview maps where road context helps
   return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-};
-window.BKK.getTileUrlClean = function() {
-  // Voyager without labels - for stops maps to avoid local-language clutter
-  return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
 };
 
 // App Name
@@ -3918,6 +3945,7 @@ const CityExplorer = () => {
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+  const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
   const [showImageModal, setShowImageModal] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -4056,7 +4084,7 @@ const CityExplorer = () => {
           const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
           
           const map = L.map(container).setView([avgLat, avgLng], 13);
-          L.tileLayer(window.BKK.getTileUrlClean(), {
+          L.tileLayer(window.BKK.getTileUrl(), {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
@@ -7413,6 +7441,87 @@ const CityExplorer = () => {
   };
   
   // Handle edit location - populate form with existing data
+  // === PLACE REVIEWS ===
+  const openReviewDialog = async (place) => {
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    
+    // Load existing reviews from Firebase
+    let reviews = [];
+    try {
+      const database = window.BKK.database;
+      if (database) {
+        const snap = await database.ref(`reviews/${cityId}/${placeKey}`).once('value');
+        const data = snap.val();
+        if (data) {
+          reviews = Object.entries(data).map(([uid, r]) => ({
+            odvisitorId: uid,
+            rating: r.rating || 0,
+            text: r.text || '',
+            userName: r.userName || uid.slice(0, 8),
+            timestamp: r.timestamp || 0
+          })).sort((a, b) => b.timestamp - a.timestamp);
+        }
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Load error:', e);
+    }
+    
+    // Find my existing review
+    const myReview = reviews.find(r => r.odvisitorId === visitorId);
+    
+    setReviewDialog({
+      place,
+      placeKey,
+      reviews,
+      myRating: myReview?.rating || 0,
+      myText: myReview?.text || '',
+      hasChanges: false
+    });
+  };
+  
+  const saveReview = async () => {
+    if (!reviewDialog) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    const userName = window.BKK.visitorName || visitorId.slice(0, 8);
+    
+    try {
+      const database = window.BKK.database;
+      if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).set({
+          rating: reviewDialog.myRating,
+          text: reviewDialog.myText.trim(),
+          userName: userName,
+          timestamp: Date.now()
+        });
+        showToast(t('reviews.saved'), 'success');
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Save error:', e);
+      showToast(t('reviews.saveError'), 'error');
+    }
+    setReviewDialog(null);
+  };
+  
+  const deleteMyReview = async () => {
+    if (!reviewDialog) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    
+    try {
+      const database = window.BKK.database;
+      if (database) {
+        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).remove();
+        showToast(t('reviews.deleted'), 'success');
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Delete error:', e);
+    }
+    setReviewDialog(null);
+  };
+
   const handleEditLocation = (loc) => {
     setEditingLocation(loc);
     const editFormData = {
@@ -9478,7 +9587,7 @@ const CityExplorer = () => {
                             const L = window.L;
                             if (!L || !el.offsetHeight) return;
                             const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([activeStops[0].lat, activeStops[0].lng], 13);
-                            L.tileLayer(window.BKK.getTileUrlClean(), { maxZoom: 18 }).addTo(map);
+                            L.tileLayer(window.BKK.getTileUrl(), { maxZoom: 18 }).addTo(map);
                             const colors = ['#3b82f6','#f59e0b','#ef4444','#10b981','#ec4899','#6366f1','#8b5cf6','#06b6d4','#f97316','#a855f7'];
                             const mkrs = [];
                             activeStops.forEach((stop, i) => {
@@ -9626,7 +9735,7 @@ const CityExplorer = () => {
                                           // Place was added - show edit/view button
                                           return (
                                             <button
-                                              onClick={() => handleEditLocation(existingLoc)}
+                                              onClick={() => existingLoc.locked && !isUnlocked ? openReviewDialog(existingLoc) : handleEditLocation(existingLoc)}
                                               className="text-[9px] px-1 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
                                               title={existingLoc.locked && !isUnlocked ? t("general.viewOnly") : t("places.editAddedToList")}
                                             >
@@ -10278,13 +10387,17 @@ const CityExplorer = () => {
                                   onClick={() => {
                                     const customLoc = customLocations.find(loc => loc.name === stop.name);
                                     if (customLoc) {
-                                      handleEditLocation(customLoc);
+                                      if (customLoc.locked && !isUnlocked) {
+                                        openReviewDialog(customLoc);
+                                      } else {
+                                        handleEditLocation(customLoc);
+                                      }
                                     }
                                   }}
                                   className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
                                   title={t("general.clickForDetails")}
                                 >
-                                  {sourceBadge.text}
+                                  {(() => { const cl = customLocations.find(loc => loc.name === stop.name); return cl?.locked && !isUnlocked ? '👁️ ' + sourceBadge.text : sourceBadge.text; })()}
                                 </button>
                                 
                                 {/* Hover Tooltip */}
@@ -14594,6 +14707,118 @@ const CityExplorer = () => {
         </div>
       )}
 
+
+      {/* === PLACE REVIEW DIALOG === */}
+      {reviewDialog && (() => {
+        const avgRating = reviewDialog.reviews.length > 0 
+          ? (reviewDialog.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewDialog.reviews.filter(r => r.rating > 0).length || 0).toFixed(1)
+          : null;
+        const visitorId = window.BKK.visitorId || 'anonymous';
+        
+        const handleClose = () => {
+          if (reviewDialog.hasChanges) {
+            if (window.confirm(t('reviews.unsavedChanges'))) {
+              saveReview();
+            } else {
+              setReviewDialog(null);
+            }
+          } else {
+            setReviewDialog(null);
+          }
+        };
+        
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={handleClose}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-3 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+                  <div className="text-center flex-1">
+                    <h3 className="font-bold text-base text-gray-800">{reviewDialog.place.name}</h3>
+                    {reviewDialog.place.description && (
+                      <p className="text-[10px] text-gray-500">{reviewDialog.place.description}</p>
+                    )}
+                    {avgRating && avgRating !== 'NaN' && (
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <span className="text-amber-500 text-sm">{'★'.repeat(Math.round(parseFloat(avgRating)))}</span>
+                        <span className="text-xs text-gray-600 font-bold">{avgRating}</span>
+                        <span className="text-[10px] text-gray-400">({reviewDialog.reviews.filter(r => r.rating > 0).length})</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ width: '24px' }}></div>
+                </div>
+              </div>
+              
+              {/* My Review Section */}
+              <div className="p-3 border-b bg-blue-50">
+                <h4 className="text-xs font-bold text-blue-700 mb-2">⭐ {t('reviews.myReview')}</h4>
+                {/* Star Rating */}
+                <div className="flex gap-1 mb-2 justify-center">
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star}
+                      onClick={() => setReviewDialog(prev => ({...prev, myRating: star, hasChanges: true}))}
+                      style={{ fontSize: '28px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: star <= reviewDialog.myRating ? '#f59e0b' : '#d1d5db' }}
+                    >★</button>
+                  ))}
+                </div>
+                {/* Text */}
+                <textarea
+                  value={reviewDialog.myText}
+                  onChange={(e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true}))}
+                  placeholder={t('reviews.writeReview')}
+                  rows={2}
+                  style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', resize: 'vertical' }}
+                ></textarea>
+              </div>
+              
+              {/* All Reviews */}
+              <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: '40vh' }}>
+                <h4 className="text-xs font-bold text-gray-500 mb-2">{t('reviews.allReviews')} ({reviewDialog.reviews.length})</h4>
+                {reviewDialog.reviews.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">{t('reviews.noReviews')}</p>
+                ) : (
+                  reviewDialog.reviews.map((review, idx) => {
+                    const isMe = review.odvisitorId === visitorId;
+                    return (
+                      <div key={idx} className={`p-2 rounded-lg mb-2 ${isMe ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + review.userName : review.userName}</span>
+                            {review.rating > 0 && <span className="text-amber-500 text-xs">{'★'.repeat(review.rating)}</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] text-gray-400">{new Date(review.timestamp).toLocaleDateString()}</span>
+                            {isMe && (
+                              <button onClick={deleteMyReview} className="text-red-400 hover:text-red-600 text-xs" title={t('reviews.deleteReview')}>🗑️</button>
+                            )}
+                          </div>
+                        </div>
+                        {review.text && <p className="text-xs text-gray-600">{review.text}</p>}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              
+              {/* Footer Buttons */}
+              <div className="p-3 border-t flex gap-2">
+                <button
+                  onClick={handleClose}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg font-bold text-sm text-gray-600 hover:bg-gray-50"
+                >{t('reviews.cancel')}</button>
+                <button
+                  onClick={saveReview}
+                  disabled={reviewDialog.myRating === 0 && !reviewDialog.myText.trim()}
+                  className="flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white"
+                  style={{ background: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'pointer' : 'not-allowed' }}
+                >⭐ {t('reviews.save')}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
 
 

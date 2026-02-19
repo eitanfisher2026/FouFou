@@ -108,6 +108,7 @@
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
+  const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
   const [showImageModal, setShowImageModal] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -246,7 +247,7 @@
           const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
           
           const map = L.map(container).setView([avgLat, avgLng], 13);
-          L.tileLayer(window.BKK.getTileUrlClean(), {
+          L.tileLayer(window.BKK.getTileUrl(), {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
@@ -3603,6 +3604,87 @@
   };
   
   // Handle edit location - populate form with existing data
+  // === PLACE REVIEWS ===
+  const openReviewDialog = async (place) => {
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    
+    // Load existing reviews from Firebase
+    let reviews = [];
+    try {
+      const database = window.BKK.database;
+      if (database) {
+        const snap = await database.ref(`reviews/${cityId}/${placeKey}`).once('value');
+        const data = snap.val();
+        if (data) {
+          reviews = Object.entries(data).map(([uid, r]) => ({
+            odvisitorId: uid,
+            rating: r.rating || 0,
+            text: r.text || '',
+            userName: r.userName || uid.slice(0, 8),
+            timestamp: r.timestamp || 0
+          })).sort((a, b) => b.timestamp - a.timestamp);
+        }
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Load error:', e);
+    }
+    
+    // Find my existing review
+    const myReview = reviews.find(r => r.odvisitorId === visitorId);
+    
+    setReviewDialog({
+      place,
+      placeKey,
+      reviews,
+      myRating: myReview?.rating || 0,
+      myText: myReview?.text || '',
+      hasChanges: false
+    });
+  };
+  
+  const saveReview = async () => {
+    if (!reviewDialog) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    const userName = window.BKK.visitorName || visitorId.slice(0, 8);
+    
+    try {
+      const database = window.BKK.database;
+      if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).set({
+          rating: reviewDialog.myRating,
+          text: reviewDialog.myText.trim(),
+          userName: userName,
+          timestamp: Date.now()
+        });
+        showToast(t('reviews.saved'), 'success');
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Save error:', e);
+      showToast(t('reviews.saveError'), 'error');
+    }
+    setReviewDialog(null);
+  };
+  
+  const deleteMyReview = async () => {
+    if (!reviewDialog) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    const visitorId = window.BKK.visitorId || 'anonymous';
+    
+    try {
+      const database = window.BKK.database;
+      if (database) {
+        await database.ref(`reviews/${cityId}/${reviewDialog.placeKey}/${visitorId}`).remove();
+        showToast(t('reviews.deleted'), 'success');
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Delete error:', e);
+    }
+    setReviewDialog(null);
+  };
+
   const handleEditLocation = (loc) => {
     setEditingLocation(loc);
     const editFormData = {

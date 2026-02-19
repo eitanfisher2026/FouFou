@@ -2441,3 +2441,115 @@
         </div>
       )}
 
+
+      {/* === PLACE REVIEW DIALOG === */}
+      {reviewDialog && (() => {
+        const avgRating = reviewDialog.reviews.length > 0 
+          ? (reviewDialog.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewDialog.reviews.filter(r => r.rating > 0).length || 0).toFixed(1)
+          : null;
+        const visitorId = window.BKK.visitorId || 'anonymous';
+        
+        const handleClose = () => {
+          if (reviewDialog.hasChanges) {
+            if (window.confirm(t('reviews.unsavedChanges'))) {
+              saveReview();
+            } else {
+              setReviewDialog(null);
+            }
+          } else {
+            setReviewDialog(null);
+          }
+        };
+        
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={handleClose}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-3 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+                  <div className="text-center flex-1">
+                    <h3 className="font-bold text-base text-gray-800">{reviewDialog.place.name}</h3>
+                    {reviewDialog.place.description && (
+                      <p className="text-[10px] text-gray-500">{reviewDialog.place.description}</p>
+                    )}
+                    {avgRating && avgRating !== 'NaN' && (
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <span className="text-amber-500 text-sm">{'★'.repeat(Math.round(parseFloat(avgRating)))}</span>
+                        <span className="text-xs text-gray-600 font-bold">{avgRating}</span>
+                        <span className="text-[10px] text-gray-400">({reviewDialog.reviews.filter(r => r.rating > 0).length})</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ width: '24px' }}></div>
+                </div>
+              </div>
+              
+              {/* My Review Section */}
+              <div className="p-3 border-b bg-blue-50">
+                <h4 className="text-xs font-bold text-blue-700 mb-2">⭐ {t('reviews.myReview')}</h4>
+                {/* Star Rating */}
+                <div className="flex gap-1 mb-2 justify-center">
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star}
+                      onClick={() => setReviewDialog(prev => ({...prev, myRating: star, hasChanges: true}))}
+                      style={{ fontSize: '28px', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: star <= reviewDialog.myRating ? '#f59e0b' : '#d1d5db' }}
+                    >★</button>
+                  ))}
+                </div>
+                {/* Text */}
+                <textarea
+                  value={reviewDialog.myText}
+                  onChange={(e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true}))}
+                  placeholder={t('reviews.writeReview')}
+                  rows={2}
+                  style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', resize: 'vertical' }}
+                ></textarea>
+              </div>
+              
+              {/* All Reviews */}
+              <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: '40vh' }}>
+                <h4 className="text-xs font-bold text-gray-500 mb-2">{t('reviews.allReviews')} ({reviewDialog.reviews.length})</h4>
+                {reviewDialog.reviews.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">{t('reviews.noReviews')}</p>
+                ) : (
+                  reviewDialog.reviews.map((review, idx) => {
+                    const isMe = review.odvisitorId === visitorId;
+                    return (
+                      <div key={idx} className={`p-2 rounded-lg mb-2 ${isMe ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + review.userName : review.userName}</span>
+                            {review.rating > 0 && <span className="text-amber-500 text-xs">{'★'.repeat(review.rating)}</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] text-gray-400">{new Date(review.timestamp).toLocaleDateString()}</span>
+                            {isMe && (
+                              <button onClick={deleteMyReview} className="text-red-400 hover:text-red-600 text-xs" title={t('reviews.deleteReview')}>🗑️</button>
+                            )}
+                          </div>
+                        </div>
+                        {review.text && <p className="text-xs text-gray-600">{review.text}</p>}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              
+              {/* Footer Buttons */}
+              <div className="p-3 border-t flex gap-2">
+                <button
+                  onClick={handleClose}
+                  className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg font-bold text-sm text-gray-600 hover:bg-gray-50"
+                >{t('reviews.cancel')}</button>
+                <button
+                  onClick={saveReview}
+                  disabled={reviewDialog.myRating === 0 && !reviewDialog.myText.trim()}
+                  className="flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white"
+                  style={{ background: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'pointer' : 'not-allowed' }}
+                >⭐ {t('reviews.save')}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
