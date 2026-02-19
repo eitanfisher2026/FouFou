@@ -9342,8 +9342,8 @@ const CityExplorer = () => {
                             readOnly
                             onClick={() => setShowAddressDialog(true)}
                             placeholder={t("form.selectStartPoint")}
-                            className="w-full p-1.5 border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
-                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', paddingLeft: '8px', paddingRight: '8px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
+                            className="w-full border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
+                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '8px', height: '38px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
                           />
                         </div>
                         {(formData.startPoint?.trim() || startPointCoords) && (
@@ -9353,7 +9353,7 @@ const CityExplorer = () => {
                               setStartPointCoords(null);
                               if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
                             }}
-                            className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-400 text-white hover:bg-red-500 text-[10px] font-bold flex-shrink-0"
+                            style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: '#9ca3af', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             title={t("general.clear")}
                           >
                             ✕
@@ -9361,7 +9361,7 @@ const CityExplorer = () => {
                         )}
                         <button
                           onClick={() => setShowAddressDialog(true)}
-                          className="px-1.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap flex-shrink-0 bg-green-500 text-white hover:bg-green-600"
+                          style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title={t("form.searchAddress")}
                         >
                           🔍
@@ -9369,7 +9369,7 @@ const CityExplorer = () => {
                         <button
                           onClick={getMyLocation}
                           disabled={isLocating}
-                          className={`px-1.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap flex-shrink-0 ${isLocating ? 'bg-gray-300 text-gray-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+                          style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title={t("form.findCurrentLocation")}
                         >
                           {isLocating ? '⏳' : '📍'}
@@ -9389,9 +9389,9 @@ const CityExplorer = () => {
                       disabled={!startPointCoords}
                       style={{
                         flex: 1,
+                        height: '42px',
                         backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
                         color: startPointCoords ? 'white' : '#9ca3af',
-                        padding: '8px',
                         borderRadius: '12px',
                         fontWeight: 'bold',
                         fontSize: '13px',
@@ -9406,9 +9406,10 @@ const CityExplorer = () => {
                       onClick={() => setShowRoutePreview(!showRoutePreview)}
                       disabled={!route?.optimized}
                       style={{
+                        height: '42px',
                         backgroundColor: showRoutePreview ? '#7c3aed' : route?.optimized ? '#a78bfa' : '#d1d5db',
                         color: route?.optimized ? 'white' : '#9ca3af',
-                        padding: '8px 12px',
+                        padding: '0 12px',
                         borderRadius: '12px',
                         fontWeight: 'bold',
                         fontSize: '13px',
@@ -9418,7 +9419,7 @@ const CityExplorer = () => {
                         flexShrink: 0
                       }}
                     >
-                      {showRoutePreview ? `✓ ${t('route.backToList')}` : `📋 ${t('route.reorderStops')}`}
+                      {showRoutePreview ? `✓ ${t('route.backToList')}` : `☰ ${t('route.reorderStops')}`}
                     </button>
                     </div>
                     {!startPointCoords && (
@@ -9432,7 +9433,7 @@ const CityExplorer = () => {
                       </p>
                     )}
                     
-                    {/* Buttons row: Open in Google + Save */}
+                    {/* Buttons row: Open in Google + Save + Share */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
                       {/* Open in Google Maps Button(s) */}
                       {(() => {
@@ -9467,7 +9468,7 @@ const CityExplorer = () => {
                             style={{
                               flex: 1, backgroundColor: route?.optimized ? '#2563eb' : '#d1d5db',
                               color: route?.optimized ? 'white' : '#9ca3af', textAlign: 'center',
-                              padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
+                              height: '42px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
                               border: 'none', boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
                               cursor: route?.optimized ? 'pointer' : 'not-allowed'
                             }}
@@ -9487,7 +9488,7 @@ const CityExplorer = () => {
                                 flex: 1, minWidth: '120px',
                                 backgroundColor: idx === 0 ? '#2563eb' : '#1d4ed8',
                                 color: 'white', textAlign: 'center',
-                                padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
+                                height: '42px', borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
                                 border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                                 cursor: 'pointer'
                               }}
@@ -9505,11 +9506,13 @@ const CityExplorer = () => {
                           style={{
                             backgroundColor: '#dcfce7',
                             border: '2px solid #16a34a',
-                            padding: '8px 10px',
+                            width: '42px',
+                            height: '42px',
                             borderRadius: '12px',
                             fontSize: '16px',
                             cursor: 'default',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}
                           title={`${t("route.savedAs")} ${route.name}`}
                         >
@@ -9521,13 +9524,15 @@ const CityExplorer = () => {
                           style={{
                             background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
                             border: 'none',
-                            padding: '8px 10px',
+                            width: '42px',
+                            height: '42px',
                             borderRadius: '12px',
                             fontSize: '16px',
                             color: 'white',
                             cursor: 'pointer',
                             boxShadow: '0 4px 6px rgba(124, 58, 237, 0.3)',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}
                           title={t("route.saveRoute")}
                         >
@@ -9538,8 +9543,18 @@ const CityExplorer = () => {
                       {route?.optimized && (
                         <button
                           onClick={() => {
-                            const activeStops = (route.stops || []).filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()));
-                            const shareText = `🗺️ ${route.name || t('route.myRoute')}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}`;
+                            const activeStops = (route.stops || []).filter(s => {
+                              const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
+                              const hasCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                              return isActive && hasCoords;
+                            });
+                            const hasStart = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                            const origin = hasStart ? `${startPointCoords.lat},${startPointCoords.lng}` : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
+                            const stopsForUrl = hasStart ? activeStops : activeStops.slice(1);
+                            const isCirc = routeType === 'circular';
+                            const urls = window.BKK.buildGoogleMapsUrls(stopsForUrl, origin, isCirc, googleMaxWaypoints);
+                            const mapLinks = urls.map((u, i) => urls.length === 1 ? u.url : `(${u.part}/${u.total}) ${u.url}`).join('\n');
+                            const shareText = `🗺️ ${route.name || t('route.myRoute')}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}\n\n🗺️ Google Maps:\n${mapLinks}`;
                             if (navigator.share) {
                               navigator.share({ title: route.name || t('route.myRoute'), text: shareText });
                             } else {
@@ -9550,13 +9565,15 @@ const CityExplorer = () => {
                           style={{
                             background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
                             border: 'none',
-                            padding: '8px 10px',
+                            width: '42px',
+                            height: '42px',
                             borderRadius: '12px',
                             fontSize: '16px',
                             color: 'white',
                             cursor: 'pointer',
                             boxShadow: '0 4px 6px rgba(37, 99, 235, 0.3)',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
                           }}
                           title={t("general.shareRoute")}
                         >
