@@ -1287,11 +1287,12 @@
                     onClick={() => setShowManualAddDialog(true)}
                     style={{
                       width: '100%',
+                      height: '42px',
                       background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
                       color: 'white',
-                      display: 'block',
-                      textAlign: 'center',
-                      padding: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       fontSize: '13px',
@@ -1320,12 +1321,13 @@
                       setShowMapModal(true);
                     }}
                     style={{
-                      display: 'block',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       width: '100%',
+                      height: '42px',
                       backgroundColor: '#f59e0b',
                       color: 'white',
-                      textAlign: 'center',
-                      padding: '8px',
                       borderRadius: '12px',
                       fontWeight: 'bold',
                       fontSize: '13px',
@@ -1390,7 +1392,7 @@
                             onClick={() => setShowAddressDialog(true)}
                             placeholder={t("form.selectStartPoint")}
                             className="w-full border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
-                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '8px', height: '38px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
+                            style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '8px', height: '42px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff' }}
                           />
                         </div>
                         {(formData.startPoint?.trim() || startPointCoords) && (
@@ -1400,7 +1402,7 @@
                               setStartPointCoords(null);
                               if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
                             }}
-                            style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: '#9ca3af', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#9ca3af', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             title={t("general.clear")}
                           >
                             ✕
@@ -1408,7 +1410,7 @@
                         )}
                         <button
                           onClick={() => setShowAddressDialog(true)}
-                          style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title={t("form.searchAddress")}
                         >
                           🔍
@@ -1416,7 +1418,7 @@
                         <button
                           onClick={getMyLocation}
                           disabled={isLocating}
-                          style={{ width: '38px', height: '38px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           title={t("form.findCurrentLocation")}
                         >
                           {isLocating ? '⏳' : '📍'}
