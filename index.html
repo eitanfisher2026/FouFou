@@ -9341,21 +9341,6 @@ const CityExplorer = () => {
                         style={{ flex: 1, direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '0 8px', height: '42px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff', minWidth: 0 }}
                       />
                       <button
-                        onClick={getMyLocation}
-                        disabled={isLocating}
-                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title={t("form.findCurrentLocation")}
-                      >
-                        {isLocating ? '⏳' : '📍'}
-                      </button>
-                      <button
-                        onClick={() => setShowAddressDialog(true)}
-                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title={t("form.searchAddress")}
-                      >
-                        🔍
-                      </button>
-                      <button
                         onClick={() => {
                           if (formData.startPoint?.trim() || startPointCoords) {
                             setFormData({...formData, startPoint: ''});
@@ -9367,6 +9352,21 @@ const CityExplorer = () => {
                         title={t("general.clear")}
                       >
                         ✕
+                      </button>
+                      <button
+                        onClick={() => setShowAddressDialog(true)}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t("form.searchAddress")}
+                      >
+                        🔍
+                      </button>
+                      <button
+                        onClick={getMyLocation}
+                        disabled={isLocating}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t("form.findCurrentLocation")}
+                      >
+                        {isLocating ? '⏳' : '📍'}
                       </button>
                       </div>
 
