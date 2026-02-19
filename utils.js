@@ -581,7 +581,7 @@ window.BKK.suggestEmojis = async function(description) {
       return final;
     }
   } catch (e) {
-    console.log('[EMOJI] Gemini failed, using local fallback:', e.message);
+    console.error('[EMOJI] Gemini failed:', e.message);
   }
   
   // Fallback: local keyword mapping with shuffle to get variety on "more"
@@ -602,6 +602,7 @@ window.BKK._suggestEmojisGemini = async function(description) {
   
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   
+  console.error('[EMOJI] Calling Gemini API for:', description.substring(0, 30));
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -627,7 +628,11 @@ CRITICAL RULES:
     })
   });
   
-  if (!resp.ok) throw new Error(`Gemini API error: ${resp.status}`);
+  if (!resp.ok) {
+    const errorBody = await resp.text().catch(() => '');
+    console.error('[EMOJI] Gemini API error:', resp.status, errorBody.substring(0, 200));
+    throw new Error(`Gemini API error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+  }
   
   const data = await resp.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -668,7 +673,8 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['מוזיאון','museum','exhibit','תערוכה'], emojis: ['🏛️','🖼️','🎨'] },
     { keys: ['היסטורי','history','historic','עתיק','ancient'], emojis: ['🏛️','📜','⏳','🏰'] },
     { keys: ['תרבות','culture','cultural'], emojis: ['🎭','🏛️','🎪'] },
-    { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת'], emojis: ['⛩️','🕌','⛪','🕍','🛕'] },
+    { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת','shrine','מקום קדוש'], emojis: ['⛩️','🕌','⛪','🕍','🛕','🙏'] },
+    { keys: ['buddha','בודה','buddhist','buddhism','wat','pagoda','monk','נזיר'], emojis: ['🛕','🙏','☸️','🪷','📿','🧘'] },
     { keys: ['ארכיטקטורה','architecture','building','בניין'], emojis: ['🏗️','🏢','🏰'] },
     // Arts & Entertainment
     { keys: ['אומנות','art','גלריה','gallery','street art','גרפיטי','graffiti'], emojis: ['🎨','🖼️','🖌️'] },

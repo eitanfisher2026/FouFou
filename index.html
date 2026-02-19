@@ -3477,6 +3477,7 @@ window.BKK.suggestEmojis = async function(description) {
       return final;
     }
   } catch (e) {
+    console.error('[EMOJI] Gemini failed:', e.message);
   }
   
   const all = window.BKK._suggestEmojisLocal(description, true); // get all matches
@@ -3495,6 +3496,7 @@ window.BKK._suggestEmojisGemini = async function(description) {
   
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   
+  console.error('[EMOJI] Calling Gemini API for:', description.substring(0, 30));
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -3520,7 +3522,11 @@ CRITICAL RULES:
     })
   });
   
-  if (!resp.ok) throw new Error(`Gemini API error: ${resp.status}`);
+  if (!resp.ok) {
+    const errorBody = await resp.text().catch(() => '');
+    console.error('[EMOJI] Gemini API error:', resp.status, errorBody.substring(0, 200));
+    throw new Error(`Gemini API error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+  }
   
   const data = await resp.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -3556,7 +3562,8 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['מוזיאון','museum','exhibit','תערוכה'], emojis: ['🏛️','🖼️','🎨'] },
     { keys: ['היסטורי','history','historic','עתיק','ancient'], emojis: ['🏛️','📜','⏳','🏰'] },
     { keys: ['תרבות','culture','cultural'], emojis: ['🎭','🏛️','🎪'] },
-    { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת'], emojis: ['⛩️','🕌','⛪','🕍','🛕'] },
+    { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת','shrine','מקום קדוש'], emojis: ['⛩️','🕌','⛪','🕍','🛕','🙏'] },
+    { keys: ['buddha','בודה','buddhist','buddhism','wat','pagoda','monk','נזיר'], emojis: ['🛕','🙏','☸️','🪷','📿','🧘'] },
     { keys: ['ארכיטקטורה','architecture','building','בניין'], emojis: ['🏗️','🏢','🏰'] },
     { keys: ['אומנות','art','גלריה','gallery','street art','גרפיטי','graffiti'], emojis: ['🎨','🖼️','🖌️'] },
     { keys: ['מוזיקה','music','concert','הופעה'], emojis: ['🎵','🎶','🎸','🎤'] },
@@ -12356,25 +12363,37 @@ const CityExplorer = () => {
               </div>
               )}
 
-              {/* Actions: Delete - hidden for locked non-admin */}
-              {!(editingRoute.locked && !isUnlocked) && (
-              <div className="border-t border-red-200 bg-red-50 px-4 py-2">
+              {/* Actions: Open Route + Delete */}
+              <div className="px-4 py-2 border-t border-gray-200" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      showConfirm(`{t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
-                        deleteRoute(editingRoute.id);
-                        setShowRouteDialog(false);
-                        setEditingRoute(null);
-                      });
+                      loadSavedRoute(editingRoute);
+                      setShowRouteDialog(false);
+                      setEditingRoute(null);
                     }}
-                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                    className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600"
+                    style={{ fontSize: '15px' }}
                   >
-                    🗑️ {t("general.deleteRoute")}
+                    📍 {t("general.openRoute")}
                   </button>
+                  {!(editingRoute.locked && !isUnlocked) && (
+                    <button
+                      onClick={() => {
+                        showConfirm(`{t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
+                          deleteRoute(editingRoute.id);
+                          setShowRouteDialog(false);
+                          setEditingRoute(null);
+                        });
+                      }}
+                      style={{ width: '42px', height: '42px', borderRadius: '8px', border: 'none', backgroundColor: '#fee2e2', color: '#dc2626', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      title={t("general.deleteRoute")}
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
-              )}
             </div>
             
             {/* Footer */}
@@ -12383,50 +12402,22 @@ const CityExplorer = () => {
                 const isLockedRoute = editingRoute.locked && !isUnlocked;
                 return (
                   <>
-                    {isLockedRoute ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            loadSavedRoute(editingRoute);
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          📍 {t("general.openRoute")}
-                        </button>
-                        <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
-                          🔒 View only
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            updateRoute(editingRoute.id, {
-                              name: editingRoute.name,
-                              notes: editingRoute.notes,
-                              inProgress: editingRoute.inProgress,
-                              locked: editingRoute.locked
-                            });
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          💾 {t('general.update') || 'Update'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            loadSavedRoute(editingRoute);
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          📍 {t("general.openRoute")}
-                        </button>
-                      </>
+                    {!isLockedRoute && (
+                      <button
+                        onClick={() => {
+                          updateRoute(editingRoute.id, {
+                            name: editingRoute.name,
+                            notes: editingRoute.notes,
+                            inProgress: editingRoute.inProgress,
+                            locked: editingRoute.locked
+                          });
+                          setShowRouteDialog(false);
+                          setEditingRoute(null);
+                        }}
+                        className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                      >
+                        💾 {t('general.update') || 'Update'}
+                      </button>
                     )}
                     <button
                       onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}

@@ -1173,25 +1173,37 @@
               </div>
               )}
 
-              {/* Actions: Delete - hidden for locked non-admin */}
-              {!(editingRoute.locked && !isUnlocked) && (
-              <div className="border-t border-red-200 bg-red-50 px-4 py-2">
+              {/* Actions: Open Route + Delete */}
+              <div className="px-4 py-2 border-t border-gray-200" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      showConfirm(`{t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
-                        deleteRoute(editingRoute.id);
-                        setShowRouteDialog(false);
-                        setEditingRoute(null);
-                      });
+                      loadSavedRoute(editingRoute);
+                      setShowRouteDialog(false);
+                      setEditingRoute(null);
                     }}
-                    className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                    className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600"
+                    style={{ fontSize: '15px' }}
                   >
-                    🗑️ {t("general.deleteRoute")}
+                    📍 {t("general.openRoute")}
                   </button>
+                  {!(editingRoute.locked && !isUnlocked) && (
+                    <button
+                      onClick={() => {
+                        showConfirm(`{t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
+                          deleteRoute(editingRoute.id);
+                          setShowRouteDialog(false);
+                          setEditingRoute(null);
+                        });
+                      }}
+                      style={{ width: '42px', height: '42px', borderRadius: '8px', border: 'none', backgroundColor: '#fee2e2', color: '#dc2626', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                      title={t("general.deleteRoute")}
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
-              )}
             </div>
             
             {/* Footer */}
@@ -1200,50 +1212,22 @@
                 const isLockedRoute = editingRoute.locked && !isUnlocked;
                 return (
                   <>
-                    {isLockedRoute ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            loadSavedRoute(editingRoute);
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          📍 {t("general.openRoute")}
-                        </button>
-                        <div className="flex-shrink-0 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-[11px] font-bold text-center">
-                          🔒 View only
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            updateRoute(editingRoute.id, {
-                              name: editingRoute.name,
-                              notes: editingRoute.notes,
-                              inProgress: editingRoute.inProgress,
-                              locked: editingRoute.locked
-                            });
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          💾 {t('general.update') || 'Update'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            loadSavedRoute(editingRoute);
-                            setShowRouteDialog(false);
-                            setEditingRoute(null);
-                          }}
-                          className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
-                        >
-                          📍 {t("general.openRoute")}
-                        </button>
-                      </>
+                    {!isLockedRoute && (
+                      <button
+                        onClick={() => {
+                          updateRoute(editingRoute.id, {
+                            name: editingRoute.name,
+                            notes: editingRoute.notes,
+                            inProgress: editingRoute.inProgress,
+                            locked: editingRoute.locked
+                          });
+                          setShowRouteDialog(false);
+                          setEditingRoute(null);
+                        }}
+                        className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                      >
+                        💾 {t('general.update') || 'Update'}
+                      </button>
                     )}
                     <button
                       onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
