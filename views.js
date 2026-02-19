@@ -1381,7 +1381,7 @@
                     </div>
                     
                     {/* Start Point + Calc Route + Google Maps - aligned grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto 1fr', gap: '4px', alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto 1fr', gap: '4px', alignItems: 'center', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                       <label className="text-xs font-bold text-gray-700" style={{ gridColumn: '1 / -1', marginBottom: '-2px' }}>{`📍 ${t("route.startPoint")}`}</label>
                       {/* Row 1: Start Point */}
                       <button
