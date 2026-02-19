@@ -8470,7 +8470,22 @@ const CityExplorer = () => {
         padding: '6px 16px',
         boxShadow: `0 2px 8px ${c}33`
       }}>
-        <div className="flex items-center justify-center gap-1.5">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          {/* Feedback button - left in RTL, right in LTR */}
+          <button
+            onClick={() => setShowFeedbackDialog(true)}
+            style={{
+              position: 'absolute',
+              [currentLang === 'he' ? 'left' : 'right']: '0',
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none', borderRadius: '50%',
+              width: '26px', height: '26px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: '13px', color: 'white',
+              transition: 'background 0.2s'
+            }}
+            title={t("settings.sendFeedback")}
+          >💬</button>
           <span style={{ fontSize: '14px' }}>{theme.iconLeft || window.BKK.selectedCity?.secondaryIcon || '🏙️'}</span>
           <h1 style={{ 
             fontSize: '16px', 
@@ -12021,63 +12036,6 @@ const CityExplorer = () => {
           </div>
         </div>
 
-      {/* Draggable Feedback Button */}
-      {!showFeedbackDialog && (() => {
-        const feedbackBtnRef = React.useRef(null);
-        const dragState = React.useRef({ dragging: false, offsetX: 0, offsetY: 0 });
-        const [feedbackPos, setFeedbackPos] = React.useState(() => {
-          try {
-            const saved = JSON.parse(localStorage.getItem('feedback_btn_pos'));
-            if (saved && saved.x !== undefined) return saved;
-          } catch(e) {}
-          // Default: top-left, under language toggle (RTL: right side)
-          return { x: window.innerWidth - 52, y: 44 };
-        });
-        
-        const onStart = (clientX, clientY) => {
-          const el = feedbackBtnRef.current;
-          if (!el) return;
-          dragState.current = { dragging: false, startX: clientX, startY: clientY, offsetX: clientX - feedbackPos.x, offsetY: clientY - feedbackPos.y };
-        };
-        const onMove = (clientX, clientY) => {
-          const ds = dragState.current;
-          if (ds.startX === undefined) return;
-          const dist = Math.abs(clientX - ds.startX) + Math.abs(clientY - ds.startY);
-          if (dist > 5) ds.dragging = true;
-          if (ds.dragging) {
-            const newX = Math.max(0, Math.min(window.innerWidth - 44, clientX - ds.offsetX));
-            const newY = Math.max(0, Math.min(window.innerHeight - 44, clientY - ds.offsetY));
-            setFeedbackPos({ x: newX, y: newY });
-          }
-        };
-        const onEnd = () => {
-          if (dragState.current.dragging) {
-            localStorage.setItem('feedback_btn_pos', JSON.stringify(feedbackPos));
-          } else {
-            setShowFeedbackDialog(true);
-          }
-          dragState.current = { dragging: false };
-        };
-        
-        return (
-          <div
-            ref={feedbackBtnRef}
-            onMouseDown={(e) => { e.preventDefault(); onStart(e.clientX, e.clientY); const mm = (ev) => onMove(ev.clientX, ev.clientY); const mu = () => { onEnd(); window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); }}
-            onTouchStart={(e) => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }}
-            onTouchMove={(e) => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }}
-            onTouchEnd={onEnd}
-            style={{
-              position: 'fixed', left: feedbackPos.x + 'px', top: feedbackPos.y + 'px',
-              zIndex: 40, width: '40px', height: '40px', borderRadius: '50%',
-              background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'grab', userSelect: 'none', touchAction: 'none',
-              fontSize: '18px', transition: dragState.current.dragging ? 'none' : 'box-shadow 0.2s'
-            }}
-            title={t("settings.sendFeedback")}
-          >💬</div>
-        );
-      })()}
 
       {/* Leaflet Map Modal */}
       {showMapModal && (
@@ -14600,37 +14558,52 @@ window.__firebaseReady.then(function(sdkLoaded) {
     return '';
   });
 
-  // Smart back-button navigation: Android/iOS back button navigates within the app
-  // Instead of blocking, we push history entries and handle popstate to go back in-app
-  window.BKK._navHistory = []; // Stack of {view, wizardStep, wizardMode}
+  // Smart back-button navigation for Android/iOS
+  // Key trick: always keep 2 "cushion" entries at the bottom of the history stack
+  // so Android's back button never reaches the real browser history and exits the app
+  window.BKK._navHistory = [];
+  window.BKK._historyDepth = 0; // tracks how many pushState calls we've made
+  
   window.BKK.pushNavState = function(state) {
+    // Don't push duplicate states
+    var last = window.BKK._navHistory[window.BKK._navHistory.length - 1];
+    if (last && last.view === state.view && last.wizardStep === state.wizardStep && last.wizardMode === state.wizardMode) return;
+    
     window.BKK._navHistory.push(state);
-    window.history.pushState({ appNav: true, index: window.BKK._navHistory.length }, '', window.location.href);
+    window.BKK._historyDepth++;
+    window.history.pushState({ appNav: true, depth: window.BKK._historyDepth }, '', window.location.href);
   };
+  
   window.BKK.getNavBack = function() {
     if (window.BKK._navHistory.length > 1) {
-      window.BKK._navHistory.pop(); // remove current
-      return window.BKK._navHistory[window.BKK._navHistory.length - 1]; // return previous
+      window.BKK._navHistory.pop();
+      return window.BKK._navHistory[window.BKK._navHistory.length - 1];
     }
     return null;
   };
+  
   window.addEventListener('popstate', function(e) {
-    if (e.state && e.state.appNav) {
+    window.BKK._historyDepth = Math.max(0, window.BKK._historyDepth - 1);
+    
+    var prev = window.BKK.getNavBack();
+    if (prev) {
       // Navigate back within app
-      var prev = window.BKK.getNavBack();
-      if (prev) {
-        window.dispatchEvent(new CustomEvent('app-nav-back', { detail: prev }));
-      } else {
-        // At the beginning — push state to prevent exit, or let it go
-        window.history.pushState({ appNav: true, index: 0 }, '', window.location.href);
-      }
-    } else {
-      // No app state — push initial to prevent exit
-      window.history.pushState({ appNav: true, index: 0 }, '', window.location.href);
+      window.dispatchEvent(new CustomEvent('app-nav-back', { detail: prev }));
+    }
+    
+    // Always ensure we have cushion entries so next back press doesn't exit
+    // We need at least 2 entries ahead of us in the stack
+    while (window.BKK._historyDepth < 2) {
+      window.BKK._historyDepth++;
+      window.history.pushState({ appNav: true, depth: window.BKK._historyDepth, cushion: true }, '', window.location.href);
     }
   });
-  // Initialize with a base state
-  window.history.replaceState({ appNav: true, index: 0 }, '', window.location.href);
+  
+  // Initialize with 2 cushion entries
+  window.history.replaceState({ appNav: true, depth: 0 }, '', window.location.href);
+  window.history.pushState({ appNav: true, depth: 1, cushion: true }, '', window.location.href);
+  window.history.pushState({ appNav: true, depth: 2, cushion: true }, '', window.location.href);
+  window.BKK._historyDepth = 2;
 
   ReactDOM.createRoot(document.getElementById('root')).render(<CityExplorer />);
 });

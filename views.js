@@ -29,7 +29,22 @@
         padding: '6px 16px',
         boxShadow: `0 2px 8px ${c}33`
       }}>
-        <div className="flex items-center justify-center gap-1.5">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          {/* Feedback button - left in RTL, right in LTR */}
+          <button
+            onClick={() => setShowFeedbackDialog(true)}
+            style={{
+              position: 'absolute',
+              [currentLang === 'he' ? 'left' : 'right']: '0',
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none', borderRadius: '50%',
+              width: '26px', height: '26px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: '13px', color: 'white',
+              transition: 'background 0.2s'
+            }}
+            title={t("settings.sendFeedback")}
+          >💬</button>
           <span style={{ fontSize: '14px' }}>{theme.iconLeft || window.BKK.selectedCity?.secondaryIcon || '🏙️'}</span>
           <h1 style={{ 
             fontSize: '16px', 
@@ -3580,63 +3595,6 @@
           </div>
         </div>
 
-      {/* Draggable Feedback Button */}
-      {!showFeedbackDialog && (() => {
-        const feedbackBtnRef = React.useRef(null);
-        const dragState = React.useRef({ dragging: false, offsetX: 0, offsetY: 0 });
-        const [feedbackPos, setFeedbackPos] = React.useState(() => {
-          try {
-            const saved = JSON.parse(localStorage.getItem('feedback_btn_pos'));
-            if (saved && saved.x !== undefined) return saved;
-          } catch(e) {}
-          // Default: top-left, under language toggle (RTL: right side)
-          return { x: window.innerWidth - 52, y: 44 };
-        });
-        
-        const onStart = (clientX, clientY) => {
-          const el = feedbackBtnRef.current;
-          if (!el) return;
-          dragState.current = { dragging: false, startX: clientX, startY: clientY, offsetX: clientX - feedbackPos.x, offsetY: clientY - feedbackPos.y };
-        };
-        const onMove = (clientX, clientY) => {
-          const ds = dragState.current;
-          if (ds.startX === undefined) return;
-          const dist = Math.abs(clientX - ds.startX) + Math.abs(clientY - ds.startY);
-          if (dist > 5) ds.dragging = true;
-          if (ds.dragging) {
-            const newX = Math.max(0, Math.min(window.innerWidth - 44, clientX - ds.offsetX));
-            const newY = Math.max(0, Math.min(window.innerHeight - 44, clientY - ds.offsetY));
-            setFeedbackPos({ x: newX, y: newY });
-          }
-        };
-        const onEnd = () => {
-          if (dragState.current.dragging) {
-            localStorage.setItem('feedback_btn_pos', JSON.stringify(feedbackPos));
-          } else {
-            setShowFeedbackDialog(true);
-          }
-          dragState.current = { dragging: false };
-        };
-        
-        return (
-          <div
-            ref={feedbackBtnRef}
-            onMouseDown={(e) => { e.preventDefault(); onStart(e.clientX, e.clientY); const mm = (ev) => onMove(ev.clientX, ev.clientY); const mu = () => { onEnd(); window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); }}
-            onTouchStart={(e) => { const t = e.touches[0]; onStart(t.clientX, t.clientY); }}
-            onTouchMove={(e) => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }}
-            onTouchEnd={onEnd}
-            style={{
-              position: 'fixed', left: feedbackPos.x + 'px', top: feedbackPos.y + 'px',
-              zIndex: 40, width: '40px', height: '40px', borderRadius: '50%',
-              background: 'white', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'grab', userSelect: 'none', touchAction: 'none',
-              fontSize: '18px', transition: dragState.current.dragging ? 'none' : 'box-shadow 0.2s'
-            }}
-            title={t("settings.sendFeedback")}
-          >💬</div>
-        );
-      })()}
 
       {/* Leaflet Map Modal */}
       {showMapModal && (
