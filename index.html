@@ -3198,11 +3198,6 @@ window.BKK.compressImage = (file, maxSizeKB = 150) => {
           compressed = canvas.toDataURL('image/jpeg', quality);
         }
         
-          original: file.size,
-          compressed: Math.round(compressed.length / 1024),
-          quality
-        });
-        
         resolve(compressed);
       };
       img.src = e.target.result;
@@ -5216,11 +5211,6 @@ const CityExplorer = () => {
         });
       }
 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[DYNAMIC] Error fetching Google Places:', {
@@ -5309,12 +5299,6 @@ const CityExplorer = () => {
 
       const data = await response.json();
       
-        area,
-        interests,
-        placeTypes,
-        foundPlaces: data.places?.length || 0
-      });
-      
       if (!data.places) {
         return [];
       }
@@ -5336,9 +5320,6 @@ const CityExplorer = () => {
             const isBlacklisted = blacklistWords.some(word => placeName.includes(word));
             if (isBlacklisted) {
               blacklistFilteredCount++;
-                name: place.displayName?.text,
-                matchedWord: blacklistWords.find(word => placeName.includes(word))
-              });
               return false;
             }
           }
@@ -5348,9 +5329,6 @@ const CityExplorer = () => {
             
             if (!nameHasPhrase) {
               relevanceFilteredCount++;
-                name: place.displayName?.text,
-                searchPhrase: textSearchPhrase
-              });
               return false;
             }
           }
@@ -5361,17 +5339,9 @@ const CityExplorer = () => {
             
             if (!hasValidType) {
               typeFilteredCount++;
-                name: place.displayName?.text,
-                googleTypes: placeTypesFromGoogle,
-                expectedTypes: placeTypes
-              });
               return false;
             }
           }
-          
-            name: place.displayName?.text,
-            isTextSearch
-          });
           
           return true;
         })
@@ -5401,23 +5371,12 @@ const CityExplorer = () => {
           };
         });
       
-        received: data.places.length,
-        typeFiltered: typeFilteredCount,
-        blacklistFiltered: blacklistFilteredCount,
-        relevanceFiltered: relevanceFilteredCount,
-        beforeDistFilter: transformed.length
-      });
-      
       const areaConfig = areaCoordinates[area] || {};
       const distMultiplier = areaConfig.distanceMultiplier || window.BKK.selectedCity?.distanceMultiplier || 1.2;
       const maxDistance = searchRadius * distMultiplier;
       const distanceFiltered = transformed.filter(place => {
         const dist = calcDistance(center.lat, center.lng, place.lat, place.lng);
         if (dist > maxDistance) {
-            name: place.name,
-            distance: Math.round(dist) + 'm',
-            maxAllowed: Math.round(maxDistance) + 'm'
-          });
           return false;
         }
         return true;
@@ -5425,9 +5384,6 @@ const CityExplorer = () => {
       
       if (distanceFiltered.length < transformed.length) {
       }
-      
-        names: distanceFiltered.slice(0, 5).map(p => p.name)
-      });
       
       return distanceFiltered;
     } catch (error) {
@@ -5954,12 +5910,6 @@ const CityExplorer = () => {
     setIsGenerating(true);
     
     try {
-        mode: formData.searchMode, 
-        area: formData.area, 
-        radius: isRadiusMode ? formData.radiusMeters : null,
-        interests: formData.interests, 
-        maxStops: formData.maxStops 
-      });
       
       const customStops = getStopsForInterests();
       
@@ -6224,12 +6174,6 @@ const CityExplorer = () => {
           newRoute.stats.total = newRoute.stops.length;
         }
       }
-
-        stops: newRoute.stops.length,
-        stats: newRoute.stats,
-        incomplete: newRoute.incomplete,
-        errors: newRoute.errors
-      });
 
       setRoute(newRoute);
       

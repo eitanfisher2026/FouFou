@@ -16,16 +16,35 @@ def strip_for_production(code):
     """Remove debug logging, excessive comments, and blank lines for production."""
     lines = code.split('\n')
     result = []
+    skip_depth = 0  # Track brace depth for multi-line console.log removal
     
     for line in lines:
         stripped = line.strip()
         
+        # If we're inside a multi-line console.log, track braces
+        if skip_depth > 0:
+            skip_depth += stripped.count('{') + stripped.count('(') + stripped.count('[')
+            skip_depth -= stripped.count('}') + stripped.count(')') + stripped.count(']')
+            # Check if line ends the statement (with ; or just closing)
+            if skip_depth <= 0:
+                skip_depth = 0
+            continue
+        
         # Remove standalone console.log/warn lines (keep console.error)
         if re.match(r'\s*console\.(log|warn)\s*\(', stripped):
+            # Check if it's multi-line (unbalanced parens/braces)
+            opens = stripped.count('(') + stripped.count('{') + stripped.count('[')
+            closes = stripped.count(')') + stripped.count('}') + stripped.count(']')
+            if opens > closes:
+                skip_depth = opens - closes
             continue
         
         # Remove addDebugLog lines  
         if re.match(r'\s*addDebugLog\s*\(', stripped):
+            opens = stripped.count('(') + stripped.count('{') + stripped.count('[')
+            closes = stripped.count(')') + stripped.count('}') + stripped.count(']')
+            if opens > closes:
+                skip_depth = opens - closes
             continue
         
         # Remove .then(() => console.log(...)) patterns
