@@ -15,7 +15,12 @@ window.BKK.stopLabel = function(i) {
 
 // Tile URL - English labels for all cities (Carto Voyager)
 window.BKK.getTileUrl = function() {
+  // Voyager with labels - for area overview maps where road context helps
   return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+};
+window.BKK.getTileUrlClean = function() {
+  // Voyager without labels - for stops maps to avoid local-language clutter
+  return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
 };
 
 // App Name

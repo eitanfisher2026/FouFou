@@ -970,7 +970,7 @@
                             const L = window.L;
                             if (!L || !el.offsetHeight) return;
                             const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([activeStops[0].lat, activeStops[0].lng], 13);
-                            L.tileLayer(window.BKK.getTileUrl(), { maxZoom: 18 }).addTo(map);
+                            L.tileLayer(window.BKK.getTileUrlClean(), { maxZoom: 18 }).addTo(map);
                             const colors = ['#3b82f6','#f59e0b','#ef4444','#10b981','#ec4899','#6366f1','#8b5cf6','#06b6d4','#f97316','#a855f7'];
                             const mkrs = [];
                             activeStops.forEach((stop, i) => {

@@ -246,7 +246,7 @@
           const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
           
           const map = L.map(container).setView([avgLat, avgLng], 13);
-          L.tileLayer(window.BKK.getTileUrl(), {
+          L.tileLayer(window.BKK.getTileUrlClean(), {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           

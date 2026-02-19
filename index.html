@@ -2595,7 +2595,12 @@ window.BKK.stopLabel = function(i) {
 
 // Tile URL - English labels for all cities (Carto Voyager)
 window.BKK.getTileUrl = function() {
+  // Voyager with labels - for area overview maps where road context helps
   return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+};
+window.BKK.getTileUrlClean = function() {
+  // Voyager without labels - for stops maps to avoid local-language clutter
+  return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
 };
 
 // App Name
@@ -4051,7 +4056,7 @@ const CityExplorer = () => {
           const avgLng = stops.reduce((sum, s) => sum + s.lng, 0) / stops.length;
           
           const map = L.map(container).setView([avgLat, avgLng], 13);
-          L.tileLayer(window.BKK.getTileUrl(), {
+          L.tileLayer(window.BKK.getTileUrlClean(), {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
@@ -9473,7 +9478,7 @@ const CityExplorer = () => {
                             const L = window.L;
                             if (!L || !el.offsetHeight) return;
                             const map = L.map(el, { zoomControl: false, attributionControl: false }).setView([activeStops[0].lat, activeStops[0].lng], 13);
-                            L.tileLayer(window.BKK.getTileUrl(), { maxZoom: 18 }).addTo(map);
+                            L.tileLayer(window.BKK.getTileUrlClean(), { maxZoom: 18 }).addTo(map);
                             const colors = ['#3b82f6','#f59e0b','#ef4444','#10b981','#ec4899','#6366f1','#8b5cf6','#06b6d4','#f97316','#a855f7'];
                             const mkrs = [];
                             activeStops.forEach((stop, i) => {
