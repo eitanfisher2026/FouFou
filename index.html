@@ -7465,9 +7465,9 @@ const CityExplorer = () => {
     // Load existing reviews from Firebase
     let reviews = [];
     try {
-      const database = window.BKK.database;
-      if (database) {
-        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
           reviews = Object.entries(data).map(([uid, r]) => ({
@@ -7505,12 +7505,12 @@ const CityExplorer = () => {
     console.log('[REVIEWS] Saving:', { cityId, placeKey: reviewDialog.placeKey, visitorId, rating: reviewDialog.myRating, text: reviewDialog.myText });
     
     try {
-      const database = window.BKK.database;
-      console.log('[REVIEWS] Save attempt:', { database: !!database, rating: reviewDialog.myRating, text: reviewDialog.myText, placeKey: reviewDialog.placeKey, visitorId, cityId });
-      if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      console.log('[REVIEWS] Save attempt:', { database: !!db, rating: reviewDialog.myRating, text: reviewDialog.myText });
+      if (db && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`;
         console.log('[REVIEWS] Saving to:', path);
-        await database.ref(path).set({
+        await db.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
@@ -7519,8 +7519,8 @@ const CityExplorer = () => {
         console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
       } else {
-        console.log('[REVIEWS] Save skipped - no database or empty review');
-        if (!database) showToast('No database connection', 'error');
+        console.log('[REVIEWS] Save skipped - no db or empty review', { db: !!db, rating: reviewDialog.myRating });
+        if (!db) showToast('No database connection', 'error');
       }
     } catch (e) {
       console.error('[REVIEWS] Save error:', e.message, e.code);
@@ -7535,9 +7535,9 @@ const CityExplorer = () => {
     const visitorId = window.BKK.visitorId || 'anonymous';
     
     try {
-      const database = window.BKK.database;
-      if (database) {
-        await database.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
@@ -10492,16 +10492,22 @@ const CityExplorer = () => {
                         </button>
                         
                         {/* Review button for locked custom places */}
-                        {stop.custom && stop.locked && (
+                        {stop.custom && (stop.locked || (() => {
+                          // Also check if the interest itself is locked
+                          const cl = customLocations.find(loc => loc.name === stop.name);
+                          if (cl?.locked) return true;
+                          // Check interest-level lock
+                          const interests = stop.interests || [];
+                          return interests.some(iId => {
+                            const iObj = allInterestOptions.find(o => o.id === iId);
+                            return iObj?.locked;
+                          });
+                        })()) && (
                           <button
                             onClick={() => openReviewDialog(stop)}
                             className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                             title={t('reviews.title')}
                           >👁️</button>
-                        )}
-                        {/* Debug: show for all custom stops to diagnose */}
-                        {stop.custom && !stop.locked && !isUnlocked && (
-                          <span className="text-[8px] text-red-500" title={`custom=${!!stop.custom} locked=${!!stop.locked}`}>⚠️no-lock</span>
                         )}
                         
                         {(() => {

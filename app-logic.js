@@ -3613,9 +3613,9 @@
     // Load existing reviews from Firebase
     let reviews = [];
     try {
-      const database = window.BKK.database;
-      if (database) {
-        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
           reviews = Object.entries(data).map(([uid, r]) => ({
@@ -3653,12 +3653,12 @@
     console.log('[REVIEWS] Saving:', { cityId, placeKey: reviewDialog.placeKey, visitorId, rating: reviewDialog.myRating, text: reviewDialog.myText });
     
     try {
-      const database = window.BKK.database;
-      console.log('[REVIEWS] Save attempt:', { database: !!database, rating: reviewDialog.myRating, text: reviewDialog.myText, placeKey: reviewDialog.placeKey, visitorId, cityId });
-      if (database && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      console.log('[REVIEWS] Save attempt:', { database: !!db, rating: reviewDialog.myRating, text: reviewDialog.myText });
+      if (db && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`;
         console.log('[REVIEWS] Saving to:', path);
-        await database.ref(path).set({
+        await db.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
@@ -3667,8 +3667,8 @@
         console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
       } else {
-        console.log('[REVIEWS] Save skipped - no database or empty review');
-        if (!database) showToast('No database connection', 'error');
+        console.log('[REVIEWS] Save skipped - no db or empty review', { db: !!db, rating: reviewDialog.myRating });
+        if (!db) showToast('No database connection', 'error');
       }
     } catch (e) {
       console.error('[REVIEWS] Save error:', e.message, e.code);
@@ -3683,9 +3683,9 @@
     const visitorId = window.BKK.visitorId || 'anonymous';
     
     try {
-      const database = window.BKK.database;
-      if (database) {
-        await database.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${visitorId}`).remove();
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {

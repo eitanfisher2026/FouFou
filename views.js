@@ -1851,16 +1851,22 @@
                         </button>
                         
                         {/* Review button for locked custom places */}
-                        {stop.custom && stop.locked && (
+                        {stop.custom && (stop.locked || (() => {
+                          // Also check if the interest itself is locked
+                          const cl = customLocations.find(loc => loc.name === stop.name);
+                          if (cl?.locked) return true;
+                          // Check interest-level lock
+                          const interests = stop.interests || [];
+                          return interests.some(iId => {
+                            const iObj = allInterestOptions.find(o => o.id === iId);
+                            return iObj?.locked;
+                          });
+                        })()) && (
                           <button
                             onClick={() => openReviewDialog(stop)}
                             className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                             title={t('reviews.title')}
                           >👁️</button>
-                        )}
-                        {/* Debug: show for all custom stops to diagnose */}
-                        {stop.custom && !stop.locked && !isUnlocked && (
-                          <span className="text-[8px] text-red-500" title={`custom=${!!stop.custom} locked=${!!stop.locked}`}>⚠️no-lock</span>
                         )}
                         
                         {(() => {
