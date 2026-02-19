@@ -262,14 +262,14 @@
             L.marker([stop.lat, stop.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:9px;font-weight:bold;text-align:center;color:white;width:20px;height:20px;line-height:20px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);">' + (i + 1) + '</div>',
+                html: '<div style="font-size:9px;font-weight:bold;text-align:center;color:white;width:20px;height:20px;line-height:20px;border-radius:50%;background:' + color + ';border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);">' + window.BKK.stopLabel(i) + '</div>',
                 iconSize: [20, 20], iconAnchor: [10, 10]
               })
             }).addTo(map);
             
             marker.bindPopup(
               '<div style="text-align:center;direction:rtl;font-size:12px;min-width:120px;">' +
-              '<b>' + (i + 1) + '. ' + (stop.name || '') + '</b>' +
+              '<b>' + window.BKK.stopLabel(i) + '. ' + (stop.name || '') + '</b>' +
               (stop.rating ? '<br/><span style="color:#f59e0b;">⭐ ' + stop.rating + '</span>' : '') +
               (stop.vicinity ? '<br/><span style="font-size:10px;color:#666;">' + stop.vicinity + '</span>' : '') +
               '<br/><a href="https://www.google.com/maps/search/?api=1&query=' + stop.lat + ',' + stop.lng + (stop.place_id ? '&query_place_id=' + stop.place_id : '') + '" target="_blank" style="font-size:10px;color:#3b82f6;">Google Maps ↗</a>' +

@@ -7,6 +7,11 @@ window.BKK = window.BKK || {};
 
 // App Version
 window.BKK.VERSION = '3.0.0';
+// Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
+window.BKK.stopLabel = function(i) {
+  if (i < 26) return String.fromCharCode(65 + i);
+  return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
+};
 
 // Tile URL - English labels for all cities (Carto Voyager)
 window.BKK.getTileUrl = function() {

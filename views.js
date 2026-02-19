@@ -976,7 +976,7 @@
                             activeStops.forEach((stop, i) => {
                               const c = colors[i % colors.length];
                               mkrs.push(L.circleMarker([stop.lat, stop.lng], { radius: 8, color: c, fillColor: c, fillOpacity: 0.85, weight: 2 }).addTo(map));
-                              L.marker([stop.lat, stop.lng], { icon: L.divIcon({ className: '', html: '<div style="font-size:8px;font-weight:bold;text-align:center;color:white;width:16px;height:16px;line-height:16px;border-radius:50%;background:'+c+';border:1.5px solid white;">'+(i+1)+'</div>', iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(map);
+                              L.marker([stop.lat, stop.lng], { icon: L.divIcon({ className: '', html: '<div style="font-size:8px;font-weight:bold;text-align:center;color:white;width:16px;height:16px;line-height:16px;border-radius:50%;background:'+c+';border:1.5px solid white;">'+window.BKK.stopLabel(i)+'</div>', iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(map);
                             });
                             if (activeStops.length > 1) L.polyline(activeStops.map(s => [s.lat, s.lng]), { color: '#6366f1', weight: 2, opacity: 0.5, dashArray: '4,6' }).addTo(map);
                             if (mkrs.length > 0) map.fitBounds(L.featureGroup(mkrs).getBounds().pad(0.15));
@@ -1703,7 +1703,7 @@
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex gap-2 flex-1">
                         <div className={`rounded-full w-6 h-6 flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDisabled ? 'bg-gray-400 text-white' : hasValidCoords ? 'bg-slate-600 text-white' : 'bg-red-500 text-white'}`}>
-                          {isDisabled ? '✕' : hasValidCoords ? i + 1 : '❗'}
+                          {isDisabled ? '✕' : hasValidCoords ? window.BKK.stopLabel(i) : '❗'}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
