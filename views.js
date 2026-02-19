@@ -1380,111 +1380,140 @@
                       </label>
                     </div>
                     
-                    {/* Start Point Input with GPS + validate buttons */}
+                    {/* Start Point + Calc Route + Google Maps - aligned grid */}
                     <div>
                       <label className="text-xs font-bold text-gray-700 mb-1 block">{`📍 ${t("route.startPoint")}`}</label>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          value={formData.startPoint}
-                          readOnly
-                          onClick={() => setShowAddressDialog(true)}
-                          placeholder={t("form.selectStartPoint")}
-                          className="border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
-                          style={{ flex: 1, direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '0 8px', height: '42px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff', minWidth: 0 }}
-                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto 1fr', gap: '4px', alignItems: 'center' }}>
+                      {/* Row 1: Start Point */}
+                      <button
+                        onClick={getMyLocation}
+                        disabled={isLocating}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t("form.findCurrentLocation")}
+                      >
+                        {isLocating ? '⏳' : '📍'}
+                      </button>
+                      <button
+                        onClick={() => setShowAddressDialog(true)}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t("form.searchAddress")}
+                      >
+                        🔍
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (formData.startPoint?.trim() || startPointCoords) {
+                            setFormData({...formData, startPoint: ''});
+                            setStartPointCoords(null);
+                            if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
+                          }
+                        }}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: (formData.startPoint?.trim() || startPointCoords) ? '#ef4444' : '#e5e7eb', color: (formData.startPoint?.trim() || startPointCoords) ? 'white' : '#9ca3af', fontSize: '12px', fontWeight: 'bold', cursor: (formData.startPoint?.trim() || startPointCoords) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={t("general.clear")}
+                      >
+                        ✕
+                      </button>
+                      <input
+                        type="text"
+                        value={formData.startPoint}
+                        readOnly
+                        onClick={() => setShowAddressDialog(true)}
+                        placeholder={t("form.selectStartPoint")}
+                        className="border border-gray-300 rounded-lg text-xs cursor-pointer hover:border-blue-400"
+                        style={{ width: '100%', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', padding: '0 8px', height: '42px', backgroundColor: startPointCoords ? '#f0fdf4' : '#fff', minWidth: 0 }}
+                      />
+
+                      {/* Row 2: Calc Route + Reorder */}
+                      <button
+                        onClick={() => setShowRoutePreview(!showRoutePreview)}
+                        disabled={!route?.optimized}
+                        style={{
+                          gridColumn: '1 / 4',
+                          height: '42px',
+                          backgroundColor: showRoutePreview ? '#7c3aed' : route?.optimized ? '#a78bfa' : '#d1d5db',
+                          color: route?.optimized ? 'white' : '#9ca3af',
+                          borderRadius: '12px',
+                          fontWeight: 'bold',
+                          fontSize: '13px',
+                          border: 'none',
+                          cursor: route?.optimized ? 'pointer' : 'not-allowed',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {showRoutePreview ? `✓ ${t('route.backToList')}` : `☰ ${t('route.reorderStops')}`}
+                      </button>
+                      <button
+                        onClick={computeRoute}
+                        disabled={!startPointCoords}
+                        style={{
+                          height: '42px',
+                          backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
+                          color: startPointCoords ? 'white' : '#9ca3af',
+                          borderRadius: '12px',
+                          fontWeight: 'bold',
+                          fontSize: '13px',
+                          border: 'none',
+                          boxShadow: startPointCoords ? '0 4px 6px rgba(124, 58, 237, 0.3)' : 'none',
+                          cursor: startPointCoords ? 'pointer' : 'not-allowed'
+                        }}
+                      >
+                        {route?.optimized ? t('route.recalcRoute') : t('route.calcRoute')}
+                      </button>
+
+                      {/* Row 3: Google Maps + Save + Share */}
+                      <button
+                        onClick={() => {
+                          if (!route?.optimized) return;
+                          const activeStops = (route.stops || []).filter(s => {
+                            const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
+                            const hasCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
+                            return isActive && hasCoords;
+                          });
+                          const hasStart = startPointCoords && startPointCoords.lat && startPointCoords.lng;
+                          const origin = hasStart ? `${startPointCoords.lat},${startPointCoords.lng}` : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
+                          const stopsForUrl = hasStart ? activeStops : activeStops.slice(1);
+                          const isCirc = routeType === 'circular';
+                          const urls = window.BKK.buildGoogleMapsUrls(stopsForUrl, origin, isCirc, googleMaxWaypoints);
+                          const routeName = route.name || t('route.myRoute');
+                          const mapUrl = urls.length > 0 ? urls[0].url : '';
+                          if (!mapUrl) return;
+                          const mapLinks = urls.map((u, i) => urls.length === 1 ? u.url : `(${u.part}/${u.total}) ${u.url}`).join('\n');
+                          const shareText = `🗺️ ${routeName}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}\n\n🗺️ Google Maps:\n${mapLinks}`;
+                          if (navigator.share) {
+                            navigator.share({ title: routeName, text: shareText });
+                          } else {
+                            navigator.clipboard.writeText(shareText);
+                            showToast(t('route.routeCopied'), 'success');
+                          }
+                        }}
+                        style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', background: route?.optimized ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : '#e5e7eb', color: route?.optimized ? 'white' : '#9ca3af', cursor: route?.optimized ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: route?.optimized ? '0 4px 6px rgba(37, 99, 235, 0.3)' : 'none' }}
+                        title={t("general.shareRoute")}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={route?.optimized ? 'white' : '#9ca3af'}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke={route?.optimized ? 'white' : '#9ca3af'} strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke={route?.optimized ? 'white' : '#9ca3af'} strokeWidth="2"/></svg>
+                      </button>
+                      {!wizardMode && (route.name ? (
                         <button
-                          onClick={() => {
-                            if (formData.startPoint?.trim() || startPointCoords) {
-                              setFormData({...formData, startPoint: ''});
-                              setStartPointCoords(null);
-                              if (route?.optimized) setRoute(prev => prev ? {...prev, optimized: false} : prev);
-                            }
-                          }}
-                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: (formData.startPoint?.trim() || startPointCoords) ? '#ef4444' : '#e5e7eb', color: (formData.startPoint?.trim() || startPointCoords) ? 'white' : '#9ca3af', fontSize: '12px', fontWeight: 'bold', cursor: (formData.startPoint?.trim() || startPointCoords) ? 'pointer' : 'default', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t("general.clear")}
+                          disabled
+                          style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#dcfce7', border: '2px solid #16a34a', fontSize: '16px', cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title={`${t("route.savedAs")} ${route.name}`}
                         >
-                          ✕
+                          ✅
                         </button>
+                      ) : (
                         <button
-                          onClick={() => setShowAddressDialog(true)}
-                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: '#22c55e', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t("form.searchAddress")}
+                          onClick={() => quickSaveRoute()}
+                          disabled={!route?.optimized}
+                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', background: route?.optimized ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : '#e5e7eb', color: route?.optimized ? 'white' : '#9ca3af', cursor: route?.optimized ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: route?.optimized ? '0 4px 6px rgba(124, 58, 237, 0.3)' : 'none' }}
+                          title={t("route.saveRoute")}
                         >
-                          🔍
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill={route?.optimized ? 'white' : '#9ca3af'}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12 6v8M8 12l4 4 4-4" stroke={route?.optimized ? 'white' : '#9ca3af'} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </button>
-                        <button
-                          onClick={getMyLocation}
-                          disabled={isLocating}
-                          style={{ width: '42px', height: '42px', borderRadius: '12px', border: 'none', backgroundColor: isLocating ? '#d1d5db' : '#3b82f6', color: isLocating ? '#9ca3af' : 'white', fontSize: '14px', fontWeight: 'bold', cursor: isLocating ? 'not-allowed' : 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t("form.findCurrentLocation")}
-                        >
-                          {isLocating ? '⏳' : '📍'}
-                        </button>
+                      ))}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {!wizardMode && <span style={{ display: 'none' }} />}
                       </div>
-                      {!startPointCoords && !formData.startPoint?.trim() && (
-                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>
-                          💡 Click 🔍 to search address, 📍 for current location, or 📌 from your places
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* Compute Route + Reorder row */}
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      onClick={computeRoute}
-                      disabled={!startPointCoords}
-                      style={{
-                        flex: 1,
-                        height: '42px',
-                        backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
-                        color: startPointCoords ? 'white' : '#9ca3af',
-                        borderRadius: '12px',
-                        fontWeight: 'bold',
-                        fontSize: '13px',
-                        border: 'none',
-                        boxShadow: startPointCoords ? '0 4px 6px rgba(124, 58, 237, 0.3)' : 'none',
-                        cursor: startPointCoords ? 'pointer' : 'not-allowed'
-                      }}
-                    >
-                      {route?.optimized ? t('route.recalcRoute') : t('route.calcRoute')}
-                    </button>
-                    <button
-                      onClick={() => setShowRoutePreview(!showRoutePreview)}
-                      disabled={!route?.optimized}
-                      style={{
-                        height: '42px',
-                        backgroundColor: showRoutePreview ? '#7c3aed' : route?.optimized ? '#a78bfa' : '#d1d5db',
-                        color: route?.optimized ? 'white' : '#9ca3af',
-                        padding: '0 12px',
-                        borderRadius: '12px',
-                        fontWeight: 'bold',
-                        fontSize: '13px',
-                        border: 'none',
-                        cursor: route?.optimized ? 'pointer' : 'not-allowed',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}
-                    >
-                      {showRoutePreview ? `✓ ${t('route.backToList')}` : `☰ ${t('route.reorderStops')}`}
-                    </button>
-                    </div>
-                    {!startPointCoords && (
-                      <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '2px' }}>
-                        {`⬆️ ${t("form.chooseStartBeforeCalc")}`}
-                      </p>
-                    )}
-                    {route?.optimized && (
-                      <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginBottom: '2px', fontWeight: 'bold' }}>
-                        {`✅ ${t("route.routeCalculated")} ⬇️`}
-                      </p>
-                    )}
-                    
-                    {/* Buttons row: Open in Google + Save + Share */}
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
-                      {/* Open in Google Maps Button(s) */}
                       {(() => {
-                        // Pre-compute URLs for split detection
                         const activeStops = route?.optimized ? route.stops.filter((stop) => {
                           const isActive = !disabledStops.includes((stop.name || '').toLowerCase().trim());
                           const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
@@ -1499,7 +1528,6 @@
                         const urls = route?.optimized && activeStops.length > 0
                           ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints)
                           : [];
-                        const isSplit = urls.length > 1;
 
                         return urls.length <= 1 ? (
                           <button
@@ -1514,9 +1542,9 @@
                               window.open(mapUrl, 'city_explorer_map');
                             }}
                             style={{
-                              flex: 1, backgroundColor: route?.optimized ? '#2563eb' : '#d1d5db',
+                              height: '42px', backgroundColor: route?.optimized ? '#2563eb' : '#d1d5db',
                               color: route?.optimized ? 'white' : '#9ca3af', textAlign: 'center',
-                              height: '42px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
+                              borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
                               border: 'none', boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
                               cursor: route?.optimized ? 'pointer' : 'not-allowed'
                             }}
@@ -1524,7 +1552,8 @@
                             {`🗺️ ${t('route.openRouteInGoogle')}`}
                           </button>
                         ) : (
-                          urls.map((urlInfo, idx) => (
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                          {urls.map((urlInfo, idx) => (
                             <button
                               key={idx}
                               id={idx === 0 ? "open-google-maps-btn" : undefined}
@@ -1533,101 +1562,33 @@
                                 window.open(urlInfo.url, 'city_explorer_map');
                               }}
                               style={{
-                                flex: 1, minWidth: '120px',
+                                flex: 1,
+                                height: '42px',
                                 backgroundColor: idx === 0 ? '#2563eb' : '#1d4ed8',
                                 color: 'white', textAlign: 'center',
-                                height: '42px', borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
+                                borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
                                 border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
                                 cursor: 'pointer'
                               }}
                             >
                               {`🗺️ ${t('route.openRoutePartN').replace('{n}', urlInfo.part).replace('{total}', urlInfo.total)}`}
                             </button>
-                          ))
+                          ))}
+                          </div>
                         );
                       })()}
-                      
-                      {/* Save Route Button - styled - hidden in wizard */}
-                      {!wizardMode && (route.name ? (
-                        <button
-                          disabled
-                          style={{
-                            backgroundColor: '#dcfce7',
-                            border: '2px solid #16a34a',
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '12px',
-                            fontSize: '16px',
-                            cursor: 'default',
-                            flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                          title={`${t("route.savedAs")} ${route.name}`}
-                        >
-                          ✅
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => quickSaveRoute()}
-                          style={{
-                            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                            border: 'none',
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '12px',
-                            fontSize: '16px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 6px rgba(124, 58, 237, 0.3)',
-                            flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                          title={t("route.saveRoute")}
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12 7v6l-3 3" stroke="white" strokeWidth="0"/><path d="M8 12h8" stroke="white" strokeWidth="0"/><path d="M12 6v8M8 12l4 4 4-4" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        </button>
-                      ))}
-                      {/* Share button */}
-                      {route?.optimized && (
-                        <button
-                          onClick={() => {
-                            const activeStops = (route.stops || []).filter(s => {
-                              const isActive = !disabledStops.includes((s.name || '').toLowerCase().trim());
-                              const hasCoords = s.lat && s.lng && s.lat !== 0 && s.lng !== 0;
-                              return isActive && hasCoords;
-                            });
-                            const hasStart = startPointCoords && startPointCoords.lat && startPointCoords.lng;
-                            const origin = hasStart ? `${startPointCoords.lat},${startPointCoords.lng}` : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
-                            const stopsForUrl = hasStart ? activeStops : activeStops.slice(1);
-                            const isCirc = routeType === 'circular';
-                            const urls = window.BKK.buildGoogleMapsUrls(stopsForUrl, origin, isCirc, googleMaxWaypoints);
-                            const mapLinks = urls.map((u, i) => urls.length === 1 ? u.url : `(${u.part}/${u.total}) ${u.url}`).join('\n');
-                            const shareText = `🗺️ ${route.name || t('route.myRoute')}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}\n\n🗺️ Google Maps:\n${mapLinks}`;
-                            if (navigator.share) {
-                              navigator.share({ title: route.name || t('route.myRoute'), text: shareText });
-                            } else {
-                              navigator.clipboard.writeText(shareText);
-                              showToast(t('route.routeCopied'), 'success');
-                            }
-                          }}
-                          style={{
-                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                            border: 'none',
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '12px',
-                            fontSize: '16px',
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 6px rgba(37, 99, 235, 0.3)',
-                            flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                          title={t("general.shareRoute")}
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="white" strokeWidth="2"/></svg>
-                        </button>
-                      )}
+                    </div>
+                    {!startPointCoords && (
+                      <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginTop: '2px', marginBottom: '2px' }}>
+                        {`⬆️ ${t("form.chooseStartBeforeCalc")}`}
+                      </p>
+                    )}
+                    {route?.optimized && (
+                      <p style={{ fontSize: '10px', color: '#16a34a', textAlign: 'center', marginTop: '2px', marginBottom: '2px', fontWeight: 'bold' }}>
+                        {`✅ ${t("route.routeCalculated")}`}
+                      </p>
+                    )}
+
                     </div>
                   </div>
                 </div>
