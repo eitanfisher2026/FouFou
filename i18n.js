@@ -1,5 +1,5 @@
 // ============================================================================
-// City Explorer - Internationalization (i18n)
+// FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
 // ============================================================================
 
@@ -106,7 +106,7 @@ he: {
 
 // --- General / Common ---
 general: {
-  appName: 'City Explorer',
+  appName: 'FouFou',
   city: 'עיר',
   all: 'כל',
   allCity: 'כל העיר',
@@ -661,7 +661,7 @@ settings: {
   refreshData: 'רענן את כל הנתונים',
   deleteAllConfirm: 'למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.',
   deleteAllFeedback: 'למחוק את כל המשובים?',
-  appDescription: 'אפליקציה לתכנון טיולים',
+  appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'שפה',
   password: 'סיסמה',
   systemPassword: 'סיסמת מערכת',
@@ -710,7 +710,7 @@ settings: {
 help: {
   main: {
     title: 'איך להשתמש?',
-    content: "**City Explorer** עוזר לך לגלות מקומות מעניינים ולתכנן מסלול טיול.\n\n**שני מצבי שימוש:**\n• **מצב מהיר** (ברירת מחדל) — בחר אזור ← בחר תחומים ← קבל תוצאות\n• **מצב מתקדם** — שליטה מלאה: הוסף מקומות, ערוך, שמור מסלולים\n\n**איך מתחילים:**\n1. בחר עיר ואזור (או \"הכל\", או GPS לקרוב אליך) ותחומי עניין, ולחץ \"מצא נקודות עניין\"\n2. ברשימת התוצאות: דלג על מקומות שלא מתאימים (⏸️) ובחר 📌 נקודת התחלה\n3. בחר סוג מסלול (מעגלי / לינארי) ולחץ \"חשב מסלול\"\n4. לחץ \"פתח מסלול בגוגל\" לניווט!\n\n**רוצה עוד מקומות?**\n• **\"+ עוד\"** ליד כל קטגוריה — מביא מקומות נוספים מגוגל מאותו תחום\n• **\"➕ הוסף ידנית נקודה למסלול\"** — חפש מקום לפי שם כפי שהוא מופיע בגוגל מפות והוסף אותו ישירות\n\n**טיפ:** לחץ על שם מקום כדי לפתוח אותו בגוגל מפות"
+    content: "**FouFou** עוזר לך לגלות מקומות מעניינים ולתכנן מסלול טיול.\n\n**שני מצבי שימוש:**\n• **מצב מהיר** (ברירת מחדל) — בחר אזור ← בחר תחומים ← קבל תוצאות\n• **מצב מתקדם** — שליטה מלאה: הוסף מקומות, ערוך, שמור מסלולים\n\n**איך מתחילים:**\n1. בחר עיר ואזור (או \"הכל\", או GPS לקרוב אליך) ותחומי עניין, ולחץ \"מצא נקודות עניין\"\n2. ברשימת התוצאות: דלג על מקומות שלא מתאימים (⏸️) ובחר 📌 נקודת התחלה\n3. בחר סוג מסלול (מעגלי / לינארי) ולחץ \"חשב מסלול\"\n4. לחץ \"פתח מסלול בגוגל\" לניווט!\n\n**רוצה עוד מקומות?**\n• **\"+ עוד\"** ליד כל קטגוריה — מביא מקומות נוספים מגוגל מאותו תחום\n• **\"➕ הוסף ידנית נקודה למסלול\"** — חפש מקום לפי שם כפי שהוא מופיע בגוגל מפות והוסף אותו ישירות\n\n**טיפ:** לחץ על שם מקום כדי לפתוח אותו בגוגל מפות"
   },
   placesListing: {
     title: 'רשימת המקומות',
@@ -772,7 +772,7 @@ help: {
 en: {
 
 general: {
-  appName: 'City Explorer',
+  appName: 'FouFou',
   city: 'City',
   all: 'All',
   allCity: 'Entire city',
@@ -1327,7 +1327,7 @@ settings: {
   refreshData: 'Refresh all data',
   deleteAllConfirm: 'Delete all access logs? This action cannot be undone.',
   deleteAllFeedback: 'Delete all feedback?',
-  appDescription: 'Trip planning app',
+  appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'Language',
   password: 'Password',
   systemPassword: 'System password',
@@ -1375,7 +1375,7 @@ settings: {
 help: {
   main: {
     title: 'How to use?',
-    content: "**City Explorer** helps you discover interesting places and plan a trip route.\n\n**Two usage modes:**\n• **Quick mode** (default) — Choose area → Choose interests → Get results\n• **Advanced mode** — Full control: add places, edit, save routes\n\n**Getting started:**\n1. Choose a city and area (or \"All\", or GPS for nearby) and interests, then click \"Find points of interest\"\n2. In the results list: skip places that don't fit (⏸️) and choose 📌 starting point\n3. Choose route type (circular / linear) and click \"Calculate route\"\n4. Click \"Open route in Google\" to navigate!\n\n**Want more places?**\n• **\"+ more\"** next to each category — fetches more places from Google in that interest\n• **\"➕ Manually add stop\"** — search for a place by name as it appears on Google Maps and add it directly\n\n**Tip:** Click on a place name to open it in Google Maps"
+    content: "**FouFou** helps you discover interesting places and plan a trip route.\n\n**Two usage modes:**\n• **Quick mode** (default) — Choose area → Choose interests → Get results\n• **Advanced mode** — Full control: add places, edit, save routes\n\n**Getting started:**\n1. Choose a city and area (or \"All\", or GPS for nearby) and interests, then click \"Find points of interest\"\n2. In the results list: skip places that don't fit (⏸️) and choose 📌 starting point\n3. Choose route type (circular / linear) and click \"Calculate route\"\n4. Click \"Open route in Google\" to navigate!\n\n**Want more places?**\n• **\"+ more\"** next to each category — fetches more places from Google in that interest\n• **\"➕ Manually add stop\"** — search for a place by name as it appears on Google Maps and add it directly\n\n**Tip:** Click on a place name to open it in Google Maps"
   },
   placesListing: {
     title: 'Places list',

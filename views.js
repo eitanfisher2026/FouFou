@@ -14,7 +14,7 @@
         <div className="fixed inset-0 bg-gradient-to-br from-amber-50 to-rose-50 z-[9999] flex flex-col items-center justify-center">
           <div className="text-center">
             <div className="text-5xl mb-4 animate-bounce">🗺️</div>
-            <h2 className="text-xl font-bold text-gray-700 mb-2">{tLabel(window.BKK.selectedCity) || 'City Explorer'}</h2>
+            <h2 className="text-xl font-bold text-gray-700 mb-2">{tLabel(window.BKK.selectedCity) || 'FouFou'}</h2>
             <div className="flex items-center justify-center gap-2 text-gray-500">
               <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -61,7 +61,7 @@
             letterSpacing: '0.5px',
             margin: 0,
             textShadow: '0 1px 3px rgba(0,0,0,0.2)'
-          }}>{tLabel(window.BKK.selectedCity) || 'City Explorer'}</h1>
+          }}>{tLabel(window.BKK.selectedCity) || 'FouFou'}</h1>
           <span style={{ fontSize: '14px' }}>{theme.iconRight || window.BKK.selectedCity?.icon || '🗺️'}</span>
           <span style={{ 
             fontSize: '8px', 
@@ -3170,10 +3170,16 @@
 
         {/* Footer */}
         <div className="text-center py-3 mt-4 border-t border-gray-200">
+          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>
+            FouFou — City Trail Generator 🍜🏛️🎭
+          </div>
+          <div style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '6px' }}>
+            Local picks + Google spots. Choose your vibe, follow the trail
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
-                const shareData = { title: 'City Explorer', text: t('settings.appDescription'), url: window.location.href };
+                const shareData = { title: 'FouFou', text: t('settings.appDescription'), url: window.location.href };
                 if (navigator.share) { navigator.share(shareData).catch(() => {}); }
                 else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
               }}

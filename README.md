@@ -1,8 +1,6 @@
-# Bangkok Explorer 🇹🇭
+# FouFou — City Trail Generator 🍜🏛️🎭
 
-אפליקציית תכנון טיולים לבנגקוק
-
-## גרסה: 2.1.1
+Local picks + Google spots. Choose your vibe, follow the trail.
 
 ## קבצים
 
@@ -13,6 +11,7 @@
 | app-logic.js | לוגיקה עסקית |
 | views.js | תצוגות |
 | dialogs.js | דיאלוגים |
+| i18n.js | תרגומים |
 | _source-template.html | תבנית |
 | index.html | קובץ מאוחד |
 | build.py | סקריפט בנייה |

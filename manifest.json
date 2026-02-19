@@ -1,6 +1,6 @@
 {
-  "name": "City Explorer",
-  "short_name": "Explorer",
+  "name": "FouFou — City Trail Generator",
+  "short_name": "FouFou",
   "description": "Smart trip planning app for cities worldwide",
   "start_url": "./",
   "display": "standalone",

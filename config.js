@@ -1,5 +1,5 @@
 // ============================================================================
-// City Explorer - Configuration & Constants
+// FouFou — City Trail Generator - Configuration & Constants
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
 // ============================================================================
 
@@ -21,7 +21,7 @@ window.BKK = window.BKK || {};
 })();
 
 // App Version
-window.BKK.VERSION = '3.0.0';
+window.BKK.VERSION = '3.1.0';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
@@ -34,7 +34,7 @@ window.BKK.getTileUrl = function() {
 };
 
 // App Name
-window.BKK.APP_NAME = 'City Explorer';
+window.BKK.APP_NAME = 'FouFou';
 
 // Firebase Configuration
 window.BKK.firebaseConfig = {

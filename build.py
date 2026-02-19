@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bangkok Explorer - Build Script
+FouFou — City Trail Generator - Build Script
 Combines split files into index.html
 
 Usage: python3 build.py          # production build (stripped)
@@ -70,7 +70,7 @@ def strip_for_production(code):
 def build():
     debug_mode = '--debug' in sys.argv
     mode = "DEBUG" if debug_mode else "PRODUCTION"
-    print(f"🔨 Building Bangkok Explorer ({mode})...")
+    print(f"🔨 Building FouFou ({mode})...")
     
     template = read_file('_source-template.html')
     i18n = read_file('i18n.js')
