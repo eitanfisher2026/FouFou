@@ -608,14 +608,22 @@ window.BKK._suggestEmojisGemini = async function(description) {
     body: JSON.stringify({
       contents: [{
         parts: [{
-          text: `Pick 6 emoji icons for the category "${description}". Rules:
-1. Each emoji must visually represent "${description}"
-2. Be SPECIFIC: "street food" → 🍢🍡🥟🍜🍲🥘 NOT generic utensils
-3. No text, no numbers. Just 6 emoji separated by spaces.
-4. Prefer food items over utensils, buildings over generic icons, etc.`
+          text: `You are an emoji expert for a city exploration app. The user wants an icon for a category/interest called "${description}".
+
+Return EXACTLY 6 emoji that best represent "${description}" as a PLACE CATEGORY or ACTIVITY in a city.
+
+CRITICAL RULES:
+- Think about what "${description}" looks like as a PLACE or ACTIVITY someone visits
+- "narrow street" → 🏘️🏚️🛤️🚶🏙️🏗️ (streets, walking, buildings)
+- "coffee" → ☕🫖🍵☕️🧋🥤 (drinks, cups)
+- "temples" → 🛕⛩️🕌🏛️🙏📿 (religious buildings)
+- "nightlife" → 🌃🎵🍸💃🪩🎶 (night, music, drinks)
+- Do NOT return food emoji for non-food categories
+- Do NOT return random/generic emoji
+- Return ONLY the 6 emoji separated by spaces, nothing else`
         }]
       }],
-      generationConfig: { temperature: 0.3, maxOutputTokens: 50 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 50 }
     })
   });
   

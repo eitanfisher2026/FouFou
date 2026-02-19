@@ -942,7 +942,7 @@
                             {/* Stop name as hyperlink to Google Maps */}
                             <div className="flex-1 min-w-0">
                               {hasValidCoords ? (
-                                <a href={window.BKK.getGoogleMapsUrl(stop)} target="_blank" rel="noopener noreferrer"
+                                <a href={window.BKK.getGoogleMapsUrl(stop)} target="city_explorer_map" rel="noopener noreferrer"
                                   className="text-sm font-bold text-blue-700 hover:text-blue-900 hover:underline truncate block"
                                   onClick={(e) => e.stopPropagation()}
                                 >{stop.name}</a>
@@ -1161,7 +1161,11 @@
                                           onClick={() => openReviewDialog(cl || stop)}
                                           className="text-[9px] px-1 py-0.5 rounded bg-amber-500 text-white hover:bg-amber-600"
                                           title={t("reviews.title")}
-                                        >👁️</button>
+                                        >{(() => {
+                                          const pk = ((cl || stop).name || '').replace(/[.#$/\\[\]]/g, '_');
+                                          const ra = reviewAverages[pk];
+                                          return ra ? `⭐${ra.avg.toFixed(1)}` : '⭐';
+                                        })()}</button>
                                       );
                                     })()}
                                     {/* Edit button for custom places - admin or unlocked only */}
@@ -1180,7 +1184,7 @@
                                   
                                   <a
                                     href={window.BKK.getGoogleMapsUrl(stop)}
-                                    target="_blank"
+                                    target="city_explorer_map"
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
                                     onClick={(e) => {
@@ -1197,7 +1201,7 @@
                                     }}>
                                       {route?.optimized && !isDisabled && hasValidCoords && (
                                         <span className="bg-purple-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] font-bold flex-shrink-0">
-                                          {stop.originalIndex + 1}
+                                          {window.BKK.stopLabel(stop.originalIndex)}
                                         </span>
                                       )}
                                       {!hasValidCoords && (
@@ -1478,7 +1482,7 @@
                               const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
                               if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
                               else if (isCircular) showToast(t('route.circularDesc'), 'info');
-                              window.open(mapUrl, '_blank');
+                              window.open(mapUrl, 'city_explorer_map');
                             }}
                             style={{
                               flex: 1, backgroundColor: route?.optimized ? '#22c55e' : '#d1d5db',
@@ -1497,7 +1501,7 @@
                               id={idx === 0 ? "open-google-maps-btn" : undefined}
                               onClick={() => {
                                 if (urlInfo.url.length > 2000) showToast(`${t('toast.urlTooLong')} (${urlInfo.url.length})`, 'warning');
-                                window.open(urlInfo.url, '_blank');
+                                window.open(urlInfo.url, 'city_explorer_map');
                               }}
                               style={{
                                 flex: 1, minWidth: '120px',
@@ -1700,7 +1704,6 @@
                 )}
               </div>
               {route.stops.map((stop, i) => {
-                if (i === 0) { const customs = route.stops.filter(s => s.custom); console.log('[DEBUG] Custom stops:', customs.map(s => s.name + ':locked=' + s.locked)); }
                 const stopId = (stop.name || '').toLowerCase().trim();
                 const isDisabled = disabledStops.includes(stopId);
                 const isCustom = stop.custom;
@@ -1736,7 +1739,7 @@
                             )}
                             <a
                               href={window.BKK.getGoogleMapsUrl(stop)}
-                              target="_blank"
+                              target="city_explorer_map"
                               rel={hasValidCoords ? "noopener noreferrer" : undefined}
                               className={`font-bold text-sm ${isDisabled ? 'line-through text-gray-500' : hasValidCoords ? 'text-blue-600 hover:text-blue-800' : 'text-red-600'}`}
                               onClick={(e) => {
@@ -1799,7 +1802,7 @@
                                   className={`${sourceBadge.color} text-white text-[10px] px-2 py-0.5 rounded-full font-bold cursor-pointer hover:opacity-80 transition`}
                                   title={t("general.clickForDetails")}
                                 >
-                                  {(() => { const cl = customLocations.find(loc => loc.name === stop.name); return cl?.locked && !isUnlocked ? '👁️ ' + sourceBadge.text : sourceBadge.text; })()}
+                                  {(() => { const cl = customLocations.find(loc => loc.name === stop.name); return cl?.locked && !isUnlocked ? '⭐ ' + sourceBadge.text : sourceBadge.text; })()}
                                 </button>
                                 
                                 {/* Hover Tooltip */}
@@ -1875,7 +1878,11 @@
                             onClick={() => openReviewDialog(stop)}
                             className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600"
                             title={t('reviews.title')}
-                          >👁️</button>
+                          >{(() => {
+                            const pk = (stop.name || '').replace(/[.#$/\\[\]]/g, '_');
+                            const ra = reviewAverages[pk];
+                            return ra ? `⭐${ra.avg.toFixed(1)}` : '⭐';
+                          })()}</button>
                         )}
                         
                         {(() => {
@@ -2011,7 +2018,7 @@
                   if (urls.length <= 1) {
                     const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
                     return (
-                      <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                      <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                         onClick={(e) => { if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning'); }}
                         style={{ width: '100%', backgroundColor: '#22c55e', color: 'white', textAlign: 'center',
                           padding: '10px', borderRadius: '12px', fontWeight: 'bold', textDecoration: 'none',
@@ -2022,7 +2029,7 @@
                     return (
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
                         {urls.map((urlInfo, idx) => (
-                          <a key={idx} href={urlInfo.url} target="_blank" rel="noopener noreferrer"
+                          <a key={idx} href={urlInfo.url} target="city_explorer_map" rel="noopener noreferrer"
                             onClick={(e) => { if (urlInfo.url.length > 2000) showToast(`${t('toast.urlTooLong')} (${urlInfo.url.length})`, 'warning'); }}
                             style={{ flex: 1, minWidth: '120px', backgroundColor: idx === 0 ? '#22c55e' : '#16a34a',
                               color: 'white', textAlign: 'center', padding: '10px', borderRadius: '12px',
@@ -2401,7 +2408,7 @@
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1 flex-wrap">
                                           {mapUrl ? (
-                                            <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                            <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                                               className="font-medium text-sm text-blue-600 truncate"
                                             >{loc.name}</a>
                                           ) : (
@@ -2447,7 +2454,7 @@
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1 flex-wrap">
                                         {mapUrl ? (
-                                          <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                          <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                                             className="font-medium text-sm text-blue-600 truncate"
                                           >{loc.name}</a>
                                         ) : (
@@ -2500,7 +2507,7 @@
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {mapUrl ? (
-                                      <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                                      <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                                         className="font-medium text-sm text-blue-600 truncate"
                                       >{loc.name}</a>
                                     ) : (
@@ -3397,17 +3404,43 @@
                   </div>
                 </div>
                 
-                {/* Access Log Button */}
+                {/* Access Stats Button */}
                 <button
-                  onClick={() => {
-                    markLogsAsSeen();
-                    setShowAccessLog(true);
+                  onClick={async () => {
+                    try {
+                      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+                      if (!db) { showToast('No database', 'error'); return; }
+                      const snap = await db.ref('accessStats').once('value');
+                      const data = snap.val();
+                      if (data) setAccessStats(data);
+                      else showToast('No access stats yet', 'info');
+                    } catch (e) { showToast('Error: ' + e.message, 'error'); }
                   }}
                   className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
                 >
-                  📋 View access log
-                  {hasNewEntries && <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full">{t("general.new")}</span>}
+                  📊 {t("settings.accessStats") || "Access Stats"}
                 </button>
+                
+                {accessStats && (
+                  <div className="bg-blue-50 rounded-lg p-3 mt-2 text-sm">
+                    <div className="font-bold mb-2">📊 {t("settings.totalVisits") || "Total visits"}: {accessStats.total || 0}</div>
+                    {accessStats.weekly && Object.entries(accessStats.weekly).sort((a,b) => b[0].localeCompare(a[0])).slice(0, 8).map(([week, countries]) => (
+                      <div key={week} className="mb-1">
+                        <span className="font-medium text-xs text-blue-700">{week}:</span>
+                        <span className="text-xs mr-2">
+                          {Object.entries(countries).filter(([c]) => c !== 'unknown' || countries[c] > 0).map(([cc, count]) => {
+                            const flag = cc === 'IL' ? '🇮🇱' : cc === 'TH' ? '🇹🇭' : cc === 'US' ? '🇺🇸' : cc === 'unknown' ? '❓' : `${cc}`;
+                            return `${flag}${count}`;
+                          }).join(' ')}
+                        </span>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setAccessStats(null)}
+                      className="text-xs text-blue-500 underline mt-1"
+                    >{t("general.close") || "Close"}</button>
+                  </div>
+                )}
                 
                 {/* Feedback Viewer Button */}
                 <button
@@ -3565,27 +3598,17 @@
                         </button>
                         <button
                           onClick={async () => {
-                            if (!window.confirm('Trim accessLog to last 100 entries? This deletes older entries.')) return;
+                            if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
                             try {
-                              const snap = await database.ref('accessLog').orderByChild('timestamp').once('value');
-                              const data = snap.val();
-                              if (!data) { showToast('accessLog is empty', 'info'); return; }
-                              const keys = Object.keys(data);
-                              const sorted = keys.sort((a, b) => (data[a].timestamp || 0) - (data[b].timestamp || 0));
-                              const toDelete = sorted.slice(0, Math.max(0, sorted.length - 100));
-                              if (toDelete.length === 0) { showToast(`accessLog has ${keys.length} entries, no trimming needed`, 'info'); return; }
-                              if (!window.confirm(`Delete ${toDelete.length} old entries (keep latest 100)?`)) return;
-                              const updates = {};
-                              toDelete.forEach(k => { updates[k] = null; });
-                              await database.ref('accessLog').update(updates);
-                              showToast(`✅ Deleted ${toDelete.length} old accessLog entries`, 'success');
+                              await database.ref('accessLog').remove();
+                              showToast('✅ Old accessLog deleted', 'success');
                             } catch (e) {
                               showToast(`❌ Failed: ${e.message}`, 'error');
                             }
                           }}
                           className="w-full bg-yellow-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-yellow-600 transition"
                         >
-                          ✂️ Trim accessLog (keep last 100)
+                          🗑️ Delete old accessLog data
                         </button>
                       </div>
                     </div>

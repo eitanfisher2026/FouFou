@@ -109,6 +109,7 @@
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
+  const [reviewAverages, setReviewAverages] = useState({}); // { placeKey: { avg: 4.2, count: 3 } }
   const [showImageModal, setShowImageModal] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
@@ -314,12 +315,10 @@
   const [importedData, setImportedData] = useState(null);
   
   // Access Log System (Admin Only)
-  const [accessLogs, setAccessLogs] = useState([]);
-  const [hasNewEntries, setHasNewEntries] = useState(false);
+  const [accessStats, setAccessStats] = useState(null); // { total, weekly: { '2026-W08': { IL: 3, TH: 12 } } }
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(() => {
     return localStorage.getItem('bangkok_is_admin') === 'true';
   });
-  const [showAccessLog, setShowAccessLog] = useState(false);
 
   // Feedback System
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
@@ -1307,7 +1306,7 @@
     };
     loadAdminControlledSettings();
     
-    // Log access (skip if admin)
+    // Log access stats (aggregated weekly counters by country)
     const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';
     
     if (!isAdmin) {
@@ -1317,78 +1316,33 @@
       if (Date.now() - lastLogTime >= oneHour) {
         localStorage.setItem('bangkok_last_log_time', Date.now().toString());
         
-        const { browser, os } = window.BKK.parseUserAgent(navigator.userAgent);
+        // Get ISO week key (e.g. "2026-W08")
+        const now = new Date();
+        const jan1 = new Date(now.getFullYear(), 0, 1);
+        const weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+        const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
         
-        const accessEntry = {
-          userId, 
-          timestamp: Date.now(), 
-          date: new Date().toISOString(),
-          userAgent: navigator.userAgent.substring(0, 100),
-          browser, 
-          os,
-          screenSize: `${screen.width}x${screen.height}`,
-          language: navigator.language || 'unknown',
-          country: '', 
-          city: '', 
-          region: ''
-        };
+        // Increment total counter
+        database.ref('accessStats/total').transaction(val => (val || 0) + 1);
         
-        const entryRef = database.ref('accessLog').push();
-        entryRef.set(accessEntry)
-          .then(() => {
-            console.log('[ACCESS LOG] Visit logged');
-            fetch('https://ipapi.co/json/')
-              .then(r => r.json())
-              .then(geo => {
-                entryRef.update({
-                  country: geo.country_name || '',
-                  countryCode: geo.country_code || '',
-                  city: geo.city || '',
-                  region: geo.region || '',
-                  ip: geo.ip ? geo.ip.substring(0, 12) + '***' : '',
-                  isp: geo.org || ''
-                });
-              })
-              .catch(err => console.log('[ACCESS LOG] Geo lookup failed:', err));
+        // Increment weekly unknown first, then update with country
+        database.ref(`accessStats/weekly/${weekKey}/unknown`).transaction(val => (val || 0) + 1);
+        
+        // Geo lookup to get country
+        fetch('https://ipapi.co/json/')
+          .then(r => r.json())
+          .then(geo => {
+            const cc = geo.country_code || 'unknown';
+            if (cc !== 'unknown') {
+              // Move count from unknown to actual country
+              database.ref(`accessStats/weekly/${weekKey}/unknown`).transaction(val => Math.max((val || 1) - 1, 0));
+              database.ref(`accessStats/weekly/${weekKey}/${cc}`).transaction(val => (val || 0) + 1);
+            }
           })
-          .catch(err => console.error('[ACCESS LOG] Error:', err));
+          .catch(() => { /* keep as unknown */ });
       }
     }
-    
-    // Listen to access log (admin only)
-    if (isAdmin) {
-      const logRef = database.ref('accessLog').orderByChild('timestamp').limitToLast(50);
-      const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen') || '0');
-      
-      const unsubscribe = logRef.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          const logsArray = Object.keys(data).map(key => ({
-            ...data[key], 
-            id: key
-          })).sort((a, b) => b.timestamp - a.timestamp);
-          
-          setAccessLogs(logsArray);
-          
-          const hasNew = logsArray.some(log => log.timestamp > lastSeen);
-          if (hasNew && lastSeen > 0) {
-            setHasNewEntries(true);
-          }
-        } else {
-          setAccessLogs([]);
-        }
-      });
-      
-      return () => logRef.off('value', unsubscribe);
-    }
   }, []);
-
-  // Mark logs as seen
-  const markLogsAsSeen = () => {
-    const latest = accessLogs.length > 0 ? accessLogs[0].timestamp : Date.now();
-    localStorage.setItem('bangkok_last_seen', latest.toString());
-    setHasNewEntries(false);
-  };
 
   // Feedback System
   const submitFeedback = () => {
@@ -2859,6 +2813,12 @@
 
       setRoute(newRoute);
       
+      // Load review averages for locked custom places
+      const lockedNames = newRoute.stops
+        .filter(s => s.custom && (s.locked || customLocations.find(cl => cl.name === s.name)?.locked))
+        .map(s => s.name);
+      if (lockedNames.length > 0) loadReviewAverages(lockedNames);
+      
       // Clean up disabled stops: keep only those that still exist in the new route
       if (disabledStops.length > 0) {
         const newStopNames = new Set(newRoute.stops.map(s => (s.name || '').toLowerCase().trim()));
@@ -3605,6 +3565,34 @@
   
   // Handle edit location - populate form with existing data
   // === PLACE REVIEWS ===
+  
+  const loadReviewAverages = async (placeNames) => {
+    try {
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (!db || !placeNames.length) return;
+      const cityId = window.BKK.selectedCityId || 'bangkok';
+      const avgs = {};
+      for (const name of placeNames) {
+        const placeKey = (name || '').replace(/[.#$/\\[\]]/g, '_');
+        try {
+          const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+          const data = snap.val();
+          if (data) {
+            const ratings = Object.values(data).map(r => r.rating).filter(r => r > 0);
+            if (ratings.length > 0) {
+              avgs[placeKey] = { avg: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
+            }
+          }
+        } catch (e) { /* skip individual errors */ }
+      }
+      if (Object.keys(avgs).length > 0) {
+        setReviewAverages(prev => ({ ...prev, ...avgs }));
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Load averages error:', e);
+    }
+  };
+
   const openReviewDialog = async (place) => {
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
@@ -3666,6 +3654,8 @@
         });
         console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
+        // Refresh this place's average
+        loadReviewAverages([reviewDialog.place?.name || '']);
       } else {
         console.log('[REVIEWS] Save skipped - no db or empty review', { db: !!db, rating: reviewDialog.myRating });
         if (!db) showToast('No database connection', 'error');

@@ -118,6 +118,7 @@
                   {/* Areas - full width multi-select */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold">{t("general.areas")}</label>
                       <button
                         onClick={() => {
                           const lat = newLocation.lat;
@@ -135,8 +136,7 @@
                           }
                         }}
                         className="text-[9px] px-2 py-0.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 font-bold"
-                      >{`📍 Auto-detect`}</button>
-                      <label className="text-xs font-bold">{t("general.areas")}</label>
+                      >{`📍 ${t('form.autoDetect')}`}</button>
                     </div>
                     <div className="grid grid-cols-6 gap-1 p-1.5 bg-gray-50 rounded-lg overflow-y-auto border-2 border-gray-300" style={{ maxHeight: '120px' }}>
                       {areaOptions.map(area => {
@@ -1056,151 +1056,6 @@
             </div>
           </div>
         )}
-
-            {/* Access Log Dialog */}
-      {showAccessLog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
-              <h2 className="text-xl font-bold text-gray-800">{`🔒 ${t("general.viewAccessLog")}`}</h2>
-              <button
-                onClick={() => setShowAccessLog(false)}
-                className="text-2xl font-bold text-gray-600 hover:text-gray-800"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4">
-              {accessLogs.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-4xl mb-2">📭</p>
-                  <p>{t("general.noRegisteredUsers")}</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {accessLogs.map((log, index) => {
-                    const date = new Date(log.timestamp);
-                    const isNew = log.timestamp > parseInt(localStorage.getItem('bangkok_last_seen') || '0');
-                    
-                    return (
-                      <div
-                        key={log.id}
-                        className={`p-3 rounded-lg border-2 ${
-                          isNew ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {isNew && <span className="text-red-500 font-bold">🆕</span>}
-                              <span className="font-bold text-sm">
-                                {`User #${log.userId.slice(-8)}`}
-                              </span>
-                              {log.country && (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
-                                  {log.countryCode === 'IL' ? '🇮🇱' : log.countryCode === 'TH' ? '🇹🇭' : '🌍'} {log.country}
-                                </span>
-                              )}
-                            </div>
-                            {(log.city || log.region) && (
-                              <div className="text-xs text-indigo-600 mt-1 font-medium">
-                                📍 {[log.city, log.region].filter(Boolean).join(', ')}
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-600 mt-1">
-                              📅 {date.toLocaleDateString('he-IL', { 
-                                day: '2-digit', 
-                                month: '2-digit', 
-                                year: 'numeric' 
-                              })}
-                              {' '}
-                              🕐 {date.toLocaleTimeString('he-IL', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {log.browser && (
-                                <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
-                                  🌐 {log.browser}
-                                </span>
-                              )}
-                              {log.os && (
-                                <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
-                                  {log.os === 'iPhone' || log.os === 'iPad' || log.os === 'Android' ? '📱' : '💻'} {log.os}
-                                </span>
-                              )}
-                              {log.screenSize && (
-                                <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
-                                  📐 {log.screenSize}
-                                </span>
-                              )}
-                              {log.language && (
-                                <span className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded">
-                                  🗣️ {log.language}
-                                </span>
-                              )}
-                            </div>
-                            {(log.isp || log.ip) && (
-                              <div className="text-[10px] text-gray-400 mt-1">
-                                {log.isp && <span>🏢 {log.isp}</span>}
-                                {log.ip && <span className="mr-2">  IP: {log.ip}</span>}
-                              </div>
-                            )}
-                            {!log.country && log.userAgent && (
-                              <div className="text-[10px] text-gray-400 mt-1 truncate">
-                                {log.userAgent}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-gray-600">
-                  {`Total: ${accessLogs.length}`}
-                  {hasNewEntries && (
-                    <span className="text-red-600 font-bold mr-2">
-                      • New entries
-                    </span>
-                  )}
-                </div>
-                {accessLogs.length > 0 && (
-                  <button
-                    onClick={() => {
-                      showConfirm(t('settings.deleteAllConfirm'), () => {
-                        if (isFirebaseAvailable && database) {
-                          database.ref('accessLog').remove()
-                            .then(() => {
-                              setAccessLogs([]);
-                              setHasNewEntries(false);
-                              localStorage.setItem('bangkok_last_seen', Date.now().toString());
-                              showToast(t('toast.logCleared'), 'success');
-                            })
-                            .catch(err => {
-                              console.error('[ACCESS LOG] Clear error:', err);
-                              showToast(t('toast.logClearError'), 'error');
-                            });
-                        }
-                      });
-                    }}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white font-bold hover:bg-red-600 transition"
-                  >
-                    🗑️ {t("general.clearLog")}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Route Dialog */}
       {showRouteDialog && editingRoute && (
