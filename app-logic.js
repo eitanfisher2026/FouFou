@@ -4198,7 +4198,7 @@
       if (outsideArea) {
         const areaNames = selectedAreas.map(aId => areaOptions.find(a => a.id === aId)).filter(Boolean).map(a => tLabel(a)).join(', ');
         showToast(
-          `⚠️ ${locationToAdd.name} — ${t("toast.outsideAreaWarning")} (${areaNames})`,
+          `⚠️ ${newLocation.name.trim()} — ${t("toast.outsideAreaWarning")} (${areaNames})`,
           'warning'
         );
       }
@@ -4364,7 +4364,7 @@
       if (outsideArea) {
         const areaNames = selectedAreas.map(aId => areaOptions.find(a => a.id === aId)).filter(Boolean).map(a => tLabel(a)).join(', ');
         showToast(
-          `⚠️ ${locationToAdd.name} — ${t("toast.outsideAreaWarning")} (${areaNames})`,
+          `⚠️ ${newLocation.name || editingLocation.name} — ${t("toast.outsideAreaWarning")} (${areaNames})`,
           'warning'
         );
       }
