@@ -1153,48 +1153,6 @@
               </div>
               </div>{/* close inner wrapper */}
 
-              {/* Share buttons - always available */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const shareText = `🗺️ ${editingRoute.name}\n📍 ${editingRoute.areaName}\n🎯 ${editingRoute.stops?.length || 0} stops\n${editingRoute.circular ? t('route.circularRoute') : t('route.linearDesc')}\n\nstops:\n${(editingRoute.stops || []).map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}${s.address ? ' - ' + s.address : ''}`).join('\n')}`;
-                    if (navigator.share) {
-                      navigator.share({ title: editingRoute.name, text: shareText });
-                    } else {
-                      navigator.clipboard.writeText(shareText);
-                      showToast(t('route.routeCopied'), 'success');
-                    }
-                  }}
-                  className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
-                >
-                  📤 {t("general.shareRoute")}
-                </button>
-                <button
-                  onClick={() => {
-                    const pois = (editingRoute.stops || []).map((s, i) => {
-                      let line = `${window.BKK.stopLabel(i)}. ${s.name}`;
-                      if (s.address) line += `\n   📍 ${s.address}`;
-                      if (s.description) line += `\n   ${s.description}`;
-                      if (s.todayHours) line += `\n   🕐 ${s.todayHours}`;
-                      if (s.rating) line += `\n   ⭐ ${s.rating}`;
-                      const mapsUrl = (() => { const u = window.BKK.getGoogleMapsUrl(s); return u === '#' ? '' : u; })();
-                      if (mapsUrl) line += `\n   🗺️ ${mapsUrl}`;
-                      return line;
-                    }).join('\n\n');
-                    const text = `📍 POI - ${editingRoute.name}\n${'─'.repeat(30)}\n\n${pois}`;
-                    if (navigator.share) {
-                      navigator.share({ title: `POI - ${editingRoute.name}`, text });
-                    } else {
-                      navigator.clipboard.writeText(text);
-                      showToast(t('route.pointsCopied'), 'success');
-                    }
-                  }}
-                  className="flex-1 py-2 bg-indigo-500 text-white rounded-lg text-sm font-bold hover:bg-indigo-600"
-                >
-                  📋 {t("general.sharePoi")}
-                </button>
-              </div>
-
               {/* Status toggles - hidden for locked non-admin */}
               {!(editingRoute.locked && !isUnlocked) && (
               <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
@@ -1273,7 +1231,7 @@
                           }}
                           className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
                         >
-                          💾 Update
+                          💾 {t('general.update') || 'Update'}
                         </button>
                         <button
                           onClick={() => {

@@ -1,4 +1,12 @@
 
+  const renderIcon = (icon, size = '14px') => {
+    if (!icon) return null;
+    const isUrl = typeof icon === 'string' && (icon.startsWith('data:') || icon.startsWith('http'));
+    return isUrl 
+      ? <img src={icon} alt="" style={{ width: size, height: size, objectFit: 'contain', display: 'inline', verticalAlign: 'middle' }} />
+      : icon;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-rose-50" dir={window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'}>
       {/* Loading Overlay */}
@@ -1421,12 +1429,13 @@
                       )}
                     </div>
                     
-                    {/* Compute Route Button */}
+                    {/* Compute Route + Reorder row */}
+                    <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={computeRoute}
                       disabled={!startPointCoords}
                       style={{
-                        width: '100%',
+                        flex: 1,
                         backgroundColor: startPointCoords ? '#7c3aed' : '#d1d5db',
                         color: startPointCoords ? 'white' : '#9ca3af',
                         padding: '8px',
@@ -1440,6 +1449,25 @@
                     >
                       {route?.optimized ? t('route.recalcRoute') : t('route.calcRoute')}
                     </button>
+                    <button
+                      onClick={() => setShowRoutePreview(!showRoutePreview)}
+                      disabled={!route?.optimized}
+                      style={{
+                        backgroundColor: showRoutePreview ? '#7c3aed' : route?.optimized ? '#a78bfa' : '#d1d5db',
+                        color: route?.optimized ? 'white' : '#9ca3af',
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        border: 'none',
+                        cursor: route?.optimized ? 'pointer' : 'not-allowed',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}
+                    >
+                      {showRoutePreview ? `✓ ${t('route.backToList')}` : `📋 ${t('route.reorderStops')}`}
+                    </button>
+                    </div>
                     {!startPointCoords && (
                       <p style={{ fontSize: '10px', color: '#ef4444', textAlign: 'center', marginBottom: '2px' }}>
                         {`⬆️ ${t("form.chooseStartBeforeCalc")}`}
@@ -1485,7 +1513,7 @@
                               window.open(mapUrl, 'city_explorer_map');
                             }}
                             style={{
-                              flex: 1, backgroundColor: route?.optimized ? '#22c55e' : '#d1d5db',
+                              flex: 1, backgroundColor: route?.optimized ? '#2563eb' : '#d1d5db',
                               color: route?.optimized ? 'white' : '#9ca3af', textAlign: 'center',
                               padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '13px',
                               border: 'none', boxShadow: route?.optimized ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : 'none',
@@ -1505,7 +1533,7 @@
                               }}
                               style={{
                                 flex: 1, minWidth: '120px',
-                                backgroundColor: idx === 0 ? '#22c55e' : '#16a34a',
+                                backgroundColor: idx === 0 ? '#2563eb' : '#1d4ed8',
                                 color: 'white', textAlign: 'center',
                                 padding: '8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '12px',
                                 border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
@@ -1517,26 +1545,6 @@
                           ))
                         );
                       })()}
-                      
-                      {/* Route Preview / Reorder button */}
-                      <button
-                        onClick={() => setShowRoutePreview(!showRoutePreview)}
-                        disabled={!route?.optimized}
-                        style={{
-                          backgroundColor: showRoutePreview ? '#7c3aed' : route?.optimized ? '#8b5cf6' : '#d1d5db',
-                          color: route?.optimized ? 'white' : '#9ca3af',
-                          padding: '8px 12px',
-                          borderRadius: '12px',
-                          fontWeight: 'bold',
-                          fontSize: '13px',
-                          border: 'none',
-                          cursor: route?.optimized ? 'pointer' : 'not-allowed',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0
-                        }}
-                      >
-                        {showRoutePreview ? `✓ ${t('route.backToList')}` : `📋 ${t('route.reorderStops')}`}
-                      </button>
                       
                       {/* Save Route Button - styled - hidden in wizard */}
                       {!wizardMode && (route.name ? (
@@ -1571,9 +1579,38 @@
                           }}
                           title={t("route.saveRoute")}
                         >
-                          💾
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12 7v6l-3 3" stroke="white" strokeWidth="0"/><path d="M8 12h8" stroke="white" strokeWidth="0"/><path d="M12 6v8M8 12l4 4 4-4" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </button>
                       ))}
+                      {/* Share button */}
+                      {route?.optimized && (
+                        <button
+                          onClick={() => {
+                            const activeStops = (route.stops || []).filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()));
+                            const shareText = `🗺️ ${route.name || t('route.myRoute')}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}`;
+                            if (navigator.share) {
+                              navigator.share({ title: route.name || t('route.myRoute'), text: shareText });
+                            } else {
+                              navigator.clipboard.writeText(shareText);
+                              showToast(t('route.routeCopied'), 'success');
+                            }
+                          }}
+                          style={{
+                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                            border: 'none',
+                            padding: '8px 10px',
+                            borderRadius: '12px',
+                            fontSize: '16px',
+                            color: 'white',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 6px rgba(37, 99, 235, 0.3)',
+                            flexShrink: 0
+                          }}
+                          title={t("general.shareRoute")}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="white" strokeWidth="2"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="white" strokeWidth="2"/></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1796,10 +1833,7 @@
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
                                 const obj = interestMap[intId];
                                 if (!obj?.icon) return null;
-                                const isUrl = obj.icon.startsWith?.('data:') || obj.icon.startsWith?.('http');
-                                return isUrl 
-                                  ? <img key={idx} src={obj.icon} alt="" title={obj.label} style={{ width: '14px', height: '14px', objectFit: 'contain', display: 'inline' }} />
-                                  : <span key={idx} title={obj.label} style={{ fontSize: '12px' }}>{obj.icon}</span>;
+                                return <span key={idx} title={obj.label} style={{ fontSize: '12px' }}>{renderIcon(obj.icon, '14px')}</span>;
                               })}
                               <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} stops</span>
                             </div>
