@@ -136,25 +136,23 @@
         {/* ACTIVE TRAIL MODE — shown when user opened Google Maps route */}
         {activeTrail && (
           <div className="view-fade-in">
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
-                  {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
-                </button>
-                <span style={{ fontSize: '10px', color: '#9ca3af' }}>
-                  ⏱️ {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins} ${t('general.min')}` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
-                </span>
+            {/* Compact header row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
+                {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
+              </button>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🐾 {t('trail.activeTitle')}</span>
               </div>
-              
-              <div style={{ fontSize: '20px', marginBottom: '2px' }}>🐾</div>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 4px 0' }}>{t('trail.activeTitle')}</h2>
-              <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 12px 0' }}>{t('trail.activeDesc')}</p>
+              <span style={{ fontSize: '10px', color: '#9ca3af' }}>
+                ⏱️ {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins} ${t('general.min')}` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
+              </span>
             </div>
+            <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
 
-            {/* Big Camera Button */}
+            {/* Camera Button — compact */}
             <button
               onClick={() => {
-                // Pre-select interests from trail (or last used interest)
                 const defaultInterests = activeTrail.lastInterest 
                   ? [activeTrail.lastInterest] 
                   : (activeTrail.interests || []).slice(0, 1);
@@ -169,13 +167,11 @@
                 };
                 setNewLocation(initLocation);
                 setShowQuickCapture(true);
-                // Request browser GPS immediately
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     (pos) => {
                       const lat = pos.coords.latitude;
                       const lng = pos.coords.longitude;
-                      // Find nearest trail stop
                       let nearest = null;
                       let minDist = Infinity;
                       (activeTrail.stops || []).forEach((stop, idx) => {
@@ -185,7 +181,6 @@
                         const dist = Math.sqrt(dlat * dlat + dlng * dlng);
                         if (dist < minDist) { minDist = dist; nearest = { ...stop, idx, dist: Math.round(dist) }; }
                       });
-                      // Auto-detect area from GPS
                       const detected = window.BKK.getAreasForCoordinates(lat, lng);
                       const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
                       setNewLocation(prev => ({
@@ -200,43 +195,43 @@
                 }
               }}
               style={{
-                width: '100%', padding: '20px', marginBottom: '12px',
+                width: '100%', padding: '14px', marginBottom: '8px',
                 background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                color: 'white', border: 'none', borderRadius: '16px',
-                fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
+                color: 'white', border: 'none', borderRadius: '14px',
+                fontSize: '16px', fontWeight: 'bold', cursor: 'pointer',
                 boxShadow: '0 4px 15px rgba(34,197,94,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
               }}
             >
-              <span style={{ fontSize: '32px' }}>📸</span>
+              <span style={{ fontSize: '22px' }}>📸</span>
               <span>{t('trail.capturePlace')}</span>
             </button>
 
-            {/* Trail Stops */}
+            {/* Trail Stops — compact list */}
             {activeTrail.stops?.length > 0 && (
-              <div style={{ background: 'white', borderRadius: '12px', padding: '10px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '6px' }}>
+              <div style={{ background: 'white', borderRadius: '12px', padding: '8px', marginBottom: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '4px' }}>
                   {`📍 ${t('trail.stops')} (${activeTrail.stops.length})`}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {activeTrail.stops.slice(0, 10).map((stop, idx) => (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                  {activeTrail.stops.slice(0, 12).map((stop, idx) => (
                     <div key={idx} style={{
-                      display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px',
-                      background: '#f9fafb', borderRadius: '8px', fontSize: '12px'
+                      display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 6px',
+                      background: '#f9fafb', borderRadius: '6px', fontSize: '10px', maxWidth: '48%', overflow: 'hidden'
                     }}>
                       <span style={{
-                        width: '22px', height: '22px', borderRadius: '50%',
+                        width: '16px', height: '16px', borderRadius: '50%',
                         background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '10px', fontWeight: 'bold', color: '#6b7280', flexShrink: 0
+                        fontSize: '8px', fontWeight: 'bold', color: '#6b7280', flexShrink: 0
                       }}>{String.fromCharCode(65 + idx)}</span>
-                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {stop.name}
                       </span>
                     </div>
                   ))}
-                  {activeTrail.stops.length > 10 && (
-                    <div style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
-                      +{activeTrail.stops.length - 10} more
+                  {activeTrail.stops.length > 12 && (
+                    <div style={{ fontSize: '9px', color: '#9ca3af', padding: '3px 6px' }}>
+                      +{activeTrail.stops.length - 12}
                     </div>
                   )}
                 </div>
