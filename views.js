@@ -213,11 +213,11 @@
                 <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '4px' }}>
                   {`📍 ${t('trail.stops')} (${activeTrail.stops.length})`}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
                   {activeTrail.stops.slice(0, 12).map((stop, idx) => (
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 6px',
-                      background: '#f9fafb', borderRadius: '6px', fontSize: '10px', maxWidth: '48%', overflow: 'hidden'
+                      background: '#f9fafb', borderRadius: '6px', fontSize: '10px', overflow: 'hidden'
                     }}>
                       <span style={{
                         width: '16px', height: '16px', borderRadius: '50%',
@@ -3400,7 +3400,12 @@
           </div>
         )}
 
-        {/* Footer */}
+        {/* Footer — minimal during active trail */}
+        {activeTrail ? (
+          <div className="text-center py-2 mt-2">
+            <span style={{ fontSize: '9px', color: '#d1d5db' }}>🐾 FouFou v{window.BKK.VERSION}</span>
+          </div>
+        ) : (
         <div className="text-center py-3 mt-4 border-t border-gray-200">
           <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>
             FouFou — City Trail Generator 🍜🏛️🎭
@@ -3432,6 +3437,7 @@
             <button onClick={() => { if (window.confirm(t('general.confirmRefresh'))) applyUpdate(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
+        )}
 
 
       {/* Leaflet Map Modal */}
