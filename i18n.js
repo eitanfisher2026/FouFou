@@ -463,6 +463,8 @@ route: {
 // --- Places ---
 places: {
   addPlace: 'הוסף מקום',
+  addFromCamera: 'צלם מקום',
+  addManually: 'הוסף ידנית',
   editPlace: 'ערוך מקום',
   placeName: 'שם המקום',
   enterPlaceName: 'אנא הזן שם למקום',
@@ -1162,6 +1164,8 @@ route: {
 
 places: {
   addPlace: 'Add place',
+  addFromCamera: 'Snap place',
+  addManually: 'Add manually',
   editPlace: 'Edit place',
   placeName: 'Place name',
   enterPlaceName: 'Please enter a place name',

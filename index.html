@@ -636,6 +636,8 @@ route: {
 // --- Places ---
 places: {
   addPlace: 'הוסף מקום',
+  addFromCamera: 'צלם מקום',
+  addManually: 'הוסף ידנית',
   editPlace: 'ערוך מקום',
   placeName: 'שם המקום',
   enterPlaceName: 'אנא הזן שם למקום',
@@ -1335,6 +1337,8 @@ route: {
 
 places: {
   addPlace: 'Add place',
+  addFromCamera: 'Snap place',
+  addManually: 'Add manually',
   editPlace: 'Edit place',
   placeName: 'Place name',
   enterPlaceName: 'Please enter a place name',
@@ -2692,7 +2696,7 @@ window.BKK = window.BKK || {};
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.3.0';
+window.BKK.VERSION = '3.3.1';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3363,7 +3367,7 @@ window.BKK.buildMapsUrl = (stops, circular = false) => {
   if (middlePoints) {
     mapUrl += `&waypoints=${middlePoints}`;
   }
-  mapUrl += '&travelmode=walking';
+  mapUrl += '&travelmode=walking&dir_action=navigate';
   
   return mapUrl;
 };
@@ -3436,7 +3440,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   if (stops.length === 0) return [];
   
   if (stops.length === 1) {
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${stops[0].lat},${stops[0].lng}&travelmode=walking`;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${stops[0].lat},${stops[0].lng}&travelmode=walking&dir_action=navigate`;
     return [{ url, fromIndex: 0, toIndex: 0, part: 1, total: 1 }];
   }
   
@@ -3453,7 +3457,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     }
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
     if (waypointsArr.length > 0) url += `&waypoints=${waypointsArr.join('|')}`;
-    url += '&travelmode=walking';
+    url += '&travelmode=walking&dir_action=navigate';
     return [{ url, fromIndex: 0, toIndex: stops.length - 1, part: 1, total: 1 }];
   }
   
@@ -3474,7 +3478,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
         const wps = segmentStops.map(s => `${s.lat},${s.lng}`);
         let url = `https://www.google.com/maps/dir/?api=1&origin=${currentOrigin}&destination=${destination}`;
         if (wps.length > 0) url += `&waypoints=${wps.join('|')}`;
-        url += '&travelmode=walking';
+        url += '&travelmode=walking&dir_action=navigate';
         urls.push({ url, fromIndex: currentIndex, toIndex: stops.length - 1, part: urls.length + 1, total: 0 });
         break;
       } else if (isCircular) {
@@ -3482,7 +3486,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
         const wps = segmentStops.map(s => `${s.lat},${s.lng}`);
         let url = `https://www.google.com/maps/dir/?api=1&origin=${currentOrigin}&destination=${destination}`;
         if (wps.length > 0) url += `&waypoints=${wps.join('|')}`;
-        url += '&travelmode=walking';
+        url += '&travelmode=walking&dir_action=navigate';
         urls.push({ url, fromIndex: currentIndex, toIndex: stops.length - 1, part: urls.length + 1, total: 0 });
         break;
       } else {
@@ -3490,7 +3494,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
         const wps = segmentStops.slice(0, -1).map(s => `${s.lat},${s.lng}`);
         let url = `https://www.google.com/maps/dir/?api=1&origin=${currentOrigin}&destination=${destination}`;
         if (wps.length > 0) url += `&waypoints=${wps.join('|')}`;
-        url += '&travelmode=walking';
+        url += '&travelmode=walking&dir_action=navigate';
         urls.push({ url, fromIndex: currentIndex, toIndex: stops.length - 1, part: urls.length + 1, total: 0 });
         break;
       }
@@ -3500,7 +3504,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
       const wps = segmentStops.slice(0, -1).map(s => `${s.lat},${s.lng}`);
       let url = `https://www.google.com/maps/dir/?api=1&origin=${currentOrigin}&destination=${destination}`;
       if (wps.length > 0) url += `&waypoints=${wps.join('|')}`;
-      url += '&travelmode=walking';
+      url += '&travelmode=walking&dir_action=navigate';
       urls.push({ url, fromIndex: currentIndex, toIndex: currentIndex + segmentStops.length - 1, part: urls.length + 1, total: 0 });
       
       currentOrigin = destination;
@@ -10409,10 +10413,41 @@ const FouFouApp = () => {
                     🔍
                   </button>
                   <button
+                    onClick={() => {
+                      const initLocation = {
+                        name: '', description: '', notes: '',
+                        area: formData.area,
+                        areas: formData.area ? [formData.area] : [],
+                        interests: [],
+                        lat: null, lng: null, mapsUrl: '', address: '',
+                        uploadedImage: null, imageUrls: [], inProgress: true,
+                        nearestStop: null, gpsLoading: true
+                      };
+                      setNewLocation(initLocation);
+                      setShowQuickCapture(true);
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            const detected = window.BKK.getAreasForCoordinates(lat, lng);
+                            const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
+                            setNewLocation(prev => ({...prev, lat, lng, gpsLoading: false, ...areaUpdates}));
+                          },
+                          () => setNewLocation(prev => ({...prev, gpsLoading: false, gpsBlocked: true})),
+                          { enableHighAccuracy: true, timeout: 8000 }
+                        );
+                      }
+                    }}
+                    className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-600"
+                  >
+                    {`📸 ${t("places.addFromCamera")}`}
+                  </button>
+                  <button
                     onClick={() => setShowAddLocationDialog(true)}
                     className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                   >
-                    {t("places.addPlace")}
+                    {`✏️ ${t("places.addManually")}`}
                   </button>
                 </div>
               </div>

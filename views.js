@@ -2109,10 +2109,41 @@
                     🔍
                   </button>
                   <button
+                    onClick={() => {
+                      const initLocation = {
+                        name: '', description: '', notes: '',
+                        area: formData.area,
+                        areas: formData.area ? [formData.area] : [],
+                        interests: [],
+                        lat: null, lng: null, mapsUrl: '', address: '',
+                        uploadedImage: null, imageUrls: [], inProgress: true,
+                        nearestStop: null, gpsLoading: true
+                      };
+                      setNewLocation(initLocation);
+                      setShowQuickCapture(true);
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            const detected = window.BKK.getAreasForCoordinates(lat, lng);
+                            const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
+                            setNewLocation(prev => ({...prev, lat, lng, gpsLoading: false, ...areaUpdates}));
+                          },
+                          () => setNewLocation(prev => ({...prev, gpsLoading: false, gpsBlocked: true})),
+                          { enableHighAccuracy: true, timeout: 8000 }
+                        );
+                      }
+                    }}
+                    className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-600"
+                  >
+                    {`📸 ${t("places.addFromCamera")}`}
+                  </button>
+                  <button
                     onClick={() => setShowAddLocationDialog(true)}
                     className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                   >
-                    {t("places.addPlace")}
+                    {`✏️ ${t("places.addManually")}`}
                   </button>
                 </div>
               </div>

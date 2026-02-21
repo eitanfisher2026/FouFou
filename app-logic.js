@@ -2538,11 +2538,13 @@
         maxStops: formData.maxStops 
       });
       console.log('[ROUTE] Starting route generation', isRadiusMode ? 'RADIUS mode' : 'AREA mode');
+      console.log('[ROUTE] Selected interests:', JSON.stringify(formData.interests));
+      console.log('[ROUTE] Area:', formData.area, '| SearchMode:', formData.searchMode);
       
       // Get custom locations (always included)
       const customStops = getStopsForInterests();
       addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
-      console.log('[ROUTE] Custom stops:', customStops.length);
+      console.log('[ROUTE] Custom stops:', customStops.length, customStops.map(s => `${s.name} [${(s.interests||[]).join(',')}]`));
       
       // Calculate stops needed per interest
       const numInterests = formData.interests.length || 1;
