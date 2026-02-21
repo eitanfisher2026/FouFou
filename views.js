@@ -636,11 +636,21 @@
                 }
                 if (!autoStart) { showToast(t('form.chooseStartBeforeCalc'), 'warning'); return; }
                 setFormData(prev => ({...prev, startPoint: `${autoStart.lat},${autoStart.lng}`}));
-                const activeStops = route.stops.filter(s => !disabledStops.includes((s.name || '').toLowerCase().trim()) && s.lat && s.lng);
-                if (activeStops.length < 2) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
-                const optimized = optimizeStopOrder(activeStops, autoStart, isCircular);
-                const inactiveStops = route.stops.filter(s => disabledStops.includes((s.name || '').toLowerCase().trim()));
-                setRoute({ ...route, stops: [...optimized, ...inactiveStops], circular: isCircular, optimized: true, startPoint: autoStart.address, startPointCoords: autoStart });
+                
+                // Smart selection: pick best stops per interest based on category/maxStops
+                const allStopsWithCoords = route.stops.filter(s => s.lat && s.lng);
+                const { selected: smartStops, disabled: smartDisabled } = smartSelectStops(allStopsWithCoords, formData.interests);
+                
+                if (smartStops.length < 2) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
+                
+                // Disable the stops that smartSelect didn't pick
+                const newDisabled = smartDisabled.map(s => (s.name || '').toLowerCase().trim());
+                setDisabledStops(newDisabled);
+                
+                // Optimize geographic order
+                const optimized = optimizeStopOrder(smartStops, autoStart, isCircular);
+                
+                setRoute({ ...route, stops: [...optimized, ...smartDisabled], circular: isCircular, optimized: true, startPoint: autoStart.address, startPointCoords: autoStart });
                 const urls = window.BKK.buildGoogleMapsUrls(
                   optimized.map(s => ({ lat: s.lat, lng: s.lng, name: s.name })),
                   `${autoStart.lat},${autoStart.lng}`, isCircular, window.BKK.googleMaxWaypoints || 12
@@ -1646,6 +1656,28 @@
                       </button>
                       </div>
 
+                      {/* Row 1.5: Smart Select - "Help me plan" */}
+                      {route.stops.length > 0 && !route.optimized && (
+                      <button
+                        onClick={() => {
+                          const allStopsWithCoords = route.stops.filter(s => s.lat && s.lng);
+                          if (allStopsWithCoords.length < 2) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
+                          const { selected, disabled } = smartSelectStops(allStopsWithCoords, formData.interests);
+                          const newDisabled = disabled.map(s => (s.name || '').toLowerCase().trim());
+                          setDisabledStops(newDisabled);
+                          showToast(`🧠 ${t('route.smartSelected', { selected: selected.length, disabled: disabled.length })}`, 'success');
+                        }}
+                        style={{
+                          width: '100%', height: '38px', borderRadius: '10px',
+                          border: '2px solid #f59e0b', background: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+                          color: '#b45309', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                        }}
+                      >
+                        🧠 {t('route.helpMePlan')}
+                      </button>
+                      )}
+
                       {/* Row 2: Calc Route + Reorder */}
                       <div style={{ display: 'flex', gap: '4px', alignItems: 'center', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                       <button
@@ -2399,7 +2431,9 @@
                   locked: interest.locked || false,
                   builtIn: !isCustom,
                   scope: config.scope || interest.scope || 'global',
-                  cityId: config.cityId || interest.cityId || ''
+                  cityId: config.cityId || interest.cityId || '',
+                  category: config.category || interest.category || 'attraction',
+                  maxStops: config.maxStops || interest.maxStops || ({'attraction':3,'break':1,'meal':1,'experience':1,'shopping':2,'nature':2}[config.category || interest.category || 'attraction'] || 3)
                 });
                 setShowAddInterestDialog(true);
               };

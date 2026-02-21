@@ -147,7 +147,7 @@
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global' });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, inProgress: false, locked: false, scope: 'global', category: 'attraction', maxStops: 3 });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -2066,7 +2066,9 @@
         inProgress: config.inProgress !== undefined ? config.inProgress : opt.inProgress,
         locked: config.locked !== undefined ? config.locked : opt.locked,
         scope: config.scope || opt.scope || 'global',
-        cityId: config.cityId || opt.cityId || ''
+        cityId: config.cityId || opt.cityId || '',
+        category: config.category || opt.category || 'attraction',
+        maxStops: config.maxStops || opt.maxStops || 3
       };
     });
   }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
@@ -2367,6 +2369,124 @@
     });
   };
 
+  // ========== SMART STOP SELECTION (for Yalla and "Help me plan") ==========
+  // Returns { selected: [...], disabled: [...] } based on category/maxStops config
+  const smartSelectStops = (stops, selectedInterests, maxTotal) => {
+    maxTotal = maxTotal || formData.maxStops || 10;
+    
+    // Build per-interest limits from config
+    const limits = {};
+    let totalRequested = 0;
+    for (const interestId of selectedInterests) {
+      const interestObj = allInterestOptions.find(o => o.id === interestId);
+      const limit = interestObj?.maxStops || 3;
+      limits[interestId] = { max: limit, category: interestObj?.category || 'attraction' };
+      totalRequested += limit;
+    }
+    
+    // Scale down proportionally if total exceeds maxTotal
+    if (totalRequested > maxTotal) {
+      const scale = maxTotal / totalRequested;
+      for (const id of selectedInterests) {
+        limits[id].max = Math.max(1, Math.round(limits[id].max * scale));
+      }
+    }
+    
+    console.log('[SMART] Interest limits:', JSON.stringify(limits));
+    
+    // Group stops by their primary matching interest
+    const buckets = {};
+    const unmatched = [];
+    for (const id of selectedInterests) buckets[id] = [];
+    
+    for (const stop of stops) {
+      const stopInterests = stop.interests || [];
+      // Find first matching selected interest
+      const matchingInterest = selectedInterests.find(id => stopInterests.includes(id));
+      if (matchingInterest && buckets[matchingInterest]) {
+        buckets[matchingInterest].push(stop);
+      } else {
+        unmatched.push(stop);
+      }
+    }
+    
+    // Sort each bucket: custom/pinned first, then by rating
+    const stopScore = (s) => (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
+    for (const id of selectedInterests) {
+      buckets[id].sort((a, b) => {
+        // Custom (user-added) locations get priority
+        const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
+        const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
+        if (aCustom !== bCustom) return bCustom - aCustom;
+        return stopScore(b) - stopScore(a);
+      });
+    }
+    
+    // Pick top N from each bucket
+    const selected = [];
+    const disabled = [];
+    
+    for (const interestId of selectedInterests) {
+      const bucket = buckets[interestId];
+      const limit = limits[interestId].max;
+      selected.push(...bucket.slice(0, limit));
+      disabled.push(...bucket.slice(limit));
+    }
+    disabled.push(...unmatched);
+    
+    // If we have room, fill from best disabled stops
+    if (selected.length < maxTotal && disabled.length > 0) {
+      disabled.sort((a, b) => stopScore(b) - stopScore(a));
+      const extra = disabled.splice(0, maxTotal - selected.length);
+      selected.push(...extra);
+    }
+    
+    // Smart ordering: category determines position in day
+    // attraction/nature early, shopping mid, break/meal interspersed, experience last
+    const categoryPosition = { attraction: 1, nature: 2, shopping: 3, experience: 4, meal: 5, break: 6 };
+    const getCategory = (stop) => {
+      const stopInterests = stop.interests || [];
+      for (const id of selectedInterests) {
+        if (stopInterests.includes(id) && limits[id]) return limits[id].category;
+      }
+      return 'attraction';
+    };
+    
+    // Separate by role
+    const attractions = selected.filter(s => ['attraction', 'nature', 'shopping'].includes(getCategory(s)));
+    const breaks = selected.filter(s => getCategory(s) === 'break');
+    const meals = selected.filter(s => getCategory(s) === 'meal');
+    const experiences = selected.filter(s => getCategory(s) === 'experience');
+    
+    // Build ordered route: attractions with breaks/meals interspersed
+    const ordered = [];
+    let attractionIdx = 0;
+    const totalAttractions = attractions.length;
+    
+    // Insert break roughly 1/3 into attractions, meal at 2/3
+    const breakAt = Math.max(1, Math.floor(totalAttractions / 3));
+    const mealAt = Math.max(2, Math.floor(totalAttractions * 2 / 3));
+    
+    for (let i = 0; i < totalAttractions; i++) {
+      ordered.push(attractions[i]);
+      if (i === breakAt - 1 && breaks.length > 0) ordered.push(...breaks);
+      if (i === mealAt - 1 && meals.length > 0) ordered.push(...meals);
+    }
+    
+    // If no attractions but we have breaks/meals, add them
+    if (totalAttractions === 0) {
+      ordered.push(...breaks, ...meals);
+    }
+    
+    // Experiences at the end
+    ordered.push(...experiences);
+    
+    console.log('[SMART] Selected:', ordered.length, '| Disabled:', disabled.length);
+    console.log('[SMART] Order:', ordered.map(s => `${s.name} [${getCategory(s)}]`).join(' → '));
+    
+    return { selected: ordered, disabled };
+  };
+
   // ========== ROUTE OPTIMIZATION (Nearest Neighbor + 2-opt) ==========
   const optimizeStopOrder = (stops, startCoords, isCircular) => {
     if (stops.length <= 2) return stops;
@@ -2546,10 +2666,28 @@
       addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
       console.log('[ROUTE] Custom stops:', customStops.length, customStops.map(s => `${s.name} [${(s.interests||[]).join(',')}]`));
       
-      // Calculate stops needed per interest
-      const numInterests = formData.interests.length || 1;
+      // Calculate stops needed per interest using category-based maxStops
       const maxStops = formData.maxStops || 10;
-      const stopsPerInterest = Math.ceil(maxStops / numInterests);
+      
+      // Build per-interest stop limits from config
+      const interestLimits = {};
+      let totalRequested = 0;
+      for (const interest of formData.interests) {
+        const interestObj = allInterestOptions.find(o => o.id === interest);
+        const limit = interestObj?.maxStops || 3;
+        interestLimits[interest] = limit;
+        totalRequested += limit;
+      }
+      
+      // If total requested exceeds maxStops, scale down proportionally
+      if (totalRequested > maxStops) {
+        const scale = maxStops / totalRequested;
+        for (const interest of formData.interests) {
+          interestLimits[interest] = Math.max(1, Math.round(interestLimits[interest] * scale));
+        }
+      }
+      
+      console.log('[ROUTE] Interest limits:', JSON.stringify(interestLimits), '| total max:', maxStops);
       
       // Track results per interest for smart completion
       const interestResults = {};
@@ -2561,12 +2699,14 @@
       
       // ROUND 1: Fill from custom locations first, API only for gaps
       for (const interest of formData.interests) {
+        const stopsForThisInterest = interestLimits[interest] || 2;
+        
         // Check how many custom stops we already have for this interest
         const customStopsForInterest = customStops.filter(stop => 
           stop.interests && stop.interests.includes(interest)
         );
         
-        const neededForInterest = Math.max(0, stopsPerInterest - customStopsForInterest.length);
+        const neededForInterest = Math.max(0, stopsForThisInterest - customStopsForInterest.length);
         
         if (neededForInterest > 0) {
           // Check if this is a private-only interest (no Google API calls)
@@ -2639,7 +2779,7 @@
           
           // Track results
           interestResults[interest] = {
-            requested: stopsPerInterest,
+            requested: stopsForThisInterest,
             custom: customStopsForInterest.length,
             fetched: sortedPlaces.length,
             total: customStopsForInterest.length + sortedPlaces.length,
@@ -2653,7 +2793,7 @@
           console.log(`[ROUTE] Skipping API for ${interest}: ${customStopsForInterest.length} custom stops suffice`);
           googleCacheRef.current[interest] = []; // Empty cache
           interestResults[interest] = {
-            requested: stopsPerInterest,
+            requested: stopsForThisInterest,
             custom: customStopsForInterest.length,
             fetched: 0,
             total: customStopsForInterest.length,
