@@ -1008,3 +1008,63 @@ window.BKK.generateLocationName = (interestId, lat, lng, counters, allInterests,
   
   return { name, nextNum, interestId };
 };
+
+// ============================================================================
+// Speech-to-Text — uses Web Speech API (built-in, no libraries needed)
+// ============================================================================
+window.BKK.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+window.BKK.startSpeechToText = (options = {}) => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  
+  const lang = (localStorage.getItem('city_explorer_lang') || 'he') === 'he' ? 'he-IL' : 'en-US';
+  const maxDuration = options.maxDuration || 10000; // 10 seconds default
+  const onResult = options.onResult || function() {};
+  const onEnd = options.onEnd || function() {};
+  const onError = options.onError || function() {};
+  
+  const recognition = new SpeechRecognition();
+  recognition.lang = lang;
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  
+  let finalText = '';
+  let timeoutId = null;
+  
+  recognition.onresult = function(event) {
+    let interim = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finalText += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    onResult(finalText || interim, !!finalText);
+  };
+  
+  recognition.onend = function() {
+    clearTimeout(timeoutId);
+    onEnd(finalText);
+  };
+  
+  recognition.onerror = function(event) {
+    clearTimeout(timeoutId);
+    onError(event.error);
+  };
+  
+  recognition.start();
+  
+  // Auto-stop after max duration
+  timeoutId = setTimeout(function() {
+    try { recognition.stop(); } catch(e) {}
+  }, maxDuration);
+  
+  // Return stop function
+  return function() {
+    clearTimeout(timeoutId);
+    try { recognition.stop(); } catch(e) {}
+  };
+};

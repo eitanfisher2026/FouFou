@@ -2186,7 +2186,7 @@
                     placesTab === 'drafts' ? 'border-amber-500 text-amber-700 bg-amber-50' : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {`🛠️ ${t("places.drafts")} (${groupedPlaces.draftsCount})`}
+                  {`✏️ ${t("places.drafts")} (${groupedPlaces.draftsCount})`}
                 </button>
                 <button
                   onClick={() => setPlacesTab('ready')}
@@ -2239,7 +2239,7 @@
                 </div>
               ) : (groupedPlaces.sortedKeys.length === 0 && groupedPlaces.ungrouped.length === 0) ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
-                  <div className="text-3xl mb-2">{placesTab === 'drafts' ? '🛠️' : placesTab === 'ready' ? '🔒' : '🚫'}</div>
+                  <div className="text-3xl mb-2">{placesTab === 'drafts' ? '✏️' : placesTab === 'ready' ? '🔒' : '🚫'}</div>
                   <p className="text-gray-600 text-sm">
                     {placesTab === 'drafts' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
                      : placesTab === 'ready' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
@@ -2284,7 +2284,6 @@
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
                                     {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                    {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
                                     {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
                                     {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
                                     {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
@@ -2331,7 +2330,6 @@
                                     <span className="font-medium text-sm truncate">{loc.name}</span>
                                   )}
                                   {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                  {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
                                   {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
                                 </div>
                               </div>

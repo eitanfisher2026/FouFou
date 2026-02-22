@@ -238,6 +238,49 @@ window.BKK.migrateLocationsToPerCity = function(database) {
 };
 
 /**
+ * One-time cleanup: remove inProgress field from all Firebase records.
+ * This field was removed in v3.5.1. Runs once per browser.
+ */
+window.BKK.cleanupInProgress = function(database) {
+  if (!database) return Promise.resolve();
+  if (localStorage.getItem('cleanup_inprogress_done') === 'true') return Promise.resolve();
+  
+  var cities = Object.keys(window.BKK.cities || {});
+  var updates = {};
+  var paths = [];
+  
+  cities.forEach(function(cityId) {
+    paths.push('cities/' + cityId + '/customLocations');
+    paths.push('cities/' + cityId + '/savedRoutes');
+  });
+  paths.push('customInterests');
+  paths.push('settings/interestConfig');
+  
+  return Promise.all(paths.map(function(path) {
+    return database.ref(path).once('value').then(function(snap) {
+      var data = snap.val();
+      if (!data) return;
+      Object.keys(data).forEach(function(key) {
+        if (data[key] && data[key].hasOwnProperty('inProgress')) {
+          updates[path + '/' + key + '/inProgress'] = null;
+        }
+      });
+    }).catch(function() {});
+  })).then(function() {
+    var count = Object.keys(updates).length;
+    if (count > 0) {
+      return database.ref().update(updates).then(function() {
+        console.log('[CLEANUP] Removed inProgress from ' + count + ' records');
+      });
+    }
+  }).then(function() {
+    localStorage.setItem('cleanup_inprogress_done', 'true');
+  }).catch(function(err) {
+    console.error('[CLEANUP] inProgress removal error:', err);
+  });
+};
+
+/**
  * Admin utility: clean up stale _verify nodes and diagnose Firebase issues.
  */
 window.BKK.cleanupFirebase = function(database) {

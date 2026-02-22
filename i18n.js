@@ -792,6 +792,11 @@ help: {
     moreOptions: 'הבא עוד',
     done: 'סיימתי',
   },
+  speech: {
+    startRecording: 'הקלט תיאור קולי',
+    stopRecording: 'עצור הקלטה',
+    micPermissionDenied: 'אין הרשאה למיקרופון',
+  },
   import: {
     interests: 'תחומים:',
     configs: 'הגדרות:',
@@ -1508,6 +1513,11 @@ help: {
     typeAndSearch: 'Type a description and click search',
     moreOptions: 'More options',
     done: 'Done',
+  },
+  speech: {
+    startRecording: 'Record voice description',
+    stopRecording: 'Stop recording',
+    micPermissionDenied: 'Microphone permission denied',
   },
   import: {
     interests: 'Interests:',

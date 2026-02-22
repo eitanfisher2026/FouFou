@@ -72,6 +72,8 @@
     return null;
   });
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const stopRecordingRef = React.useRef(null);
 
   // Detect return from Google Maps — check localStorage for activeTrail
   // Also check for app updates when returning to tab
@@ -769,6 +771,7 @@
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
+      window.BKK.cleanupInProgress(database);
     }
   }, []);
 

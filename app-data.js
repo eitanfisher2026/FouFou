@@ -793,6 +793,11 @@ help: {
     moreOptions: 'הבא עוד',
     done: 'סיימתי',
   },
+  speech: {
+    startRecording: 'הקלט תיאור קולי',
+    stopRecording: 'עצור הקלטה',
+    micPermissionDenied: 'אין הרשאה למיקרופון',
+  },
   import: {
     interests: 'תחומים:',
     configs: 'הגדרות:',
@@ -1509,6 +1514,11 @@ help: {
     typeAndSearch: 'Type a description and click search',
     moreOptions: 'More options',
     done: 'Done',
+  },
+  speech: {
+    startRecording: 'Record voice description',
+    stopRecording: 'Stop recording',
+    micPermissionDenied: 'Microphone permission denied',
   },
   import: {
     interests: 'Interests:',
@@ -2747,6 +2757,48 @@ window.BKK.migrateLocationsToPerCity = function(database) {
 };
 
 /**
+ * One-time cleanup: remove inProgress field from all Firebase records.
+ * This field was removed in v3.5.1. Runs once per browser.
+ */
+window.BKK.cleanupInProgress = function(database) {
+  if (!database) return Promise.resolve();
+  if (localStorage.getItem('cleanup_inprogress_done') === 'true') return Promise.resolve();
+  
+  var cities = Object.keys(window.BKK.cities || {});
+  var updates = {};
+  var paths = [];
+  
+  cities.forEach(function(cityId) {
+    paths.push('cities/' + cityId + '/customLocations');
+    paths.push('cities/' + cityId + '/savedRoutes');
+  });
+  paths.push('customInterests');
+  paths.push('settings/interestConfig');
+  
+  return Promise.all(paths.map(function(path) {
+    return database.ref(path).once('value').then(function(snap) {
+      var data = snap.val();
+      if (!data) return;
+      Object.keys(data).forEach(function(key) {
+        if (data[key] && data[key].hasOwnProperty('inProgress')) {
+          updates[path + '/' + key + '/inProgress'] = null;
+        }
+      });
+    }).catch(function() {});
+  })).then(function() {
+    var count = Object.keys(updates).length;
+    if (count > 0) {
+      return database.ref().update(updates).then(function() {
+      });
+    }
+  }).then(function() {
+    localStorage.setItem('cleanup_inprogress_done', 'true');
+  }).catch(function(err) {
+    console.error('[CLEANUP] inProgress removal error:', err);
+  });
+};
+
+/**
  * Admin utility: clean up stale _verify nodes and diagnose Firebase issues.
  */
 window.BKK.cleanupFirebase = function(database) {
@@ -3757,5 +3809,62 @@ window.BKK.generateLocationName = (interestId, lat, lng, counters, allInterests,
     : `${interestName} #${nextNum}`;
   
   return { name, nextNum, interestId };
+};
+
+// ============================================================================
+// ============================================================================
+window.BKK.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+window.BKK.startSpeechToText = (options = {}) => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return null;
+  
+  const lang = (localStorage.getItem('city_explorer_lang') || 'he') === 'he' ? 'he-IL' : 'en-US';
+  const maxDuration = options.maxDuration || 10000; // 10 seconds default
+  const onResult = options.onResult || function() {};
+  const onEnd = options.onEnd || function() {};
+  const onError = options.onError || function() {};
+  
+  const recognition = new SpeechRecognition();
+  recognition.lang = lang;
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  
+  let finalText = '';
+  let timeoutId = null;
+  
+  recognition.onresult = function(event) {
+    let interim = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finalText += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    onResult(finalText || interim, !!finalText);
+  };
+  
+  recognition.onend = function() {
+    clearTimeout(timeoutId);
+    onEnd(finalText);
+  };
+  
+  recognition.onerror = function(event) {
+    clearTimeout(timeoutId);
+    onError(event.error);
+  };
+  
+  recognition.start();
+  
+  timeoutId = setTimeout(function() {
+    try { recognition.stop(); } catch(e) {}
+  }, maxDuration);
+  
+  return function() {
+    clearTimeout(timeoutId);
+    try { recognition.stop(); } catch(e) {}
+  };
 };
 

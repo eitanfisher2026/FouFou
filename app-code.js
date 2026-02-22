@@ -109,6 +109,8 @@ const FouFouApp = () => {
     return null;
   });
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const stopRecordingRef = React.useRef(null);
 
   React.useEffect(() => {
     const handleVisibility = () => {
@@ -738,6 +740,7 @@ const FouFouApp = () => {
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
+      window.BKK.cleanupInProgress(database);
     }
   }, []);
 
@@ -6595,7 +6598,7 @@ const FouFouApp = () => {
                     placesTab === 'drafts' ? 'border-amber-500 text-amber-700 bg-amber-50' : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {`🛠️ ${t("places.drafts")} (${groupedPlaces.draftsCount})`}
+                  {`✏️ ${t("places.drafts")} (${groupedPlaces.draftsCount})`}
                 </button>
                 <button
                   onClick={() => setPlacesTab('ready')}
@@ -6648,7 +6651,7 @@ const FouFouApp = () => {
                 </div>
               ) : (groupedPlaces.sortedKeys.length === 0 && groupedPlaces.ungrouped.length === 0) ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
-                  <div className="text-3xl mb-2">{placesTab === 'drafts' ? '🛠️' : placesTab === 'ready' ? '🔒' : '🚫'}</div>
+                  <div className="text-3xl mb-2">{placesTab === 'drafts' ? '✏️' : placesTab === 'ready' ? '🔒' : '🚫'}</div>
                   <p className="text-gray-600 text-sm">
                     {placesTab === 'drafts' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
                      : placesTab === 'ready' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
@@ -6693,7 +6696,6 @@ const FouFouApp = () => {
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
                                     {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                    {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
                                     {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
                                     {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
                                     {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
@@ -6740,7 +6742,6 @@ const FouFouApp = () => {
                                     <span className="font-medium text-sm truncate">{loc.name}</span>
                                   )}
                                   {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                  {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
                                   {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
                                 </div>
                               </div>
@@ -8250,14 +8251,52 @@ const FouFouApp = () => {
                 <div className="space-y-1.5">
                   <div>
                     <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
-                    <input
-                      type="text"
-                      value={newLocation.description || ''}
-                      onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
-                      placeholder={t("places.description")}
-                      className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                    />
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={newLocation.description || ''}
+                        onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                        placeholder={t("places.description")}
+                        className="flex-1 p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                      />
+                      {window.BKK.speechSupported && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isRecording) {
+                              if (stopRecordingRef.current) stopRecordingRef.current();
+                              stopRecordingRef.current = null;
+                              setIsRecording(false);
+                            } else {
+                              setIsRecording(true);
+                              const stop = window.BKK.startSpeechToText({
+                                maxDuration: 10000,
+                                onResult: (text) => {
+                                  setNewLocation(prev => ({...prev, description: text}));
+                                },
+                                onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
+                                onError: (error) => {
+                                  setIsRecording(false); stopRecordingRef.current = null;
+                                  if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
+                                }
+                              });
+                              stopRecordingRef.current = stop;
+                            }
+                          }}
+                          style={{
+                            width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                            background: isRecording ? '#ef4444' : '#f3f4f6', color: isRecording ? 'white' : '#6b7280',
+                            fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
+                            boxShadow: isRecording ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+                          }}
+                          title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
+                        >
+                          {isRecording ? '⏹️' : '🎤'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
@@ -8277,6 +8316,14 @@ const FouFouApp = () => {
                   <div className="mb-1.5">
                     <label className="block text-xs font-bold mb-1">{`🏠 ${t("places.address")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={newLocation.address || ''}
+                        onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
+                        placeholder={t("places.address")}
+                        className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                      />
                       <button
                         onClick={() => geocodeAddress(newLocation.address || newLocation.name)}
                         disabled={!newLocation.address?.trim() && !newLocation.name?.trim()}
@@ -8286,14 +8333,6 @@ const FouFouApp = () => {
                         }}
                         title={t("form.searchByAddress")}
                       >🏠</button>
-                      <input
-                        type="text"
-                        value={newLocation.address || ''}
-                        onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
-                        placeholder={t("places.address")}
-                        className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                      />
                     </div>
                   </div>
                   
@@ -8301,14 +8340,6 @@ const FouFouApp = () => {
                   
                   {/* Lat/Lng Inputs with GPS button */}
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    <button
-                      onClick={getCurrentLocation}
-                      style={{
-                        padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                        background: '#22c55e', color: 'white', fontSize: '14px', flexShrink: 0
-                      }}
-                      title={t("form.gps")}
-                    >📍</button>
                     <input
                       type="number"
                       step="0.000001"
@@ -8326,23 +8357,32 @@ const FouFouApp = () => {
                       placeholder="Lat"
                       className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg"
                     />
+                    <button
+                      onClick={getCurrentLocation}
+                      style={{
+                        padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                        background: '#22c55e', color: 'white', fontSize: '14px', flexShrink: 0
+                      }}
+                      title={t("form.gps")}
+                    >📍</button>
                   </div>
                 </div>
 
-                {/* Google Info + Open in Google */}
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2" style={{ position: 'relative', zIndex: 15 }}>
-                  <div className="flex gap-2">
+                {/* Google + Lock + Actions — compact */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
+                  {/* Row 1: Open in Google + Google Info + Lock toggle */}
+                  <div className="flex gap-1.5 items-center">
                     {newLocation.lat && newLocation.lng ? (
                       <a
                         href={window.BKK.getGoogleMapsUrl(newLocation)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600 text-center"
+                        className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
                       >
-                        {t("general.openInGoogle")}
+                        🗺️ {t("general.openInGoogle")}
                       </a>
                     ) : (
-                      <button disabled className="flex-1 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm font-bold cursor-not-allowed">
+                      <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
                     )}
@@ -8352,19 +8392,27 @@ const FouFouApp = () => {
                         fetchGooglePlaceInfo(newLocation);
                       }}
                       disabled={!newLocation.name?.trim() || loadingGoogleInfo}
-                      className={`flex-1 py-2 rounded-lg text-sm font-bold ${
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
                         newLocation.name?.trim() && !loadingGoogleInfo
                           ? 'bg-indigo-500 text-white hover:bg-indigo-600'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
-                      {loadingGoogleInfo ? t('general.loading') : t('places.googleInfo')}
+                      🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}
                     </button>
+                    {isUnlocked && (
+                      <button type="button"
+                        onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-gray-600 bg-gray-600 text-white' : 'border-gray-300 bg-white text-gray-400'}`}
+                      >
+                        {newLocation.locked ? '🔒' : '🔓'}
+                      </button>
+                    )}
                   </div>
                   
                   {/* Google Place Info Results */}
                   {googlePlaceInfo && !googlePlaceInfo.notFound && (
-                    <div className="mt-2 text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
+                    <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
                       <div>
                         <span className="font-bold text-indigo-700">Found:</span>
                         <span className="ml-1">{googlePlaceInfo.name}</span>
@@ -8391,30 +8439,14 @@ const FouFouApp = () => {
                   )}
                   
                   {googlePlaceInfo && googlePlaceInfo.notFound && (
-                    <div className="mt-2 text-xs text-red-600 bg-white rounded p-2 border border-red-200">
+                    <div className="text-xs text-red-600 bg-white rounded p-2 border border-red-200">
                       ❌ Place not found on Google for: "{googlePlaceInfo.searchQuery}"
                     </div>
                   )}
-                </div>
 
-                </div>{/* close inner wrapper */}
-
-                {/* Status toggle - locked (admin only) */}
-                {isUnlocked && (
-                <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
-                  <button type="button"
-                    onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newLocation.locked ? 'border-gray-600 bg-gray-600 text-white shadow-md' : 'border-gray-300 bg-white text-gray-500 hover:border-gray-400'}`}
-                  >
-                    {newLocation.locked ? '🔒' : '○'} {t("general.locked")}
-                  </button>
-                </div>
-                )}
-
-                {/* Actions: Skip permanently + Delete (edit mode only) - hidden for locked non-admin */}
-                {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
-                  <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    <div className="flex gap-2">
+                  {/* Row 2: Skip + Delete (edit mode only) */}
+                  {showEditLocationDialog && editingLocation && !(editingLocation.locked && !isUnlocked) && (
+                    <div className="flex gap-1.5 pt-1 border-t border-gray-200">
                       {editingLocation.status === 'blacklist' ? (
                         <button
                           onClick={() => {
@@ -8422,7 +8454,7 @@ const FouFouApp = () => {
                             setShowEditLocationDialog(false);
                             setEditingLocation(null);
                           }}
-                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600"
+                          className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
                         >
                           ✅ {t("general.restoreActive")}
                         </button>
@@ -8433,7 +8465,7 @@ const FouFouApp = () => {
                             setShowEditLocationDialog(false);
                             setEditingLocation(null);
                           }}
-                          className="flex-1 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                          className="flex-1 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600"
                         >
                           🚫 {t('route.skipPermanently')}
                         </button>
@@ -8446,13 +8478,15 @@ const FouFouApp = () => {
                             setEditingLocation(null);
                           });
                         }}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+                        className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
                       >
                         🗑️ {t("general.deletePlace")}
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
+                </div>{/* close inner wrapper */}
 
               </div>
               
@@ -10393,6 +10427,59 @@ const FouFouApp = () => {
                   </button>
                 )}
 
+                {/* Optional description — right after photo */}
+                <div style={{ marginBottom: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={newLocation.description || ''}
+                    onChange={(e) => setNewLocation(prev => ({...prev, description: e.target.value}))}
+                    placeholder={`📝 ${t("places.description")} (${t("general.optional")})`}
+                    style={{ flex: 1, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                  />
+                  {window.BKK.speechSupported && (
+                    <button
+                      onClick={() => {
+                        if (isRecording) {
+                          if (stopRecordingRef.current) stopRecordingRef.current();
+                          stopRecordingRef.current = null;
+                          setIsRecording(false);
+                        } else {
+                          setIsRecording(true);
+                          const stop = window.BKK.startSpeechToText({
+                            maxDuration: 10000,
+                            onResult: (text, isFinal) => {
+                              setNewLocation(prev => ({...prev, description: text}));
+                            },
+                            onEnd: (finalText) => {
+                              setIsRecording(false);
+                              stopRecordingRef.current = null;
+                            },
+                            onError: (error) => {
+                              setIsRecording(false);
+                              stopRecordingRef.current = null;
+                              if (error === 'not-allowed') {
+                                showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
+                              }
+                            }
+                          });
+                          stopRecordingRef.current = stop;
+                        }
+                      }}
+                      style={{
+                        width: '40px', height: '40px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                        background: isRecording ? '#ef4444' : '#f3f4f6',
+                        color: isRecording ? 'white' : '#6b7280',
+                        fontSize: '18px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
+                        boxShadow: isRecording ? '0 0 0 4px rgba(239,68,68,0.3)' : 'none'
+                      }}
+                      title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
+                    >
+                      {isRecording ? '⏹️' : '🎤'}
+                    </button>
+                  )}
+                </div>
+
                 {/* Interest Selection — pick one */}
                 <div style={{ marginBottom: '10px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>{t('trail.whatDidYouSee')}</div>
@@ -10433,17 +10520,6 @@ const FouFouApp = () => {
                     📝 {newLocation.name}
                   </div>
                 )}
-
-                {/* Optional description */}
-                <div style={{ marginBottom: '10px' }}>
-                  <input
-                    type="text"
-                    value={newLocation.description || ''}
-                    onChange={(e) => setNewLocation(prev => ({...prev, description: e.target.value}))}
-                    placeholder={`📝 ${t("places.description")} (${t("general.optional")})`}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                  />
-                </div>
 
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
