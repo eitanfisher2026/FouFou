@@ -281,6 +281,67 @@ window.BKK.cleanupInProgress = function(database) {
 };
 
 /**
+ * One-time cleanup: remove orphaned custom interests (deleted but still referenced).
+ * Also cleans up location references to non-existent interests.
+ */
+window.BKK.cleanupOrphanedInterests = function(database) {
+  if (!database) return Promise.resolve();
+  if (localStorage.getItem('cleanup_orphaned_interests_v1') === 'true') return Promise.resolve();
+  
+  var knownInterestIds = new Set();
+  // Collect all built-in interest IDs from all cities
+  Object.values(window.BKK.cities || {}).forEach(function(city) {
+    (city.interests || []).forEach(function(int) { knownInterestIds.add(int.id); });
+  });
+  
+  return database.ref('customInterests').once('value').then(function(snap) {
+    var customInterests = snap.val() || {};
+    var removals = {};
+    
+    // Add custom interest IDs to known set, and find orphans to remove
+    Object.keys(customInterests).forEach(function(id) {
+      var int = customInterests[id];
+      // Remove interests with no proper label (like "spotted", auto-generated IDs)
+      if (!int.label || int.label.length < 2) {
+        removals['customInterests/' + id] = null;
+        console.log('[CLEANUP] Removing orphaned interest: ' + id);
+      } else {
+        knownInterestIds.add(id);
+      }
+    });
+    
+    // Now clean location references to non-existent interests
+    var cities = Object.keys(window.BKK.cities || {});
+    return Promise.all(cities.map(function(cityId) {
+      return database.ref('cities/' + cityId + '/customLocations').once('value').then(function(locSnap) {
+        var locs = locSnap.val() || {};
+        Object.keys(locs).forEach(function(locId) {
+          var loc = locs[locId];
+          if (loc.interests && Array.isArray(loc.interests)) {
+            var filtered = loc.interests.filter(function(intId) { return knownInterestIds.has(intId); });
+            if (filtered.length !== loc.interests.length) {
+              removals['cities/' + cityId + '/customLocations/' + locId + '/interests'] = filtered.length > 0 ? filtered : null;
+              console.log('[CLEANUP] Cleaned interests for location: ' + (loc.name || locId));
+            }
+          }
+        });
+      }).catch(function() {});
+    })).then(function() {
+      var count = Object.keys(removals).length;
+      if (count > 0) {
+        return database.ref().update(removals).then(function() {
+          console.log('[CLEANUP] Orphaned interests cleanup: ' + count + ' updates');
+        });
+      }
+    });
+  }).then(function() {
+    localStorage.setItem('cleanup_orphaned_interests_v1', 'true');
+  }).catch(function(err) {
+    console.error('[CLEANUP] Orphaned interests error:', err);
+  });
+};
+
+/**
  * Admin utility: clean up stale _verify nodes and diagnose Firebase issues.
  */
 window.BKK.cleanupFirebase = function(database) {

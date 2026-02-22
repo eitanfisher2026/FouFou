@@ -113,6 +113,7 @@ general: {
   allCity: 'כל העיר',
   close: 'סגור',
   cancel: 'ביטול',
+  confirm: 'אישור',
   min: 'דק׳',
   save: 'שמור',
   update: '💾 עדכן',
@@ -540,6 +541,7 @@ places: {
   drafts: 'טיוטות',
   ready: 'מוכנים',
   skipped: 'דלג',
+  noInterest: 'ללא תחום',
   autoName: 'שם אוטומטי',
   alreadyInRoute: 'כבר קיים במסלול',
   alreadyInMyList: 'כבר קיים ברשימה שלך',
@@ -559,6 +561,7 @@ places: {
 interests: {
   addInterest: 'הוסף תחום עניין',
   interestName: 'שם התחום',
+  englishName: 'שם באנגלית',
   interestAdded: 'התחום נוסף!',
   alreadyExists: 'כבר קיים!',
   interestUpdated: 'התחום עודכן!',
@@ -566,6 +569,8 @@ interests: {
   interestInvalid: 'תחום לא וולידי',
   missingSearchConfig: 'חסר הגדרות חיפוש',
   builtInRemoved: 'תחום מערכת הוסר',
+  deleteBuiltIn: 'למחוק תחום מערכת',
+  deleteCustom: 'למחוק תחום מותאם',
   resetToDefault: 'אפס לברירת מחדל',
   interestsReset: 'התחומים אופסו לברירת מחדל',
   exampleTypes: 'לדוגמה: בתי קולנוע',
@@ -836,6 +841,7 @@ general: {
   allCity: 'Entire city',
   close: 'Close',
   cancel: 'Cancel',
+  confirm: 'Confirm',
   min: 'min',
   save: 'Save',
   update: '💾 Update',
@@ -1264,6 +1270,7 @@ places: {
   drafts: 'Drafts',
   ready: 'Ready',
   skipped: 'Skipped',
+  noInterest: 'No interest assigned',
   autoName: 'Auto name',
   alreadyInRoute: 'already in route',
   alreadyInMyList: 'already in your list',
@@ -1282,6 +1289,7 @@ places: {
 interests: {
   addInterest: 'Add interest',
   interestName: 'Interest name',
+  englishName: 'English name',
   interestAdded: 'Interest added!',
   alreadyExists: 'already exists!',
   interestUpdated: 'Interest updated!',
@@ -1289,6 +1297,8 @@ interests: {
   interestInvalid: 'Invalid interest',
   missingSearchConfig: 'Missing search settings',
   builtInRemoved: 'System interest removed',
+  deleteBuiltIn: 'Delete system interest',
+  deleteCustom: 'Delete custom interest',
   resetToDefault: 'Reset to default',
   interestsReset: 'Interests reset to default',
   exampleTypes: 'For example: movie theaters',
@@ -2795,6 +2805,60 @@ window.BKK.cleanupInProgress = function(database) {
     localStorage.setItem('cleanup_inprogress_done', 'true');
   }).catch(function(err) {
     console.error('[CLEANUP] inProgress removal error:', err);
+  });
+};
+
+/**
+ * One-time cleanup: remove orphaned custom interests (deleted but still referenced).
+ * Also cleans up location references to non-existent interests.
+ */
+window.BKK.cleanupOrphanedInterests = function(database) {
+  if (!database) return Promise.resolve();
+  if (localStorage.getItem('cleanup_orphaned_interests_v1') === 'true') return Promise.resolve();
+  
+  var knownInterestIds = new Set();
+  Object.values(window.BKK.cities || {}).forEach(function(city) {
+    (city.interests || []).forEach(function(int) { knownInterestIds.add(int.id); });
+  });
+  
+  return database.ref('customInterests').once('value').then(function(snap) {
+    var customInterests = snap.val() || {};
+    var removals = {};
+    
+    Object.keys(customInterests).forEach(function(id) {
+      var int = customInterests[id];
+      if (!int.label || int.label.length < 2) {
+        removals['customInterests/' + id] = null;
+      } else {
+        knownInterestIds.add(id);
+      }
+    });
+    
+    var cities = Object.keys(window.BKK.cities || {});
+    return Promise.all(cities.map(function(cityId) {
+      return database.ref('cities/' + cityId + '/customLocations').once('value').then(function(locSnap) {
+        var locs = locSnap.val() || {};
+        Object.keys(locs).forEach(function(locId) {
+          var loc = locs[locId];
+          if (loc.interests && Array.isArray(loc.interests)) {
+            var filtered = loc.interests.filter(function(intId) { return knownInterestIds.has(intId); });
+            if (filtered.length !== loc.interests.length) {
+              removals['cities/' + cityId + '/customLocations/' + locId + '/interests'] = filtered.length > 0 ? filtered : null;
+            }
+          }
+        });
+      }).catch(function() {});
+    })).then(function() {
+      var count = Object.keys(removals).length;
+      if (count > 0) {
+        return database.ref().update(removals).then(function() {
+        });
+      }
+    });
+  }).then(function() {
+    localStorage.setItem('cleanup_orphaned_interests_v1', 'true');
+  }).catch(function(err) {
+    console.error('[CLEANUP] Orphaned interests error:', err);
   });
 };
 

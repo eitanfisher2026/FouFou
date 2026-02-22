@@ -2309,7 +2309,7 @@
                   {groupedPlaces.ungrouped.length > 0 && (
                     <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                       <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                        No interest / manually added ({groupedPlaces.ungrouped.length})
+                        {t("places.noInterest")} ({groupedPlaces.ungrouped.length})
                       </div>
                       <div className="p-1">
                         {groupedPlaces.ungrouped.map(loc => {
@@ -2371,7 +2371,7 @@
                 <button
                   onClick={() => {
                     setEditingCustomInterest(null);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, builtIn: false });
+                    setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, builtIn: false });
                     setShowAddInterestDialog(true);
                   }}
                   className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
@@ -2389,7 +2389,8 @@
                 setEditingCustomInterest(isCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id,
-                  label: tLabel(interest) || interest.name || '',
+                  label: interest.label || interest.name || '',
+                  labelEn: config.labelEnOverride || config.labelOverrideEn || interest.labelEn || '',
                   icon: interest.icon || '📍',
                   searchMode: config.textSearch ? 'text' : 'types',
                   types: (config.types || []).join(', '),

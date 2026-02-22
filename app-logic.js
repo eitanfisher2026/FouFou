@@ -772,6 +772,7 @@
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
       window.BKK.cleanupInProgress(database);
+      window.BKK.cleanupOrphanedInterests(database);
     }
   }, []);
 
@@ -2070,7 +2071,7 @@
       if (!config) return opt;
       return {
         ...opt,
-        label: config.labelOverride || opt.label, labelEn: config.labelOverrideEn || opt.labelEn,
+        label: config.labelOverride || opt.label, labelEn: config.labelEnOverride || config.labelOverrideEn || opt.labelEn,
         icon: config.iconOverride || opt.icon,
         locked: config.locked !== undefined ? config.locked : opt.locked,
         scope: config.scope || opt.scope || 'global',

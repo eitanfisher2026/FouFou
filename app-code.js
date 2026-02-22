@@ -741,6 +741,7 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
       window.BKK.cleanupInProgress(database);
+      window.BKK.cleanupOrphanedInterests(database);
     }
   }, []);
 
@@ -1855,7 +1856,7 @@ const FouFouApp = () => {
       if (!config) return opt;
       return {
         ...opt,
-        label: config.labelOverride || opt.label, labelEn: config.labelOverrideEn || opt.labelEn,
+        label: config.labelOverride || opt.label, labelEn: config.labelEnOverride || config.labelOverrideEn || opt.labelEn,
         icon: config.iconOverride || opt.icon,
         locked: config.locked !== undefined ? config.locked : opt.locked,
         scope: config.scope || opt.scope || 'global',
@@ -6721,7 +6722,7 @@ const FouFouApp = () => {
                   {groupedPlaces.ungrouped.length > 0 && (
                     <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                       <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                        No interest / manually added ({groupedPlaces.ungrouped.length})
+                        {t("places.noInterest")} ({groupedPlaces.ungrouped.length})
                       </div>
                       <div className="p-1">
                         {groupedPlaces.ungrouped.map(loc => {
@@ -6783,7 +6784,7 @@ const FouFouApp = () => {
                 <button
                   onClick={() => {
                     setEditingCustomInterest(null);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, builtIn: false });
+                    setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, builtIn: false });
                     setShowAddInterestDialog(true);
                   }}
                   className="bg-purple-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-purple-600"
@@ -6800,7 +6801,8 @@ const FouFouApp = () => {
                 setEditingCustomInterest(isCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id,
-                  label: tLabel(interest) || interest.name || '',
+                  label: interest.label || interest.name || '',
+                  labelEn: config.labelEnOverride || config.labelOverrideEn || interest.labelEn || '',
                   icon: interest.icon || '📍',
                   searchMode: config.textSearch ? 'text' : 'types',
                   types: (config.types || []).join(', '),
@@ -7979,43 +7981,39 @@ const FouFouApp = () => {
                 
                 {/* Row 1: Name + Area */}
                 <div className="space-y-2">
-                  {/* Name - full width with search */}
+                  {/* Name - full width, buttons below */}
                   <div>
                     <label className="block text-xs font-bold mb-1">
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <input
-                        type="text"
-                        value={newLocation.name}
-                        readOnly={showEditLocationDialog && editingLocation?.locked && !isUnlocked}
-                        onFocus={(e) => { if (showEditLocationDialog && editingLocation?.locked && !isUnlocked) e.target.blur(); }}
-                        onChange={(e) => {
-                          setNewLocation({...newLocation, name: e.target.value});
-                          setLocationSearchResults(null);
-                          if (e.target.value.trim()) {
-                            const exists = customLocations.find(loc => 
-                              loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
-                              (!editingLocation || loc.id !== editingLocation.id)
-                            );
-                            if (exists) showToast(t('places.nameExists'), 'warning');
-                          }
-                        }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
-                        placeholder={t("places.placeName")}
-                        className="flex-1 p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                        autoFocus={!showEditLocationDialog}
-                      />
+                    <input
+                      type="text"
+                      value={newLocation.name}
+                      readOnly={showEditLocationDialog && editingLocation?.locked && !isUnlocked}
+                      onFocus={(e) => { if (showEditLocationDialog && editingLocation?.locked && !isUnlocked) e.target.blur(); }}
+                      onChange={(e) => {
+                        setNewLocation({...newLocation, name: e.target.value});
+                        setLocationSearchResults(null);
+                        if (e.target.value.trim()) {
+                          const exists = customLocations.find(loc => 
+                            loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
+                            (!editingLocation || loc.id !== editingLocation.id)
+                          );
+                          if (exists) showToast(t('places.nameExists'), 'warning');
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
+                      placeholder={t("places.placeName")}
+                      className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                      autoFocus={!showEditLocationDialog}
+                    />
+                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                       <button
                         onClick={() => searchPlacesByName(newLocation.name)}
                         disabled={!newLocation.name?.trim()}
-                        style={{
-                          padding: '6px 10px', borderRadius: '8px', border: 'none', cursor: newLocation.name?.trim() ? 'pointer' : 'not-allowed',
-                          background: newLocation.name?.trim() ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : '#d1d5db', color: 'white', fontSize: '16px'
-                        }}
-                        title={t("form.searchPlaceGoogle")}
-                      >🔍</button>
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                      >🔍 {t("form.searchPlaceGoogle")}</button>
                       <button
                         onClick={() => {
                           const interestId = (newLocation.interests || [])[0];
@@ -8033,13 +8031,8 @@ const FouFouApp = () => {
                           }
                         }}
                         disabled={!(newLocation.interests || []).length}
-                        style={{
-                          padding: '6px 10px', borderRadius: '8px', border: 'none', 
-                          cursor: (newLocation.interests || []).length ? 'pointer' : 'not-allowed',
-                          background: (newLocation.interests || []).length ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', color: 'white', fontSize: '16px'
-                        }}
-                        title={t("places.autoName")}
-                      >🏷️</button>
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${(newLocation.interests || []).length ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                      >🏷️ {t("places.autoName")}</button>
                     </div>
                     {/* Search Results Dropdown */}
                     {locationSearchResults !== null && (
@@ -8339,23 +8332,25 @@ const FouFouApp = () => {
                   <label className="block text-xs font-bold mb-1">{`📍 ${t("general.coordinates")}`}</label>
                   
                   {/* Lat/Lng Inputs with GPS button */}
-                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%' }}>
                     <input
                       type="number"
                       step="0.000001"
                       value={newLocation.lng || ''}
                       onChange={(e) => setNewLocation({...newLocation, lng: parseFloat(e.target.value) || null})}
                       placeholder="Lng"
-                      className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg"
+                      className="p-1.5 text-xs border border-gray-300 rounded-lg"
+                      style={{ flex: 1, minWidth: 0 }}
                     />
-                    <span style={{ fontSize: '10px', color: '#9ca3af' }}>⇄</span>
+                    <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>⇄</span>
                     <input
                       type="number"
                       step="0.000001"
                       value={newLocation.lat || ''}
                       onChange={(e) => setNewLocation({...newLocation, lat: parseFloat(e.target.value) || null})}
                       placeholder="Lat"
-                      className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg"
+                      className="p-1.5 text-xs border border-gray-300 rounded-lg"
+                      style={{ flex: 1, minWidth: 0 }}
                     />
                     <button
                       onClick={getCurrentLocation}
@@ -8472,7 +8467,7 @@ const FouFouApp = () => {
                       )}
                       <button
                         onClick={() => {
-                          showConfirm(`Delete "${editingLocation.name}"?`, () => {
+                          showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => {
                             deleteCustomLocation(editingLocation.id);
                             setShowEditLocationDialog(false);
                             setEditingLocation(null);
@@ -8583,7 +8578,7 @@ const FouFouApp = () => {
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+                    setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                     setEditingCustomInterest(null);
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
@@ -8606,10 +8601,22 @@ const FouFouApp = () => {
                       onChange={(e) => setNewInterest({...newInterest, label: e.target.value})}
                       placeholder={t("interests.exampleTypes")}
                       className="w-full p-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                      style={{ direction: 'rtl' }}
                       disabled={newInterest.builtIn && !isUnlocked}
                       autoFocus={!newInterest.builtIn}
                     />
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className="text-[10px] text-gray-400 whitespace-nowrap">🇬🇧</span>
+                      <input
+                        type="text"
+                        value={newInterest.labelEn || ''}
+                        onChange={(e) => setNewInterest({...newInterest, labelEn: e.target.value})}
+                        placeholder={t("interests.englishName")}
+                        className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: 'ltr' }}
+                        disabled={newInterest.builtIn && !isUnlocked}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold mb-1">{t("general.icon")}</label>
@@ -8873,8 +8880,8 @@ const FouFouApp = () => {
                         <button
                           onClick={() => {
                             const msg = newInterest.builtIn 
-                              ? `Delete system interest "${newInterest.label}" permanently?`
-                              : `Delete custom interest "${newInterest.label}"?`;
+                              ? `${t('interests.deleteBuiltIn')} "${newInterest.label}"?`
+                              : `${t('interests.deleteCustom')} "${newInterest.label}"?`;
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
                                 toggleInterestStatus(editingCustomInterest.id);
@@ -8937,6 +8944,7 @@ const FouFouApp = () => {
                             configData.maxStops = newInterest.maxStops || 10;
                             if (isUnlocked) {
                               configData.labelOverride = newInterest.label.trim();
+                              configData.labelEnOverride = (newInterest.labelEn || '').trim();
                               configData.iconOverride = newInterest.icon || '';
                               configData.locked = newInterest.locked || false;
                             }
@@ -8949,6 +8957,7 @@ const FouFouApp = () => {
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
+                              labelEn: (newInterest.labelEn || '').trim(),
                               name: newInterest.label.trim(),
                               icon: newInterest.icon || '📍',
                               privateOnly: newInterest.privateOnly || false,
@@ -8976,7 +8985,7 @@ const FouFouApp = () => {
                           
                           showToast(t('interests.interestUpdated'), 'success');
                           setShowAddInterestDialog(false);
-                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+                          setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                           setEditingCustomInterest(null);
                           window._savingInterest = false;
                           return;
@@ -8994,6 +9003,7 @@ const FouFouApp = () => {
                           const newInterestData = {
                             id: interestId,
                             label: newInterest.label.trim(),
+                            labelEn: (newInterest.labelEn || '').trim(),
                             name: newInterest.label.trim(),
                             icon: newInterest.icon || '📍',
                             custom: true,
@@ -9008,7 +9018,7 @@ const FouFouApp = () => {
                           };
                           
                           setShowAddInterestDialog(false);
-                          setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+                          setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                           setEditingCustomInterest(null);
                           
                           setCustomInterests(prev => {
@@ -9045,7 +9055,7 @@ const FouFouApp = () => {
                         }
                         
                         setShowAddInterestDialog(false);
-                        setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+                        setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                         setEditingCustomInterest(null);
                         window._savingInterest = false;
                       }}
@@ -9063,7 +9073,7 @@ const FouFouApp = () => {
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+                    setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
                     setEditingCustomInterest(null);
                   }}
                   className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
@@ -9201,7 +9211,7 @@ const FouFouApp = () => {
                   {!(editingRoute.locked && !isUnlocked) && (
                     <button
                       onClick={() => {
-                        showConfirm(`{t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
+                        showConfirm(`${t("general.deleteRoute")} "${editingRoute.name}"?`, () => {
                           deleteRoute(editingRoute.id);
                           setShowRouteDialog(false);
                           setEditingRoute(null);
@@ -9520,13 +9530,13 @@ const FouFouApp = () => {
                 }}
                 className="flex-1 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600"
               >
-                OK
+                {t('general.confirm')}
               </button>
               <button
                 onClick={() => setShowConfirmDialog(false)}
                 className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400"
               >
-                Cancel
+                {t('general.cancel')}
               </button>
             </div>
           </div>
