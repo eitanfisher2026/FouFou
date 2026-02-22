@@ -82,6 +82,30 @@
                         }}
                         title={t("form.searchPlaceGoogle")}
                       >🔍</button>
+                      <button
+                        onClick={() => {
+                          const interestId = (newLocation.interests || [])[0];
+                          if (!interestId) {
+                            showToast(t('form.selectAtLeastOneInterest'), 'warning');
+                            return;
+                          }
+                          const result = window.BKK.generateLocationName(
+                            interestId, newLocation.lat, newLocation.lng,
+                            interestCounters, allInterestOptions, areaOptions
+                          );
+                          if (result.name) {
+                            setNewLocation({...newLocation, name: result.name});
+                            showToast(`🏷️ ${result.name}`, 'success');
+                          }
+                        }}
+                        disabled={!(newLocation.interests || []).length}
+                        style={{
+                          padding: '6px 10px', borderRadius: '8px', border: 'none', 
+                          cursor: (newLocation.interests || []).length ? 'pointer' : 'not-allowed',
+                          background: (newLocation.interests || []).length ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', color: 'white', fontSize: '16px'
+                        }}
+                        title={t("places.autoName")}
+                      >🏷️</button>
                     </div>
                     {/* Search Results Dropdown */}
                     {locationSearchResults !== null && (
@@ -92,16 +116,20 @@
                           <button
                             key={idx}
                             onClick={() => {
+                              // Auto-detect areas from coordinates
+                              const detected = window.BKK.getAreasForCoordinates(result.lat, result.lng);
+                              const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
                               setNewLocation({
                                 ...newLocation,
                                 name: result.name,
                                 lat: result.lat, lng: result.lng,
                                 address: result.address,
                                 mapsUrl: `https://maps.google.com/?q=${result.lat},${result.lng}`,
-                                googlePlaceId: result.googlePlaceId
+                                googlePlaceId: result.googlePlaceId,
+                                ...areaUpdates
                               });
                               setLocationSearchResults(null);
-                              showToast(`✅ ${result.name} ${t("toast.selectedPlace")}`, 'success');
+                              showToast(`✅ ${result.name} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
                             }}
                             style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                             onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
@@ -221,19 +249,6 @@
                   </div>
                 </div>
 
-                {/* Description - NEW */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
-                  <input
-                    type="text"
-                    value={newLocation.description || ''}
-                    onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
-                    placeholder={t("places.description")}
-                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                  />
-                </div>
-
                 {/* Image - with Camera & EXIF GPS */}
                 <div>
                   <label className="block text-xs font-bold mb-1">{`📷 ${t("general.image")}`}</label>
@@ -267,15 +282,12 @@
                           if (!result) return;
                           const compressed = await window.BKK.compressImage(result.dataUrl);
                           setNewLocation(prev => ({...prev, uploadedImage: compressed}));
-                          // Save to device
                           const locName = newLocation.label?.en || newLocation.label?.he || 'photo';
                           const safeName = locName.replace(/[^a-zA-Z0-9\u0590-\u05FF]/g, '_').slice(0, 30);
                           window.BKK.saveImageToDevice(result.dataUrl, `foufou_${safeName}_${Date.now()}.jpg`);
-                          // Extract GPS from camera photo
                           const gps = await window.BKK.extractGpsFromImage(result.file);
                           if (gps && (!newLocation.lat || !newLocation.lng)) {
                             const updates = { uploadedImage: compressed, lat: gps.lat, lng: gps.lng };
-                            // Auto-detect areas from GPS
                             const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
                             if (detected.length > 0) {
                               updates.areas = detected;
@@ -304,11 +316,9 @@
                             reader.onload = async () => {
                               const compressed = await window.BKK.compressImage(reader.result);
                               setNewLocation(prev => ({...prev, uploadedImage: compressed}));
-                              // Extract GPS from uploaded photo
                               const gps = await window.BKK.extractGpsFromImage(file);
                               if (gps && (!newLocation.lat || !newLocation.lng)) {
                                 const updates = { uploadedImage: compressed, lat: gps.lat, lng: gps.lng };
-                                // Auto-detect areas from GPS
                                 const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
                                 if (detected.length > 0) {
                                   updates.areas = detected;
@@ -327,46 +337,35 @@
                   )}
                 </div>
 
-                {/* Links - Compact */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">{`🔗 ${t("general.links")}`}</label>
-                  <div className="space-y-1">
-                    {(newLocation.imageUrls || []).map((url, idx) => (
-                      <div key={idx} className="flex gap-1">
-                        <input
-                          type="text"
-                          value={url}
-                          onChange={(e) => {
-                            const updated = [...(newLocation.imageUrls || [])];
-                            updated[idx] = e.target.value;
-                            setNewLocation({...newLocation, imageUrls: updated});
-                          }}
-                          placeholder="https://..."
-                          className="flex-1 p-1.5 text-xs border border-gray-300 rounded-lg"
-                        />
-                        <button
-                          onClick={() => {
-                            const updated = (newLocation.imageUrls || []).filter((_, i) => i !== idx);
-                            setNewLocation({...newLocation, imageUrls: updated});
-                          }}
-                          className="px-2 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setNewLocation({...newLocation, imageUrls: [...(newLocation.imageUrls || []), '']})}
-                      className="w-full p-1.5 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50"
-                    >
-                      {`+ ${t("general.link")}`}
-                    </button>
+                {/* Description + Notes */}
+                <div className="space-y-1.5">
+                  <div>
+                    <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
+                    <input
+                      type="text"
+                      value={newLocation.description || ''}
+                      onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
+                      placeholder={t("places.description")}
+                      className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
+                    <textarea
+                      value={newLocation.notes || ''}
+                      onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
+                      placeholder={t("places.notes")}
+                      className="w-full p-2 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px' }}
+                      rows="2"
+                    />
                   </div>
                 </div>
 
-                {/* Row 2: Address + Maps Link */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
+                {/* Address + Coordinates + GPS */}
+                <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
+                  <div className="mb-1.5">
                     <label className="block text-xs font-bold mb-1">{`🏠 ${t("places.address")}`}</label>
                     <input
                       type="text"
@@ -377,23 +376,7 @@
                       style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-1">{`🔗 ${t("general.mapsLink")}`}</label>
-                    <input
-                      type="text"
-                      value={newLocation.mapsUrl || ''}
-                      onChange={(e) => {
-                        setNewLocation({...newLocation, mapsUrl: e.target.value});
-                        parseMapsUrl(e.target.value);
-                      }}
-                      placeholder="Google Maps URL"
-                      className="w-full p-1.5 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Coordinates - SUPER COMPACT */}
-                <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
+                  
                   <label className="block text-xs font-bold mb-1.5">{`📍 ${t("general.coordinates")}`}</label>
                   
                   {/* Lat/Lng Inputs */}
@@ -416,26 +399,13 @@
                     />
                   </div>
 
-                  {/* Calculate Buttons - Row with labels */}
-                  <div className="grid grid-cols-5 gap-1">
+                  {/* Calculate Buttons - Address + GPS */}
+                  <div className="grid grid-cols-2 gap-1">
                     <button
-                      onClick={() => geocodeByName(newLocation.name)}
-                      disabled={!newLocation.name?.trim()}
+                      onClick={() => geocodeAddress(newLocation.address || newLocation.name)}
+                      disabled={!newLocation.address?.trim() && !newLocation.name?.trim()}
                       className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
-                        newLocation.name?.trim()
-                          ? 'bg-indigo-500 text-white hover:bg-indigo-600'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                      title={t("form.searchByName")}
-                    >
-                      <span className="text-sm">🔤</span>
-                      <span>{t("general.name")}</span>
-                    </button>
-                    <button
-                      onClick={() => geocodeAddress(newLocation.address)}
-                      disabled={!newLocation.address?.trim()}
-                      className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
-                        newLocation.address?.trim()
+                        (newLocation.address?.trim() || newLocation.name?.trim())
                           ? 'bg-purple-500 text-white hover:bg-purple-600'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
@@ -443,19 +413,6 @@
                     >
                       <span className="text-sm">🏠</span>
                       <span>{t("places.address")}</span>
-                    </button>
-                    <button
-                      onClick={() => parseMapsUrl(newLocation.mapsUrl)}
-                      disabled={!newLocation.mapsUrl?.trim()}
-                      className={`p-1.5 rounded-lg text-[9px] font-bold flex flex-col items-center ${
-                        newLocation.mapsUrl?.trim()
-                          ? 'bg-blue-500 text-white hover:bg-blue-600'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                      title={t("form.extractFromLink")}
-                    >
-                      <span className="text-sm">🔗</span>
-                      <span>{t("general.link")}</span>
                     </button>
                     <button
                       onClick={getCurrentLocation}
@@ -468,7 +425,7 @@
                   </div>
                 </div>
 
-                {/* Open in Google + Google Info */}
+                {/* Google Info + Open in Google */}
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2" style={{ position: 'relative', zIndex: 15 }}>
                   <div className="flex gap-2">
                     {newLocation.lat && newLocation.lng ? (
@@ -536,37 +493,17 @@
                   )}
                 </div>
 
-                {/* Notes - Compact */}
-                <div>
-                  <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
-                  <textarea
-                    value={newLocation.notes || ''}
-                    onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
-                    placeholder={t("places.notes")}
-                    className="w-full p-2 text-xs border border-gray-300 rounded-lg focus:border-purple-500"
-                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px' }}
-                    rows="2"
-                  />
-                </div>
                 </div>{/* close inner wrapper */}
 
-                {/* Status toggles - only show if not locked for non-admin */}
-                {!(showEditLocationDialog && editingLocation?.locked && !isUnlocked) && (
+                {/* Status toggle - locked (admin only) */}
+                {isUnlocked && (
                 <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
                   <button type="button"
-                    onClick={() => setNewLocation({...newLocation, inProgress: !newLocation.inProgress})}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newLocation.inProgress ? 'border-amber-500 bg-amber-500 text-white shadow-md' : 'border-gray-300 bg-white text-gray-500 hover:border-amber-300'}`}
+                    onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newLocation.locked ? 'border-gray-600 bg-gray-600 text-white shadow-md' : 'border-gray-300 bg-white text-gray-500 hover:border-gray-400'}`}
                   >
-                    {newLocation.inProgress ? '⏳' : '○'} {t("general.inProgress")}
+                    {newLocation.locked ? '🔒' : '○'} {t("general.locked")}
                   </button>
-                  {isUnlocked && (
-                    <button type="button"
-                      onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newLocation.locked ? 'border-gray-600 bg-gray-600 text-white shadow-md' : 'border-gray-300 bg-white text-gray-500 hover:border-gray-400'}`}
-                    >
-                      {newLocation.locked ? '🔒' : '○'} {t("general.locked")}
-                    </button>
-                  )}
                 </div>
                 )}
 
@@ -2639,6 +2576,17 @@
                     📝 {newLocation.name}
                   </div>
                 )}
+
+                {/* Optional description */}
+                <div style={{ marginBottom: '10px' }}>
+                  <input
+                    type="text"
+                    value={newLocation.description || ''}
+                    onChange={(e) => setNewLocation(prev => ({...prev, description: e.target.value}))}
+                    placeholder={`📝 ${t("places.description")} (${t("general.optional")})`}
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                  />
+                </div>
 
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>

@@ -485,15 +485,15 @@
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <button
                     onClick={() => { generateRoute(); setWizardStep(3); window.scrollTo(0, 0); }}
-                    disabled={formData.interests.length === 0}
+                    disabled={!isDataLoaded || formData.interests.length === 0}
                     style={{
                       flex: 1, padding: '14px', borderRadius: '12px', border: 'none',
-                      cursor: formData.interests.length > 0 ? 'pointer' : 'not-allowed',
-                      background: formData.interests.length > 0 ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
+                      cursor: isDataLoaded && formData.interests.length > 0 ? 'pointer' : 'not-allowed',
+                      background: isDataLoaded && formData.interests.length > 0 ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#d1d5db',
                       color: 'white', fontSize: '14px', fontWeight: 'bold',
-                      boxShadow: formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
+                      boxShadow: isDataLoaded && formData.interests.length > 0 ? '0 4px 6px rgba(37,99,235,0.3)' : 'none'
                     }}
-                  >{`🔍 ${t('wizard.findPlaces')} (${formData.maxStops})`}</button>
+                  >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${formData.maxStops})` : `⏳ ${t('general.loading')}...`}</button>
                 </div>
               </div>
             )}
@@ -1083,7 +1083,7 @@
             }}>
               <button
                 onClick={generateRoute}
-                disabled={formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)}
+                disabled={!isDataLoaded || formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)}
                 style={{ width: '100%',
                   backgroundColor: '#2563eb',
                   color: 'white',
@@ -1093,10 +1093,10 @@
                   fontSize: '14px',
                   border: 'none',
                   boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-                  opacity: (formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)) ? 0.5 : 1
+                  opacity: (!isDataLoaded || formData.interests.length === 0 || (formData.searchMode === 'radius' && !formData.currentLat)) ? 0.5 : 1
                 }}
               >
-                {isGenerating ? t('general.searching') : `🔍 ${t('wizard.findPlaces')} (${formData.maxStops})`}
+                {!isDataLoaded ? `⏳ ${t('general.loading')}...` : isGenerating ? t('general.searching') : `🔍 ${t('wizard.findPlaces')} (${formData.maxStops})`}
               </button>
               <button
                 onClick={() => showHelpFor('searchLogic')}
@@ -2113,10 +2113,9 @@
               </button>
             </div>
             
-            {/* Custom Locations Section - Split by status */}
+            {/* Custom Locations Section - Tabbed */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-base font-bold">{`${t("nav.myPlaces")} ${locationsLoading ? '(...)' : `(${cityCustomLocations.filter(l => l.status !== 'blacklist').length})`}`}</h3>
                 <div className="flex items-center gap-2">
                   {/* Group by toggle */}
                   <div className="flex bg-gray-200 rounded-lg p-0.5">
@@ -2133,6 +2132,8 @@
                       {t("places.byArea")}
                     </button>
                   </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentView('search')}
                     className="text-blue-500 hover:text-blue-700 text-xl"
@@ -2179,6 +2180,34 @@
                   </button>
                 </div>
               </div>
+
+              {/* 3 Tabs: Drafts / Ready / Skipped */}
+              <div className="flex mb-2 border-b border-gray-200">
+                <button
+                  onClick={() => setPlacesTab('drafts')}
+                  className={`flex-1 py-2 text-sm font-bold text-center border-b-2 transition-all ${
+                    placesTab === 'drafts' ? 'border-amber-500 text-amber-700 bg-amber-50' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {`🛠️ ${t("places.drafts")} (${groupedPlaces.draftsCount})`}
+                </button>
+                <button
+                  onClick={() => setPlacesTab('ready')}
+                  className={`flex-1 py-2 text-sm font-bold text-center border-b-2 transition-all ${
+                    placesTab === 'ready' ? 'border-green-500 text-green-700 bg-green-50' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {`🔒 ${t("places.ready")} (${groupedPlaces.readyCount})`}
+                </button>
+                <button
+                  onClick={() => setPlacesTab('skipped')}
+                  className={`flex-1 py-2 text-sm font-bold text-center border-b-2 transition-all ${
+                    placesTab === 'skipped' ? 'border-red-500 text-red-700 bg-red-50' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {`🚫 ${t("places.skipped")} (${groupedPlaces.blacklistCount})`}
+                </button>
+              </div>
               
               {/* Pending locations waiting for sync */}
               {pendingLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId).length > 0 && (
@@ -2211,140 +2240,41 @@
                   </svg>
                   <p className="text-gray-500 text-sm">{t("general.loading")}</p>
                 </div>
-              ) : cityCustomLocations.length === 0 ? (
+              ) : (groupedPlaces.sortedKeys.length === 0 && groupedPlaces.ungrouped.length === 0) ? (
                 <div className="text-center py-6 bg-gray-50 rounded-lg">
-                  <div className="text-3xl mb-2">📍</div>
-                  <p className="text-gray-600 text-sm">{t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
-                  <p className="text-xs text-gray-500 mt-1">{t("places.addPlace")}</p>
+                  <div className="text-3xl mb-2">{placesTab === 'drafts' ? '🛠️' : placesTab === 'ready' ? '🔒' : '🚫'}</div>
+                  <p className="text-gray-600 text-sm">
+                    {placesTab === 'drafts' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
+                     : placesTab === 'ready' ? t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})
+                     : t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}
+                  </p>
                 </div>
               ) : (
-                <>
-                  {/* Active Locations - Grouped (using memoized groupedPlaces) */}
-                  {groupedPlaces.activeCount > 0 && (
-                    <div className="mb-3">
-                      <h4 className="text-sm font-bold text-green-700 mb-2">
-                        {t("places.includedPlaces")} ({groupedPlaces.activeCount})
-                      </h4>
-                      <div className="max-h-[55vh] overflow-y-auto" style={{ contain: 'content' }}>
-                        {groupedPlaces.sortedKeys.map(key => {
-                          const locs = groupedPlaces.groups[key];
-                          const obj = placesGroupBy === 'interest' 
-                            ? (interestMap[key] || customInterests?.find(ci => ci.id === key))
-                            : areaMap[key];
-                          const groupLabel = obj ? tLabel(obj) : key;
-                          const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
-                          return (
-                            <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
-                              <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
-                                <span>{groupIcon?.startsWith?.('data:') ? <img src={groupIcon} alt="" className="w-4 h-4 object-contain inline" /> : groupIcon}</span>
-                                <span>{groupLabel}</span>
-                                <span className="text-gray-400 font-normal">({locs.length})</span>
-                              </div>
-                              <div className="p-1">
-                                {locs.map(loc => {
-                                  const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
-                                  return (
-                                    <div key={loc.id}
-                                      className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
-                                      style={{ contain: 'layout style' }}
-                                    >
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                          {mapUrl ? (
-                                            <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
-                                              className="font-medium text-sm text-blue-600 truncate"
-                                            >{loc.name}</a>
-                                          ) : (
-                                            <span className="font-medium text-sm truncate">{loc.name}</span>
-                                          )}
-                                          {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                          {loc.inProgress && <span className="text-orange-600" title={t("general.inProgress")} style={{ fontSize: '14px' }}>🛠️</span>}
-                                          {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
-                                          {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
-                                          {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
-                                          {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
-                                            const obj2 = interestMap[int];
-                                            return obj2?.icon ? <span key={idx} title={obj2.label} style={{ fontSize: '13px' }}>{obj2.icon}</span> : null;
-                                          })}
-                                          {placesGroupBy === 'interest' && (loc.areas || [loc.area]).filter(Boolean).map((aId, idx) => (
-                                            <span key={idx} className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded">{(areaMap[aId] || {}).label || aId}</span>
-                                          ))}
-                                        </div>
-                                      </div>
-                                      <button onClick={() => handleEditLocation(loc)}
-                                        className="text-xs px-1 py-0.5 rounded"
-                                        title={loc.locked && !isUnlocked ? t("general.viewOnly") : t("places.detailsEdit")}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {groupedPlaces.ungrouped.length > 0 && (
-                          <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
-                            <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                              No interest / manually added ({groupedPlaces.ungrouped.length})
-                            </div>
-                            <div className="p-1">
-                              {groupedPlaces.ungrouped.map(loc => {
-                                const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
-                                return (
-                                  <div key={loc.id}
-                                    className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
-                                    style={{ contain: 'layout style' }}
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1 flex-wrap">
-                                        {mapUrl ? (
-                                          <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
-                                            className="font-medium text-sm text-blue-600 truncate"
-                                          >{loc.name}</a>
-                                        ) : (
-                                          <span className="font-medium text-sm truncate">{loc.name}</span>
-                                        )}
-                                        {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                        {loc.inProgress && <span className="text-orange-600" title={t("general.inProgress")} style={{ fontSize: '14px' }}>🛠️</span>}
-                                        {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
-                                      </div>
-                                    </div>
-                                    <button onClick={() => handleEditLocation(loc)}
-                                      className="text-xs px-1 py-0.5 rounded"
-                                      title={loc.locked && !isUnlocked ? t("general.viewOnly") : t("places.detailsEdit")}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Blacklisted Locations - Collapsible */}
-                  {groupedPlaces.blacklistedLocations.length > 0 && (
-                      <div className="border-2 border-red-300 rounded-lg p-2 bg-red-50">
-                        <button
-                          onClick={() => setShowBlacklistLocations(!showBlacklistLocations)}
-                          className="w-full flex items-center justify-between text-sm font-bold text-red-700"
-                        >
-                          <span className="flex items-center gap-1">
-                            <span>{showBlacklistLocations ? '▼' : '◀'}</span>
-                            <span>{`🚫 ${t("places.skippedPlaces")} (`}{groupedPlaces.blacklistedLocations.length})</span>
-                          </span>
-                          <span className="text-[10px] text-red-600">
-                            {showBlacklistLocations ? t('general.hide') : t('general.show')}
-                          </span>
-                        </button>
-                        
-                        {showBlacklistLocations && (
-                          <div className="mt-2 max-h-40 overflow-y-auto">
-                            {groupedPlaces.blacklistedLocations.map(loc => {
-                              const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
-                              return (
-                              <div
-                                key={loc.id}
-                                className="flex items-center justify-between gap-2 border border-red-300 rounded p-1.5 bg-white mb-0.5"
+                <div className="max-h-[55vh] overflow-y-auto" style={{ contain: 'content' }}>
+                  {groupedPlaces.sortedKeys.map(key => {
+                    const locs = groupedPlaces.groups[key];
+                    const obj = placesGroupBy === 'interest' 
+                      ? (interestMap[key] || customInterests?.find(ci => ci.id === key))
+                      : areaMap[key];
+                    const groupLabel = obj ? tLabel(obj) : key;
+                    const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
+                    const canEdit = placesTab === 'drafts' || isUnlocked;
+                    return (
+                      <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
+                        <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
+                          <span>{groupIcon?.startsWith?.('data:') ? <img src={groupIcon} alt="" className="w-4 h-4 object-contain inline" /> : groupIcon}</span>
+                          <span>{groupLabel}</span>
+                          <span className="text-gray-400 font-normal">({locs.length})</span>
+                        </div>
+                        <div className="p-1">
+                          {locs.map(loc => {
+                            const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                            return (
+                              <div key={loc.id}
+                                className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${
+                                  placesTab === 'skipped' ? 'border-red-200 bg-red-50' :
+                                  isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"
+                                }`}
                                 style={{ contain: 'layout style' }}
                               >
                                 <div className="flex-1 min-w-0">
@@ -2357,23 +2287,67 @@
                                       <span className="font-medium text-sm truncate">{loc.name}</span>
                                     )}
                                     {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
-                                    {loc.interests?.map((int, idx) => {
-                                      const obj = interestMap[int];
-                                      return obj?.icon ? <span key={idx} title={obj.label} style={{ fontSize: '13px' }}>{obj.icon}</span> : null;
+                                    {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
+                                    {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
+                                    {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
+                                    {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
+                                    {placesGroupBy === 'area' && loc.interests?.map((int, idx) => {
+                                      const obj2 = interestMap[int];
+                                      return obj2?.icon ? <span key={idx} title={obj2.label} style={{ fontSize: '13px' }}>{obj2.icon}</span> : null;
                                     })}
+                                    {placesGroupBy === 'interest' && (loc.areas || [loc.area]).filter(Boolean).map((aId, idx) => (
+                                      <span key={idx} className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded">{(areaMap[aId] || {}).label || aId}</span>
+                                    ))}
                                   </div>
                                 </div>
                                 <button onClick={() => handleEditLocation(loc)}
                                   className="text-xs px-1 py-0.5 rounded"
-                                  title={loc.locked && !isUnlocked ? t("general.viewOnly") : t("places.detailsEdit")}>{loc.locked && !isUnlocked ? "👁️" : "✏️"}</button>
+                                  title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
                               </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                            );
+                          })}
+                        </div>
                       </div>
+                    );
+                  })}
+                  {groupedPlaces.ungrouped.length > 0 && (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
+                      <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
+                        No interest / manually added ({groupedPlaces.ungrouped.length})
+                      </div>
+                      <div className="p-1">
+                        {groupedPlaces.ungrouped.map(loc => {
+                          const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                          const canEdit = placesTab === 'drafts' || isUnlocked;
+                          return (
+                            <div key={loc.id}
+                              className={`flex items-center justify-between gap-2 border-2 rounded p-1.5 mb-0.5 ${isLocationValid(loc) ? "border-gray-200 bg-white" : "border-red-400 bg-red-50"}`}
+                              style={{ contain: 'layout style' }}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {mapUrl ? (
+                                    <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
+                                      className="font-medium text-sm text-blue-600 truncate"
+                                    >{loc.name}</a>
+                                  ) : (
+                                    <span className="font-medium text-sm truncate">{loc.name}</span>
+                                  )}
+                                  {loc.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '12px' }}>🔒</span>}
+                                  {!loc.locked && <span className="text-orange-600" title={t("places.drafts")} style={{ fontSize: '14px' }}>🛠️</span>}
+                                  {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
+                                </div>
+                              </div>
+                              <button onClick={() => handleEditLocation(loc)}
+                                className="text-xs px-1 py-0.5 rounded"
+                                title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                </>
+                </div>
               )}
             </div>
 

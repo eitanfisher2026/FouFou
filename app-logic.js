@@ -114,7 +114,7 @@
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
-  const [showBlacklistLocations, setShowBlacklistLocations] = useState(false);
+  const [placesTab, setPlacesTab] = useState('drafts'); // 'drafts' | 'ready' | 'skipped'
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
   const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
@@ -165,7 +165,7 @@
   // Cache for unused Google Places results per interest (avoids redundant API calls)
   const googleCacheRef = React.useRef({});
 
-  // Leaflet Map initialization
+  // Leaflet Map initialization (lazy-loaded)
   React.useEffect(() => {
     if (!showMapModal) {
       if (leafletMapRef.current) {
@@ -174,6 +174,10 @@
       }
       return;
     }
+    
+    // Lazy load Leaflet on first use
+    window.BKK.loadLeaflet().then(function(loaded) {
+      if (!loaded || !showMapModal) return;
     
     // Wait for DOM
     const timer = setTimeout(() => {
@@ -340,8 +344,9 @@
         console.error('[MAP]', err);
       }
     }, 150);
+    }); // end loadLeaflet().then
     
-    return () => clearTimeout(timer);
+    return () => { if (leafletMapRef.current) { leafletMapRef.current.remove(); leafletMapRef.current = null; } };
   }, [showMapModal, mapMode, mapStops, formData.currentLat, formData.currentLng, formData.radiusMeters]);
   const [modalImage, setModalImage] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
@@ -405,6 +410,8 @@
     if (t.locations && t.interests && t.config && t.status && t.routes) {
       setIsDataLoaded(true);
       window.scrollTo(0, 0);
+      // Preload Leaflet in background (2s delay to not compete with rendering)
+      setTimeout(() => window.BKK.loadLeaflet(), 2000);
     }
   };
   
@@ -2201,17 +2208,21 @@
   const groupedPlaces = useMemo(() => {
     try {
       if (!cityCustomLocations || cityCustomLocations.length === 0) {
-        return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
+        return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [], draftsLocations: [], readyLocations: [], draftsCount: 0, readyCount: 0, blacklistCount: 0 };
       }
-      const activeLocations = cityCustomLocations.filter(loc => loc.status !== 'blacklist');
+      const draftsLocations = cityCustomLocations.filter(loc => loc.status !== 'blacklist' && !loc.locked);
+      const readyLocations = cityCustomLocations.filter(loc => loc.status !== 'blacklist' && loc.locked);
       const blacklistedLocations = cityCustomLocations.filter(loc => loc.status === 'blacklist');
       
-      if (activeLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations };
+      // Choose which locations to group based on placesTab
+      const tabLocations = placesTab === 'drafts' ? draftsLocations : placesTab === 'ready' ? readyLocations : blacklistedLocations;
+      
+      if (tabLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
       
       const groups = {};
       const ungrouped = [];
       
-      activeLocations.forEach(loc => {
+      tabLocations.forEach(loc => {
         if (placesGroupBy === 'interest') {
           const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
@@ -2253,12 +2264,12 @@
       sortedKeys.forEach(key => { sortedGroups[key] = sortWithin(groups[key]); });
       const sortedUngrouped = sortWithin(ungrouped);
       
-      return { groups: sortedGroups, ungrouped: sortedUngrouped, sortedKeys, activeCount: activeLocations.length, blacklistedLocations };
+      return { groups: sortedGroups, ungrouped: sortedUngrouped, sortedKeys, activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
     } catch(e) {
       console.error('[MEMO] groupedPlaces error:', e);
-      return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [] };
+      return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [], draftsLocations: [], readyLocations: [], draftsCount: 0, readyCount: 0, blacklistCount: 0 };
     }
-  }, [cityCustomLocations, placesGroupBy, interestMap, areaMap]);
+  }, [cityCustomLocations, placesGroupBy, placesTab, interestMap, areaMap]);
 
   // Image handling - loaded from utils.js
   const uploadImage = window.BKK.uploadImage;
@@ -4757,15 +4768,20 @@
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         
-        // First update with coordinates
+        // Auto-detect areas from coordinates
+        const detected = window.BKK.getAreasForCoordinates(lat, lng);
+        const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
+        
+        // First update with coordinates + areas
         setNewLocation(prev => ({
           ...prev,
           lat: lat,
           lng: lng,
-          mapsUrl: `https://maps.google.com/?q=${lat},${lng}`
+          mapsUrl: `https://maps.google.com/?q=${lat},${lng}`,
+          ...areaUpdates
         }));
         
-        showToast(`${t("toast.locationDetectedCoords")} ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
+        showToast(`${t("toast.locationDetectedCoords")} ${lat.toFixed(5)}, ${lng.toFixed(5)}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
         
         // Then try to get address (reverse geocode)
         try {
@@ -4806,66 +4822,6 @@
   };
 
   // Parse Google Maps URL to extract coordinates
-  const parseMapsUrl = (url) => {
-    if (!url || !url.trim()) {
-      setNewLocation({ ...newLocation, lat: null, lng: null, mapsUrl: '' });
-      return;
-    }
-
-    // Try different Google Maps URL formats
-    let lat = null, lng = null;
-    
-    // Format 1: https://maps.google.com/?q=13.7465,100.4927
-    let match = url.match(/[?&]q=([-\d.]+),([-\d.]+)/);
-    if (match) {
-      lat = parseFloat(match[1]);
-      lng = parseFloat(match[2]);
-    }
-    
-    // Format 2: https://www.google.com/maps/@13.7465,100.4927,17z
-    if (!match) {
-      match = url.match(/@([-\d.]+),([-\d.]+)/);
-      if (match) {
-        lat = parseFloat(match[1]);
-        lng = parseFloat(match[2]);
-      }
-    }
-    
-    // Format 3: https://maps.google.com/maps?q=...&ll=13.7465,100.4927
-    if (!match) {
-      match = url.match(/[?&]ll=([-\d.]+),([-\d.]+)/);
-      if (match) {
-        lat = parseFloat(match[1]);
-        lng = parseFloat(match[2]);
-      }
-    }
-    
-    // Format 4: https://goo.gl/maps/... or https://maps.app.goo.gl/...
-    // These shortened URLs need to be opened first, so just inform user
-    if (!match && (url.includes('goo.gl') || url.includes('maps.app'))) {
-      showToast(t('toast.shortLinksHint'), 'warning');
-      setNewLocation({ ...newLocation, mapsUrl: url });
-      return;
-    }
-    
-    // Format 5: Just coordinates: 13.7465,100.4927 or 13.7465, 100.4927
-    if (!match) {
-      match = url.match(/^([-\d.]+)\s*,\s*([-\d.]+)$/);
-      if (match) {
-        lat = parseFloat(match[1]);
-        lng = parseFloat(match[2]);
-      }
-    }
-    
-    if (lat !== null && lng !== null) {
-      setNewLocation({ ...newLocation, lat, lng, mapsUrl: url });
-      showToast(`${t("toast.coordsDetected")} ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
-    } else {
-      showToast(t('toast.badCoords'), 'error');
-      setNewLocation({ ...newLocation, mapsUrl: url });
-    }
-  };
-
   // Search address using Google Places API (instead of Geocoding)
   const geocodeAddress = async (address) => {
     if (!address || !address.trim()) {
@@ -4907,16 +4863,21 @@
         const location = place.location;
         const formattedAddress = place.formattedAddress || place.displayName?.text || searchQuery;
         
+        // Auto-detect areas from coordinates
+        const detected = window.BKK.getAreasForCoordinates(location.latitude, location.longitude);
+        const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
+        
         setNewLocation({
           ...newLocation,
           lat: location.latitude,
           lng: location.longitude,
           address: formattedAddress,
           googlePlaceId: place.id || null,
-          mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
+          mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`,
+          ...areaUpdates
         });
         
-        showToast(`${t("toast.found")} ${formattedAddress}`, 'success');
+        showToast(`${t("toast.found")} ${formattedAddress}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
       } else {
         showToast(t('places.addressNotFoundRetry'), 'error');
       }
@@ -4962,65 +4923,6 @@
       console.error('[SEARCH] Error:', err);
       showToast(t('toast.searchError'), 'error');
       setLocationSearchResults(null);
-    }
-  };
-
-  // Search coordinates by place name
-  const geocodeByName = async (name) => {
-    if (!name || !name.trim()) {
-      showToast(t('form.enterPlaceName'), 'warning');
-      return;
-    }
-
-    try {
-      showToast(t('form.searchingByName'), 'info');
-      
-      // Add city name for better results
-      const cityForSearch = window.BKK.cityNameForSearch || 'Bangkok';
-      const countryForSearch = window.BKK.selectedCity?.country || '';
-      const searchQuery = name.toLowerCase().includes(cityForSearch.toLowerCase()) 
-        ? name 
-        : `${name}, ${cityForSearch}${countryForSearch ? ', ' + countryForSearch : ''}`;
-      
-      const response = await fetch(
-        `https://places.googleapis.com/v1/places:searchText`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress'
-          },
-          body: JSON.stringify({
-            textQuery: searchQuery,
-            maxResultCount: 1
-          })
-        }
-      );
-      
-      const data = await response.json();
-      
-      if (data.places && data.places.length > 0) {
-        const place = data.places[0];
-        const location = place.location;
-        const formattedAddress = place.formattedAddress || '';
-        
-        setNewLocation({
-          ...newLocation,
-          lat: location.latitude,
-          lng: location.longitude,
-          address: formattedAddress,
-          googlePlaceId: place.id || null,
-          mapsUrl: `https://maps.google.com/?q=${location.latitude},${location.longitude}`
-        });
-        
-        showToast(`${t("toast.foundPlace")} ${place.displayName?.text || name}`, 'success');
-      } else {
-        showToast(t('places.placeNotFoundRetry'), 'error');
-      }
-    } catch (error) {
-      console.error('[GEOCODE BY NAME] Error:', error);
-      showToast(t('toast.searchError'), 'error');
     }
   };
 

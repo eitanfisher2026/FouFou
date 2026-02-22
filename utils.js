@@ -153,42 +153,6 @@ window.BKK.geocodeAddress = async (address) => {
  * Geocode by place name
  * @returns {{ lat, lng, address, displayName } | null}
  */
-window.BKK.geocodeByName = async (name) => {
-  if (!name || !name.trim()) return null;
-
-  const cityName = (window.BKK.selectedCity?.nameEn || 'Bangkok');
-  const countryName = (window.BKK.selectedCity?.country || 'Thailand');
-  const searchQuery = name.toLowerCase().includes(cityName.toLowerCase()) 
-    ? name 
-    : `${name}, ${cityName}, ${countryName}`;
-  
-  const response = await fetch(
-    'https://places.googleapis.com/v1/places:searchText',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': window.BKK.GOOGLE_PLACES_API_KEY,
-        'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress'
-      },
-      body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 1 })
-    }
-  );
-  
-  const data = await response.json();
-  
-  if (data.places && data.places.length > 0) {
-    const place = data.places[0];
-    return {
-      lat: place.location.latitude,
-      lng: place.location.longitude,
-      address: place.formattedAddress || '',
-      displayName: place.displayName?.text || name
-    };
-  }
-  return null;
-};
-
 /**
  * Reverse geocode: get address from coordinates
  * @returns {string} formatted address

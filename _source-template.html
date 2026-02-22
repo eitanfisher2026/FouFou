@@ -19,9 +19,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <title>FouFou</title>
     <link rel="manifest" href="manifest.json?v=3.1.0">
     <link rel="icon" type="image/x-icon" href="favicon.ico?v=3.1.0">
@@ -31,6 +28,12 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BKK Explorer">
+    <!-- Preconnect to CDN domains for faster loading -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <style>
       /* Disable pull-to-refresh and swipe-back on mobile */
       html, body {
@@ -127,8 +130,29 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet loaded lazily on first map use -->
+    <script>
+    window.__leafletReady = null;
+    window.__leafletLoading = false;
+    window.BKK = window.BKK || {};
+    window.BKK.loadLeaflet = function() {
+      if (window.__leafletReady) return window.__leafletReady;
+      if (typeof L !== 'undefined') return Promise.resolve(true);
+      window.__leafletLoading = true;
+      window.__leafletReady = new Promise(function(resolve) {
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+        var js = document.createElement('script');
+        js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        js.onload = function() { window.__leafletLoading = false; resolve(true); };
+        js.onerror = function() { window.__leafletLoading = false; resolve(false); };
+        document.head.appendChild(js);
+      });
+      return window.__leafletReady;
+    };
+    </script>
     
     <!-- Firebase SDK - sequential loading with Promise -->
     <script>
@@ -185,6 +209,7 @@
     <script>
 // __INSERT_UTILS__
     </script>
+    <script>window.__splashProgress(40, 'Compiling app...');</script>
 
     
     <script>
@@ -202,7 +227,7 @@
 </head>
 <body>
     <div id="root">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:12px;background:linear-gradient(135deg,#E17055 0%,#FDCB6E 100%)">
+      <div id="splash" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:12px;background:linear-gradient(135deg,#E17055 0%,#FDCB6E 100%)">
         <svg viewBox="0 0 200 200" width="80" height="80" style="filter:drop-shadow(0 2px 8px rgba(0,0,0,0.2))">
           <circle cx="100" cy="108" r="52" fill="#FFE8D6"/>
           <polygon points="62,72 50,28 82,58" fill="#FFE8D6"/>
@@ -220,13 +245,23 @@
         </svg>
         <div style="color:white;font-size:20px;font-weight:bold;font-family:system-ui;text-shadow:0 1px 3px rgba(0,0,0,0.15)">FouFou</div>
         <div style="color:rgba(255,255,255,0.85);font-size:11px;font-family:system-ui">City Trail Generator 🍜🏛️🎭</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-          <div style="width:28px;height:28px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid white;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-          <span style="color:rgba(255,255,255,0.7);font-size:12px;font-family:system-ui">Loading...</span>
+        <div style="width:160px;height:4px;background:rgba(255,255,255,0.25);border-radius:4px;margin-top:8px;overflow:hidden">
+          <div id="splash-progress" style="width:10%;height:100%;background:white;border-radius:4px;transition:width 0.3s ease"></div>
         </div>
+        <div id="splash-status" style="color:rgba(255,255,255,0.7);font-size:11px;font-family:system-ui">Loading...</div>
       </div>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
+    <script>
+    // Splash progress helper
+    window.__splashProgress = function(pct, msg) {
+      var bar = document.getElementById('splash-progress');
+      var txt = document.getElementById('splash-status');
+      if (bar) bar.style.width = pct + '%';
+      if (txt) txt.textContent = msg;
+    };
+    window.__splashProgress(20, 'Loading libraries...');
+    </script>
     
     <script type="text/babel">
 const { useState, useEffect, useMemo, useCallback } = React;
@@ -300,7 +335,9 @@ const FouFouApp = () => {
 };
 
 // Wait for Firebase SDK, then init and render
+window.__splashProgress(60, 'Connecting database...');
 window.__firebaseReady.then(function(sdkLoaded) {
+  window.__splashProgress(75, 'Initializing...');
   if (sdkLoaded) {
     initFirebase();
   } else {
@@ -360,6 +397,7 @@ window.__firebaseReady.then(function(sdkLoaded) {
   window.history.pushState({ appNav: true, depth: 2, cushion: true }, '', window.location.href);
   window.BKK._historyDepth = 2;
 
+  window.__splashProgress(95, 'Starting app...');
   ReactDOM.createRoot(document.getElementById('root')).render(<FouFouApp />);
 });
     </script>
