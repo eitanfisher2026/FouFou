@@ -999,7 +999,6 @@ const FouFouApp = () => {
           const areasOnly = locs.length === 0 && !mapFavRadius;
           const hasSelection = !!mapFavArea || !!mapFavRadius;
           const hasPlaceMarkers = locs.length > 0;
-          
           map.getPane('areaLabelsPane').style.pointerEvents = hasPlaceMarkers ? 'none' : 'auto';
           areas.forEach(area => {
             const c = coords[area.id];
@@ -1039,6 +1038,13 @@ const FouFouApp = () => {
             }).addTo(map);
           }
           
+          window._favMapSheet = (loc) => { setMapBottomSheet(loc); };
+          window._favMapAreaClick = (areaId) => {
+            setMapFavArea(prev => prev === areaId ? null : areaId);
+            setMapFavRadius(null);
+            setMapBottomSheet(null);
+          };
+          
           const mkrs = [];
           locs.forEach(loc => {
             const pi = (loc.interests || [])[0];
@@ -1060,32 +1066,31 @@ const FouFouApp = () => {
             mkrs.push(m);
           });
           
-          if (!mapFocusPlace) {
-            if (mapFavRadius) {
-              map.fitBounds(L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).getBounds().pad(0.15));
-            } else if (mapFavArea && coords[mapFavArea]) {
-              map.fitBounds(L.circle([coords[mapFavArea].lat, coords[mapFavArea].lng], { radius: coords[mapFavArea].radius }).getBounds().pad(0.15));
-            } else if (mkrs.length > 1) {
-              map.fitBounds(L.featureGroup(mkrs).getBounds().pad(0.1));
+          try {
+            if (!mapFocusPlace) {
+              if (mapFavRadius) {
+                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).addTo(map);
+                map.fitBounds(_c.getBounds().pad(0.15));
+                map.removeLayer(_c);
+              } else if (mapFavArea && coords[mapFavArea]) {
+                const _c = L.circle([coords[mapFavArea].lat, coords[mapFavArea].lng], { radius: coords[mapFavArea].radius }).addTo(map);
+                map.fitBounds(_c.getBounds().pad(0.15));
+                map.removeLayer(_c);
+              } else if (mkrs.length > 1) {
+                map.fitBounds(L.featureGroup(mkrs).getBounds().pad(0.1));
+              }
             }
-          }
+          } catch(fitErr) { console.warn('[MAP] fitBounds warning:', fitErr); }
           
           if (mapUserLocation && mapUserLocation.lat) {
             L.circleMarker([mapUserLocation.lat, mapUserLocation.lng], {
               radius: 7, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 1, weight: 2
-            }).addTo(map).bindPopup('📍');
+            }).addTo(map).bindPopup('\ud83d\udccd');
             L.circle([mapUserLocation.lat, mapUserLocation.lng], {
               radius: mapUserLocation.accuracy || 30, color: '#3b82f6',
               fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1
             }).addTo(map);
           }
-          
-          window._favMapSheet = (loc) => { setMapBottomSheet(loc); };
-          window._favMapAreaClick = (areaId) => {
-            setMapFavArea(prev => prev === areaId ? null : areaId);
-            setMapFavRadius(null);
-            setMapBottomSheet(null);
-          };
           
           leafletMapRef.current = map;
         }

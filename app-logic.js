@@ -1048,10 +1048,7 @@
           const map = L.map(container).setView([cLat, cLng], defZoom);
           L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
           
-          // ── CUSTOM PANES for strict z-order (systemic fix for click-through) ──
-          // Area labels go in a LOW pane so they never block place markers.
-          // Place markers go in a HIGH pane so they're always on top.
-          // When places exist, the entire areaLabelsPane gets pointer-events:none.
+          // Custom panes for z-order
           map.createPane('areaLabelsPane');
           map.getPane('areaLabelsPane').style.zIndex = 450;
           map.createPane('placeMarkersPane');
@@ -1061,8 +1058,6 @@
           const areasOnly = locs.length === 0 && !mapFavRadius;
           const hasSelection = !!mapFavArea || !!mapFavRadius;
           const hasPlaceMarkers = locs.length > 0;
-          
-          // Nuclear pointer-events kill on area labels pane when places exist
           map.getPane('areaLabelsPane').style.pointerEvents = hasPlaceMarkers ? 'none' : 'auto';
           areas.forEach(area => {
             const c = coords[area.id];
@@ -1080,7 +1075,7 @@
             }).addTo(map).on('click', () => {
               if (window._favMapAreaClick) window._favMapAreaClick(area.id);
             });
-            // Labels — in areaLabelsPane (z-450), entire pane disabled when places exist
+            // Labels — always show all, non-interactive when place markers exist
             L.marker([c.lat, c.lng], {
               interactive: !hasPlaceMarkers,
               pane: 'areaLabelsPane',
@@ -1105,20 +1100,26 @@
             }).addTo(map);
           }
           
-          // Place markers — in placeMarkersPane (z-650), always on top of everything
+          // CALLBACKS FIRST - must exist before any code that might crash
+          window._favMapSheet = (loc) => { setMapBottomSheet(loc); };
+          window._favMapAreaClick = (areaId) => {
+            setMapFavArea(prev => prev === areaId ? null : areaId);
+            setMapFavRadius(null);
+            setMapBottomSheet(null);
+          };
+          
+          // Place markers in placeMarkersPane (z-650), always on top
           const mkrs = [];
           locs.forEach(loc => {
             const pi = (loc.interests || [])[0];
             const color = pi ? window.BKK.getInterestColor(pi, allInts) : '#9ca3af';
             const isFocused = mapFocusPlace && mapFocusPlace.id === loc.id;
             const r = isFocused ? 11 : 8;
-            // Visible marker
             const m = L.circleMarker([loc.lat, loc.lng], {
               radius: r, color: isFocused ? '#000' : color, fillColor: color,
               fillOpacity: loc.locked ? 0.9 : 0.5, weight: isFocused ? 3 : (loc.locked ? 2 : 1),
               pane: 'placeMarkersPane'
             }).addTo(map);
-            // Invisible larger hit area for mobile taps (20px radius)
             const hitArea = L.circleMarker([loc.lat, loc.lng], {
               radius: 20, fillOpacity: 0, opacity: 0, weight: 0,
               pane: 'placeMarkersPane'
@@ -1129,36 +1130,33 @@
             mkrs.push(m);
           });
           
-          // Fit bounds
-          if (!mapFocusPlace) {
-            if (mapFavRadius) {
-              map.fitBounds(L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).getBounds().pad(0.15));
-            } else if (mapFavArea && coords[mapFavArea]) {
-              map.fitBounds(L.circle([coords[mapFavArea].lat, coords[mapFavArea].lng], { radius: coords[mapFavArea].radius }).getBounds().pad(0.15));
-            } else if (mkrs.length > 1) {
-              map.fitBounds(L.featureGroup(mkrs).getBounds().pad(0.1));
+          // Fit bounds - own try/catch so errors never block anything
+          try {
+            if (!mapFocusPlace) {
+              if (mapFavRadius) {
+                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).addTo(map);
+                map.fitBounds(_c.getBounds().pad(0.15));
+                map.removeLayer(_c);
+              } else if (mapFavArea && coords[mapFavArea]) {
+                const _c = L.circle([coords[mapFavArea].lat, coords[mapFavArea].lng], { radius: coords[mapFavArea].radius }).addTo(map);
+                map.fitBounds(_c.getBounds().pad(0.15));
+                map.removeLayer(_c);
+              } else if (mkrs.length > 1) {
+                map.fitBounds(L.featureGroup(mkrs).getBounds().pad(0.1));
+              }
             }
-          }
+          } catch(fitErr) { console.warn('[MAP] fitBounds warning:', fitErr); }
           
           // User location blue dot
           if (mapUserLocation && mapUserLocation.lat) {
             L.circleMarker([mapUserLocation.lat, mapUserLocation.lng], {
               radius: 7, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 1, weight: 2
-            }).addTo(map).bindPopup('📍');
+            }).addTo(map).bindPopup('\ud83d\udccd');
             L.circle([mapUserLocation.lat, mapUserLocation.lng], {
               radius: mapUserLocation.accuracy || 30, color: '#3b82f6',
               fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1
             }).addTo(map);
           }
-          
-          // Expose callback for bottom sheet
-          window._favMapSheet = (loc) => { setMapBottomSheet(loc); };
-          // Expose callback for area click — toggle filter
-          window._favMapAreaClick = (areaId) => {
-            setMapFavArea(prev => prev === areaId ? null : areaId);
-            setMapFavRadius(null);
-            setMapBottomSheet(null);
-          };
           
           leafletMapRef.current = map;
         }
