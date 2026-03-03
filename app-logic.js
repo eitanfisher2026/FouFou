@@ -574,7 +574,7 @@
   const [mapFocusPlace, setMapFocusPlace] = useState(null); // place to highlight
   const [mapBottomSheet, setMapBottomSheet] = useState(null); // { name, loc } for bottom sheet
   const [mapReturnPlace, setMapReturnPlace] = useState(null); // place to reopen dialog for after map close
-  const [reopenMapAfterEdit, setReopenMapAfterEdit] = useState(null); // loc to focus when reopening map after edit
+  const [reopenMapAfterEdit, setReopenMapAfterEdit] = useState(null); // reopen map after edit dialog closes
   const [showFavMapFilter, setShowFavMapFilter] = useState(false); // filter dialog open
   const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng, address }
   const leafletMapRef = React.useRef(null);
@@ -1101,22 +1101,12 @@
             }).addTo(map);
           }
           
-          // Highlight ring for selected marker
-          let highlightRing = null;
-          
           // CALLBACKS FIRST - must exist before any code that might crash
           window._favMapSheet = (loc) => {
             setMapBottomSheet(loc);
-            // Add highlight ring around selected marker
-            if (highlightRing && leafletMapRef.current) {
-              try { leafletMapRef.current.removeLayer(highlightRing); } catch(e) {}
-            }
-            if (loc && loc.lat && loc.lng && leafletMapRef.current) {
-              highlightRing = L.circleMarker([loc.lat, loc.lng], {
-                radius: 22, color: '#3b82f6', fillColor: '#3b82f6',
-                fillOpacity: 0.15, weight: 3, dashArray: '6,4',
-                pane: 'placeMarkersPane'
-              }).addTo(leafletMapRef.current);
+            if (highlightRing) { try { map.removeLayer(highlightRing); } catch(e) {} highlightRing = null; }
+            if (loc && loc.lat && loc.lng) {
+              highlightRing = L.circleMarker([loc.lat, loc.lng], { radius: 22, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 3, dashArray: '6,4', pane: 'placeMarkersPane' }).addTo(map);
             }
           };
           window._favMapAreaClick = (areaId) => {
@@ -1131,12 +1121,19 @@
             const pi = (loc.interests || [])[0];
             const color = pi ? window.BKK.getInterestColor(pi, allInts) : '#9ca3af';
             const isFocused = mapFocusPlace && mapFocusPlace.id === loc.id;
-            const r = isFocused ? 11 : 8;
+            const r = isFocused ? 10 : 8;
             const m = L.circleMarker([loc.lat, loc.lng], {
-              radius: r, color: isFocused ? '#000' : color, fillColor: color,
-              fillOpacity: loc.locked ? 0.9 : 0.5, weight: isFocused ? 3 : (loc.locked ? 2 : 1),
+              radius: r, color: color, fillColor: color,
+              fillOpacity: loc.locked ? 0.9 : 0.5, weight: isFocused ? 2.5 : (loc.locked ? 2 : 1),
               pane: 'placeMarkersPane'
             }).addTo(map);
+            if (isFocused) {
+              highlightRing = L.circleMarker([loc.lat, loc.lng], {
+                radius: 22, color: '#3b82f6', fillColor: '#3b82f6',
+                fillOpacity: 0.15, weight: 3, dashArray: '6,4',
+                pane: 'placeMarkersPane'
+              }).addTo(map);
+            }
             const hitArea = L.circleMarker([loc.lat, loc.lng], {
               radius: 20, fillOpacity: 0, opacity: 0, weight: 0,
               pane: 'placeMarkersPane'
@@ -3426,7 +3423,7 @@
       });
     }
   }, [showEditLocationDialog, editingLocation]);
-
+  
   // Reopen favorites map after edit dialog closes (when opened from map bottom sheet)
   React.useEffect(() => {
     if (!showEditLocationDialog && reopenMapAfterEdit) {
