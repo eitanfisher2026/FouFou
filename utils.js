@@ -83,6 +83,28 @@ window.BKK.getValidatedGps = (onSuccess, onError) => {
 };
 
 /**
+ * Find the closest area to given coordinates
+ * @returns {string} area ID of the closest area
+ */
+window.BKK.getClosestArea = (lat, lng) => {
+  if (!lat || !lng) return null;
+  const coords = window.BKK.areaCoordinates || {};
+  let closest = null;
+  let minDist = Infinity;
+  for (const [areaId, area] of Object.entries(coords)) {
+    const R = 6371e3;
+    const dLat = (area.lat - lat) * Math.PI / 180;
+    const dLng = (area.lng - lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat * Math.PI / 180) * Math.cos(area.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    if (dist < minDist) { minDist = dist; closest = areaId; }
+  }
+  return closest;
+};
+
+/**
  * Get all areas that contain this coordinate (within radius)
  * @returns {string[]} Array of area IDs
  */

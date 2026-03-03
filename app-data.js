@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.7.27
+// FouFou app-data.js v3.7.28
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3025,7 +3025,7 @@ window.BKK = window.BKK || {};
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.7.27';
+window.BKK.VERSION = '3.7.28';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3472,6 +3472,28 @@ window.BKK.getValidatedGps = (onSuccess, onError) => {
     (err) => { if (onError) onError(err.code === 1 ? 'denied' : err.code === 3 ? 'timeout' : 'unavailable'); },
     { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
   );
+};
+
+/**
+ * Find the closest area to given coordinates
+ * @returns {string} area ID of the closest area
+ */
+window.BKK.getClosestArea = (lat, lng) => {
+  if (!lat || !lng) return null;
+  const coords = window.BKK.areaCoordinates || {};
+  let closest = null;
+  let minDist = Infinity;
+  for (const [areaId, area] of Object.entries(coords)) {
+    const R = 6371e3;
+    const dLat = (area.lat - lat) * Math.PI / 180;
+    const dLng = (area.lng - lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat * Math.PI / 180) * Math.cos(area.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    if (dist < minDist) { minDist = dist; closest = areaId; }
+  }
+  return closest;
 };
 
 /**

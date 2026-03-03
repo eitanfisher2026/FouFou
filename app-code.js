@@ -1565,9 +1565,10 @@ const FouFouApp = () => {
 
   const areaRepairDone = React.useRef(new Set());
   useEffect(() => {
-    if (locationsLoading || !selectedCityId || areaRepairDone.current.has(selectedCityId)) return;
+    const repairKey = selectedCityId + '_v2'; // v2: closest area for outside places
+    if (locationsLoading || !selectedCityId || areaRepairDone.current.has(repairKey)) return;
     if (!customLocations.length) return;
-    areaRepairDone.current.add(selectedCityId);
+    areaRepairDone.current.add(repairKey);
     
     const updates = [];
     for (const loc of customLocations) {
@@ -1580,8 +1581,11 @@ const FouFouApp = () => {
         if (!areasMatch || loc.outsideArea) {
           updates.push({ id: loc.id, firebaseId: loc.firebaseId, areas: detected, area: detected[0], outsideArea: false });
         }
-      } else if (loc.outsideArea && currentAreas.length > 0) {
-        updates.push({ id: loc.id, firebaseId: loc.firebaseId, areas: currentAreas, area: currentAreas[0], outsideArea: false });
+      } else {
+        const closest = window.BKK.getClosestArea(loc.lat, loc.lng);
+        if (closest && (currentAreas[0] !== closest || !loc.outsideArea)) {
+          updates.push({ id: loc.id, firebaseId: loc.firebaseId, areas: [closest], area: closest, outsideArea: true });
+        }
       }
     }
     
@@ -1592,7 +1596,7 @@ const FouFouApp = () => {
           if (u.firebaseId) {
             batch[`cities/${selectedCityId}/locations/${u.firebaseId}/areas`] = u.areas;
             batch[`cities/${selectedCityId}/locations/${u.firebaseId}/area`] = u.area;
-            batch[`cities/${selectedCityId}/locations/${u.firebaseId}/outsideArea`] = false;
+            batch[`cities/${selectedCityId}/locations/${u.firebaseId}/outsideArea`] = u.outsideArea;
           }
         });
         if (Object.keys(batch).length > 0) {
@@ -1602,7 +1606,7 @@ const FouFouApp = () => {
       } else {
         const updated = customLocations.map(loc => {
           const fix = updates.find(u => u.id === loc.id);
-          return fix ? { ...loc, areas: fix.areas, area: fix.area, outsideArea: false } : loc;
+          return fix ? { ...loc, areas: fix.areas, area: fix.area, outsideArea: fix.outsideArea } : loc;
         });
         setCustomLocations(updated);
         localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
@@ -4951,7 +4955,9 @@ const FouFouApp = () => {
     const placeId = place.id || place.name;
     setAddingPlaceIds(prev => [...prev, placeId]);
     
-    const boundaryCheck = checkLocationInArea(place.lat, place.lng, formData.area);
+    const detectedAreas = window.BKK.getAreasForCoordinates(place.lat, place.lng);
+    const bestArea = detectedAreas.length > 0 ? detectedAreas[0] : (window.BKK.getClosestArea(place.lat, place.lng) || formData.area);
+    const isOutside = detectedAreas.length === 0;
     
     const locationToAdd = {
       id: Date.now(),
@@ -4959,15 +4965,15 @@ const FouFouApp = () => {
       description: (place.description && !place.description.startsWith('⭐')) ? place.description : '',
       notes: '',
       address: place.address || '',
-      area: formData.area,
-      areas: (() => { const d = window.BKK.getAreasForCoordinates(place.lat, place.lng); return d.length > 0 ? d : [formData.area]; })(),
+      area: bestArea,
+      areas: detectedAreas.length > 0 ? detectedAreas : [bestArea],
       interests: place.interests || [],
       lat: place.lat,
       lng: place.lng,
       googlePlaceId: place.googlePlaceId || null,
       uploadedImage: null,
       imageUrls: [],
-      outsideArea: !boundaryCheck.valid,
+      outsideArea: isOutside,
       custom: true,
       status: 'active',
       addedAt: new Date().toISOString(),
@@ -5122,13 +5128,16 @@ const FouFouApp = () => {
         }
         
         try {
-          const newLocation = {
+          const impDetected = (loc.lat && loc.lng) ? window.BKK.getAreasForCoordinates(loc.lat, loc.lng) : [];
+            const impBestArea = impDetected.length > 0 ? impDetected[0] 
+              : (loc.area || (loc.areas?.[0]) || (loc.lat ? window.BKK.getClosestArea(loc.lat, loc.lng) : null) || formData.area || areaOptions[0]?.id || 'center');
+            const newLocation = {
             id: loc.id || Date.now() + Math.floor(Math.random() * 1000),
             name: loc.name.trim(),
             description: loc.description || loc.notes || '',
             notes: loc.notes || '',
-            area: loc.area || (loc.areas ? loc.areas[0] : (formData.area || areaOptions[0]?.id || 'center')),
-            areas: window.BKK.normalizeLocationAreas(loc),
+            area: impBestArea,
+            areas: impDetected.length > 0 ? impDetected : [impBestArea],
             interests: Array.isArray(loc.interests) ? loc.interests : [],
             lat: loc.lat || null,
             lng: loc.lng || null,
@@ -5136,7 +5145,7 @@ const FouFouApp = () => {
             address: loc.address || '',
             uploadedImage: loc.uploadedImage || null,
             imageUrls: Array.isArray(loc.imageUrls) ? loc.imageUrls : [],
-            outsideArea: loc.outsideArea || false,
+            outsideArea: loc.lat && loc.lng && impDetected.length === 0,
             missingCoordinates: !loc.lat || !loc.lng,
             
             custom: true,
@@ -5251,13 +5260,16 @@ const FouFouApp = () => {
           return;
         }
         
+        const impDetected2 = (loc.lat && loc.lng) ? window.BKK.getAreasForCoordinates(loc.lat, loc.lng) : [];
+        const impBestArea2 = impDetected2.length > 0 ? impDetected2[0] 
+          : (loc.area || (loc.areas?.[0]) || (loc.lat ? window.BKK.getClosestArea(loc.lat, loc.lng) : null) || formData.area || areaOptions[0]?.id || 'center');
         const newLocation = {
           id: loc.id || Date.now() + Math.floor(Math.random() * 1000),
           name: loc.name.trim(),
           description: loc.description || loc.notes || '',
           notes: loc.notes || '',
-          area: loc.area || (loc.areas ? loc.areas[0] : (formData.area || areaOptions[0]?.id || 'center')),
-          areas: window.BKK.normalizeLocationAreas(loc),
+          area: impBestArea2,
+          areas: impDetected2.length > 0 ? impDetected2 : [impBestArea2],
           interests: Array.isArray(loc.interests) ? loc.interests : [],
           lat: loc.lat || null,
           lng: loc.lng || null,
@@ -5265,7 +5277,7 @@ const FouFouApp = () => {
           address: loc.address || '',
           uploadedImage: loc.uploadedImage || null,
           imageUrls: Array.isArray(loc.imageUrls) ? loc.imageUrls : [],
-          outsideArea: loc.outsideArea || false,
+          outsideArea: loc.lat && loc.lng && impDetected2.length === 0,
           missingCoordinates: !loc.lat || !loc.lng,
           
           custom: true,
