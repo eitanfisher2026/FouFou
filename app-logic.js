@@ -1048,10 +1048,22 @@
           const map = L.map(container).setView([cLat, cLng], defZoom);
           L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
           
+          // ── CUSTOM PANES for strict z-order (systemic fix for click-through) ──
+          // Area labels go in a LOW pane so they never block place markers.
+          // Place markers go in a HIGH pane so they're always on top.
+          // When places exist, the entire areaLabelsPane gets pointer-events:none.
+          map.createPane('areaLabelsPane');
+          map.getPane('areaLabelsPane').style.zIndex = 450;
+          map.createPane('placeMarkersPane');
+          map.getPane('placeMarkersPane').style.zIndex = 650;
+          
           // Area circles — always show all, highlight selected with bold ring
           const areasOnly = locs.length === 0 && !mapFavRadius;
           const hasSelection = !!mapFavArea || !!mapFavRadius;
           const hasPlaceMarkers = locs.length > 0;
+          
+          // Nuclear pointer-events kill on area labels pane when places exist
+          map.getPane('areaLabelsPane').style.pointerEvents = hasPlaceMarkers ? 'none' : 'auto';
           areas.forEach(area => {
             const c = coords[area.id];
             if (!c) return;
@@ -1068,9 +1080,10 @@
             }).addTo(map).on('click', () => {
               if (window._favMapAreaClick) window._favMapAreaClick(area.id);
             });
-            // Labels — always show all, non-interactive when place markers exist
+            // Labels — in areaLabelsPane (z-450), entire pane disabled when places exist
             L.marker([c.lat, c.lng], {
               interactive: !hasPlaceMarkers,
+              pane: 'areaLabelsPane',
               icon: L.divIcon({
                 className: '',
                 html: '<div style="font-size:' + (areasOnly ? '10px' : '9px') + ';color:' + (areasOnly ? aColor : (isSelected ? '#1e40af' : '#64748b')) + ';text-align:center;white-space:nowrap;font-weight:bold;background:rgba(255,255,255,' + (areasOnly ? '0.88' : (isSelected ? '0.95' : '0.75')) + ');padding:' + (areasOnly || isSelected ? '2px 5px' : '1px 4px') + ';border-radius:' + (areasOnly || isSelected ? '4px' : '3px') + ';' + ((areasOnly || isSelected) ? 'border:1.5px solid ' + (isSelected ? '#2563eb' : aColor) + ';box-shadow:0 1px 3px rgba(0,0,0,0.15);' : '') + (hasPlaceMarkers ? 'pointer-events:none;' : 'cursor:pointer;') + '">' + tLabel(area) + '</div>',
@@ -1092,19 +1105,27 @@
             }).addTo(map);
           }
           
-          // Place markers — add FIRST so they get events on top
+          // Place markers — in placeMarkersPane (z-650), always on top of everything
           const mkrs = [];
           locs.forEach(loc => {
             const pi = (loc.interests || [])[0];
             const color = pi ? window.BKK.getInterestColor(pi, allInts) : '#9ca3af';
             const isFocused = mapFocusPlace && mapFocusPlace.id === loc.id;
-            const r = isFocused ? 11 : 7;
+            const r = isFocused ? 11 : 8;
+            // Visible marker
             const m = L.circleMarker([loc.lat, loc.lng], {
               radius: r, color: isFocused ? '#000' : color, fillColor: color,
               fillOpacity: loc.locked ? 0.9 : 0.5, weight: isFocused ? 3 : (loc.locked ? 2 : 1),
-              pane: 'markerPane'
+              pane: 'placeMarkersPane'
             }).addTo(map);
-            m.on('click', (e) => { L.DomEvent.stopPropagation(e); if (window._favMapSheet) window._favMapSheet(loc); });
+            // Invisible larger hit area for mobile taps (20px radius)
+            const hitArea = L.circleMarker([loc.lat, loc.lng], {
+              radius: 20, fillOpacity: 0, opacity: 0, weight: 0,
+              pane: 'placeMarkersPane'
+            }).addTo(map);
+            const handleClick = (e) => { L.DomEvent.stopPropagation(e); if (window._favMapSheet) window._favMapSheet(loc); };
+            m.on('click', handleClick);
+            hitArea.on('click', handleClick);
             mkrs.push(m);
           });
           

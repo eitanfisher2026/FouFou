@@ -991,9 +991,16 @@ const FouFouApp = () => {
           const map = L.map(container).setView([cLat, cLng], defZoom);
           L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
           
+          map.createPane('areaLabelsPane');
+          map.getPane('areaLabelsPane').style.zIndex = 450;
+          map.createPane('placeMarkersPane');
+          map.getPane('placeMarkersPane').style.zIndex = 650;
+          
           const areasOnly = locs.length === 0 && !mapFavRadius;
           const hasSelection = !!mapFavArea || !!mapFavRadius;
           const hasPlaceMarkers = locs.length > 0;
+          
+          map.getPane('areaLabelsPane').style.pointerEvents = hasPlaceMarkers ? 'none' : 'auto';
           areas.forEach(area => {
             const c = coords[area.id];
             if (!c) return;
@@ -1011,6 +1018,7 @@ const FouFouApp = () => {
             });
             L.marker([c.lat, c.lng], {
               interactive: !hasPlaceMarkers,
+              pane: 'areaLabelsPane',
               icon: L.divIcon({
                 className: '',
                 html: '<div style="font-size:' + (areasOnly ? '10px' : '9px') + ';color:' + (areasOnly ? aColor : (isSelected ? '#1e40af' : '#64748b')) + ';text-align:center;white-space:nowrap;font-weight:bold;background:rgba(255,255,255,' + (areasOnly ? '0.88' : (isSelected ? '0.95' : '0.75')) + ');padding:' + (areasOnly || isSelected ? '2px 5px' : '1px 4px') + ';border-radius:' + (areasOnly || isSelected ? '4px' : '3px') + ';' + ((areasOnly || isSelected) ? 'border:1.5px solid ' + (isSelected ? '#2563eb' : aColor) + ';box-shadow:0 1px 3px rgba(0,0,0,0.15);' : '') + (hasPlaceMarkers ? 'pointer-events:none;' : 'cursor:pointer;') + '">' + tLabel(area) + '</div>',
@@ -1036,13 +1044,19 @@ const FouFouApp = () => {
             const pi = (loc.interests || [])[0];
             const color = pi ? window.BKK.getInterestColor(pi, allInts) : '#9ca3af';
             const isFocused = mapFocusPlace && mapFocusPlace.id === loc.id;
-            const r = isFocused ? 11 : 7;
+            const r = isFocused ? 11 : 8;
             const m = L.circleMarker([loc.lat, loc.lng], {
               radius: r, color: isFocused ? '#000' : color, fillColor: color,
               fillOpacity: loc.locked ? 0.9 : 0.5, weight: isFocused ? 3 : (loc.locked ? 2 : 1),
-              pane: 'markerPane'
+              pane: 'placeMarkersPane'
             }).addTo(map);
-            m.on('click', (e) => { L.DomEvent.stopPropagation(e); if (window._favMapSheet) window._favMapSheet(loc); });
+            const hitArea = L.circleMarker([loc.lat, loc.lng], {
+              radius: 20, fillOpacity: 0, opacity: 0, weight: 0,
+              pane: 'placeMarkersPane'
+            }).addTo(map);
+            const handleClick = (e) => { L.DomEvent.stopPropagation(e); if (window._favMapSheet) window._favMapSheet(loc); };
+            m.on('click', handleClick);
+            hitArea.on('click', handleClick);
             mkrs.push(m);
           });
           
