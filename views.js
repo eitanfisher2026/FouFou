@@ -1440,12 +1440,6 @@
                                       );
                                     })()}
                                   </a>
-                                  {/* Google rating for non-custom stops */}
-                                  {!isCustom && stop.rating && (
-                                    <div style={{ fontSize: '10px', color: '#b45309', padding: '0 8px' }}>
-                                      ⭐{stop.rating} {stop.ratingCount ? `(${stop.ratingCount})` : ''}
-                                    </div>
-                                  )}
                                   {/* Add to favorites row — Google places only */}
                                   {!isCustom && !isDisabled && (() => {
                                     const existingLoc = customLocations.find(loc => loc.name.toLowerCase().trim() === stop.name.toLowerCase().trim());
