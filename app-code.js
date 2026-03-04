@@ -813,7 +813,7 @@ const FouFouApp = () => {
               const curIsDisabled = curDisabled.includes(nameKey);
               const toggleAction = curIsDisabled ? 'enable' : 'disable';
               const toggleLabel = curIsDisabled ? '▶️ ' + t('route.returnPlace') : '⏸️ ' + t('route.skipPlace');
-              const toggleColor = curIsDisabled ? window.BKK.mapConfig.marker.startRingColor : '#9ca3af';
+              const toggleColor = curIsDisabled ? '#22c55e' : '#dc2626';
               return '<div style="text-align:center;direction:' + (isRTL ? 'rtl' : 'ltr') + ';font-size:13px;min-width:160px;padding:4px 0;">' +
                 '<div style="font-weight:bold;font-size:14px;margin-bottom:6px;">' + (stopLetter ? stopLetter + '. ' : '') + (stop.name || '') + '</div>' +
                 (stop.rating ? '<div style="color:#f59e0b;margin-bottom:6px;">⭐ ' + stop.rating + (stop.ratingCount ? ' (' + stop.ratingCount + ')' : '') + '</div>' : '') +
@@ -7281,19 +7281,6 @@ const FouFouApp = () => {
                                       textDecoration: isDisabled ? 'line-through' : 'none',
                                       flexWrap: 'wrap'
                                     }}>
-                                      <span
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const nk = (stop.name || '').toLowerCase().trim();
-                                          setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]);
-                                        }}
-                                        style={{
-                                          cursor: 'pointer', fontSize: '14px', flexShrink: 0,
-                                          color: isDisabled ? '#22c55e' : '#dc2626', lineHeight: 1
-                                        }}
-                                        title={isDisabled ? t('trail.unskip') : t('trail.skip')}
-                                      >{isDisabled ? '▶️' : '⏸️'}</span>
                                       {route?.optimized && !isDisabled && hasValidCoords && activeLetterMap[stop.originalIndex] && (() => {
                                         const palette = window.BKK.stopColorPalette;
                                         const stopColor = palette[stop.originalIndex % palette.length];
@@ -7347,6 +7334,21 @@ const FouFouApp = () => {
                                           🖼️
                                         </button>
                                       )}
+                                      {/* Disable/Enable toggle — end of row (left side in RTL) */}
+                                      <span
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const nk = (stop.name || '').toLowerCase().trim();
+                                          setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]);
+                                        }}
+                                        style={{
+                                          cursor: 'pointer', fontSize: '12px', flexShrink: 0,
+                                          color: isDisabled ? '#22c55e' : '#dc2626',
+                                          marginInlineStart: 'auto'
+                                        }}
+                                        title={isDisabled ? t('trail.unskip') : t('trail.skip')}
+                                      >{isDisabled ? '▶️' : '⏸️'}</span>
                                     </div>
                                     <div className="text-[10px]" style={{
                                       color: hasValidCoords ? '#6b7280' : '#991b1b'
@@ -9818,7 +9820,7 @@ const FouFouApp = () => {
               <button
                 onClick={() => {
                   const returnPlace = mapReturnPlace;
-                  setShowMapModal(false); setMapUserLocation(null); setMapSkippedStops(new Set()); setMapBottomSheet(null); setShowFavMapFilter(false); setMapFavFilter(new Set()); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapReturnPlace(null);
+                  setShowMapModal(false); setMapUserLocation(null); setMapSkippedStops(new Set()); setMapBottomSheet(null); setShowFavMapFilter(false); setMapFavFilter(new Set()); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapReturnPlace(null); setRoute(prev => prev ? {...prev, _refresh: Date.now()} : prev);
                   if (returnPlace) { setTimeout(() => handleEditLocation(returnPlace), 100); }
                 }}
                 style={{ 
@@ -11042,9 +11044,11 @@ const FouFouApp = () => {
               {/* Footer */}
               {(() => {
                 const isLockedPlace = showEditLocationDialog && editingLocation?.locked && !isUnlocked;
+                const isOwnPlace = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
+                const canEdit = isUnlocked || (isOwnPlace && !editingLocation?.locked);
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                {isLockedPlace ? (
+                {!canEdit ? (
                   <>
                     <div className="flex-1 py-2.5 px-3 bg-yellow-100 text-yellow-800 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1">
                       🔒 {t("general.readOnly")}
@@ -12281,8 +12285,8 @@ const FouFouApp = () => {
                       setShowImageModal(false); setModalImage(null); setModalImageCtx(null);
                       handleEditLocation(modalImageCtx.location);
                     }}
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg text-sm font-bold hover:bg-blue-600 flex items-center justify-center gap-1"
-                  >📍 {t('places.editPlace')}</button>
+                    className="bg-blue-500 text-white py-1.5 px-4 rounded-lg text-xs font-bold hover:bg-blue-600 flex items-center justify-center gap-1"
+                  >📍 {t('places.openFavorite') || 'פתח מקום מועדף'}</button>
                 )}
               </div>
             )}

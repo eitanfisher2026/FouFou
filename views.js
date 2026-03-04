@@ -1331,19 +1331,6 @@
                                       textDecoration: isDisabled ? 'line-through' : 'none',
                                       flexWrap: 'wrap'
                                     }}>
-                                      <span
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          const nk = (stop.name || '').toLowerCase().trim();
-                                          setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]);
-                                        }}
-                                        style={{
-                                          cursor: 'pointer', fontSize: '14px', flexShrink: 0,
-                                          color: isDisabled ? '#22c55e' : '#dc2626', lineHeight: 1
-                                        }}
-                                        title={isDisabled ? t('trail.unskip') : t('trail.skip')}
-                                      >{isDisabled ? '▶️' : '⏸️'}</span>
                                       {route?.optimized && !isDisabled && hasValidCoords && activeLetterMap[stop.originalIndex] && (() => {
                                         const palette = window.BKK.stopColorPalette;
                                         const stopColor = palette[stop.originalIndex % palette.length];
@@ -1397,6 +1384,21 @@
                                           🖼️
                                         </button>
                                       )}
+                                      {/* Disable/Enable toggle — end of row (left side in RTL) */}
+                                      <span
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const nk = (stop.name || '').toLowerCase().trim();
+                                          setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]);
+                                        }}
+                                        style={{
+                                          cursor: 'pointer', fontSize: '12px', flexShrink: 0,
+                                          color: isDisabled ? '#22c55e' : '#dc2626',
+                                          marginInlineStart: 'auto'
+                                        }}
+                                        title={isDisabled ? t('trail.unskip') : t('trail.skip')}
+                                      >{isDisabled ? '▶️' : '⏸️'}</span>
                                     </div>
                                     <div className="text-[10px]" style={{
                                       color: hasValidCoords ? '#6b7280' : '#991b1b'
@@ -3894,7 +3896,7 @@
               <button
                 onClick={() => {
                   const returnPlace = mapReturnPlace;
-                  setShowMapModal(false); setMapUserLocation(null); setMapSkippedStops(new Set()); setMapBottomSheet(null); setShowFavMapFilter(false); setMapFavFilter(new Set()); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapReturnPlace(null);
+                  setShowMapModal(false); setMapUserLocation(null); setMapSkippedStops(new Set()); setMapBottomSheet(null); setShowFavMapFilter(false); setMapFavFilter(new Set()); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapReturnPlace(null); setRoute(prev => prev ? {...prev, _refresh: Date.now()} : prev);
                   if (returnPlace) { setTimeout(() => handleEditLocation(returnPlace), 100); }
                 }}
                 style={{ 
