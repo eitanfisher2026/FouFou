@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.7.43
+// FouFou app-data.js v3.7.44
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3013,6 +3013,7 @@ window.BKK.cityData.singapore = {
 // ============================================================================
 
 window.BKK = window.BKK || {};
+window.BKK.stopColorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
 
 (function() {
   let vid = null;
@@ -3027,7 +3028,7 @@ window.BKK = window.BKK || {};
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.7.43';
+window.BKK.VERSION = '3.7.44';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

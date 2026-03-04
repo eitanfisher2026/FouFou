@@ -4,6 +4,7 @@
 // ============================================================================
 
 window.BKK = window.BKK || {};
+window.BKK.stopColorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
 
 // Generate or restore persistent visitor ID
 (function() {
@@ -21,7 +22,7 @@ window.BKK = window.BKK || {};
 })();
 
 // App Version
-window.BKK.VERSION = '3.7.43';
+window.BKK.VERSION = '3.7.44';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
