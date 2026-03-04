@@ -508,6 +508,9 @@ const FouFouApp = () => {
       trailTimeoutHours: 8,
       defaultInterestWeight: 3,
       maxContentPasses: 3,
+      contentReorderEnabled: true,
+      maxContentGeoIncrease: 0.05, // Max 5% distance increase for content reordering (was 25%!)
+      twoOptMaxPasses: 20, // 2-opt improvement passes for route optimization
       timeScoreMatch: 2,
       timeScoreAnytime: 1,
       timeScoreConflict: 0,
@@ -3602,7 +3605,7 @@ const FouFouApp = () => {
     
     let improved = true;
     let passes = 0;
-    const maxPasses = 5; // 2-opt passes (each pass is O(n²))
+    const maxPasses = sp.twoOptMaxPasses || 20; // 2-opt passes (each pass is O(n²), n≤15 so very fast)
     
     while (improved && passes < maxPasses) {
       improved = false;
@@ -3724,10 +3727,11 @@ const FouFouApp = () => {
       const baseGeo = geoDist(ordered);
       const basePenalty = contentPenalty(ordered);
       
-      if (basePenalty > 0.5) {
+      if (basePenalty > 0.5 && sp.contentReorderEnabled !== false) {
         let contentImproved = true;
         let contentPasses = 0;
         const maxContentPasses = sp.maxContentPasses;
+        const maxGeoIncrease = sp.maxContentGeoIncrease || 0.05;
         
         while (contentImproved && contentPasses < maxContentPasses) {
           contentImproved = false;
@@ -3740,7 +3744,7 @@ const FouFouApp = () => {
               const newGeo = geoDist(ordered);
               const geoIncrease = (newGeo - baseGeo) / Math.max(baseGeo, 1);
               
-              if (newPenalty < curPenalty - 0.3 && geoIncrease < 0.25) {
+              if (newPenalty < curPenalty - 0.3 && geoIncrease < maxGeoIncrease) {
                 contentImproved = true;
               } else {
                 [ordered[i], ordered[j]] = [ordered[j], ordered[i]];

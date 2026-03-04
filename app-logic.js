@@ -521,6 +521,9 @@
       trailTimeoutHours: 8,
       defaultInterestWeight: 3,
       maxContentPasses: 3,
+      contentReorderEnabled: true,
+      maxContentGeoIncrease: 0.05, // Max 5% distance increase for content reordering (was 25%!)
+      twoOptMaxPasses: 20, // 2-opt improvement passes for route optimization
       // Time scoring
       timeScoreMatch: 2,
       timeScoreAnytime: 1,
@@ -4008,7 +4011,7 @@
     
     let improved = true;
     let passes = 0;
-    const maxPasses = 5; // 2-opt passes (each pass is O(n²))
+    const maxPasses = sp.twoOptMaxPasses || 20; // 2-opt passes (each pass is O(n²), n≤15 so very fast)
     
     while (improved && passes < maxPasses) {
       improved = false;
@@ -4036,8 +4039,7 @@
       }
     }
     
-    console.log(`[OPTIMIZE] ${withCoords.length} stops optimized in ${passes} passes`);
-    console.log(`[OPTIMIZE] Total distance: ${Math.round(totalDist(ordered))}m (${isCircular ? 'circular' : 'linear'})`);
+    console.log(`[OPTIMIZE] ${withCoords.length} stops, 2-opt: ${passes} passes, distance: ${Math.round(totalDist(ordered))}m (${isCircular ? 'circular' : 'linear'})`);
     
     // --- Step 3: Content-aware reordering ---
     // Adjust order so route feels natural: cafes at start/end, food in middle, no same-category neighbors
@@ -4146,12 +4148,13 @@
       const baseGeo = geoDist(ordered);
       const basePenalty = contentPenalty(ordered);
       
-      // Only apply if there are actual content issues
-      if (basePenalty > 0.5) {
+      // Only apply if there are actual content issues AND feature is enabled
+      if (basePenalty > 0.5 && sp.contentReorderEnabled !== false) {
         // Try targeted swaps that improve content without too much geographic cost
         let contentImproved = true;
         let contentPasses = 0;
         const maxContentPasses = sp.maxContentPasses;
+        const maxGeoIncrease = sp.maxContentGeoIncrease || 0.05;
         
         while (contentImproved && contentPasses < maxContentPasses) {
           contentImproved = false;
@@ -4165,8 +4168,8 @@
               const newGeo = geoDist(ordered);
               const geoIncrease = (newGeo - baseGeo) / Math.max(baseGeo, 1);
               
-              // Accept if content improves by more than geographic cost
-              if (newPenalty < curPenalty - 0.3 && geoIncrease < 0.25) {
+              // Accept if content improves AND geographic cost stays within threshold
+              if (newPenalty < curPenalty - 0.3 && geoIncrease < maxGeoIncrease) {
                 contentImproved = true;
                 // Keep swap
               } else {
@@ -4179,7 +4182,7 @@
         
         const finalPenalty = contentPenalty(ordered);
         const finalGeo = geoDist(ordered);
-        console.log(`[CONTENT-REORDER] mode=${timeMode}, ${contentPasses} passes, penalty ${basePenalty.toFixed(1)} → ${finalPenalty.toFixed(1)}, distance ${Math.round(baseGeo)}m → ${Math.round(finalGeo)}m`);
+        console.log(`[CONTENT-REORDER] mode=${timeMode}, ${contentPasses} passes, penalty ${basePenalty.toFixed(1)} → ${finalPenalty.toFixed(1)}, distance ${Math.round(baseGeo)}m → ${Math.round(finalGeo)}m (max ${Math.round(maxGeoIncrease*100)}% increase allowed)`);
       }
     }
     
