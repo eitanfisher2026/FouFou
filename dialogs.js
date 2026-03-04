@@ -481,7 +481,7 @@
                     return (
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '12px', color: '#f59e0b' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
+                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
                         )}
                         {ra && (
                           <span
@@ -2033,7 +2033,7 @@
                         }}
                         className="bg-blue-500 text-white py-1.5 px-4 rounded-lg text-xs font-bold hover:bg-blue-600 flex items-center justify-center gap-1"
                       >📍 {t('places.openFavorite') || 'פתח מקום מועדף'}</button>
-                      {gR && <span style={{ fontSize: '11px', color: '#f59e0b' }}>⭐{gR.toFixed?.(1) || gR} ({loc.googleRatingCount || 0})</span>}
+                      {gR && <span style={{ fontSize: '11px', color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({loc.googleRatingCount || 0})</span>}
                       {ra && <span style={{ fontSize: '11px', color: '#8b5cf6' }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>}
                       {!ra && (
                         <span

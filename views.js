@@ -1322,6 +1322,11 @@
                                           setShowImageModal(true);
                                         }
                                       }
+                                      // Background refresh Google rating for favorites
+                                      if (isCustom) {
+                                        const cl = customLocations.find(loc => loc.name === stop.name);
+                                        if (cl) refreshGoogleRatingBg(cl);
+                                      }
                                     }}
                                   >
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
@@ -1424,7 +1429,7 @@
                                       const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
                                       return (
                                         <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          {gR && <span style={{ color: '#f59e0b' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
+                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
                                           <span
                                             onClick={ra ? (e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); } : undefined}
                                             style={{ color: ra ? '#8b5cf6' : '#9ca3af', cursor: ra ? 'pointer' : 'default' }}
@@ -1437,7 +1442,7 @@
                                   </a>
                                   {/* Google rating for non-custom stops */}
                                   {!isCustom && stop.rating && (
-                                    <div style={{ fontSize: '10px', color: '#f59e0b', padding: '0 8px' }}>
+                                    <div style={{ fontSize: '10px', color: '#b45309', padding: '0 8px' }}>
                                       ⭐{stop.rating} {stop.ratingCount ? `(${stop.ratingCount})` : ''}
                                     </div>
                                   )}
@@ -3245,6 +3250,37 @@
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`⚙️ ${t("general.searchSettings")}`}</span>
                   <span className="bg-cyan-100 px-1.5 py-0.5 rounded">{`👑 ${t("general.permissions")}`}</span>
                 </div>
+              </div>
+            </div>
+            
+            {/* Refresh Google Ratings */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">{`⭐ ${t("settings.refreshRatings") || 'רענן דירוגי גוגל'}`}</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  {t("settings.refreshRatingsDesc") || 'עדכון דירוגי גוגל לכל המקומות המועדפים בעיר הנוכחית'}
+                </p>
+                <button
+                  onClick={refreshAllGoogleRatings}
+                  disabled={!!ratingsRefreshProgress}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    ratingsRefreshProgress
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700'
+                  }`}
+                >
+                  {ratingsRefreshProgress ? (
+                    <>
+                      <span className="animate-spin">⭐</span>
+                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated') || 'עודכנו'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⭐</span>
+                      <span>{t("settings.refreshRatings") || 'רענן דירוגי גוגל'}</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
             

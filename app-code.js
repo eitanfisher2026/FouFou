@@ -1083,6 +1083,7 @@ const FouFouApp = () => {
     });
   };
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ratingsRefreshProgress, setRatingsRefreshProgress] = useState(null); // { current, total, updated }
   const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
   const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false, routes: false });
   const markLoaded = (key) => {
@@ -2934,6 +2935,144 @@ const FouFouApp = () => {
     } finally {
       setLoadingGoogleInfo(false);
     }
+  };
+
+  const refreshGoogleRatingBg = async (loc) => {
+    if (!loc || !GOOGLE_PLACES_API_KEY) return;
+    if (loc.googleRatingUpdated && Date.now() - loc.googleRatingUpdated < 7 * 24 * 3600 * 1000) return;
+    if (!loc.googlePlaceId && !loc.name) return;
+    
+    try {
+      const searchQuery = loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
+      const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.rating,places.userRatingCount,places.displayName,places.location'
+        },
+        body: JSON.stringify({
+          textQuery: searchQuery,
+          maxResultCount: 3,
+          locationBias: loc.lat && loc.lng ? { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } } : undefined
+        })
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (!data.places?.length) return;
+      
+      let best = data.places[0];
+      if (loc.lat && loc.lng && data.places.length > 1) {
+        best = data.places.reduce((a, b) => {
+          const da = a.location ? Math.abs(a.location.latitude - loc.lat) + Math.abs(a.location.longitude - loc.lng) : 999;
+          const db = b.location ? Math.abs(b.location.latitude - loc.lat) + Math.abs(b.location.longitude - loc.lng) : 999;
+          return da < db ? a : b;
+        });
+      }
+      
+      if (!best.rating) return;
+      const newRating = best.rating;
+      const newCount = best.userRatingCount || 0;
+      
+      if (loc.googleRating === newRating && loc.googleRatingCount === newCount) {
+        if (isFirebaseAvailable && database && loc.firebaseId) {
+          database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRatingUpdated`).set(Date.now());
+        }
+        return;
+      }
+      
+      if (isFirebaseAvailable && database && loc.firebaseId) {
+        const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() };
+        await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
+      }
+      
+      setCustomLocations(prev => prev.map(l => 
+        l.name === loc.name ? { ...l, googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() } : l
+      ));
+      
+    } catch (e) {
+    }
+  };
+
+  const refreshAllGoogleRatings = async () => {
+    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
+      showToast('Google API or Firebase not available', 'error');
+      return;
+    }
+    
+    const candidates = customLocations.filter(loc => 
+      loc.cityId === selectedCityId && (loc.googlePlaceId || loc.googlePlace || loc.fromGoogle || loc.address) && loc.lat && loc.lng
+    );
+    
+    if (candidates.length === 0) {
+      showToast(t('settings.noPlacesToRefresh') || 'אין מקומות לרענון', 'info');
+      return;
+    }
+    
+    setRatingsRefreshProgress({ current: 0, total: candidates.length, updated: 0 });
+    let updated = 0;
+    
+    for (let i = 0; i < candidates.length; i++) {
+      const loc = candidates[i];
+      setRatingsRefreshProgress({ current: i + 1, total: candidates.length, updated });
+      
+      try {
+        const searchQuery = loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
+        const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.rating,places.userRatingCount,places.displayName,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: searchQuery,
+            maxResultCount: 3,
+            locationBias: { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } }
+          })
+        });
+        
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        if (!data.places?.length) continue;
+        
+        let best = data.places[0];
+        if (data.places.length > 1) {
+          best = data.places.reduce((a, b) => {
+            const da = a.location ? Math.abs(a.location.latitude - loc.lat) + Math.abs(a.location.longitude - loc.lng) : 999;
+            const db = b.location ? Math.abs(b.location.latitude - loc.lat) + Math.abs(b.location.longitude - loc.lng) : 999;
+            return da < db ? a : b;
+          });
+        }
+        
+        if (!best.rating) continue;
+        const newRating = best.rating;
+        const newCount = best.userRatingCount || 0;
+        
+        if (loc.googleRating === newRating && loc.googleRatingCount === newCount) continue;
+        
+        if (loc.firebaseId) {
+          await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update({
+            googleRating: newRating,
+            googleRatingCount: newCount,
+            googleRatingUpdated: Date.now()
+          });
+        }
+        
+        setCustomLocations(prev => prev.map(l => 
+          l.name === loc.name ? { ...l, googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() } : l
+        ));
+        
+        updated++;
+        setRatingsRefreshProgress({ current: i + 1, total: candidates.length, updated });
+      } catch (e) {
+      }
+      
+      if (i < candidates.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+    
+    showToast(`⭐ ${t('settings.ratingsRefreshed') || 'דירוגי גוגל עודכנו'}: ${updated}/${candidates.length}`, 'success');
+    setRatingsRefreshProgress(null);
   };
 
   const cityCustomInterests = useMemo(() => {
@@ -7286,6 +7425,10 @@ const FouFouApp = () => {
                                           setShowImageModal(true);
                                         }
                                       }
+                                      if (isCustom) {
+                                        const cl = customLocations.find(loc => loc.name === stop.name);
+                                        if (cl) refreshGoogleRatingBg(cl);
+                                      }
                                     }}
                                   >
                                     <div className="font-bold text-[11px] flex items-center gap-1" style={{
@@ -7388,7 +7531,7 @@ const FouFouApp = () => {
                                       const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
                                       return (
                                         <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          {gR && <span style={{ color: '#f59e0b' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
+                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
                                           <span
                                             onClick={ra ? (e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); } : undefined}
                                             style={{ color: ra ? '#8b5cf6' : '#9ca3af', cursor: ra ? 'pointer' : 'default' }}
@@ -7401,7 +7544,7 @@ const FouFouApp = () => {
                                   </a>
                                   {/* Google rating for non-custom stops */}
                                   {!isCustom && stop.rating && (
-                                    <div style={{ fontSize: '10px', color: '#f59e0b', padding: '0 8px' }}>
+                                    <div style={{ fontSize: '10px', color: '#b45309', padding: '0 8px' }}>
                                       ⭐{stop.rating} {stop.ratingCount ? `(${stop.ratingCount})` : ''}
                                     </div>
                                   )}
@@ -9197,6 +9340,37 @@ const FouFouApp = () => {
               </div>
             </div>
             
+            {/* Refresh Google Ratings */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">{`⭐ ${t("settings.refreshRatings") || 'רענן דירוגי גוגל'}`}</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  {t("settings.refreshRatingsDesc") || 'עדכון דירוגי גוגל לכל המקומות המועדפים בעיר הנוכחית'}
+                </p>
+                <button
+                  onClick={refreshAllGoogleRatings}
+                  disabled={!!ratingsRefreshProgress}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    ratingsRefreshProgress
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700'
+                  }`}
+                >
+                  {ratingsRefreshProgress ? (
+                    <>
+                      <span className="animate-spin">⭐</span>
+                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated') || 'עודכנו'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⭐</span>
+                      <span>{t("settings.refreshRatings") || 'רענן דירוגי גוגל'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            
             {/* Debug Mode Toggle */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
@@ -10860,7 +11034,7 @@ const FouFouApp = () => {
                     return (
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '12px', color: '#f59e0b' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
+                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
                         )}
                         {ra && (
                           <span
@@ -12387,7 +12561,7 @@ const FouFouApp = () => {
                         }}
                         className="bg-blue-500 text-white py-1.5 px-4 rounded-lg text-xs font-bold hover:bg-blue-600 flex items-center justify-center gap-1"
                       >📍 {t('places.openFavorite') || 'פתח מקום מועדף'}</button>
-                      {gR && <span style={{ fontSize: '11px', color: '#f59e0b' }}>⭐{gR.toFixed?.(1) || gR} ({loc.googleRatingCount || 0})</span>}
+                      {gR && <span style={{ fontSize: '11px', color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({loc.googleRatingCount || 0})</span>}
                       {ra && <span style={{ fontSize: '11px', color: '#8b5cf6' }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>}
                       {!ra && (
                         <span

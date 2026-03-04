@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.7.63
+// FouFou app-data.js v3.7.65
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -807,6 +807,11 @@ settings: {
   radiusDescription: 'רדיוס חיפוש מסביב למיקום נוכחי (מטרים)',
   refreshData: 'רענון נתונים',
   refreshDescription: 'טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות',
+  refreshRatings: 'רענן דירוגי גוגל',
+  refreshRatingsDesc: 'עדכון דירוגי גוגל לכל המקומות המועדפים בעיר הנוכחית',
+  ratingsRefreshed: 'דירוגי גוגל עודכנו',
+  noPlacesToRefresh: 'אין מקומות עם נוכחות בגוגל לרענון',
+  updated: 'עודכנו',
   changePassword: 'שנה סיסמת מערכת:',
   setNewPassword: 'הגדר סיסמת מערכת:',
   systemProtected: '🔒 מערכת מוגנת בסיסמה',
@@ -1751,6 +1756,11 @@ settings: {
   radiusDescription: 'Search radius around current location (meters)',
   refreshData: 'Refresh data',
   refreshDescription: 'Reload all data from Firebase: interests, places, routes and settings',
+  refreshRatings: 'Refresh Google ratings',
+  refreshRatingsDesc: 'Update Google ratings for all favorite places in current city',
+  ratingsRefreshed: 'Google ratings updated',
+  noPlacesToRefresh: 'No places with Google presence to refresh',
+  updated: 'updated',
   changePassword: 'Change system password:',
   setNewPassword: 'Set system password:',
   systemProtected: '🔒 System password protected',
@@ -3069,7 +3079,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.7.63';
+window.BKK.VERSION = '3.7.65';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

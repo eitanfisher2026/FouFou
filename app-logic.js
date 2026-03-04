@@ -1152,6 +1152,7 @@
     });
   };
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [ratingsRefreshProgress, setRatingsRefreshProgress] = useState(null); // { current, total, updated }
   const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
   const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false, routes: false });
   const markLoaded = (key) => {
@@ -3245,6 +3246,164 @@
     } finally {
       setLoadingGoogleInfo(false);
     }
+  };
+
+  // Background Google rating refresh — called when user clicks link to Google Maps
+  const refreshGoogleRatingBg = async (loc) => {
+    if (!loc || !GOOGLE_PLACES_API_KEY) return;
+    // Skip if updated recently (7 days)
+    if (loc.googleRatingUpdated && Date.now() - loc.googleRatingUpdated < 7 * 24 * 3600 * 1000) return;
+    // Need googlePlaceId or name+coords
+    if (!loc.googlePlaceId && !loc.name) return;
+    
+    try {
+      const searchQuery = loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
+      const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.rating,places.userRatingCount,places.displayName,places.location'
+        },
+        body: JSON.stringify({
+          textQuery: searchQuery,
+          maxResultCount: 3,
+          locationBias: loc.lat && loc.lng ? { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } } : undefined
+        })
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (!data.places?.length) return;
+      
+      // Find best match by proximity
+      let best = data.places[0];
+      if (loc.lat && loc.lng && data.places.length > 1) {
+        best = data.places.reduce((a, b) => {
+          const da = a.location ? Math.abs(a.location.latitude - loc.lat) + Math.abs(a.location.longitude - loc.lng) : 999;
+          const db = b.location ? Math.abs(b.location.latitude - loc.lat) + Math.abs(b.location.longitude - loc.lng) : 999;
+          return da < db ? a : b;
+        });
+      }
+      
+      if (!best.rating) return;
+      const newRating = best.rating;
+      const newCount = best.userRatingCount || 0;
+      
+      // Skip if unchanged
+      if (loc.googleRating === newRating && loc.googleRatingCount === newCount) {
+        // Still update timestamp
+        if (isFirebaseAvailable && database && loc.firebaseId) {
+          database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRatingUpdated`).set(Date.now());
+        }
+        return;
+      }
+      
+      // Save to Firebase
+      if (isFirebaseAvailable && database && loc.firebaseId) {
+        const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() };
+        await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
+      }
+      
+      // Update local state
+      setCustomLocations(prev => prev.map(l => 
+        l.name === loc.name ? { ...l, googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() } : l
+      ));
+      
+      console.log(`[RATING-BG] Updated ${loc.name}: ⭐${newRating} (${newCount})`);
+    } catch (e) {
+      // Silent — background operation
+      console.log('[RATING-BG] Error:', e.message);
+    }
+  };
+
+  // Batch refresh Google ratings for all favorites with Google presence
+  const refreshAllGoogleRatings = async () => {
+    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
+      showToast('Google API or Firebase not available', 'error');
+      return;
+    }
+    
+    // Find all favorites with Google presence
+    const candidates = customLocations.filter(loc => 
+      loc.cityId === selectedCityId && (loc.googlePlaceId || loc.googlePlace || loc.fromGoogle || loc.address) && loc.lat && loc.lng
+    );
+    
+    if (candidates.length === 0) {
+      showToast(t('settings.noPlacesToRefresh') || 'אין מקומות לרענון', 'info');
+      return;
+    }
+    
+    setRatingsRefreshProgress({ current: 0, total: candidates.length, updated: 0 });
+    let updated = 0;
+    
+    for (let i = 0; i < candidates.length; i++) {
+      const loc = candidates[i];
+      setRatingsRefreshProgress({ current: i + 1, total: candidates.length, updated });
+      
+      try {
+        const searchQuery = loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
+        const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.rating,places.userRatingCount,places.displayName,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: searchQuery,
+            maxResultCount: 3,
+            locationBias: { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } }
+          })
+        });
+        
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        if (!data.places?.length) continue;
+        
+        // Find best match by proximity
+        let best = data.places[0];
+        if (data.places.length > 1) {
+          best = data.places.reduce((a, b) => {
+            const da = a.location ? Math.abs(a.location.latitude - loc.lat) + Math.abs(a.location.longitude - loc.lng) : 999;
+            const db = b.location ? Math.abs(b.location.latitude - loc.lat) + Math.abs(b.location.longitude - loc.lng) : 999;
+            return da < db ? a : b;
+          });
+        }
+        
+        if (!best.rating) continue;
+        const newRating = best.rating;
+        const newCount = best.userRatingCount || 0;
+        
+        // Skip if unchanged
+        if (loc.googleRating === newRating && loc.googleRatingCount === newCount) continue;
+        
+        // Save to Firebase
+        if (loc.firebaseId) {
+          await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update({
+            googleRating: newRating,
+            googleRatingCount: newCount,
+            googleRatingUpdated: Date.now()
+          });
+        }
+        
+        // Update local
+        setCustomLocations(prev => prev.map(l => 
+          l.name === loc.name ? { ...l, googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now() } : l
+        ));
+        
+        updated++;
+        setRatingsRefreshProgress({ current: i + 1, total: candidates.length, updated });
+        console.log(`[RATING-REFRESH] ${loc.name}: ⭐${newRating} (${newCount})`);
+      } catch (e) {
+        console.log(`[RATING-REFRESH] Error for ${loc.name}:`, e.message);
+      }
+      
+      // Rate limit: 200ms between requests
+      if (i < candidates.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+    
+    showToast(`⭐ ${t('settings.ratingsRefreshed') || 'דירוגי גוגל עודכנו'}: ${updated}/${candidates.length}`, 'success');
+    setRatingsRefreshProgress(null);
   };
 
   // Combine all interests: built-in + uncovered + custom (city-filtered)
