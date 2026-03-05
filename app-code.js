@@ -13000,29 +13000,7 @@ const FouFouApp = () => {
         </div>
       )}
 
-      {/* Floating Context Help Button */}
-      {!showHelp && !showMapModal && !showAddLocationDialog && !showEditLocationDialog && !showAddInterestDialog && (() => {
-        const ctxSection = getContextHelpSection();
-        const section = getHelpSection(ctxSection);
-        const hasContent = section?.content && section.content.trim().length > 0;
-        if (!hasContent && !isAdmin) return null;
-        return (
-          <button
-            onClick={() => showHelpFor(ctxSection)}
-            style={{
-              position: 'fixed', bottom: '70px', left: '16px', zIndex: 90,
-              width: '40px', height: '40px', borderRadius: '50%',
-              background: hasContent ? 'linear-gradient(135deg, #3b82f6, #6366f1)' : 'linear-gradient(135deg, #9ca3af, #6b7280)',
-              color: 'white', border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '18px', transition: 'transform 0.2s',
-              opacity: hasContent ? 0.9 : 0.5
-            }}
-            title={section?.title || t('general.help')}
-          >?</button>
-        );
-      })()}
+      {/* Floating Context Help Button — temporarily disabled for debugging */}
 
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}
