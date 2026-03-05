@@ -916,7 +916,7 @@ const FouFouApp = () => {
           if (mapFocusPlace && mapFocusPlace.lat) {
             cLat = mapFocusPlace.lat; cLng = mapFocusPlace.lng; defZoom = 16;
           } else if (mapFavRadius) {
-            cLat = mapFavRadius.lat; cLng = mapFavRadius.lng; defZoom = (mapFavRadius.meters || 500) <= 300 ? 16 : (mapFavRadius.meters || 500) <= 600 ? 15 : 14;
+            cLat = (mapFavRadius || {}).lat; cLng = (mapFavRadius || {}).lng; defZoom = ((mapFavRadius || {}).meters || 500) <= 300 ? 16 : ((mapFavRadius || {}).meters || 500) <= 600 ? 15 : 14;
           } else if (mapFavArea && coords[mapFavArea]) {
             cLat = coords[mapFavArea].lat; cLng = coords[mapFavArea].lng; defZoom = 14;
           } else {
@@ -965,11 +965,11 @@ const FouFouApp = () => {
           });
           
           if (mapFavRadius) {
-            L.circle([mapFavRadius.lat, mapFavRadius.lng], {
-              radius: mapFavRadius.meters || 500,
+            L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
+              radius: (mapFavRadius || {}).meters || 500,
               color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.08, weight: 3
             }).addTo(map);
-            L.circleMarker([mapFavRadius.lat, mapFavRadius.lng], {
+            L.circleMarker([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
               radius: window.BKK.mapConfig.gps.radius, color: '#2563eb', fillColor: window.BKK.mapConfig.gps.color, fillOpacity: 1, weight: window.BKK.mapConfig.gps.weight
             }).addTo(map);
           }
@@ -1005,7 +1005,7 @@ const FouFouApp = () => {
           try {
             if (!mapFocusPlace) {
               if (mapFavRadius) {
-                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters || 500 }).addTo(map);
+                const _c = L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], { radius: (mapFavRadius || {}).meters || 500 }).addTo(map);
                 map.fitBounds(_c.getBounds().pad(0.15));
                 map.removeLayer(_c);
               } else if (mapFavArea && coords[mapFavArea]) {
