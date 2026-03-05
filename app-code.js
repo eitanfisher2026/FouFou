@@ -8345,7 +8345,7 @@ const FouFouApp = () => {
                                     ) : (
                                       <span onClick={() => handleEditLocation(loc)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
                                     )}
-                                    {isUnlocked && <span title={loc.locked ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')} style={{ fontSize: '10px' }}>{loc.locked ? '✅' : '✏️'}</span>}
+                                    
                                     {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
                                     {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
                                     {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
@@ -8358,15 +8358,15 @@ const FouFouApp = () => {
                                     ))}
                                   </div>
                                 </div>
-                                {(() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
+                                {loc.status !== 'blacklist' && (() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
                                   <button onClick={() => openReviewDialog(loc)}
-                                    style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
-                                      ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
+                                    style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
+                                      ...(ra ? { color: '#7c3aed', background: '#ede9fe', border: '1px solid #c4b5fd' } : { color: '#7c3aed', background: '#f5f3ff', border: '1px solid #ddd6fe' })
                                     }}
-                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
-                                  >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                                    title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                  >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
                                 ); })()}
-                                {(loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
+                                {loc.status !== 'blacklist' && (loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
                                   <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                                     style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                     title={t("general.viewImage") || "תמונה"}>🖼️</button>
@@ -8407,19 +8407,19 @@ const FouFouApp = () => {
                                   ) : (
                                     <span onClick={() => handleEditLocation(loc)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
                                   )}
-                                  {isUnlocked && <span title={loc.locked ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')} style={{ fontSize: '10px' }}>{loc.locked ? '✅' : '✏️'}</span>}
+                                  
                                   {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
                                 </div>
                               </div>
-                              {(() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
+                              {loc.status !== 'blacklist' && (() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
                                 <button onClick={() => openReviewDialog(loc)}
-                                  style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
-                                    ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
+                                  style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
+                                    ...(ra ? { color: '#7c3aed', background: '#ede9fe', border: '1px solid #c4b5fd' } : { color: '#7c3aed', background: '#f5f3ff', border: '1px solid #ddd6fe' })
                                   }}
-                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
-                                >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                                  title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
                               ); })()}
-                              {(loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
+                              {loc.status !== 'blacklist' && (loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
                                 <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                                   style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                   title={t("general.viewImage") || "תמונה"}>🖼️</button>
@@ -11163,27 +11163,26 @@ const FouFouApp = () => {
                       )}
                     </div>
                   </div>
-                  {/* Ratings row — Google + FouFou */}
+                  {/* Ratings — prominent card */}
                   {(() => {
                     const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
                     return (
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', borderRadius: '10px', background: 'linear-gradient(135deg, #faf5ff, #f0fdf4)', border: '1px solid #e9d5ff', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
+                          <span style={{ fontSize: '13px', color: '#b45309', fontWeight: 'bold' }}>⭐ {gR.toFixed?.(1) || gR} <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#92400e' }}>({newLocation.googleRatingCount || 0})</span></span>
                         )}
-                        {ra && (
-                          <span
+                        {ra ? (
+                          <button
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '12px', color: '#8b5cf6', cursor: 'pointer' }}
-                          >🌟 FouFou {ra.avg.toFixed(1)} ({ra.count})</span>
-                        )}
-                        {!ra && (
-                          <span
+                            style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '3px 10px', cursor: 'pointer' }}
+                          >🌟 {ra.avg.toFixed(1)} ({ra.count})</button>
+                        ) : (
+                          <button
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                          >☆ {t('reviews.rate') || 'דרג'}</span>
+                            style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer' }}
+                          >🌟 {t('reviews.rate') || 'דרג'}</button>
                         )}
                       </div>
                     );

@@ -464,28 +464,26 @@
                       )}
                     </div>
                   </div>
-                  {/* Ratings row — Google + FouFou */}
+                  {/* Ratings — prominent card */}
                   {(() => {
                     const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
-                    // Always show — at minimum shows "rate" link
                     return (
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', borderRadius: '10px', background: 'linear-gradient(135deg, #faf5ff, #f0fdf4)', border: '1px solid #e9d5ff', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
+                          <span style={{ fontSize: '13px', color: '#b45309', fontWeight: 'bold' }}>⭐ {gR.toFixed?.(1) || gR} <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#92400e' }}>({newLocation.googleRatingCount || 0})</span></span>
                         )}
-                        {ra && (
-                          <span
+                        {ra ? (
+                          <button
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '12px', color: '#8b5cf6', cursor: 'pointer' }}
-                          >🌟 FouFou {ra.avg.toFixed(1)} ({ra.count})</span>
-                        )}
-                        {!ra && (
-                          <span
+                            style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '3px 10px', cursor: 'pointer' }}
+                          >🌟 {ra.avg.toFixed(1)} ({ra.count})</button>
+                        ) : (
+                          <button
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                          >☆ {t('reviews.rate') || 'דרג'}</span>
+                            style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer' }}
+                          >🌟 {t('reviews.rate') || 'דרג'}</button>
                         )}
                       </div>
                     );
