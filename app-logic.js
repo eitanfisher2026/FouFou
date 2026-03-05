@@ -1428,10 +1428,10 @@
     if (route && routeChoiceMade === 'manual') return 'manualMode';
     if (route && !routeChoiceMade) return 'route';
     if (route) return 'placesListing';
-    // Wizard steps
+    // Wizard steps — use specific section if exists, otherwise fall back to main
     if (currentView === 'form') {
-      if (wizardStep === 1) return 'wizard_interests';
-      if (wizardStep === 2) return 'wizard_area';
+      if (wizardStep === 1) { const s = getHelpSection('wizard_interests'); return (s?.content?.trim()) ? 'wizard_interests' : 'main'; }
+      if (wizardStep === 2) { const s = getHelpSection('wizard_area'); return (s?.content?.trim()) ? 'wizard_area' : 'main'; }
     }
     return 'main';
   };

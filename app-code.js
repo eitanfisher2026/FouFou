@@ -1339,8 +1339,8 @@ const FouFouApp = () => {
     if (route && !routeChoiceMade) return 'route';
     if (route) return 'placesListing';
     if (currentView === 'form') {
-      if (wizardStep === 1) return 'wizard_interests';
-      if (wizardStep === 2) return 'wizard_area';
+      if (wizardStep === 1) { const s = getHelpSection('wizard_interests'); return (s?.content?.trim()) ? 'wizard_interests' : 'main'; }
+      if (wizardStep === 2) { const s = getHelpSection('wizard_area'); return (s?.content?.trim()) ? 'wizard_area' : 'main'; }
     }
     return 'main';
   };
