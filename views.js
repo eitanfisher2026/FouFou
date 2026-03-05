@@ -2176,8 +2176,8 @@
                                     title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
                                   >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
                                 ); })()}
-                                {loc.status !== 'blacklist' && (loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
-                                  <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
+                                {loc.status !== 'blacklist' && loc.uploadedImage && (
+                                  <button onClick={() => { setModalImage(loc.uploadedImage); setModalImageCtx(null); setShowImageModal(true); }}
                                     style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                     title={t("general.viewImage") || "תמונה"}>🖼️</button>
                                 )}
@@ -2229,8 +2229,8 @@
                                   title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
                                 >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
                               ); })()}
-                              {loc.status !== 'blacklist' && (loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
-                                <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
+                              {loc.status !== 'blacklist' && loc.uploadedImage && (
+                                <button onClick={() => { setModalImage(loc.uploadedImage); setModalImageCtx(null); setShowImageModal(true); }}
                                   style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                   title={t("general.viewImage") || "תמונה"}>🖼️</button>
                               )}
