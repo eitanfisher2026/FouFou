@@ -1133,6 +1133,9 @@
 
   // Help System
   const [showHelp, setShowHelp] = useState(false);
+  const [helpEditing, setHelpEditing] = useState(false);
+  const [helpEditText, setHelpEditText] = useState('');
+  const [helpOverrides, setHelpOverrides] = useState({}); // { sectionId: { he: '...', en: '...' } }
   const [helpContext, setHelpContext] = useState('main');
   
   // Debug Mode System
@@ -1369,11 +1372,48 @@
     catch(e) { const blob = new Blob([text], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flagged-stops.txt'; a.click(); }
   };
   
-  // Help content - loaded from config.js
-  const helpContent = window.BKK.helpContent;
+  // Help content - merge Firebase overrides over i18n defaults
+  const helpContentBase = window.BKK.helpContent;
+  const getHelpSection = (sectionId) => {
+    const lang = window.BKK.i18n.currentLang || 'he';
+    const override = helpOverrides[sectionId]?.[lang];
+    const base = helpContentBase[sectionId];
+    if (override) return { title: base?.title || sectionId, content: override };
+    return base;
+  };
+
+  // Load help overrides from Firebase
+  React.useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    database.ref('helpContent').once('value').then(snap => {
+      const data = snap.val();
+      if (data) setHelpOverrides(data);
+    }).catch(() => {});
+  }, [isFirebaseAvailable]);
+
+  // Save help content to Firebase
+  const saveHelpContent = (sectionId, text) => {
+    if (!isFirebaseAvailable || !database) return;
+    const lang = window.BKK.i18n.currentLang || 'he';
+    database.ref(`helpContent/${sectionId}/${lang}`).set(text);
+    setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], [lang]: text } }));
+    showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
+  };
+
+  // Text-to-speech for help content
+  const speakHelp = (text) => {
+    if (!window.speechSynthesis) { showToast('TTS not supported', 'error'); return; }
+    window.speechSynthesis.cancel();
+    const clean = text.replace(/\*\*/g, '').replace(/[•#]/g, '').replace(/\n+/g, '. ');
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  };
 
   const showHelpFor = (context) => {
     setHelpContext(context);
+    setHelpEditing(false);
     setShowHelp(true);
   };
 

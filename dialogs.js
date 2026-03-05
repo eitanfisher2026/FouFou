@@ -481,47 +481,6 @@
                           {isRecording ? '⏹️' : '🎤'}
                         </button>
                       )}
-                      {(isAdmin || isEditor) && (
-                        <button
-                          onClick={async () => {
-                            const apiKey = window.BKK.ANTHROPIC_API_KEY;
-                            if (!apiKey) { showToast('הגדר ANTHROPIC_API_KEY ב-config.js', 'error'); return; }
-                            showToast('✨ כותב תיאור...', 'info');
-                            try {
-                              const context = [
-                                `Place: ${newLocation.name}`,
-                                newLocation.address ? `Address: ${newLocation.address}` : '',
-                                newLocation.interests?.length ? `Categories: ${newLocation.interests.join(', ')}` : '',
-                                newLocation.notes ? `Notes: ${newLocation.notes}` : '',
-                                newLocation.googleRating ? `Google: ${newLocation.googleRating} (${newLocation.googleRatingCount} reviews)` : '',
-                                `City: ${window.BKK.cityNameForSearch || 'Bangkok'}`
-                              ].filter(Boolean).join('\n');
-                              const resp = await fetch('https://api.anthropic.com/v1/messages', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-                                body: JSON.stringify({
-                                  model: 'claude-sonnet-4-20250514', max_tokens: 200,
-                                  messages: [{ role: 'user', content: `כתוב תיאור קצר בעברית (2-3 משפטים) למקום הזה. תמציתי ואינפורמטיבי. סגנון חברי. בלי אימוג'י.\n\n${context}${newLocation.description ? `\n\nתיאור קיים לשפר: ${newLocation.description}` : ''}` }]
-                                })
-                              });
-                              const data = await resp.json();
-                              const text = data.content?.[0]?.text || '';
-                              if (text) {
-                                setNewLocation(prev => ({...prev, description: text}));
-                                showToast('✨ תיאור נוצר!', 'success');
-                              }
-                            } catch (err) { showToast('AI: ' + err.message, 'error'); }
-                          }}
-                          style={{
-                            width: '32px', height: '32px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white',
-                            fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                          title="✨ AI — כתוב תיאור אוטומטי"
-                        >
-                          ✨
-                        </button>
-                      )}
                     </div>
                   </div>
                   {/* Ratings — prominent card */}
@@ -2067,44 +2026,6 @@
                         }}
                         style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                       >💾 {t('general.save') || 'שמור'}</button>
-                      <button
-                        onClick={async () => {
-                          const loc = modalImageCtx.location;
-                          const apiKey = window.BKK.ANTHROPIC_API_KEY;
-                          if (!apiKey) { showToast('הגדר ANTHROPIC_API_KEY ב-config.js', 'error'); return; }
-                          showToast('✨ ' + (t('places.aiGenerating') || 'כותב תיאור...'), 'info');
-                          try {
-                            const context = [
-                              `Place: ${loc.name}`,
-                              loc.address ? `Address: ${loc.address}` : '',
-                              loc.interests?.length ? `Categories: ${loc.interests.join(', ')}` : '',
-                              loc.notes ? `Notes: ${loc.notes}` : '',
-                              loc.googleRating ? `Google: ${loc.googleRating} (${loc.googleRatingCount} reviews)` : '',
-                              `City: ${window.BKK.cityNameForSearch || 'Bangkok'}`
-                            ].filter(Boolean).join('\n');
-                            const resp = await fetch('https://api.anthropic.com/v1/messages', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-                              body: JSON.stringify({
-                                model: 'claude-sonnet-4-20250514',
-                                max_tokens: 200,
-                                messages: [{ role: 'user', content: `כתוב תיאור קצר בעברית (2-3 משפטים) למקום הזה. תמציתי ואינפורמטיבי. סגנון חברי. בלי אימוג'י.\n\n${context}${modalImageCtx.description ? `\n\nתיאור קיים לשפר: ${modalImageCtx.description}` : ''}` }]
-                              })
-                            });
-                            const data = await resp.json();
-                            const text = data.content?.[0]?.text || '';
-                            if (text) {
-                              setModalImageCtx(prev => ({...prev, description: text}));
-                              showToast('✨ ' + (t('places.aiDone') || 'תיאור נוצר!'), 'success');
-                            } else {
-                              showToast('AI: no response', 'error');
-                            }
-                          } catch (err) {
-                            showToast('AI: ' + err.message, 'error');
-                          }
-                        }}
-                        style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                      >✨ AI</button>
                     </div>
                   </div>
                 ) : (
@@ -2144,45 +2065,93 @@
       )}
 
       {/* Help Dialog */}
-      {showHelp && (
+      {showHelp && (() => {
+        const section = getHelpSection(helpContext);
+        const content = section?.content || '';
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <span>ℹ️</span>
-                {helpContent[helpContext]?.title || t('general.help')}
+                {section?.title || t('general.help')}
               </h3>
-              <button
-                onClick={() => setShowHelp(false)}
-                className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
-              >✕</button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => speakHelp(content)}
+                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                  title={t('general.listen') || 'הקשב'}
+                >🔊</button>
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      if (!helpEditing) {
+                        setHelpEditText(content);
+                        setHelpEditing(true);
+                      } else {
+                        setHelpEditing(false);
+                      }
+                    }}
+                    className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                    title={helpEditing ? (t('general.cancel') || 'ביטול') : (t('general.edit') || 'ערוך')}
+                  >{helpEditing ? '👁️' : '✏️'}</button>
+                )}
+                <button
+                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                  className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+                >✕</button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left' }}>
-              {helpContent[helpContext]?.content.split('\n').map((line, i) => {
-                // Render inline **bold** anywhere in the line
-                const renderBold = (text) => {
-                  const parts = text.split(/\*\*(.*?)\*\*/g);
-                  return parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part);
-                };
-                if (line.startsWith('**') && line.endsWith('**')) {
-                  return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                } else if (line.startsWith('• ')) {
-                  return <p key={i} style={{ marginInlineStart: '12px' }} className="mb-0.5">• {renderBold(line.substring(2))}</p>;
-                } else if (line.trim() === '') {
-                  return <div key={i} className="h-2" />;
-                }
-                return <p key={i} className="mb-1">{renderBold(line)}</p>;
-              })}
+              {helpEditing ? (
+                <textarea
+                  value={helpEditText}
+                  onChange={(e) => setHelpEditText(e.target.value)}
+                  style={{ width: '100%', minHeight: '300px', padding: '8px', fontSize: '13px', border: '2px solid #818cf8', borderRadius: '8px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'monospace', lineHeight: '1.6' }}
+                  placeholder="**כותרת**\nטקסט רגיל\n• נקודה\n\n**כותרת נוספת**"
+                />
+              ) : (
+                content.split('\n').map((line, i) => {
+                  const renderBold = (text) => {
+                    const parts = text.split(/\*\*(.*?)\*\*/g);
+                    return parts.map((part, j) => j % 2 === 1 ? <strong key={j}>{part}</strong> : part);
+                  };
+                  if (line.startsWith('**') && line.endsWith('**')) {
+                    return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
+                  } else if (/^\d+\.\s/.test(line)) {
+                    return <p key={i} style={{ marginInlineStart: '8px' }} className="mb-0.5">{renderBold(line)}</p>;
+                  } else if (line.startsWith('• ')) {
+                    return <p key={i} style={{ marginInlineStart: '12px' }} className="mb-0.5">• {renderBold(line.substring(2))}</p>;
+                  } else if (line.trim() === '') {
+                    return <div key={i} className="h-2" />;
+                  }
+                  return <p key={i} className="mb-1">{renderBold(line)}</p>;
+                })
+              )}
             </div>
-            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => setShowHelp(false)}
-                className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
-              >{t('general.close')} ✓</button>
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex gap-2">
+              {helpEditing ? (
+                <>
+                  <button
+                    onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
+                    className="flex-1 py-2 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 text-sm"
+                  >💾 {t('general.save') || 'שמור'}</button>
+                  <button
+                    onClick={() => setHelpEditing(false)}
+                    className="py-2 px-4 rounded-lg bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 text-sm"
+                  >{t('general.cancel') || 'ביטול'}</button>
+                </>
+              ) : (
+                <button
+                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                  className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
+                >{t('general.close')} ✓</button>
+              )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Confirm Dialog */}
       {showConfirmDialog && (
