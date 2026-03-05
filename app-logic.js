@@ -1428,6 +1428,11 @@
     if (route && routeChoiceMade === 'manual') return 'manualMode';
     if (route && !routeChoiceMade) return 'route';
     if (route) return 'placesListing';
+    // Wizard steps
+    if (currentView === 'form') {
+      if (wizardStep === 1) return 'wizard_interests';
+      if (wizardStep === 2) return 'wizard_area';
+    }
     return 'main';
   };
 
@@ -1466,7 +1471,7 @@
     const utterance = new SpeechSynthesisUtterance(clean);
     const lang = window.BKK.i18n.currentLang === 'en' ? 'en' : 'he';
     utterance.lang = lang === 'en' ? 'en-US' : 'he-IL';
-    utterance.rate = 0.9;
+    utterance.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
     // Apply selected voice
     if (selectedVoice) {
       const voice = ttsVoices.find(v => v.name === selectedVoice);

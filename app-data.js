@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.7.82
+// FouFou app-data.js v3.7.83
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -813,6 +813,15 @@ settings: {
   radiusDescription: 'רדיוס חיפוש מסביב למיקום נוכחי (מטרים)',
   refreshData: 'רענון נתונים',
   refreshDescription: 'טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות',
+  voiceSelect: 'קול השמעה',
+  defaultVoice: 'ברירת מחדל',
+  otherVoices: 'קולות נוספים',
+  noVoices: 'לא נמצאו קולות במערכת',
+  speechRate: 'קצב דיבור',
+  voiceHint: 'בחר קול ושמע דוגמה. ☁️ = קול ענן (איכות גבוהה יותר)',
+  translating: 'מתרגם לאנגלית...',
+  translated: 'תורגם ונשמר באנגלית!',
+  saveAndTranslate: 'שמור ותרגם לאנגלית',
   refreshRatings: 'רענן דירוגי גוגל',
   refreshRatingsDesc: 'עדכון דירוגי גוגל לכל המקומות המועדפים בעיר הנוכחית',
   ratingsRefreshed: 'דירוגי גוגל עודכנו',
@@ -1783,6 +1792,15 @@ settings: {
   radiusDescription: 'Search radius around current location (meters)',
   refreshData: 'Refresh data',
   refreshDescription: 'Reload all data from Firebase: interests, places, routes and settings',
+  voiceSelect: 'Voice',
+  defaultVoice: 'Default',
+  otherVoices: 'Other voices',
+  noVoices: 'No voices found on this device',
+  speechRate: 'Speech rate',
+  voiceHint: 'Choose a voice and hear a preview. ☁️ = cloud voice (higher quality)',
+  translating: 'Translating to English...',
+  translated: 'Translated and saved in English!',
+  saveAndTranslate: 'Save and translate to English',
   refreshRatings: 'Refresh Google ratings',
   refreshRatingsDesc: 'Update Google ratings for all favorite places in current city',
   ratingsRefreshed: 'Google ratings updated',
@@ -3121,7 +3139,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.7.82';
+window.BKK.VERSION = '3.7.83';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
