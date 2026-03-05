@@ -3994,7 +3994,7 @@
                     return true;
                   }).length;
                   const areaLabel = mapFavArea ? tLabel((window.BKK.areaOptions || []).find(a => a.id === mapFavArea)) : '';
-                  const radiusLabel = mapFavRadius ? `📍 ${mapFavRadius.meters}m` : '';
+                  const radiusLabel = mapFavRadius?.meters ? `📍 ${mapFavRadius.meters}m` : '';
                   return (
                     <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'normal', whiteSpace: 'nowrap' }}>
                       {activeCount} {t('nav.favorites')}{areaLabel ? ` · ${areaLabel}` : ''}{radiusLabel ? ` · ${radiusLabel}` : ''}{mapFavFilter.size > 0 ? ` · ${mapFavFilter.size} ${t('general.interests') || 'תחומים'}` : ''}

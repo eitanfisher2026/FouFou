@@ -916,7 +916,7 @@ const FouFouApp = () => {
           if (mapFocusPlace && mapFocusPlace.lat) {
             cLat = mapFocusPlace.lat; cLng = mapFocusPlace.lng; defZoom = 16;
           } else if (mapFavRadius) {
-            cLat = mapFavRadius.lat; cLng = mapFavRadius.lng; defZoom = mapFavRadius.meters <= 300 ? 16 : mapFavRadius.meters <= 600 ? 15 : 14;
+            cLat = mapFavRadius.lat; cLng = mapFavRadius.lng; defZoom = (mapFavRadius.meters || 500) <= 300 ? 16 : (mapFavRadius.meters || 500) <= 600 ? 15 : 14;
           } else if (mapFavArea && coords[mapFavArea]) {
             cLat = coords[mapFavArea].lat; cLng = coords[mapFavArea].lng; defZoom = 14;
           } else {
@@ -966,7 +966,7 @@ const FouFouApp = () => {
           
           if (mapFavRadius) {
             L.circle([mapFavRadius.lat, mapFavRadius.lng], {
-              radius: mapFavRadius.meters,
+              radius: mapFavRadius.meters || 500,
               color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.08, weight: 3
             }).addTo(map);
             L.circleMarker([mapFavRadius.lat, mapFavRadius.lng], {
@@ -1005,7 +1005,7 @@ const FouFouApp = () => {
           try {
             if (!mapFocusPlace) {
               if (mapFavRadius) {
-                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).addTo(map);
+                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters || 500 }).addTo(map);
                 map.fitBounds(_c.getBounds().pad(0.15));
                 map.removeLayer(_c);
               } else if (mapFavArea && coords[mapFavArea]) {
@@ -1338,10 +1338,6 @@ const FouFouApp = () => {
     if (route && routeChoiceMade === 'manual') return 'manualMode';
     if (route && !routeChoiceMade) return 'route';
     if (route) return 'placesListing';
-    if (currentView === 'form') {
-      if (wizardStep === 1) { const s = getHelpSection('wizard_interests'); return (s?.content?.trim()) ? 'wizard_interests' : 'main'; }
-      if (wizardStep === 2) { const s = getHelpSection('wizard_area'); return (s?.content?.trim()) ? 'wizard_area' : 'main'; }
-    }
     return 'main';
   };
 
@@ -10271,7 +10267,7 @@ const FouFouApp = () => {
                     return true;
                   }).length;
                   const areaLabel = mapFavArea ? tLabel((window.BKK.areaOptions || []).find(a => a.id === mapFavArea)) : '';
-                  const radiusLabel = mapFavRadius ? `📍 ${mapFavRadius.meters}m` : '';
+                  const radiusLabel = mapFavRadius?.meters ? `📍 ${mapFavRadius.meters}m` : '';
                   return (
                     <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'normal', whiteSpace: 'nowrap' }}>
                       {activeCount} {t('nav.favorites')}{areaLabel ? ` · ${areaLabel}` : ''}{radiusLabel ? ` · ${radiusLabel}` : ''}{mapFavFilter.size > 0 ? ` · ${mapFavFilter.size} ${t('general.interests') || 'תחומים'}` : ''}
