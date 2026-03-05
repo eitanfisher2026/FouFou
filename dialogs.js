@@ -66,24 +66,6 @@
               {/* Header - Compact */}
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {showEditLocationDialog && editNavList && editNavList.length > 1 && (() => {
-                    const idx = editNavList.findIndex(l => l.name === editingLocation?.name);
-                    return (
-                      <>
-                        <button
-                          onClick={() => { const prev = editNavList[(idx - 1 + editNavList.length) % editNavList.length]; handleEditLocation(prev, editNavList); }}
-                          style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t('general.previous') || 'הקודם'}
-                        >◀</button>
-                        <span style={{ fontSize: '10px', opacity: 0.7 }}>{idx >= 0 ? idx + 1 : '?'}/{editNavList.length}</span>
-                        <button
-                          onClick={() => { const next = editNavList[(idx + 1) % editNavList.length]; handleEditLocation(next, editNavList); }}
-                          style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t('general.next') || 'הבא'}
-                        >▶</button>
-                      </>
-                    );
-                  })()}
                   <h3 className="text-base font-bold">
                     {showEditLocationDialog ? t('places.editPlace') : t('places.addPlace')}
                   </h3>
@@ -100,7 +82,6 @@
                     setShowAddLocationDialog(false);
                     setShowEditLocationDialog(false);
                     setEditingLocation(null);
-                    setEditNavList(null);
                     setNewLocation({ 
                       name: '', description: '', notes: '', area: formData.area, interests: [], 
                       lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: []
@@ -483,26 +464,28 @@
                       )}
                     </div>
                   </div>
-                  {/* Ratings — prominent card */}
+                  {/* Ratings row — Google + FouFou */}
                   {(() => {
                     const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
+                    // Always show — at minimum shows "rate" link
                     return (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', borderRadius: '10px', background: 'linear-gradient(135deg, #faf5ff, #f0fdf4)', border: '1px solid #e9d5ff', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '13px', color: '#b45309', fontWeight: 'bold' }}>⭐ {gR.toFixed?.(1) || gR} <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#92400e' }}>({newLocation.googleRatingCount || 0})</span></span>
+                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
                         )}
-                        {ra ? (
-                          <button
+                        {ra && (
+                          <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '3px 10px', cursor: 'pointer' }}
-                          >🌟 {ra.avg.toFixed(1)} ({ra.count})</button>
-                        ) : (
-                          <button
+                            style={{ fontSize: '12px', color: '#8b5cf6', cursor: 'pointer' }}
+                          >🌟 FouFou {ra.avg.toFixed(1)} ({ra.count})</span>
+                        )}
+                        {!ra && (
+                          <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer' }}
-                          >🌟 {t('reviews.rate') || 'דרג'}</button>
+                            style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
+                          >☆ {t('reviews.rate') || 'דרג'}</span>
                         )}
                       </div>
                     );
@@ -2067,55 +2050,34 @@
       {/* Help Dialog */}
       {showHelp && (() => {
         const section = getHelpSection(helpContext);
-        const content = section?.content || '';
+        const content = (section && section.content) || '';
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <span>ℹ️</span>
-                {section?.title || t('general.help')}
+                {(section && section.title) || t('general.help')}
               </h3>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => speakHelp(content)}
+                <button onClick={() => speakHelp(content)}
                   className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                  title={isSpeaking ? (isPaused ? (t('general.resume') || 'המשך') : (t('general.pause') || 'עצור')) : (t('general.listen') || 'הקשב')}
                 >{isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}</button>
-                {isSpeaking && (
-                  <button
-                    onClick={stopSpeaking}
-                    className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                    title={t('general.stop') || 'עצור'}
-                  >⏹️</button>
-                )}
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      if (!helpEditing) {
-                        setHelpEditText(content);
-                        setHelpEditing(true);
-                      } else {
-                        setHelpEditing(false);
-                      }
-                    }}
-                    className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                    title={helpEditing ? (t('general.cancel') || 'ביטול') : (t('general.edit') || 'ערוך')}
-                  >{helpEditing ? '👁️' : '✏️'}</button>
-                )}
-                <button
-                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                {isSpeaking && <button onClick={stopSpeaking}
+                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                >⏹️</button>}
+                {isAdmin && <button onClick={() => { if (!helpEditing) { setHelpEditText(content); setHelpEditing(true); } else { setHelpEditing(false); } }}
+                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                >{helpEditing ? '👁️' : '✏️'}</button>}
+                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >✕</button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left' }}>
               {helpEditing ? (
-                <textarea
-                  value={helpEditText}
-                  onChange={(e) => setHelpEditText(e.target.value)}
+                <textarea value={helpEditText} onChange={(e) => setHelpEditText(e.target.value)}
                   style={{ width: '100%', minHeight: '300px', padding: '8px', fontSize: '13px', border: '2px solid #818cf8', borderRadius: '8px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'monospace', lineHeight: '1.6' }}
-                  placeholder="**כותרת**\nטקסט רגיל\n• נקודה\n\n**כותרת נוספת**"
                 />
               ) : (
                 content.split('\n').map((line, i) => {
@@ -2125,8 +2087,6 @@
                   };
                   if (line.startsWith('**') && line.endsWith('**')) {
                     return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                  } else if (/^\d+\.\s/.test(line)) {
-                    return <p key={i} style={{ marginInlineStart: '8px' }} className="mb-0.5">{renderBold(line)}</p>;
                   } else if (line.startsWith('• ')) {
                     return <p key={i} style={{ marginInlineStart: '12px' }} className="mb-0.5">• {renderBold(line.substring(2))}</p>;
                   } else if (line.trim() === '') {
@@ -2139,23 +2099,18 @@
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex gap-2">
               {helpEditing ? (
                 <>
-                  <button
-                    onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
                     className="flex-1 py-2 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 text-sm"
                   >💾 {t('general.save') || 'שמור'}</button>
-                  <button
-                    onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
                     className="py-2 px-3 rounded-lg bg-indigo-500 text-white font-bold hover:bg-indigo-600 text-sm"
-                    title={t('settings.saveAndTranslate') || 'שמור ותרגם לאנגלית'}
                   >💾🌐 EN</button>
-                  <button
-                    onClick={() => setHelpEditing(false)}
-                    className="py-2 px-3 rounded-lg bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 text-sm"
+                  <button onClick={() => setHelpEditing(false)}
+                    className="py-2 px-3 rounded-lg bg-gray-300 text-gray-700 font-bold text-sm"
                   >{t('general.cancel') || 'ביטול'}</button>
                 </>
               ) : (
-                <button
-                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
                   className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
                 >{t('general.close')} ✓</button>
               )}
@@ -2190,8 +2145,6 @@
           </div>
         </div>
       )}
-
-      {/* Floating Context Help Button — temporarily disabled for debugging */}
 
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}

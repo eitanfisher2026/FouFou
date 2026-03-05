@@ -556,7 +556,6 @@
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
-  const [editNavList, setEditNavList] = useState(null); // Array of locations for prev/next navigation
   const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
   const [reviewAverages, setReviewAverages] = useState({}); // { placeKey: { avg: 4.2, count: 3 } }
   const [userNamesMap, setUserNamesMap] = useState({}); // { uid: displayName }
@@ -969,7 +968,7 @@
           if (mapFocusPlace && mapFocusPlace.lat) {
             cLat = mapFocusPlace.lat; cLng = mapFocusPlace.lng; defZoom = 16;
           } else if (mapFavRadius) {
-            cLat = (mapFavRadius || {}).lat; cLng = (mapFavRadius || {}).lng; defZoom = ((mapFavRadius || {}).meters || 500) <= 300 ? 16 : ((mapFavRadius || {}).meters || 500) <= 600 ? 15 : 14;
+            cLat = mapFavRadius.lat; cLng = mapFavRadius.lng; defZoom = mapFavRadius.meters <= 300 ? 16 : mapFavRadius.meters <= 600 ? 15 : 14;
           } else if (mapFavArea && coords[mapFavArea]) {
             cLat = coords[mapFavArea].lat; cLng = coords[mapFavArea].lng; defZoom = 14;
           } else {
@@ -1023,11 +1022,11 @@
           
           // Radius circle — bold ring matching selected-area style
           if (mapFavRadius) {
-            L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
-              radius: (mapFavRadius || {}).meters || 500,
+            L.circle([mapFavRadius.lat, mapFavRadius.lng], {
+              radius: mapFavRadius.meters,
               color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.08, weight: 3
             }).addTo(map);
-            L.circleMarker([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
+            L.circleMarker([mapFavRadius.lat, mapFavRadius.lng], {
               radius: window.BKK.mapConfig.gps.radius, color: '#2563eb', fillColor: window.BKK.mapConfig.gps.color, fillOpacity: 1, weight: window.BKK.mapConfig.gps.weight
             }).addTo(map);
           }
@@ -1066,7 +1065,7 @@
           try {
             if (!mapFocusPlace) {
               if (mapFavRadius) {
-                const _c = L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], { radius: (mapFavRadius || {}).meters || 500 }).addTo(map);
+                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).addTo(map);
                 map.fitBounds(_c.getBounds().pad(0.15));
                 map.removeLayer(_c);
               } else if (mapFavArea && coords[mapFavArea]) {
@@ -1135,7 +1134,7 @@
   const [showHelp, setShowHelp] = useState(false);
   const [helpEditing, setHelpEditing] = useState(false);
   const [helpEditText, setHelpEditText] = useState('');
-  const [helpOverrides, setHelpOverrides] = useState({}); // { sectionId: { he: '...', en: '...' } }
+  const [helpOverrides, setHelpOverrides] = useState({});
   const [helpContext, setHelpContext] = useState('main');
   
   // Debug Mode System
@@ -1376,13 +1375,12 @@
   const helpContentBase = window.BKK.helpContent;
   const getHelpSection = (sectionId) => {
     const lang = window.BKK.i18n.currentLang || 'he';
-    const override = helpOverrides[sectionId]?.[lang];
+    const override = helpOverrides[sectionId] && helpOverrides[sectionId][lang];
     const base = helpContentBase[sectionId];
-    if (override) return { title: base?.title || sectionId, content: override };
+    if (override) return { title: (base && base.title) || sectionId, content: override };
     return base;
   };
 
-  // Load help overrides from Firebase
   React.useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     database.ref('helpContent').once('value').then(snap => {
@@ -1391,7 +1389,6 @@
     }).catch(() => {});
   }, [isFirebaseAvailable]);
 
-  // Save help content to Firebase
   const saveHelpContent = (sectionId, text) => {
     if (!isFirebaseAvailable || !database) return;
     const lang = window.BKK.i18n.currentLang || 'he';
@@ -1400,90 +1397,46 @@
     showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
 
-  // Translate help content Hebrew → English using Google Translate
   const translateHelpToEnglish = async (sectionId, hebrewText) => {
     if (!isFirebaseAvailable || !database) return;
-    showToast('🌐 ' + (t('settings.translating') || 'מתרגם לאנגלית...'), 'info');
+    showToast('🌐 מתרגם...', 'info');
     try {
-      const resp = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=${encodeURIComponent(hebrewText)}`);
+      const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(hebrewText));
       const data = await resp.json();
-      const translated = data[0].map(s => s[0]).join('');
-      // Save English version to Firebase
+      const translated = data[0].map(function(s) { return s[0]; }).join('');
       database.ref(`helpContent/${sectionId}/en`).set(translated);
       setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], en: translated } }));
-      showToast('🌐 ' + (t('settings.translated') || 'תורגם ונשמר באנגלית!'), 'success');
-    } catch (err) {
-      showToast('Translation error: ' + err.message, 'error');
-    }
+      showToast('🌐 תורגם!', 'success');
+    } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
-  // Context-sensitive help mapping: currentView/state → help section
-  const getContextHelpSection = () => {
-    if (showMapModal) return 'favoritesMap';
-    if (activeTrail) return 'activeTrail';
-    if (currentView === 'myPlaces') return 'myPlaces';
-    if (currentView === 'myInterests') return 'myInterests';
-    if (currentView === 'saved') return 'saved';
-    if (currentView === 'settings') return 'settings';
-    if (route && routeChoiceMade === 'manual') return 'manualMode';
-    if (route && !routeChoiceMade) return 'route';
-    if (route) return 'placesListing';
-    // Wizard — show main help
-    return 'main';
-  };
-
-  // Text-to-speech
+  // TTS
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [ttsVoices, setTtsVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(localStorage.getItem('foufou_tts_voice') || '');
-
-  // Load available voices
   React.useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      setTtsVoices(voices);
-    };
-    loadVoices();
-    window.speechSynthesis?.addEventListener?.('voiceschanged', loadVoices);
-    return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', loadVoices);
+    const load = () => setTtsVoices(window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+    load();
+    if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = load;
   }, []);
 
   const speakHelp = (text) => {
-    if (!window.speechSynthesis) { showToast('TTS not supported', 'error'); return; }
-    // If speaking, toggle pause/resume
-    if (isSpeaking && !isPaused) {
-      window.speechSynthesis.pause();
-      setIsPaused(true);
-      return;
-    }
-    if (isPaused) {
-      window.speechSynthesis.resume();
-      setIsPaused(false);
-      return;
-    }
+    if (!window.speechSynthesis) return;
+    if (isSpeaking && !isPaused) { window.speechSynthesis.pause(); setIsPaused(true); return; }
+    if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
     window.speechSynthesis.cancel();
     const clean = text.replace(/\*\*/g, '').replace(/[•#]/g, '').replace(/\n+/g, '. ');
-    const utterance = new SpeechSynthesisUtterance(clean);
-    const lang = window.BKK.i18n.currentLang === 'en' ? 'en' : 'he';
-    utterance.lang = lang === 'en' ? 'en-US' : 'he-IL';
-    utterance.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
-    // Apply selected voice
-    if (selectedVoice) {
-      const voice = ttsVoices.find(v => v.name === selectedVoice);
-      if (voice) utterance.voice = voice;
-    }
-    utterance.onstart = () => { setIsSpeaking(true); setIsPaused(false); };
-    utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
-    utterance.onerror = () => { setIsSpeaking(false); setIsPaused(false); };
-    window.speechSynthesis.speak(utterance);
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
+    u.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
+    if (selectedVoice) { const v = ttsVoices.find(function(v) { return v.name === selectedVoice; }); if (v) u.voice = v; }
+    u.onstart = () => { setIsSpeaking(true); setIsPaused(false); };
+    u.onend = () => { setIsSpeaking(false); setIsPaused(false); };
+    u.onerror = () => { setIsSpeaking(false); setIsPaused(false); };
+    window.speechSynthesis.speak(u);
   };
-
-  const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
-    setIsSpeaking(false);
-    setIsPaused(false);
-  };
+  const stopSpeaking = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); setIsSpeaking(false); setIsPaused(false); };
 
   const showHelpFor = (context) => {
     setHelpContext(context);
@@ -5868,9 +5821,8 @@
     setReviewDialog(null);
   };
 
-  const handleEditLocation = (loc, navList) => {
+  const handleEditLocation = (loc) => {
     setEditingLocation(loc);
-    if (navList !== undefined) setEditNavList(navList);
     const editFormData = {
       name: loc.name || '',
       description: loc.description || '',

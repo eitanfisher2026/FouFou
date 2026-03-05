@@ -539,7 +539,6 @@ const FouFouApp = () => {
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
-  const [editNavList, setEditNavList] = useState(null); // Array of locations for prev/next navigation
   const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
   const [reviewAverages, setReviewAverages] = useState({}); // { placeKey: { avg: 4.2, count: 3 } }
   const [userNamesMap, setUserNamesMap] = useState({}); // { uid: displayName }
@@ -916,7 +915,7 @@ const FouFouApp = () => {
           if (mapFocusPlace && mapFocusPlace.lat) {
             cLat = mapFocusPlace.lat; cLng = mapFocusPlace.lng; defZoom = 16;
           } else if (mapFavRadius) {
-            cLat = (mapFavRadius || {}).lat; cLng = (mapFavRadius || {}).lng; defZoom = ((mapFavRadius || {}).meters || 500) <= 300 ? 16 : ((mapFavRadius || {}).meters || 500) <= 600 ? 15 : 14;
+            cLat = mapFavRadius.lat; cLng = mapFavRadius.lng; defZoom = mapFavRadius.meters <= 300 ? 16 : mapFavRadius.meters <= 600 ? 15 : 14;
           } else if (mapFavArea && coords[mapFavArea]) {
             cLat = coords[mapFavArea].lat; cLng = coords[mapFavArea].lng; defZoom = 14;
           } else {
@@ -965,11 +964,11 @@ const FouFouApp = () => {
           });
           
           if (mapFavRadius) {
-            L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
-              radius: (mapFavRadius || {}).meters || 500,
+            L.circle([mapFavRadius.lat, mapFavRadius.lng], {
+              radius: mapFavRadius.meters,
               color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.08, weight: 3
             }).addTo(map);
-            L.circleMarker([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], {
+            L.circleMarker([mapFavRadius.lat, mapFavRadius.lng], {
               radius: window.BKK.mapConfig.gps.radius, color: '#2563eb', fillColor: window.BKK.mapConfig.gps.color, fillOpacity: 1, weight: window.BKK.mapConfig.gps.weight
             }).addTo(map);
           }
@@ -1005,7 +1004,7 @@ const FouFouApp = () => {
           try {
             if (!mapFocusPlace) {
               if (mapFavRadius) {
-                const _c = L.circle([(mapFavRadius || {}).lat, (mapFavRadius || {}).lng], { radius: (mapFavRadius || {}).meters || 500 }).addTo(map);
+                const _c = L.circle([mapFavRadius.lat, mapFavRadius.lng], { radius: mapFavRadius.meters }).addTo(map);
                 map.fitBounds(_c.getBounds().pad(0.15));
                 map.removeLayer(_c);
               } else if (mapFavArea && coords[mapFavArea]) {
@@ -1069,7 +1068,7 @@ const FouFouApp = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [helpEditing, setHelpEditing] = useState(false);
   const [helpEditText, setHelpEditText] = useState('');
-  const [helpOverrides, setHelpOverrides] = useState({}); // { sectionId: { he: '...', en: '...' } }
+  const [helpOverrides, setHelpOverrides] = useState({});
   const [helpContext, setHelpContext] = useState('main');
   
   const [debugMode, setDebugMode] = useState(() => {
@@ -1291,9 +1290,9 @@ const FouFouApp = () => {
   const helpContentBase = window.BKK.helpContent;
   const getHelpSection = (sectionId) => {
     const lang = window.BKK.i18n.currentLang || 'he';
-    const override = helpOverrides[sectionId]?.[lang];
+    const override = helpOverrides[sectionId] && helpOverrides[sectionId][lang];
     const base = helpContentBase[sectionId];
-    if (override) return { title: base?.title || sectionId, content: override };
+    if (override) return { title: (base && base.title) || sectionId, content: override };
     return base;
   };
 
@@ -1315,80 +1314,43 @@ const FouFouApp = () => {
 
   const translateHelpToEnglish = async (sectionId, hebrewText) => {
     if (!isFirebaseAvailable || !database) return;
-    showToast('🌐 ' + (t('settings.translating') || 'מתרגם לאנגלית...'), 'info');
+    showToast('🌐 מתרגם...', 'info');
     try {
-      const resp = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=${encodeURIComponent(hebrewText)}`);
+      const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(hebrewText));
       const data = await resp.json();
-      const translated = data[0].map(s => s[0]).join('');
+      const translated = data[0].map(function(s) { return s[0]; }).join('');
       database.ref(`helpContent/${sectionId}/en`).set(translated);
       setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], en: translated } }));
-      showToast('🌐 ' + (t('settings.translated') || 'תורגם ונשמר באנגלית!'), 'success');
-    } catch (err) {
-      showToast('Translation error: ' + err.message, 'error');
-    }
-  };
-
-  const getContextHelpSection = () => {
-    if (showMapModal) return 'favoritesMap';
-    if (activeTrail) return 'activeTrail';
-    if (currentView === 'myPlaces') return 'myPlaces';
-    if (currentView === 'myInterests') return 'myInterests';
-    if (currentView === 'saved') return 'saved';
-    if (currentView === 'settings') return 'settings';
-    if (route && routeChoiceMade === 'manual') return 'manualMode';
-    if (route && !routeChoiceMade) return 'route';
-    if (route) return 'placesListing';
-    return 'main';
+      showToast('🌐 תורגם!', 'success');
+    } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [ttsVoices, setTtsVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(localStorage.getItem('foufou_tts_voice') || '');
-
   React.useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis?.getVoices() || [];
-      setTtsVoices(voices);
-    };
-    loadVoices();
-    window.speechSynthesis?.addEventListener?.('voiceschanged', loadVoices);
-    return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', loadVoices);
+    const load = () => setTtsVoices(window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+    load();
+    if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = load;
   }, []);
 
   const speakHelp = (text) => {
-    if (!window.speechSynthesis) { showToast('TTS not supported', 'error'); return; }
-    if (isSpeaking && !isPaused) {
-      window.speechSynthesis.pause();
-      setIsPaused(true);
-      return;
-    }
-    if (isPaused) {
-      window.speechSynthesis.resume();
-      setIsPaused(false);
-      return;
-    }
+    if (!window.speechSynthesis) return;
+    if (isSpeaking && !isPaused) { window.speechSynthesis.pause(); setIsPaused(true); return; }
+    if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); return; }
     window.speechSynthesis.cancel();
     const clean = text.replace(/\*\*/g, '').replace(/[•#]/g, '').replace(/\n+/g, '. ');
-    const utterance = new SpeechSynthesisUtterance(clean);
-    const lang = window.BKK.i18n.currentLang === 'en' ? 'en' : 'he';
-    utterance.lang = lang === 'en' ? 'en-US' : 'he-IL';
-    utterance.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
-    if (selectedVoice) {
-      const voice = ttsVoices.find(v => v.name === selectedVoice);
-      if (voice) utterance.voice = voice;
-    }
-    utterance.onstart = () => { setIsSpeaking(true); setIsPaused(false); };
-    utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); };
-    utterance.onerror = () => { setIsSpeaking(false); setIsPaused(false); };
-    window.speechSynthesis.speak(utterance);
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
+    u.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
+    if (selectedVoice) { const v = ttsVoices.find(function(v) { return v.name === selectedVoice; }); if (v) u.voice = v; }
+    u.onstart = () => { setIsSpeaking(true); setIsPaused(false); };
+    u.onend = () => { setIsSpeaking(false); setIsPaused(false); };
+    u.onerror = () => { setIsSpeaking(false); setIsPaused(false); };
+    window.speechSynthesis.speak(u);
   };
-
-  const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
-    setIsSpeaking(false);
-    setIsPaused(false);
-  };
+  const stopSpeaking = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); setIsSpeaking(false); setIsPaused(false); };
 
   const showHelpFor = (context) => {
     setHelpContext(context);
@@ -5227,9 +5189,8 @@ const FouFouApp = () => {
     setReviewDialog(null);
   };
 
-  const handleEditLocation = (loc, navList) => {
+  const handleEditLocation = (loc) => {
     setEditingLocation(loc);
-    if (navList !== undefined) setEditNavList(navList);
     const editFormData = {
       name: loc.name || '',
       description: loc.description || '',
@@ -6536,9 +6497,9 @@ const FouFouApp = () => {
             boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 50, minWidth: '150px'
           }}>
             {[
-              { icon: '🗺️', label: t('nav.route'), view: 'form', help: 'main' },
-              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length, help: 'saved' },
-              { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: cityCustomLocations.filter(l => l.status !== 'blacklist').length, help: 'myPlaces' },
+              { icon: '🗺️', label: t('nav.route'), view: 'form' },
+              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
+              { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: cityCustomLocations.filter(l => l.status !== 'blacklist').length },
               { icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 const aStatus = o.adminStatus || 'active';
                 if (aStatus === 'hidden') return false;
@@ -6548,8 +6509,8 @@ const FouFouApp = () => {
                 const status = interestStatus[o.id];
                 if (o.uncovered) return status === true;
                 return status !== false;
-              }).length, help: 'myInterests' },
-              { icon: '⚙️', label: t('settings.title'), view: 'settings', help: 'settings' },
+              }).length },
+              { icon: '⚙️', label: t('settings.title'), view: 'settings' },
             ].map(item => (
               <button
                 key={item.view}
@@ -6573,16 +6534,7 @@ const FouFouApp = () => {
                 }}
               >
                 <span style={{ fontSize: '15px' }}>{renderIcon(item.icon, '16px')}</span>
-                <span style={{ flex: 1 }}>{item.label}{item.count > 0 ? ` (${item.count})` : ''}</span>
-                {item.help && (() => { const s = getHelpSection(item.help); return (s?.content && s.content.trim()) ? (
-                  <span onClick={(e) => { e.stopPropagation(); showHelpFor(item.help); setShowHeaderMenu(false); }}
-                    style={{ fontSize: '11px', width: '18px', height: '18px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}
-                    title={s.title}>?</span>
-                ) : isAdmin ? (
-                  <span onClick={(e) => { e.stopPropagation(); showHelpFor(item.help); setShowHeaderMenu(false); }}
-                    style={{ fontSize: '11px', width: '18px', height: '18px', borderRadius: '50%', background: '#f3f4f6', color: '#9ca3af', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0, opacity: 0.5 }}
-                    title="Add help">?</span>
-                ) : null; })()}
+                <span>{item.label}{item.count > 0 ? ` (${item.count})` : ''}</span>
               </button>
             ))}
             {/* Divider + Auth button */}
@@ -6655,7 +6607,7 @@ const FouFouApp = () => {
               </button>
               <div style={{ textAlign: 'center' }}>
                 <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🐾 {t('trail.activeTitle')}</span>
-                
+                <button onClick={() => showHelpFor('activeTrail')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', marginInlineStart: '4px', textDecoration: 'underline' }}>{t('general.help')}</button>
               </div>
               <span style={{ fontSize: '10px', color: '#9ca3af' }}>
                 ⏱️ {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins} ${t('general.min')}` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
@@ -7118,7 +7070,7 @@ const FouFouApp = () => {
                     onClick={() => {
                       setMapMode('favorites');
                       setMapFavArea(formData.searchMode === 'area' && formData.area ? formData.area : null);
-                      setMapFavRadius(formData.searchMode === 'radius' && formData.currentLat && formData.radiusMeters ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
+                      setMapFavRadius(formData.searchMode === 'radius' && formData.currentLat ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
                       setMapFocusPlace(null);
                       setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
                       setMapBottomSheet(null);
@@ -7177,6 +7129,10 @@ const FouFouApp = () => {
                 <h2 style={{ textAlign: 'center', fontSize: '17px', fontWeight: 'bold', marginBottom: '2px' }}>{`⭐ ${t("wizard.step2Title")}`}</h2>
                 <p style={{ textAlign: 'center', fontSize: '11px', color: '#6b7280', marginBottom: '10px' }}>
                   {t("wizard.step2Subtitle")}
+                  {' '}
+                  <button onClick={() => showHelpFor('main')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline', padding: 0 }}>
+                    {t("general.howItWorks")}
+                  </button>
                 </p>
                 
                 {/* Interest Grid — grouped by category */}
@@ -7481,7 +7437,7 @@ const FouFouApp = () => {
             {/* Manual mode header — shown in wizard manual mode */}
             {routeChoiceMade === 'manual' && route && (
               <div className="text-center pb-2">
-                <h3 className="text-sm font-bold text-purple-700">🛠️ {t('wizard.manualMode')}</h3>
+                <h3 className="text-sm font-bold text-purple-700">🛠️ {t('wizard.manualMode')}  <button onClick={() => showHelpFor('manualMode')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline' }}>{t('general.help')}</button></h3>
                 <p className="text-[10px] text-gray-500">{t('wizard.manualDesc')}</p>
               </div>
             )}
@@ -7491,6 +7447,10 @@ const FouFouApp = () => {
               <div id="route-results" className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mt-4" dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"}>
                 <div className="flex items-center gap-2 mb-2">
                   <h3 className="font-bold text-blue-900 text-sm">{`${t("route.places")} - ${route.areaName}`} ({route.stops.length}):</h3>
+                  <button
+                    onClick={() => showHelpFor('placesListing')}
+                    style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                  >{t("general.help")}</button>
                 </div>
                 {/* Normal stop list grouped by interest */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
@@ -8118,6 +8078,11 @@ const FouFouApp = () => {
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                   {citySavedRoutes.length}
                 </span>
+                <button
+                  onClick={() => showHelpFor('saved')}
+                  className="text-gray-400 hover:text-blue-500 text-sm"
+                  title={t("general.help")}
+                style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>{t("general.help")}</button>
               </div>
               <div className="flex items-center gap-2">
                 {/* Sort toggle */}
@@ -8212,6 +8177,13 @@ const FouFouApp = () => {
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">{`⭐ ${t("nav.favorites")}`}</h2>
+              <button
+                onClick={() => showHelpFor('myPlaces')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title={t("general.help")}
+              >
+                {t("general.help")}
+              </button>
               {isUnlocked && customLocations.length > 1 && (
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                   <button
@@ -8400,9 +8372,7 @@ const FouFouApp = () => {
                     {t("places.noPlacesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}
                   </p>
                 </div>
-              ) : (() => {
-                const flatNavList = [...groupedPlaces.sortedKeys.flatMap(k => groupedPlaces.groups[k] || []), ...groupedPlaces.ungrouped];
-                return (
+              ) : (
                 <div className="max-h-[55vh] overflow-y-auto" style={{ contain: 'content' }}>
                   {groupedPlaces.sortedKeys.map(key => {
                     const locs = groupedPlaces.groups[key];
@@ -8434,15 +8404,15 @@ const FouFouApp = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {mapUrl ? (
-                                      <><span onClick={() => handleEditLocation(loc, flatNavList)}
+                                      <><span onClick={() => handleEditLocation(loc)}
                                         className="font-medium text-sm text-blue-600 truncate cursor-pointer hover:underline"
                                       >{loc.name}</span>
                                       <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                                         style={{ fontSize: '10px', opacity: 0.5, flexShrink: 0 }} title={t("general.openInGoogle")}>🔗</a></>
                                     ) : (
-                                      <span onClick={() => handleEditLocation(loc, flatNavList)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
+                                      <span onClick={() => handleEditLocation(loc)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
                                     )}
-                                    
+                                    {isUnlocked && <span title={loc.locked ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')} style={{ fontSize: '10px' }}>{loc.locked ? '✅' : '✏️'}</span>}
                                     {loc.outsideArea && <span className="text-orange-500 text-xs" title={t("general.outsideBoundary")}>🔺</span>}
                                     {loc.missingCoordinates && <span className="text-red-500 text-xs" title={t("general.noLocation")}>⚠️</span>}
                                     {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetailsLong")}>❌</span>}
@@ -8455,20 +8425,20 @@ const FouFouApp = () => {
                                     ))}
                                   </div>
                                 </div>
-                                {loc.status !== 'blacklist' && loc.uploadedImage && (
-                                  <button onClick={() => { setModalImage(loc.uploadedImage); setModalImageCtx(null); setShowImageModal(true); }}
+                                {(() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
+                                  <button onClick={() => openReviewDialog(loc)}
+                                    style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
+                                      ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
+                                    }}
+                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                  >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                                ); })()}
+                                {(loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
+                                  <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                                     style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                     title={t("general.viewImage") || "תמונה"}>🖼️</button>
                                 )}
-                                {loc.status !== 'blacklist' && (() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
-                                  <button onClick={() => openReviewDialog(loc)}
-                                    style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '48px', textAlign: 'center',
-                                      ...(ra ? { color: '#7c3aed', background: '#ede9fe', border: '1px solid #c4b5fd' } : { color: '#7c3aed', background: '#f5f3ff', border: '1px solid #ddd6fe' })
-                                    }}
-                                    title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
-                                  >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
-                                ); })()}
-                                <button onClick={() => handleEditLocation(loc, flatNavList)}
+                                <button onClick={() => handleEditLocation(loc)}
                                   className="text-xs px-1 py-0.5 rounded"
                                   title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
                               </div>
@@ -8496,32 +8466,32 @@ const FouFouApp = () => {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1 flex-wrap">
                                   {mapUrl ? (
-                                    <><span onClick={() => handleEditLocation(loc, flatNavList)}
+                                    <><span onClick={() => handleEditLocation(loc)}
                                       className="font-medium text-sm text-blue-600 truncate cursor-pointer hover:underline"
                                     >{loc.name}</span>
                                     <a href={mapUrl} target="city_explorer_map" rel="noopener noreferrer"
                                       style={{ fontSize: '10px', opacity: 0.5, flexShrink: 0 }} title={t("general.openInGoogle")}>🔗</a></>
                                   ) : (
-                                    <span onClick={() => handleEditLocation(loc, flatNavList)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
+                                    <span onClick={() => handleEditLocation(loc)} className="font-medium text-sm truncate cursor-pointer hover:underline">{loc.name}</span>
                                   )}
-                                  
+                                  {isUnlocked && <span title={loc.locked ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')} style={{ fontSize: '10px' }}>{loc.locked ? '✅' : '✏️'}</span>}
                                   {!isLocationValid(loc) && <span className="text-red-500 text-[9px]" title={t("places.missingDetails")}>❌</span>}
                                 </div>
                               </div>
-                              {loc.status !== 'blacklist' && loc.uploadedImage && (
-                                <button onClick={() => { setModalImage(loc.uploadedImage); setModalImageCtx(null); setShowImageModal(true); }}
+                              {(() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
+                                <button onClick={() => openReviewDialog(loc)}
+                                  style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold',
+                                    ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
+                                  }}
+                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                              ); })()}
+                              {(loc.uploadedImage || (loc.imageUrls && loc.imageUrls.length > 0)) && (
+                                <button onClick={() => { setModalImage(loc.uploadedImage || loc.imageUrls[0]); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                                   style={{ fontSize: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0, opacity: 0.6 }}
                                   title={t("general.viewImage") || "תמונה"}>🖼️</button>
                               )}
-                              {loc.status !== 'blacklist' && (() => { const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_'); const ra = reviewAverages[pk]; return (
-                                <button onClick={() => openReviewDialog(loc)}
-                                  style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '48px', textAlign: 'center',
-                                    ...(ra ? { color: '#7c3aed', background: '#ede9fe', border: '1px solid #c4b5fd' } : { color: '#7c3aed', background: '#f5f3ff', border: '1px solid #ddd6fe' })
-                                  }}
-                                  title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
-                                >{ra ? `🌟${ra.avg.toFixed(1)}` : `🌟 ${t('reviews.rate') || 'דרג'}`}</button>
-                              ); })()}
-                              <button onClick={() => handleEditLocation(loc, flatNavList)}
+                              <button onClick={() => handleEditLocation(loc)}
                                 className="text-xs px-1 py-0.5 rounded"
                                 title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
                             </div>
@@ -8531,7 +8501,7 @@ const FouFouApp = () => {
                     </div>
                   )}
                 </div>
-              ); })()}
+              )}
             </div>
 
           </div>
@@ -8543,7 +8513,7 @@ const FouFouApp = () => {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
-                
+                <button onClick={() => showHelpFor('myInterests')} className="text-blue-400 hover:text-blue-600 text-sm" title={t("general.help")}style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "11px", cursor: "pointer", textDecoration: "underline" }}>{t("general.help")}</button>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
                   {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (cityCustomInterests || []).length} {t("general.total")}
                 </span>
@@ -8799,6 +8769,13 @@ const FouFouApp = () => {
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">{t("settings.title")}</h2>
+              <button
+                onClick={() => showHelpFor('settings')}
+                className="text-gray-400 hover:text-blue-500 text-sm"
+                title={t("general.help")}
+              >
+                {t("general.help")}
+              </button>
             </div>
             
             {/* Settings Sub-Tabs */}
@@ -9474,58 +9451,6 @@ const FouFouApp = () => {
               </div>
             </div>
 
-            {/* Voice settings for TTS */}
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect') || 'קול השמעה'}`}</h3>
-                {ttsVoices.length > 0 ? (
-                <select
-                  value={selectedVoice}
-                  onChange={(e) => {
-                    setSelectedVoice(e.target.value);
-                    localStorage.setItem('foufou_tts_voice', e.target.value);
-                    window.speechSynthesis?.cancel();
-                    const u = new SpeechSynthesisUtterance(window.BKK.i18n.currentLang === 'en' ? 'Hello, this is FouFou' : 'שלום, זה פופו');
-                    const voice = ttsVoices.find(v => v.name === e.target.value);
-                    if (voice) u.voice = voice;
-                    u.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
-                    u.rate = parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0');
-                    window.speechSynthesis?.speak(u);
-                  }}
-                  style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '12px', direction: 'ltr' }}
-                >
-                  <option value="">{t('settings.defaultVoice') || 'ברירת מחדל'}</option>
-                  {(() => {
-                    const lang = window.BKK.i18n.currentLang === 'en' ? 'en' : 'he';
-                    const matching = ttsVoices.filter(v => v.lang.startsWith(lang));
-                    const others = ttsVoices.filter(v => !v.lang.startsWith(lang));
-                    return (
-                      <>
-                        {matching.length > 0 && <optgroup label={lang === 'he' ? 'עברית' : 'English'}>
-                          {matching.map(v => <option key={v.name} value={v.name}>{v.name} {v.localService ? '' : '☁️'}</option>)}
-                        </optgroup>}
-                        {others.length > 0 && <optgroup label={t('settings.otherVoices') || 'קולות נוספים'}>
-                          {others.map(v => <option key={v.name} value={v.name}>{v.name} ({v.lang}) {v.localService ? '' : '☁️'}</option>)}
-                        </optgroup>}
-                      </>
-                    );
-                  })()}
-                </select>
-                ) : (
-                  <p className="text-xs text-gray-400">{t('settings.noVoices') || 'לא נמצאו קולות במערכת'}</p>
-                )}
-                <div style={{ marginTop: '8px' }}>
-                  <label className="text-xs text-gray-600 font-bold">{`⏩ ${t('settings.speechRate') || 'קצב דיבור'}: ${parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0').toFixed(1)}x`}</label>
-                  <input type="range" min="0.5" max="2.0" step="0.1"
-                    defaultValue={parseFloat(localStorage.getItem('foufou_tts_rate') || '1.0')}
-                    onChange={(e) => localStorage.setItem('foufou_tts_rate', e.target.value)}
-                    style={{ width: '100%', accentColor: '#7c3aed' }}
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1">{t('settings.voiceHint') || 'בחר קול ושמע דוגמה. ☁️ = קול ענן (איכות גבוהה יותר)'}</p>
-              </div>
-            </div>
-            
             {/* Refresh Data Button */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-400 rounded-xl p-3">
@@ -10263,11 +10188,18 @@ const FouFouApp = () => {
                 <h3 className="font-bold text-sm" style={{ whiteSpace: 'nowrap' }}>
                   {mapMode === 'areas' ? t('wizard.allAreasMap') : mapMode === 'stops' ? `${t('route.showStopsOnMap')} (${mapStops.length})` : mapMode === 'favorites' ? `⭐ ${t('nav.favorites')}` : t('form.searchRadius')}
                 </h3>
-                
+                {mapMode === 'stops' && (<button onClick={() => showHelpFor('mapPlanning')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline' }}>{t('general.help')}</button>)}
+                {mapMode === 'favorites' && (<button onClick={() => showHelpFor('favoritesMap')} style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline' }}>{t('general.help')}</button>)}
+                {mapMode === 'favorites' && (() => {
+                  const activeCount = customLocations.filter(loc => {
+                    if (loc.status === 'blacklist' || !loc.lat || !loc.lng) return false;
+                    if (window.BKK.systemParams?.includeDrafts === false && !loc.locked) return false;
+                    if (mapFavArea) { const la = loc.areas || (loc.area ? [loc.area] : []); if (!la.includes(mapFavArea)) return false; }
+                    if (mapFavFilter.size > 0) { if (!(loc.interests || []).some(i => mapFavFilter.has(i))) return false; }
                     return true;
                   }).length;
                   const areaLabel = mapFavArea ? tLabel((window.BKK.areaOptions || []).find(a => a.id === mapFavArea)) : '';
-                  const radiusLabel = (mapFavRadius && mapFavRadius.meters) ? `📍 ${mapFavRadius.meters}m` : '';
+                  const radiusLabel = mapFavRadius ? `📍 ${mapFavRadius.meters}m` : '';
                   return (
                     <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 'normal', whiteSpace: 'nowrap' }}>
                       {activeCount} {t('nav.favorites')}{areaLabel ? ` · ${areaLabel}` : ''}{radiusLabel ? ` · ${radiusLabel}` : ''}{mapFavFilter.size > 0 ? ` · ${mapFavFilter.size} ${t('general.interests') || 'תחומים'}` : ''}
@@ -10907,24 +10839,6 @@ const FouFouApp = () => {
               {/* Header - Compact */}
               <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {showEditLocationDialog && editNavList && editNavList.length > 1 && (() => {
-                    const idx = editNavList.findIndex(l => l.name === editingLocation?.name);
-                    return (
-                      <>
-                        <button
-                          onClick={() => { const prev = editNavList[(idx - 1 + editNavList.length) % editNavList.length]; handleEditLocation(prev, editNavList); }}
-                          style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t('general.previous') || 'הקודם'}
-                        >◀</button>
-                        <span style={{ fontSize: '10px', opacity: 0.7 }}>{idx >= 0 ? idx + 1 : '?'}/{editNavList.length}</span>
-                        <button
-                          onClick={() => { const next = editNavList[(idx + 1) % editNavList.length]; handleEditLocation(next, editNavList); }}
-                          style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title={t('general.next') || 'הבא'}
-                        >▶</button>
-                      </>
-                    );
-                  })()}
                   <h3 className="text-base font-bold">
                     {showEditLocationDialog ? t('places.editPlace') : t('places.addPlace')}
                   </h3>
@@ -10941,7 +10855,6 @@ const FouFouApp = () => {
                     setShowAddLocationDialog(false);
                     setShowEditLocationDialog(false);
                     setEditingLocation(null);
-                    setEditNavList(null);
                     setNewLocation({ 
                       name: '', description: '', notes: '', area: formData.area, interests: [], 
                       lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: []
@@ -11317,26 +11230,27 @@ const FouFouApp = () => {
                       )}
                     </div>
                   </div>
-                  {/* Ratings — prominent card */}
+                  {/* Ratings row — Google + FouFou */}
                   {(() => {
                     const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
                     return (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', borderRadius: '10px', background: 'linear-gradient(135deg, #faf5ff, #f0fdf4)', border: '1px solid #e9d5ff', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
                         {gR && (
-                          <span style={{ fontSize: '13px', color: '#b45309', fontWeight: 'bold' }}>⭐ {gR.toFixed?.(1) || gR} <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#92400e' }}>({newLocation.googleRatingCount || 0})</span></span>
+                          <span style={{ fontSize: '12px', color: '#b45309' }}>⭐ Google {gR.toFixed?.(1) || gR} ({newLocation.googleRatingCount || 0})</span>
                         )}
-                        {ra ? (
-                          <button
+                        {ra && (
+                          <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '13px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '3px 10px', cursor: 'pointer' }}
-                          >🌟 {ra.avg.toFixed(1)} ({ra.count})</button>
-                        ) : (
-                          <button
+                            style={{ fontSize: '12px', color: '#8b5cf6', cursor: 'pointer' }}
+                          >🌟 FouFou {ra.avg.toFixed(1)} ({ra.count})</span>
+                        )}
+                        {!ra && (
+                          <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 'bold', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer' }}
-                          >🌟 {t('reviews.rate') || 'דרג'}</button>
+                            style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
+                          >☆ {t('reviews.rate') || 'דרג'}</span>
                         )}
                       </div>
                     );
@@ -12876,55 +12790,34 @@ const FouFouApp = () => {
       {/* Help Dialog */}
       {showHelp && (() => {
         const section = getHelpSection(helpContext);
-        const content = section?.content || '';
+        const content = (section && section.content) || '';
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 flex items-center justify-between">
               <h3 className="text-base font-bold flex items-center gap-2">
                 <span>ℹ️</span>
-                {section?.title || t('general.help')}
+                {(section && section.title) || t('general.help')}
               </h3>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => speakHelp(content)}
+                <button onClick={() => speakHelp(content)}
                   className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                  title={isSpeaking ? (isPaused ? (t('general.resume') || 'המשך') : (t('general.pause') || 'עצור')) : (t('general.listen') || 'הקשב')}
                 >{isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}</button>
-                {isSpeaking && (
-                  <button
-                    onClick={stopSpeaking}
-                    className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                    title={t('general.stop') || 'עצור'}
-                  >⏹️</button>
-                )}
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      if (!helpEditing) {
-                        setHelpEditText(content);
-                        setHelpEditing(true);
-                      } else {
-                        setHelpEditing(false);
-                      }
-                    }}
-                    className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                    title={helpEditing ? (t('general.cancel') || 'ביטול') : (t('general.edit') || 'ערוך')}
-                  >{helpEditing ? '👁️' : '✏️'}</button>
-                )}
-                <button
-                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                {isSpeaking && <button onClick={stopSpeaking}
+                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                >⏹️</button>}
+                {isAdmin && <button onClick={() => { if (!helpEditing) { setHelpEditText(content); setHelpEditing(true); } else { setHelpEditing(false); } }}
+                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
+                >{helpEditing ? '👁️' : '✏️'}</button>}
+                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >✕</button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 text-sm text-gray-700" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left' }}>
               {helpEditing ? (
-                <textarea
-                  value={helpEditText}
-                  onChange={(e) => setHelpEditText(e.target.value)}
+                <textarea value={helpEditText} onChange={(e) => setHelpEditText(e.target.value)}
                   style={{ width: '100%', minHeight: '300px', padding: '8px', fontSize: '13px', border: '2px solid #818cf8', borderRadius: '8px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'monospace', lineHeight: '1.6' }}
-                  placeholder="**כותרת**\nטקסט רגיל\n• נקודה\n\n**כותרת נוספת**"
                 />
               ) : (
                 content.split('\n').map((line, i) => {
@@ -12934,8 +12827,6 @@ const FouFouApp = () => {
                   };
                   if (line.startsWith('**') && line.endsWith('**')) {
                     return <h4 key={i} className="font-bold text-gray-900 mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                  } else if (/^\d+\.\s/.test(line)) {
-                    return <p key={i} style={{ marginInlineStart: '8px' }} className="mb-0.5">{renderBold(line)}</p>;
                   } else if (line.startsWith('• ')) {
                     return <p key={i} style={{ marginInlineStart: '12px' }} className="mb-0.5">• {renderBold(line.substring(2))}</p>;
                   } else if (line.trim() === '') {
@@ -12948,23 +12839,18 @@ const FouFouApp = () => {
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex gap-2">
               {helpEditing ? (
                 <>
-                  <button
-                    onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
                     className="flex-1 py-2 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 text-sm"
                   >💾 {t('general.save') || 'שמור'}</button>
-                  <button
-                    onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
                     className="py-2 px-3 rounded-lg bg-indigo-500 text-white font-bold hover:bg-indigo-600 text-sm"
-                    title={t('settings.saveAndTranslate') || 'שמור ותרגם לאנגלית'}
                   >💾🌐 EN</button>
-                  <button
-                    onClick={() => setHelpEditing(false)}
-                    className="py-2 px-3 rounded-lg bg-gray-300 text-gray-700 font-bold hover:bg-gray-400 text-sm"
+                  <button onClick={() => setHelpEditing(false)}
+                    className="py-2 px-3 rounded-lg bg-gray-300 text-gray-700 font-bold text-sm"
                   >{t('general.cancel') || 'ביטול'}</button>
                 </>
               ) : (
-                <button
-                  onClick={() => { setShowHelp(false); window.speechSynthesis?.cancel(); }}
+                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
                   className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
                 >{t('general.close')} ✓</button>
               )}
@@ -12999,8 +12885,6 @@ const FouFouApp = () => {
           </div>
         </div>
       )}
-
-      {/* Floating Context Help Button — temporarily disabled for debugging */}
 
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}
