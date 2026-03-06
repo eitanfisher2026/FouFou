@@ -1611,6 +1611,8 @@
 
   // Render a context-sensitive hint bar
   const [openHintPopup, setOpenHintPopup] = useState(null);
+  const [hintDragPos, setHintDragPos] = React.useState({ x: 0, y: 0 });
+  const hintDragRef = React.useRef({ x: 0, y: 0, startX: 0, startY: 0, dragging: false });
   const closeHintPopup = () => { setOpenHintPopup(null); stopHintPlayback(); };
   const renderContextHint = (hintId) => {
     const s = getHelpSection(hintId);
@@ -1689,38 +1691,38 @@
           {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
         </button>
       </div>
-      {openHintPopup === hintId && (() => {
-        // Draggable hint popup
-        const dragRef = React.useRef(null);
-        const posRef = React.useRef({ x: 0, y: 0, startX: 0, startY: 0, dragging: false });
-        const [dragPos, setDragPos] = React.useState({ x: 0, y: 0 });
-
-        const onDragStart = (e) => {
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          posRef.current = { ...posRef.current, startX: clientX - posRef.current.x, startY: clientY - posRef.current.y, dragging: true };
-          e.preventDefault();
-        };
-        const onDragMove = (e) => {
-          if (!posRef.current.dragging) return;
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          const x = clientX - posRef.current.startX;
-          const y = clientY - posRef.current.startY;
-          posRef.current.x = x; posRef.current.y = y;
-          setDragPos({ x, y });
-        };
-        const onDragEnd = () => { posRef.current.dragging = false; };
-
-        return (<>
+      {openHintPopup === hintId && (<>
           <div onClick={closeHintPopup} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
           <div
-            ref={dragRef}
-            onMouseDown={onDragStart} onMouseMove={onDragMove} onMouseUp={onDragEnd}
-            onTouchStart={onDragStart} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+            onMouseDown={(e) => {
+              const clientX = e.clientX; const clientY = e.clientY;
+              hintDragRef.current = { ...hintDragRef.current, startX: clientX - hintDragRef.current.x, startY: clientY - hintDragRef.current.y, dragging: true };
+              e.preventDefault();
+            }}
+            onMouseMove={(e) => {
+              if (!hintDragRef.current.dragging) return;
+              const x = e.clientX - hintDragRef.current.startX;
+              const y = e.clientY - hintDragRef.current.startY;
+              hintDragRef.current.x = x; hintDragRef.current.y = y;
+              setHintDragPos({ x, y });
+            }}
+            onMouseUp={() => { hintDragRef.current.dragging = false; }}
+            onTouchStart={(e) => {
+              const t = e.touches[0];
+              hintDragRef.current = { ...hintDragRef.current, startX: t.clientX - hintDragRef.current.x, startY: t.clientY - hintDragRef.current.y, dragging: true };
+            }}
+            onTouchMove={(e) => {
+              if (!hintDragRef.current.dragging) return;
+              const t = e.touches[0];
+              const x = t.clientX - hintDragRef.current.startX;
+              const y = t.clientY - hintDragRef.current.startY;
+              hintDragRef.current.x = x; hintDragRef.current.y = y;
+              setHintDragPos({ x, y });
+            }}
+            onTouchEnd={() => { hintDragRef.current.dragging = false; }}
             style={{
               position: 'fixed', zIndex: 9999,
-              top: `calc(50% + ${dragPos.y}px)`, left: `calc(50% + ${dragPos.x}px)`,
+              top: `calc(50% + ${hintDragPos.y}px)`, left: `calc(50% + ${hintDragPos.x}px)`,
               transform: 'translate(-50%, -50%)',
               width: 'min(340px, 88vw)',
               background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
@@ -1765,8 +1767,7 @@
               {txt}
             </div>
           </div>
-        </>);
-      })()}
+      </>)}
     </>);
   };
 
