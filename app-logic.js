@@ -1458,43 +1458,9 @@
   };
 
   // Migrate old help content to hints (one-time, admin only)
-  const migrateOldHelpToHints = () => {
-    const mapping = {
-      hint_interests: 'main',
-      hint_area: 'main',
-      hint_choice: 'route',
-      hint_route: 'placesListing',
-      hint_manual: 'manualMode',
-      hint_favorites: 'myPlaces',
-      hint_saved: 'saved',
-      hint_interests_list: 'myInterests',
-      hint_settings: 'settings',
-    };
-    let count = 0;
-    const langs = ['he', 'en'];
-    langs.forEach(lang => {
-      const strings = window.BKK.i18n.strings && window.BKK.i18n.strings[lang];
-      const oldHelp = (strings && strings.help) || {};
-      Object.entries(mapping).forEach(([hintId, srcKey]) => {
-        // Skip if already has content for this lang
-        const existing = helpOverrides[hintId] && helpOverrides[hintId][lang];
-        if (existing && existing.trim()) return;
-        const src = oldHelp[srcKey];
-        if (!src || !src.content) return;
-        // Copy full content
-        const text = src.content.trim();
-        if (text && isFirebaseAvailable && database) {
-          database.ref('helpContent/' + hintId + '/' + lang).set(text);
-          setHelpOverrides(prev => ({ ...prev, [hintId]: { ...(prev[hintId] || {}), [lang]: text } }));
-          count++;
-        }
-      });
-    });
-    showToast('📋 ' + count + ' הינטים הועברו (עברית + אנגלית)', 'success');
-  };
-
   // Speech-to-text for hint editing
   const [hintRecording, setHintRecording] = useState(false);
+  const [hintInterimText, setHintInterimText] = useState('');
   const hintEditTextRef = React.useRef('');
   const startHintDictation = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1502,16 +1468,21 @@
     const recognition = new SR();
     recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     hintEditTextRef.current = hintEditText;
     recognition.onresult = (event) => {
+      let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           const transcript = event.results[i][0].transcript;
           hintEditTextRef.current = (hintEditTextRef.current ? hintEditTextRef.current + ' ' : '') + transcript;
           setHintEditText(hintEditTextRef.current);
+          setHintInterimText('');
+        } else {
+          interim += event.results[i][0].transcript;
         }
       }
+      if (interim) setHintInterimText(interim);
     };
     recognition.onend = () => {
       // Auto-restart if user didn't manually stop
@@ -1532,6 +1503,7 @@
     window._hintRecognition = null; // Clear ref first so onend won't restart
     if (rec) { try { rec.stop(); } catch(e) {} }
     setHintRecording(false);
+    setHintInterimText('');
   };
 
   // Audio recording for hints (saves to Firebase Storage)
@@ -1649,8 +1621,12 @@
     // Admin editing mode
     if (hintEditId === hintId) return (
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
-        <textarea value={hintEditText} onChange={(e) => { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; }}
-          style={{ width: '100%', minHeight: '60px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
+        <textarea value={hintEditText + (hintInterimText ? ' ' + hintInterimText : '')} 
+          readOnly={!!hintInterimText}
+          onChange={(e) => { if (!hintInterimText) { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; } }}
+          onFocus={(e) => { e.target.style.minHeight = Math.max(120, e.target.scrollHeight) + 'px'; }}
+          ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.max(120, el.scrollHeight) + 'px'; } }}
+          style={{ width: '100%', minHeight: '120px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', userSelect: 'text', WebkitUserSelect: 'text', touchAction: 'auto' }} />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>

@@ -1370,40 +1370,8 @@ const FouFouApp = () => {
     setHintEditId(null);
   };
 
-  const migrateOldHelpToHints = () => {
-    const mapping = {
-      hint_interests: 'main',
-      hint_area: 'main',
-      hint_choice: 'route',
-      hint_route: 'placesListing',
-      hint_manual: 'manualMode',
-      hint_favorites: 'myPlaces',
-      hint_saved: 'saved',
-      hint_interests_list: 'myInterests',
-      hint_settings: 'settings',
-    };
-    let count = 0;
-    const langs = ['he', 'en'];
-    langs.forEach(lang => {
-      const strings = window.BKK.i18n.strings && window.BKK.i18n.strings[lang];
-      const oldHelp = (strings && strings.help) || {};
-      Object.entries(mapping).forEach(([hintId, srcKey]) => {
-        const existing = helpOverrides[hintId] && helpOverrides[hintId][lang];
-        if (existing && existing.trim()) return;
-        const src = oldHelp[srcKey];
-        if (!src || !src.content) return;
-        const text = src.content.trim();
-        if (text && isFirebaseAvailable && database) {
-          database.ref('helpContent/' + hintId + '/' + lang).set(text);
-          setHelpOverrides(prev => ({ ...prev, [hintId]: { ...(prev[hintId] || {}), [lang]: text } }));
-          count++;
-        }
-      });
-    });
-    showToast('📋 ' + count + ' הינטים הועברו (עברית + אנגלית)', 'success');
-  };
-
   const [hintRecording, setHintRecording] = useState(false);
+  const [hintInterimText, setHintInterimText] = useState('');
   const hintEditTextRef = React.useRef('');
   const startHintDictation = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1411,16 +1379,21 @@ const FouFouApp = () => {
     const recognition = new SR();
     recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     hintEditTextRef.current = hintEditText;
     recognition.onresult = (event) => {
+      let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           const transcript = event.results[i][0].transcript;
           hintEditTextRef.current = (hintEditTextRef.current ? hintEditTextRef.current + ' ' : '') + transcript;
           setHintEditText(hintEditTextRef.current);
+          setHintInterimText('');
+        } else {
+          interim += event.results[i][0].transcript;
         }
       }
+      if (interim) setHintInterimText(interim);
     };
     recognition.onend = () => {
       if (window._hintRecognition) {
@@ -1440,6 +1413,7 @@ const FouFouApp = () => {
     window._hintRecognition = null; // Clear ref first so onend won't restart
     if (rec) { try { rec.stop(); } catch(e) {} }
     setHintRecording(false);
+    setHintInterimText('');
   };
 
   const [hintAudioRecording, setHintAudioRecording] = useState(false);
@@ -1547,8 +1521,12 @@ const FouFouApp = () => {
     
     if (hintEditId === hintId) return (
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
-        <textarea value={hintEditText} onChange={(e) => { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; }}
-          style={{ width: '100%', minHeight: '60px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
+        <textarea value={hintEditText + (hintInterimText ? ' ' + hintInterimText : '')} 
+          readOnly={!!hintInterimText}
+          onChange={(e) => { if (!hintInterimText) { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; } }}
+          onFocus={(e) => { e.target.style.minHeight = Math.max(120, e.target.scrollHeight) + 'px'; }}
+          ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.max(120, el.scrollHeight) + 'px'; } }}
+          style={{ width: '100%', minHeight: '120px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', userSelect: 'text', WebkitUserSelect: 'text', touchAction: 'auto' }} />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>
@@ -9869,19 +9847,6 @@ const FouFouApp = () => {
             </div>
             )}
 
-            {/* Migrate old help to hints */}
-            {isAdmin && (
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">📋 העבר תיעוד ישן להינטים</h3>
-                <p className="text-xs text-gray-600 mb-2">העתק תוכן מהתיעוד הישן להינטים החדשים (חד-פעמי)</p>
-                <button onClick={migrateOldHelpToHints}
-                  className="w-full py-2 px-3 rounded-lg font-bold text-sm bg-blue-500 text-white hover:bg-blue-600"
-                >📋 העבר עכשיו</button>
-              </div>
-            </div>
-            )}
-            
             {/* Debug Mode Toggle */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
