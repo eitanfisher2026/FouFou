@@ -1495,33 +1495,42 @@
 
   // Speech-to-text for hint editing
   const [hintRecording, setHintRecording] = useState(false);
+  const hintEditTextRef = React.useRef('');
   const startHintDictation = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showToast('Speech recognition not supported', 'error'); return; }
     const recognition = new SR();
     recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
     recognition.continuous = true;
-    recognition.interimResults = true;
-    let finalText = hintEditText;
+    recognition.interimResults = false;
+    hintEditTextRef.current = hintEditText;
     recognition.onresult = (event) => {
-      let interim = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          finalText += (finalText ? ' ' : '') + event.results[i][0].transcript;
-          setHintEditText(finalText);
-        } else {
-          interim += event.results[i][0].transcript;
+          const transcript = event.results[i][0].transcript;
+          hintEditTextRef.current = (hintEditTextRef.current ? hintEditTextRef.current + ' ' : '') + transcript;
+          setHintEditText(hintEditTextRef.current);
         }
       }
     };
-    recognition.onend = () => setHintRecording(false);
-    recognition.onerror = () => setHintRecording(false);
+    recognition.onend = () => {
+      // Auto-restart if user didn't manually stop
+      if (window._hintRecognition) {
+        try { recognition.start(); } catch(e) { setHintRecording(false); }
+      }
+    };
+    recognition.onerror = (e) => {
+      if (e.error !== 'no-speech') { setHintRecording(false); window._hintRecognition = null; }
+    };
     window._hintRecognition = recognition;
     recognition.start();
     setHintRecording(true);
+    showToast('🎤 מדבר...', 'info');
   };
   const stopHintDictation = () => {
-    if (window._hintRecognition) { window._hintRecognition.stop(); window._hintRecognition = null; }
+    const rec = window._hintRecognition;
+    window._hintRecognition = null; // Clear ref first so onend won't restart
+    if (rec) { try { rec.stop(); } catch(e) {} }
     setHintRecording(false);
   };
 
@@ -1640,7 +1649,7 @@
     // Admin editing mode
     if (hintEditId === hintId) return (
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
-        <textarea value={hintEditText} onChange={(e) => setHintEditText(e.target.value)}
+        <textarea value={hintEditText} onChange={(e) => { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; }}
           style={{ width: '100%', minHeight: '60px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
