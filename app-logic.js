@@ -1139,7 +1139,6 @@
   const [helpOverrides, setHelpOverrides] = useState({});
   const [hintEditId, setHintEditId] = useState(null);
   const [hintEditText, setHintEditText] = useState('');
-  const [hintCollapsed, setHintCollapsed] = useState(new Set());
   const [helpContext, setHelpContext] = useState('main');
   
   // Debug Mode System
@@ -1472,12 +1471,12 @@
     if (!SR) { showToast('Speech recognition not supported', 'error'); return; }
     const recognition = new SR();
     recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
     hintEditTextRef.current = hintEditText;
     recognition.onresult = (event) => {
       let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
           const transcript = event.results[i][0].transcript;
           hintEditTextRef.current = (hintEditTextRef.current ? hintEditTextRef.current + ' ' : '') + transcript;
@@ -1490,9 +1489,10 @@
       if (interim) setHintInterimText(interim);
     };
     recognition.onend = () => {
+      setHintInterimText('');
       // Auto-restart if user didn't manually stop
       if (window._hintRecognition) {
-        try { recognition.start(); } catch(e) { setHintRecording(false); }
+        try { recognition.start(); } catch(e) { setHintRecording(false); window._hintRecognition = null; }
       }
     };
     recognition.onerror = (e) => {
@@ -1610,16 +1610,15 @@
   };
 
   // Render a context-sensitive hint bar
+  const [openHintPopup, setOpenHintPopup] = useState(null);
   const renderContextHint = (hintId) => {
     const s = getHelpSection(hintId);
     const txt = (s && s.content && s.content.trim()) || '';
-    const visits = getHintVisits(hintId);
     trackHintVisit(hintId);
-    const isNew = visits < 3;
-    const isOpen = hintCollapsed.has(hintId + '_open');
     const lang = window.BKK.i18n.currentLang || 'he';
     const hasAudio = !!hintAudioUrls[hintId + '_' + lang];
     const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: '0 1px' };
+    const isRTL = window.BKK.i18n.isRTL();
     
     if (!txt && !isAdmin) return null;
     
@@ -1631,7 +1630,7 @@
           onChange={(e) => { if (!hintInterimText) { setHintEditText(e.target.value); hintEditTextRef.current = e.target.value; } }}
           onFocus={(e) => { e.target.style.minHeight = Math.max(120, e.target.scrollHeight) + 'px'; }}
           ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.max(120, el.scrollHeight) + 'px'; } }}
-          style={{ width: '100%', minHeight: '120px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', userSelect: 'text', WebkitUserSelect: 'text', touchAction: 'auto' }} />
+          style={{ width: '100%', minHeight: '120px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: isRTL ? 'rtl' : 'ltr', userSelect: 'text', WebkitUserSelect: 'text', touchAction: 'auto' }} />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>
@@ -1656,43 +1655,44 @@
       </div>
     );
     
-    // Collapsed state (veteran user)
-    if (!isNew && !isOpen && txt) return (
-      <div style={{ textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '2px 0', display: 'flex', gap: '4px', alignItems: 'center' }}>
-        <button onClick={() => setHintCollapsed(prev => { const n = new Set(prev); n.add(hintId + '_open'); return n; })}
-          style={{ ...btnStyle, color: '#9ca3af' }} title={txt.substring(0, 60)}>ℹ️</button>
-        {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-          style={{ ...btnStyle, color: '#d1d5db', fontSize: '10px' }}>✏️</button>}
-      </div>
-    );
-    
-    // Empty (admin only)
+    // Empty (admin only) - small add button, zero height
     if (!txt && isAdmin) return (
-      <div style={{ textAlign: 'center', padding: '2px' }}>
+      <div style={{ height: 0, overflow: 'visible', position: 'relative', zIndex: 5 }}>
         <button onClick={() => { setHintEditId(hintId); setHintEditText(''); }}
-          style={{ background: 'none', border: '1px dashed #d1d5db', cursor: 'pointer', fontSize: '10px', color: '#9ca3af', padding: '2px 8px', borderRadius: '4px' }}>+ הוסף הסבר</button>
+          style={{ position: 'absolute', [isRTL ? 'left' : 'right']: 0, top: '-18px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#d1d5db', padding: '0 2px' }}>＋</button>
       </div>
     );
     
-    // Full display (new user or expanded)
-    return (
-      <div style={{ margin: '4px 0', padding: '6px 10px', background: isNew ? '#eff6ff' : '#f9fafb', borderRadius: '8px', border: isNew ? '1px solid #bfdbfe' : '1px solid #e5e7eb', fontSize: '12px', color: '#374151', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', display: 'flex', alignItems: 'flex-start', gap: '6px', animation: isNew ? 'fadeIn 0.5s' : 'none' }}>
-        <span style={{ flexShrink: 0 }}>💡</span>
-        <span style={{ flex: 1 }}>{txt}</span>
-        <div style={{ display: 'flex', gap: '2px', flexShrink: 0, alignItems: 'center' }}>
-          {(() => { const dur = hintAudioDurations[hintId + '_' + lang]; return dur ? (
-            <span style={{ fontSize: '9px', color: '#9ca3af', marginInlineEnd: '2px' }}>{dur}s</span>
-          ) : null; })()}
-          <button onClick={() => isSpeaking ? pauseResumeHint() : playHint(hintId, txt)}
-            style={{ ...btnStyle, color: '#3b82f6' }}>{isSpeaking ? (isPaused ? '▶️' : '⏸️') : (hasAudio ? '🔊' : '🔈')}</button>
-          {isSpeaking && <button onClick={stopHintPlayback} style={{ ...btnStyle, color: '#ef4444' }}>⏹️</button>}
+    // Default: small ℹ️ icon (zero height, doesn't take a row)
+    // Fixed center popup when clicked
+    return (<>
+      <div style={{ height: 0, overflow: 'visible', position: 'relative', zIndex: 5 }}>
+        <span style={{ position: 'absolute', [isRTL ? 'left' : 'right']: 0, top: '-18px', display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <button onClick={() => setOpenHintPopup(openHintPopup === hintId ? null : hintId)}
+            style={{ ...btnStyle, color: '#93b4d4', verticalAlign: 'middle', fontSize: '13px', opacity: 0.7 }}>ℹ️</button>
           {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-            style={{ ...btnStyle, color: '#9ca3af', fontSize: '10px' }}>✏️</button>}
-          {!isNew && <button onClick={() => setHintCollapsed(prev => { const n = new Set(prev); n.delete(hintId + '_open'); return n; })}
-            style={{ ...btnStyle, color: '#9ca3af', fontSize: '10px' }}>✕</button>}
-        </div>
+            style={{ ...btnStyle, color: '#d1d5db', fontSize: '10px', verticalAlign: 'middle' }}>✏️</button>}
+        </span>
       </div>
-    );
+      {openHintPopup === hintId && (<>
+        <div onClick={() => setOpenHintPopup(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 9998 }} />
+        <div style={{ position: 'fixed', zIndex: 9999, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(340px, 88vw)', padding: '14px 16px', background: '#eff6ff', borderRadius: '14px', border: '1px solid #93c5fd', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', fontSize: '13px', color: '#374151', direction: isRTL ? 'rtl' : 'ltr', animation: 'fadeIn 0.2s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {(() => { const dur = hintAudioDurations[hintId + '_' + lang]; return dur ? (
+                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{dur}s</span>
+              ) : null; })()}
+              <button onClick={() => isSpeaking ? pauseResumeHint() : playHint(hintId, txt)}
+                style={{ ...btnStyle, color: '#3b82f6', fontSize: '16px' }}>{isSpeaking ? (isPaused ? '▶️' : '⏸️') : (hasAudio ? '🔊' : '🔈')}</button>
+              {isSpeaking && <button onClick={stopHintPlayback} style={{ ...btnStyle, color: '#ef4444', fontSize: '16px' }}>⏹️</button>}
+            </div>
+            <button onClick={() => setOpenHintPopup(null)}
+              style={{ background: '#ef4444', border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+          </div>
+          <div style={{ lineHeight: '1.6', maxHeight: '50vh', overflowY: 'auto' }}>{txt}</div>
+        </div>
+      </>)}
+    </>);
   };
 
   const showHelpFor = (context) => {
