@@ -3256,6 +3256,60 @@ const FouFouApp = () => {
     }
   };
 
+  const [urlAuditResult, setUrlAuditResult] = useState(null);
+  const auditAndFixUrls = () => {
+    const isValidGPID = (pid) => pid && typeof pid === 'string' && /^(ChIJ|EiI|GhIJ)/.test(pid);
+    const cityLocs = customLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId);
+    const issues = [];
+    const fixes = {};
+    const memoryFixes = [];
+    
+    cityLocs.forEach(loc => {
+      const problems = [];
+      const locFixes = {};
+      
+      if (loc.googlePlaceId && !isValidGPID(loc.googlePlaceId)) {
+        problems.push('❌ googlePlaceId מזוהם: ' + loc.googlePlaceId.substring(0, 20));
+        if (loc.firebaseId) fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = null;
+        locFixes.googlePlaceId = null;
+      }
+      
+      const url = loc.mapsUrl || '';
+      if (url && !url.includes('google.com/maps') && url !== '#' && url.length > 0) {
+        problems.push('❌ URL לא תקין: ' + url.substring(0, 40));
+      } else if (url && url.match(/query_place_id=/) && !isValidGPID((url.match(/query_place_id=([^&]+)/) || [])[1])) {
+        problems.push('❌ URL עם placeId מזוהם');
+      }
+      
+      if (problems.length > 0) {
+        const cleanLoc = { ...loc, ...(locFixes.googlePlaceId === null ? { googlePlaceId: null } : {}) };
+        const newUrl = window.BKK.getGoogleMapsUrl(cleanLoc);
+        if (newUrl !== url && loc.firebaseId) {
+          fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`] = newUrl;
+          locFixes.mapsUrl = newUrl;
+        }
+        memoryFixes.push({ id: loc.id, name: loc.name, ...locFixes });
+        issues.push({ name: loc.name, problems, fixed: true });
+      }
+      
+      if (!loc.googlePlaceId && loc.fromGoogle && loc.name) {
+        issues.push({ name: loc.name, problems: ['⚠️ אין googlePlaceId — רענון דירוג יהיה יקר'], fixed: false });
+      }
+    });
+    
+    if (Object.keys(fixes).length > 0 && isFirebaseAvailable && database) {
+      database.ref().update(fixes)
+        .then(() => showToast(`🔧 תוקנו ${memoryFixes.length} מקומות`, 'success'))
+        .catch(e => showToast('שגיאה: ' + e.message, 'error'));
+      setCustomLocations(prev => prev.map(loc => {
+        const fix = memoryFixes.find(f => f.id === loc.id);
+        return fix ? { ...loc, ...fix } : loc;
+      }));
+    }
+    
+    setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
+  };
+
   const refreshAllGoogleRatings = async () => {
     if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
       showToast('Google API or Firebase not available', 'error');
@@ -9738,6 +9792,39 @@ const FouFouApp = () => {
               </div>
             </div>
             
+            {/* URL & PlaceID Audit */}
+            {isAdmin && (
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-300 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔧 בדיקת URLs ו-PlaceIDs</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  סריקה ותיקון אוטומטי של URLs מזוהמים ו-googlePlaceId לא תקינים
+                </p>
+                <button
+                  onClick={auditAndFixUrls}
+                  className="w-full py-2 px-3 rounded-lg font-bold text-sm bg-red-500 text-white hover:bg-red-600"
+                >🔍 סרוק ותקן</button>
+                {urlAuditResult && (
+                  <div className="mt-2 p-2 bg-white rounded-lg border text-xs" style={{ direction: 'rtl', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div className="font-bold mb-1">
+                      📊 {urlAuditResult.total} מקומות נסרקו · {urlAuditResult.fixCount} תוקנו · {urlAuditResult.issues.length - urlAuditResult.fixCount} אזהרות
+                    </div>
+                    {urlAuditResult.issues.length === 0 ? (
+                      <div className="text-green-600 font-bold">✅ הכל תקין!</div>
+                    ) : (
+                      urlAuditResult.issues.map((item, i) => (
+                        <div key={i} className="py-1 border-t border-gray-100">
+                          <span className="font-bold">{item.name}</span>
+                          {item.problems.map((p, j) => <div key={j} className="text-gray-500 mr-2">{p}</div>)}
+                          {item.fixed && <span className="text-green-600">✅ תוקן</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
             {/* Bulk Approve Drafts */}
             {isUnlocked && (
             <div className="mb-3">

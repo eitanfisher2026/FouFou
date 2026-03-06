@@ -3590,6 +3590,67 @@
   };
 
   // Batch refresh Google ratings for all favorites with Google presence
+  // Bulk audit & fix URLs and googlePlaceId for all favorites
+  const [urlAuditResult, setUrlAuditResult] = useState(null);
+  const auditAndFixUrls = () => {
+    const isValidGPID = (pid) => pid && typeof pid === 'string' && /^(ChIJ|EiI|GhIJ)/.test(pid);
+    const cityLocs = customLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId);
+    const issues = [];
+    const fixes = {};
+    const memoryFixes = [];
+    
+    cityLocs.forEach(loc => {
+      const problems = [];
+      const locFixes = {};
+      
+      // Bad googlePlaceId (Firebase key or garbage)
+      if (loc.googlePlaceId && !isValidGPID(loc.googlePlaceId)) {
+        problems.push('❌ googlePlaceId מזוהם: ' + loc.googlePlaceId.substring(0, 20));
+        if (loc.firebaseId) fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = null;
+        locFixes.googlePlaceId = null;
+      }
+      
+      // mapsUrl issues
+      const url = loc.mapsUrl || '';
+      if (url && !url.includes('google.com/maps') && url !== '#' && url.length > 0) {
+        problems.push('❌ URL לא תקין: ' + url.substring(0, 40));
+      } else if (url && url.match(/query_place_id=/) && !isValidGPID((url.match(/query_place_id=([^&]+)/) || [])[1])) {
+        problems.push('❌ URL עם placeId מזוהם');
+      }
+      
+      // Rebuild URL if there's a fix or bad URL
+      if (problems.length > 0) {
+        const cleanLoc = { ...loc, ...(locFixes.googlePlaceId === null ? { googlePlaceId: null } : {}) };
+        const newUrl = window.BKK.getGoogleMapsUrl(cleanLoc);
+        if (newUrl !== url && loc.firebaseId) {
+          fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`] = newUrl;
+          locFixes.mapsUrl = newUrl;
+        }
+        memoryFixes.push({ id: loc.id, name: loc.name, ...locFixes });
+        issues.push({ name: loc.name, problems, fixed: true });
+      }
+      
+      // No googlePlaceId at all (missed optimization)
+      if (!loc.googlePlaceId && loc.fromGoogle && loc.name) {
+        issues.push({ name: loc.name, problems: ['⚠️ אין googlePlaceId — רענון דירוג יהיה יקר'], fixed: false });
+      }
+    });
+    
+    // Apply fixes to Firebase
+    if (Object.keys(fixes).length > 0 && isFirebaseAvailable && database) {
+      database.ref().update(fixes)
+        .then(() => showToast(`🔧 תוקנו ${memoryFixes.length} מקומות`, 'success'))
+        .catch(e => showToast('שגיאה: ' + e.message, 'error'));
+      // Fix in memory too
+      setCustomLocations(prev => prev.map(loc => {
+        const fix = memoryFixes.find(f => f.id === loc.id);
+        return fix ? { ...loc, ...fix } : loc;
+      }));
+    }
+    
+    setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
+  };
+
   const refreshAllGoogleRatings = async () => {
     if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
       showToast('Google API or Firebase not available', 'error');
