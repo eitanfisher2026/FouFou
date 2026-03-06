@@ -1371,29 +1371,36 @@ const FouFouApp = () => {
   };
 
   const migrateOldHelpToHints = () => {
-    const oldHelp = window.BKK.helpContent || {};
     const mapping = {
-      hint_interests: { src: 'main', extract: 0 },
-      hint_area: { src: 'main', extract: 4 },
-      hint_choice: { src: 'route', extract: 0 },
-      hint_route: { src: 'placesListing', extract: 0 },
-      hint_manual: { src: 'manualMode', extract: 0 },
-      hint_favorites: { src: 'myPlaces', extract: 0 },
-      hint_saved: { src: 'saved', extract: 0 },
-      hint_interests_list: { src: 'myInterests', extract: 0 },
-      hint_settings: { src: 'settings', extract: 0 },
+      hint_interests: 'main',
+      hint_area: 'main',
+      hint_choice: 'route',
+      hint_route: 'placesListing',
+      hint_manual: 'manualMode',
+      hint_favorites: 'myPlaces',
+      hint_saved: 'saved',
+      hint_interests_list: 'myInterests',
+      hint_settings: 'settings',
     };
     let count = 0;
-    Object.entries(mapping).forEach(([hintId, info]) => {
-      const existing = getHelpSection(hintId);
-      if (existing && existing.content && existing.content.trim()) return;
-      const src = oldHelp[info.src];
-      if (!src || !src.content) return;
-      const paragraphs = src.content.split('\n\n');
-      const text = (paragraphs[info.extract] || paragraphs[0] || '').replace(/\*\*/g, '').replace(/\n/g, ' ').trim();
-      if (text) { saveHelpContent(hintId, text.substring(0, 200)); count++; }
+    const langs = ['he', 'en'];
+    langs.forEach(lang => {
+      const strings = window.BKK.i18n.strings && window.BKK.i18n.strings[lang];
+      const oldHelp = (strings && strings.help) || {};
+      Object.entries(mapping).forEach(([hintId, srcKey]) => {
+        const existing = helpOverrides[hintId] && helpOverrides[hintId][lang];
+        if (existing && existing.trim()) return;
+        const src = oldHelp[srcKey];
+        if (!src || !src.content) return;
+        const text = src.content.trim();
+        if (text && isFirebaseAvailable && database) {
+          database.ref('helpContent/' + hintId + '/' + lang).set(text);
+          setHelpOverrides(prev => ({ ...prev, [hintId]: { ...(prev[hintId] || {}), [lang]: text } }));
+          count++;
+        }
+      });
     });
-    showToast(`📋 ${count} הינטים הועברו מהתיעוד הישן`, 'success');
+    showToast('📋 ' + count + ' הינטים הועברו (עברית + אנגלית)', 'success');
   };
 
   const [hintRecording, setHintRecording] = useState(false);
@@ -1438,13 +1445,25 @@ const FouFouApp = () => {
     }).catch(() => {});
   }, [isFirebaseAvailable]);
 
+  const [hintAudioDurations, setHintAudioDurations] = useState({});
+  
+  React.useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    database.ref('helpAudioDuration').once('value').then(snap => {
+      const data = snap.val();
+      if (data) setHintAudioDurations(data);
+    }).catch(() => {});
+  }, [isFirebaseAvailable]);
+
   const startHintAudioRecord = (hintId) => {
+    const recordStart = Date.now();
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       const chunks = [];
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
+        const duration = Math.round((Date.now() - recordStart) / 1000);
         const blob = new Blob(chunks, { type: 'audio/webm' });
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -1453,8 +1472,10 @@ const FouFouApp = () => {
           const key = hintId + '_' + lang;
           if (isFirebaseAvailable && database) {
             database.ref('helpAudio/' + key).set(base64);
+            database.ref('helpAudioDuration/' + key).set(duration);
             setHintAudioUrls(prev => ({ ...prev, [key]: base64 }));
-            showToast('🎙️ הקלטה נשמרה!', 'success');
+            setHintAudioDurations(prev => ({ ...prev, [key]: duration }));
+            showToast('🎙️ ' + duration + 's נשמרה!', 'success');
           }
         };
         reader.readAsDataURL(blob);
@@ -1565,8 +1586,11 @@ const FouFouApp = () => {
         <span style={{ flexShrink: 0 }}>💡</span>
         <span style={{ flex: 1 }}>{txt}</span>
         <div style={{ display: 'flex', gap: '2px', flexShrink: 0, alignItems: 'center' }}>
+          {(() => { const dur = hintAudioDurations[hintId + '_' + lang]; return dur ? (
+            <span style={{ fontSize: '9px', color: '#9ca3af', marginInlineEnd: '2px' }}>{dur}s</span>
+          ) : null; })()}
           <button onClick={() => isSpeaking ? pauseResumeHint() : playHint(hintId, txt)}
-            style={{ ...btnStyle, color: '#3b82f6' }}>{isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}</button>
+            style={{ ...btnStyle, color: '#3b82f6' }}>{isSpeaking ? (isPaused ? '▶️' : '⏸️') : (hasAudio ? '🔊' : '🔈')}</button>
           {isSpeaking && <button onClick={stopHintPlayback} style={{ ...btnStyle, color: '#ef4444' }}>⏹️</button>}
           {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
             style={{ ...btnStyle, color: '#9ca3af', fontSize: '10px' }}>✏️</button>}
