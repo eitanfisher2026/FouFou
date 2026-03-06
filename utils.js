@@ -497,36 +497,27 @@ window.BKK.getGoogleMapsUrl = (place) => {
   // Validate Google Place ID — must look like a real one (starts with ChIJ, EiI, etc.)
   const isValidGooglePlaceId = (pid) => {
     if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
-    // Google Place IDs typically start with ChIJ, EiI, or GhIJ
     if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
-    // New Places API IDs: long alphanumeric, no underscores at start
     if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
     return false;
   };
   
-  // Top priority: user-set or API-provided mapsUrl (if it's a real Google URL, not just coords)
-  // BUT: reject if query_place_id contains a Firebase key (not a real Google Place ID)
-  const hasInvalidPlaceIdInUrl = (url) => {
-    const m = url.match(/query_place_id=([^&]+)/);
-    if (!m) return false;
-    return !isValidGooglePlaceId(decodeURIComponent(m[1]));
-  };
-  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps')
-      && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)
-      && !hasInvalidPlaceIdInUrl(place.mapsUrl)) {
-    return place.mapsUrl;
+  // Top priority: stored mapsUrl — but only if valid (no Firebase key in query_place_id)
+  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)) {
+    const m = place.mapsUrl.match(/query_place_id=([^&]+)/);
+    const hasInvalidPid = m && !isValidGooglePlaceId(decodeURIComponent(m[1]));
+    if (!hasInvalidPid) return place.mapsUrl;
   }
   
   if (!hasCoords && !addressStr) return '#';
   
-  // Best: use Place ID → opens the actual Google Maps place page
-  // Using place_id: format — works on desktop, mobile browser, and Google Maps app
+  // Best: valid Google Place ID
   const pid = place.googlePlaceId || place.placeId;
   if (pid && isValidGooglePlaceId(pid)) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
   }
   
-  // Google-origin place without Place ID: search by name + coords as query (no center/zoom — invalid on mobile)
+  // Google-origin place with name + coords
   if ((place.fromGoogle || place.googlePlace) && place.name && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.lat + ',' + place.lng)}`;
   }
@@ -536,7 +527,7 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
   }
   
-  // Custom place with name + coords: embed coords in query so mobile Maps app lands on the right spot
+  // Custom place with name + coords
   if (place.name?.trim() && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
   }

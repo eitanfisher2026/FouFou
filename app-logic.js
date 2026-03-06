@@ -1957,19 +1957,10 @@
       // Skip coordinate-only places — no Google identity to generate URL for
       if (isCoordOnly) return;
       
-      // Check if mapsUrl has a bad query_place_id (Firebase key instead of Google Place ID)
-      const hasBadPlaceIdInUrl = (() => {
-        const m = currentUrl.match(/query_place_id=([^&]+)/);
-        if (!m) return false;
-        const pid = decodeURIComponent(m[1]);
-        return !isValidGPID(pid);
-      })();
-      
       const needsFix = !currentUrl || 
         currentUrl === '#' || 
         coordsOnlyPattern.test(currentUrl) ||
-        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0) ||
-        hasBadPlaceIdInUrl;
+        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0);
       
       if (!needsFix) return;
       
@@ -3575,12 +3566,12 @@
         setNewLocation(prev => {
           const updated = {
             ...prev,
+            mapsUrl: '',  // Clear old mapsUrl — we have fresh data from API, always rebuild
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
-          // Build proper mapsUrl from Place ID
           updated.mapsUrl = window.BKK.getGoogleMapsUrl(updated);
           return updated;
         });
@@ -5885,6 +5876,24 @@
     return false;
   };
 
+  // Sanitize mapsUrl before saving — never save a URL with an invalid query_place_id
+  const sanitizeMapsUrl = (loc) => {
+    const url = loc.mapsUrl || '';
+    if (!url) return loc;
+    // If mapsUrl has query_place_id — validate it
+    const m = url.match(/query_place_id=([^&]+)/);
+    if (m) {
+      const pid = decodeURIComponent(m[1]);
+      const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+      if (!isValidPid) {
+        // Bad query_place_id — rebuild from canonical fields (without mapsUrl)
+        const clean = { ...loc, mapsUrl: '' };
+        return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
+      }
+    }
+    return loc;
+  };
+
   // Check if location has all required data
   const isLocationValid = (loc) => {
     if (!loc) return false;
@@ -6190,6 +6199,7 @@
       cityId: selectedCityId
     };
     locationToAdd.mapsUrl = window.BKK.getGoogleMapsUrl(locationToAdd);
+    locationToAdd = sanitizeMapsUrl(locationToAdd);
     
     // Save to Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
@@ -6860,6 +6870,7 @@
       addedBy: authUser?.uid || null,
       cityId: selectedCityId
     };
+    locationToAdd = sanitizeMapsUrl(locationToAdd);
     
     // Increment interest counters for auto-naming (if name matches "#N" pattern)
     const incrementCounters = () => {
@@ -7023,7 +7034,7 @@
     }
     if (finalAreas.length === 0) finalAreas = editingLocation.areas || [formData.area || areaOptions[0]?.id || 'center'];
     
-    const updatedLocation = { 
+    const updatedLocation = sanitizeMapsUrl({ 
       ...editingLocation, // Keep existing fields like status
       ...newLocation, // Override with edited fields
       area: finalAreas[0],

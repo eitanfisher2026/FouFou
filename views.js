@@ -3792,6 +3792,73 @@
                         >
                           🗑️ Delete old accessLog data
                         </button>
+
+                        {/* URL Health Check */}
+                        <div className="mt-3 border-t border-gray-200 pt-3">
+                          <p className="text-xs font-bold text-blue-700 mb-2">🔗 URL Health Check</p>
+                          <button
+                            onClick={() => {
+                              const isValidPid = (pid) => pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+                              const results = [];
+                              customLocations.forEach(loc => {
+                                const url = loc.mapsUrl || '';
+                                if (!url) return; // No URL — not a problem, skip
+                                const m = url.match(/query_place_id=([^&]+)/);
+                                if (m) {
+                                  const pid = decodeURIComponent(m[1]);
+                                  if (!isValidPid(pid)) {
+                                    results.push({ loc, reason: `bad query_place_id: ${pid.substring(0, 20)}` });
+                                    return;
+                                  }
+                                }
+                                if (!url.includes('google.com/maps')) {
+                                  results.push({ loc, reason: 'not a Google Maps URL' });
+                                }
+                              });
+
+                              if (results.length === 0) {
+                                showToast('✅ All mapsUrls look valid!', 'success');
+                                return;
+                              }
+
+                              // Show results as a toast + console
+                              const lines = results.map(r => `• ${r.loc.name} (${r.reason})`).join('\n');
+                              console.warn('[URL-CHECK] Bad mapsUrls found:\n' + lines);
+                              showToast(
+                                `⚠️ ${results.length} bad URL${results.length > 1 ? 's' : ''} found — see console for details`,
+                                'warning', 'sticky'
+                              );
+
+                              // Open edit dialog for first bad location
+                              const first = results[0].loc;
+                              setEditingLocation(first);
+                              setNewLocation({
+                                name: first.name || '',
+                                description: first.description || '',
+                                notes: first.notes || '',
+                                areas: first.areas || (first.area ? [first.area] : []),
+                                interests: first.interests || [],
+                                lat: first.lat || null,
+                                lng: first.lng || null,
+                                address: first.address || '',
+                                mapsUrl: first.mapsUrl || '',
+                                uploadedImage: first.uploadedImage || null,
+                                locked: !!first.locked,
+                                googlePlaceId: first.googlePlaceId || '',
+                                googleRating: first.googleRating || null,
+                                googleRatingCount: first.googleRatingCount || 0,
+                                googlePlace: !!first.googlePlace,
+                              });
+                              setShowEditLocationDialog(true);
+                            }}
+                            className="w-full bg-blue-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-blue-600 transition"
+                          >
+                            🔍 Check all mapsUrls
+                          </button>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            Finds locations with invalid query_place_id. Opens first bad one for editing — use "מידע מגוגל" to fix.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}

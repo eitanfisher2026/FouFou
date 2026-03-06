@@ -2,7 +2,7 @@
 
 **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭
 
-## Version: 3.8.04 (Mar 6, 2026)
+## Version: 3.8.07 (Mar 6, 2026)
 
 ## ⚠️ CRITICAL: Known Fragile Areas — READ BEFORE ANY CODE CHANGE
 
@@ -218,6 +218,34 @@ print(f'app-code.js: () {p:+d}  {{}} {b:+d}  [] {k:+d}')
 ```
 
 ## Changelog
+
+### v3.8.06 (Mar 6, 2026) — mapsUrl validation at save time
+
+**Two targeted fixes — based on 3.8.04, not 3.8.05:**
+
+**Fix 1 — fetchGooglePlaceInfo (מידע מגוגל):**
+- Clear `mapsUrl: ''` before rebuilding after API call
+- Since we just got fresh data from Google, always rebuild — no reason to keep old URL
+
+**Fix 2 — sanitizeMapsUrl() — new function, runs before every Firebase save:**
+- If `mapsUrl` contains `query_place_id` with invalid value (e.g. Firebase push key) → rebuild from canonical fields
+- Applied in: `addFromGoogle`, `addCustomLocation`, `updateCustomLocation`
+- Never saves a corrupt mapsUrl to Firebase
+
+**getGoogleMapsUrl (utils.js) — restored to 3.8.04 logic:**
+- Still uses stored `mapsUrl` as top priority (reverted from 3.8.05)
+- But now validates `query_place_id` inside it before trusting it
+
+### v3.8.05 (Mar 6, 2026) — Stop trusting mapsUrl from Firebase
+
+**Root cause (different approach):** All previous fixes tried to detect and filter *specific patterns* of bad mapsUrls. The real fix is simpler: `getGoogleMapsUrl` now **ignores `mapsUrl` entirely**. Firebase-stored `mapsUrl` values are frequently stale or corrupt (containing Firebase keys, old center/zoom params, etc.). Instead, the URL is always built fresh from canonical fields:
+1. `googlePlaceId` (validated) → `?api=1&query=NAME&query_place_id=ID`
+2. `fromGoogle` + name + coords → `?api=1&query=NAME&ll=lat,lng`
+3. `address` → `?api=1&query=ADDRESS`
+4. name + coords → `?api=1&query=NAME&ll=lat,lng`
+5. coords only → `?api=1&query=lat,lng`
+
+Also removed `place.placeId` fallback from Place ID lookup — only `googlePlaceId` (validated) is trusted.
 
 ### v3.8.04 (Mar 6, 2026) — Fix Firebase Key in mapsUrl (Mobile Maps Bug Part 2)
 
