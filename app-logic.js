@@ -7043,7 +7043,7 @@
       id: editingLocation.id,
       outsideArea: outsideArea, // Flag for outside area
       missingCoordinates: !hasCoordinates // Flag for missing coordinates
-    };
+    });
     
     // Update in Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {

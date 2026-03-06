@@ -6321,7 +6321,7 @@ const FouFouApp = () => {
       id: editingLocation.id,
       outsideArea: outsideArea, // Flag for outside area
       missingCoordinates: !hasCoordinates // Flag for missing coordinates
-    };
+    });
     
     if (isFirebaseAvailable && database) {
       const { firebaseId, ...locationData } = updatedLocation;
