@@ -1457,6 +1457,134 @@
     setHintEditId(null);
   };
 
+  // Migrate old help content to hints (one-time, admin only)
+  const migrateOldHelpToHints = () => {
+    const oldHelp = window.BKK.helpContent || {};
+    const mapping = {
+      hint_interests: { src: 'main', extract: 0 },
+      hint_area: { src: 'main', extract: 4 },
+      hint_choice: { src: 'route', extract: 0 },
+      hint_route: { src: 'placesListing', extract: 0 },
+      hint_manual: { src: 'manualMode', extract: 0 },
+      hint_favorites: { src: 'myPlaces', extract: 0 },
+      hint_saved: { src: 'saved', extract: 0 },
+      hint_interests_list: { src: 'myInterests', extract: 0 },
+      hint_settings: { src: 'settings', extract: 0 },
+    };
+    let count = 0;
+    Object.entries(mapping).forEach(([hintId, info]) => {
+      const existing = getHelpSection(hintId);
+      if (existing && existing.content && existing.content.trim()) return;
+      const src = oldHelp[info.src];
+      if (!src || !src.content) return;
+      const paragraphs = src.content.split('\n\n');
+      const text = (paragraphs[info.extract] || paragraphs[0] || '').replace(/\*\*/g, '').replace(/\n/g, ' ').trim();
+      if (text) { saveHelpContent(hintId, text.substring(0, 200)); count++; }
+    });
+    showToast(`📋 ${count} הינטים הועברו מהתיעוד הישן`, 'success');
+  };
+
+  // Speech-to-text for hint editing
+  const [hintRecording, setHintRecording] = useState(false);
+  const startHintDictation = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { showToast('Speech recognition not supported', 'error'); return; }
+    const recognition = new SR();
+    recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let finalText = hintEditText;
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalText += (finalText ? ' ' : '') + event.results[i][0].transcript;
+          setHintEditText(finalText);
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+    };
+    recognition.onend = () => setHintRecording(false);
+    recognition.onerror = () => setHintRecording(false);
+    window._hintRecognition = recognition;
+    recognition.start();
+    setHintRecording(true);
+  };
+  const stopHintDictation = () => {
+    if (window._hintRecognition) { window._hintRecognition.stop(); window._hintRecognition = null; }
+    setHintRecording(false);
+  };
+
+  // Audio recording for hints (saves to Firebase Storage)
+  const [hintAudioRecording, setHintAudioRecording] = useState(false);
+  const [hintAudioUrls, setHintAudioUrls] = useState({});
+  
+  // Load audio URLs from Firebase
+  React.useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    database.ref('helpAudio').once('value').then(snap => {
+      const data = snap.val();
+      if (data) setHintAudioUrls(data);
+    }).catch(() => {});
+  }, [isFirebaseAvailable]);
+
+  const startHintAudioRecord = (hintId) => {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result;
+          const lang = window.BKK.i18n.currentLang || 'he';
+          const key = hintId + '_' + lang;
+          if (isFirebaseAvailable && database) {
+            database.ref('helpAudio/' + key).set(base64);
+            setHintAudioUrls(prev => ({ ...prev, [key]: base64 }));
+            showToast('🎙️ הקלטה נשמרה!', 'success');
+          }
+        };
+        reader.readAsDataURL(blob);
+      };
+      window._hintMediaRecorder = mediaRecorder;
+      mediaRecorder.start();
+      setHintAudioRecording(hintId);
+      showToast('🔴 מקליט...', 'info');
+    }).catch(() => showToast('אין גישה למיקרופון', 'error'));
+  };
+  const stopHintAudioRecord = () => {
+    if (window._hintMediaRecorder) { window._hintMediaRecorder.stop(); window._hintMediaRecorder = null; }
+    setHintAudioRecording(false);
+  };
+
+  // Play hint: audio recording > TTS
+  const playHint = (hintId, text) => {
+    const lang = window.BKK.i18n.currentLang || 'he';
+    const audioUrl = hintAudioUrls[hintId + '_' + lang];
+    if (audioUrl) {
+      if (window._hintAudio) { window._hintAudio.pause(); }
+      const audio = new Audio(audioUrl);
+      window._hintAudio = audio;
+      audio.onended = () => { setIsSpeaking(false); };
+      setIsSpeaking(true); setIsPaused(false);
+      audio.play();
+      return;
+    }
+    speakHelp(text);
+  };
+  const pauseResumeHint = () => {
+    if (window._hintAudio) {
+      if (window._hintAudio.paused) { window._hintAudio.play(); setIsPaused(false); }
+      else { window._hintAudio.pause(); setIsPaused(true); }
+      return;
+    }
+    speakHelp('');
+  };
+
   // Render a context-sensitive hint bar
   const renderContextHint = (hintId) => {
     const s = getHelpSection(hintId);
@@ -1465,6 +1593,9 @@
     trackHintVisit(hintId);
     const isNew = visits < 3;
     const isOpen = hintCollapsed.has(hintId + '_open');
+    const lang = window.BKK.i18n.currentLang || 'he';
+    const hasAudio = !!hintAudioUrls[hintId + '_' + lang];
+    const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: '0 1px' };
     
     if (!txt && !isAdmin) return null;
     
@@ -1473,25 +1604,37 @@
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
         <textarea value={hintEditText} onChange={(e) => setHintEditText(e.target.value)}
           style={{ width: '100%', minHeight: '60px', padding: '6px', fontSize: '12px', border: '1px solid #93c5fd', borderRadius: '6px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
-        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>
           <button onClick={() => { saveHint(hintId, hintEditText); translateHelpToEnglish(hintId, hintEditText); }}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾🌐</button>
+          <button onClick={() => hintRecording ? stopHintDictation() : startHintDictation()}
+            style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: hintRecording ? '#ef4444' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', animation: hintRecording ? 'pulse 1s infinite' : 'none' }}>{hintRecording ? '⏹️ הפסק' : '🎤 הכתב'}</button>
           <button onClick={() => setHintEditId(null)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#d1d5db', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>✕</button>
+          {/* Audio recording */}
+          <div style={{ width: '100%', display: 'flex', gap: '4px', marginTop: '2px' }}>
+            {hintAudioRecording === hintId ? (
+              <button onClick={stopHintAudioRecord}
+                style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', animation: 'pulse 1s infinite' }}>🔴 סיום הקלטה</button>
+            ) : (
+              <button onClick={() => startHintAudioRecord(hintId)}
+                style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>🎙️ הקלט קול ({lang})</button>
+            )}
+            {hasAudio && <span style={{ fontSize: '10px', color: '#22c55e', alignSelf: 'center' }}>✅ יש הקלטה</span>}
+          </div>
         </div>
       </div>
     );
     
-    // Collapsed state (veteran user, not expanded)
+    // Collapsed state (veteran user)
     if (!isNew && !isOpen && txt) return (
-      <div style={{ textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '2px 0' }}>
+      <div style={{ textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '2px 0', display: 'flex', gap: '4px', alignItems: 'center' }}>
         <button onClick={() => setHintCollapsed(prev => { const n = new Set(prev); n.add(hintId + '_open'); return n; })}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', padding: '0' }}
-          title={txt.substring(0, 60)}>ℹ️</button>
+          style={{ ...btnStyle, color: '#9ca3af' }} title={txt.substring(0, 60)}>ℹ️</button>
         {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#d1d5db', padding: '0 2px' }}>✏️</button>}
+          style={{ ...btnStyle, color: '#d1d5db', fontSize: '10px' }}>✏️</button>}
       </div>
     );
     
@@ -1508,11 +1651,14 @@
       <div style={{ margin: '4px 0', padding: '6px 10px', background: isNew ? '#eff6ff' : '#f9fafb', borderRadius: '8px', border: isNew ? '1px solid #bfdbfe' : '1px solid #e5e7eb', fontSize: '12px', color: '#374151', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', display: 'flex', alignItems: 'flex-start', gap: '6px', animation: isNew ? 'fadeIn 0.5s' : 'none' }}>
         <span style={{ flexShrink: 0 }}>💡</span>
         <span style={{ flex: 1 }}>{txt}</span>
-        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '2px', flexShrink: 0, alignItems: 'center' }}>
+          <button onClick={() => isSpeaking ? pauseResumeHint() : playHint(hintId, txt)}
+            style={{ ...btnStyle, color: '#3b82f6' }}>{isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}</button>
+          {isSpeaking && <button onClick={stopSpeaking} style={{ ...btnStyle, color: '#ef4444' }}>⏹️</button>}
           {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af', padding: '0' }}>✏️</button>}
+            style={{ ...btnStyle, color: '#9ca3af', fontSize: '10px' }}>✏️</button>}
           {!isNew && <button onClick={() => setHintCollapsed(prev => { const n = new Set(prev); n.delete(hintId + '_open'); return n; })}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af', padding: '0' }}>✕</button>}
+            style={{ ...btnStyle, color: '#9ca3af', fontSize: '10px' }}>✕</button>}
         </div>
       </div>
     );

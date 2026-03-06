@@ -3363,6 +3363,19 @@
               </div>
             </div>
             )}
+
+            {/* Migrate old help to hints */}
+            {isAdmin && (
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">📋 העבר תיעוד ישן להינטים</h3>
+                <p className="text-xs text-gray-600 mb-2">העתק תוכן מהתיעוד הישן להינטים החדשים (חד-פעמי)</p>
+                <button onClick={migrateOldHelpToHints}
+                  className="w-full py-2 px-3 rounded-lg font-bold text-sm bg-blue-500 text-white hover:bg-blue-600"
+                >📋 העבר עכשיו</button>
+              </div>
+            </div>
+            )}
             
             {/* Debug Mode Toggle */}
             <div className="mb-4">
