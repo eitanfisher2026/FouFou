@@ -1317,16 +1317,19 @@ const FouFouApp = () => {
     showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
 
-  const translateHelpToEnglish = async (sectionId, hebrewText) => {
+  const saveAndTranslateHint = async (sectionId, hebrewText) => {
     if (!isFirebaseAvailable || !database) return;
-    showToast('🌐 מתרגם...', 'info');
+    database.ref(`helpContent/${sectionId}/he`).set(hebrewText);
+    setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), he: hebrewText } }));
+    showToast('💾 נשמר, מתרגם...', 'info');
+    setHintEditId(null);
     try {
       const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(hebrewText));
       const data = await resp.json();
       const translated = data[0].map(function(s) { return s[0]; }).join('');
       database.ref(`helpContent/${sectionId}/en`).set(translated);
-      setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], en: translated } }));
-      showToast('🌐 תורגם!', 'success');
+      setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), en: translated } }));
+      showToast('🌐 תורגם לאנגלית!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
@@ -1530,7 +1533,7 @@ const FouFouApp = () => {
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>
-          <button onClick={() => { saveHint(hintId, hintEditText); translateHelpToEnglish(hintId, hintEditText); }}
+          <button onClick={() => saveAndTranslateHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾🌐</button>
           <button onClick={() => hintRecording ? stopHintDictation() : startHintDictation()}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: hintRecording ? '#ef4444' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', animation: hintRecording ? 'pulse 1s infinite' : 'none' }}>{hintRecording ? '⏹️ הפסק' : '🎤 הכתב'}</button>
@@ -13127,7 +13130,7 @@ const FouFouApp = () => {
                   <button onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
                     className="flex-1 py-2 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 text-sm"
                   >💾 {t('general.save') || 'שמור'}</button>
-                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveAndTranslateHint(helpContext, helpEditText); setHelpEditing(false); }}
                     className="py-2 px-3 rounded-lg bg-indigo-500 text-white font-bold hover:bg-indigo-600 text-sm"
                   >💾🌐 EN</button>
                   <button onClick={() => setHelpEditing(false)}

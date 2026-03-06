@@ -2116,7 +2116,7 @@
                   <button onClick={() => { saveHelpContent(helpContext, helpEditText); setHelpEditing(false); }}
                     className="flex-1 py-2 rounded-lg bg-green-500 text-white font-bold hover:bg-green-600 text-sm"
                   >💾 {t('general.save') || 'שמור'}</button>
-                  <button onClick={() => { saveHelpContent(helpContext, helpEditText); translateHelpToEnglish(helpContext, helpEditText); setHelpEditing(false); }}
+                  <button onClick={() => { saveAndTranslateHint(helpContext, helpEditText); setHelpEditing(false); }}
                     className="py-2 px-3 rounded-lg bg-indigo-500 text-white font-bold hover:bg-indigo-600 text-sm"
                   >💾🌐 EN</button>
                   <button onClick={() => setHelpEditing(false)}

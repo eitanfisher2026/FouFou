@@ -1402,16 +1402,21 @@
     showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
 
-  const translateHelpToEnglish = async (sectionId, hebrewText) => {
+  const saveAndTranslateHint = async (sectionId, hebrewText) => {
     if (!isFirebaseAvailable || !database) return;
-    showToast('🌐 מתרגם...', 'info');
+    // Always save Hebrew text to 'he' slot first
+    database.ref(`helpContent/${sectionId}/he`).set(hebrewText);
+    setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), he: hebrewText } }));
+    showToast('💾 נשמר, מתרגם...', 'info');
+    setHintEditId(null);
+    // Then translate and save to 'en' slot
     try {
       const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(hebrewText));
       const data = await resp.json();
       const translated = data[0].map(function(s) { return s[0]; }).join('');
       database.ref(`helpContent/${sectionId}/en`).set(translated);
-      setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...prev[sectionId], en: translated } }));
-      showToast('🌐 תורגם!', 'success');
+      setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), en: translated } }));
+      showToast('🌐 תורגם לאנגלית!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
@@ -1630,7 +1635,7 @@
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
           <button onClick={() => saveHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾</button>
-          <button onClick={() => { saveHint(hintId, hintEditText); translateHelpToEnglish(hintId, hintEditText); }}
+          <button onClick={() => saveAndTranslateHint(hintId, hintEditText)}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#6366f1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>💾🌐</button>
           <button onClick={() => hintRecording ? stopHintDictation() : startHintDictation()}
             style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: hintRecording ? '#ef4444' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', animation: hintRecording ? 'pulse 1s infinite' : 'none' }}>{hintRecording ? '⏹️ הפסק' : '🎤 הכתב'}</button>
