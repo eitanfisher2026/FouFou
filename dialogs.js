@@ -1431,7 +1431,6 @@
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
                               setCustomInterests(updated);
-                              localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             }
                           }
                           
@@ -1514,7 +1513,7 @@
                                 saveToPendingInterest(newInterestData, searchConfig);
                               });
                             // Enable interest status in Firebase
-                            const userId = localStorage.getItem('bangkok_user_id') || 'unknown';
+                            const userId = authUser?.uid || 'unknown';
                             database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
                             // Also save admin-level status
                             database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
@@ -1526,7 +1525,6 @@
                           } else {
                             const updated = [...customInterests, newInterestData];
                             setCustomInterests(updated);
-                            localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
                           }
                           window._savingInterest = false;

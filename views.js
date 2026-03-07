@@ -3509,7 +3509,7 @@
                 
                 {/* Current Device Info */}
                 <div className="text-xs bg-white rounded-lg p-2 border border-red-200 mb-3">
-                  <strong>{t("general.currentDevice")}:</strong> {localStorage.getItem('bangkok_user_id')?.slice(-12) || 'N/A'}
+                  <strong>{t("general.currentDevice")}:</strong> {authUser?.uid?.slice(-12) || 'N/A'}
                   <br />
                   <strong>{t("general.status")}:</strong> 
                   <span className="text-green-600 font-bold"> 🔓 {t("general.open")}</span>

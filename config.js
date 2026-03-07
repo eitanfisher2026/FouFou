@@ -44,20 +44,20 @@ window.BKK.mapConfig = {
 // Generate or restore persistent visitor ID
 (function() {
   let vid = null;
-  try { vid = localStorage.getItem('bangkok_visitor_id'); } catch(e) {}
+  try { vid = localStorage.getItem('foufou_visitor_id'); } catch(e) {}
   if (!vid) {
     vid = 'v_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    try { localStorage.setItem('bangkok_visitor_id', vid); } catch(e) {}
+    try { localStorage.setItem('foufou_visitor_id', vid); } catch(e) {}
   }
   window.BKK.visitorId = vid;
   // Try to get a display name
   let vname = null;
-  try { vname = localStorage.getItem('bangkok_visitor_name'); } catch(e) {}
+  try { vname = localStorage.getItem('foufou_visitor_name'); } catch(e) {}
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
 // App Version
-window.BKK.VERSION = '3.8.25';
+window.BKK.VERSION = '3.8.27';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);

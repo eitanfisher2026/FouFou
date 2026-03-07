@@ -45,7 +45,7 @@ const FouFouApp = () => {
 
   const loadPreferences = () => {
     try {
-      const saved = localStorage.getItem('bangkok_preferences');
+      const saved = localStorage.getItem('foufou_preferences');
       if (saved) {
         const prefs = JSON.parse(saved);
         prefs.maxStops = 10;
@@ -134,7 +134,7 @@ const FouFouApp = () => {
           }
           setUserProfile(profile);
           setUserRole(profile.role || 0);
-          localStorage.setItem('bangkok_is_admin', (profile.role || 0) >= 2 ? 'true' : 'false');
+
           if ((profile.role || 0) >= 2) {
             migrateAddedBy(user.uid);
           }
@@ -145,7 +145,6 @@ const FouFouApp = () => {
       } else {
         setUserProfile(null);
         setUserRole(0);
-        localStorage.removeItem('bangkok_is_admin');
       }
       setAuthLoading(false);
     });
@@ -452,7 +451,7 @@ const FouFouApp = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
   const [routeType, setRouteType] = useState(() => {
-    const saved = localStorage.getItem('bangkok_route_type');
+    const saved = localStorage.getItem('foufou_route_type');
     return saved || 'circular';
   }); // 'circular' or 'linear'
   
@@ -471,12 +470,8 @@ const FouFouApp = () => {
   
   const [savedRoutes, setSavedRoutes] = useState([]);
   const [customLocations, setCustomLocations] = useState([]);
-  const [pendingLocations, setPendingLocations] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('pendingLocations') || '[]'); } catch(e) { return []; }
-  });
-  const [pendingInterests, setPendingInterests] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('pendingInterests') || '[]'); } catch(e) { return []; }
-  });
+  const [pendingLocations, setPendingLocations] = useState([]);
+  const [pendingInterests, setPendingInterests] = useState([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
@@ -1069,7 +1064,7 @@ const FouFouApp = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [placeSearchQuery, setPlaceSearchQuery] = useState(() => {
     try {
-      const prefs = JSON.parse(localStorage.getItem('bangkok_preferences'));
+      const prefs = JSON.parse(localStorage.getItem('foufou_preferences'));
       return prefs?.radiusPlaceName || '';
     } catch(e) { return ''; }
   });
@@ -1100,10 +1095,10 @@ const FouFouApp = () => {
   const [helpContext, setHelpContext] = useState('main');
   
   const [debugMode, setDebugMode] = useState(() => {
-    return localStorage.getItem('bangkok_debug_mode') === 'true';
+    return localStorage.getItem('foufou_debug_mode') === 'true';
   });
   const [debugCategories, setDebugCategories] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('bangkok_debug_categories') || '["all"]'); } catch(e) { return ['all']; }
+    try { return JSON.parse(localStorage.getItem('foufou_debug_categories') || '["all"]'); } catch(e) { return ['all']; }
   });
   const toggleDebugCategory = (cat) => {
     setDebugCategories(prev => {
@@ -1139,7 +1134,7 @@ const FouFouApp = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [rightColWidth, setRightColWidth] = useState(() => {
     try {
-      const saved = parseInt(localStorage.getItem('bangkok_right_col_width'));
+      const saved = parseInt(localStorage.getItem('foufou_right_col_width'));
       return saved && saved >= 100 && saved <= 250 ? saved : 130;
     } catch(e) { return 130; }
   });
@@ -1194,10 +1189,10 @@ const FouFouApp = () => {
   };
   
   useEffect(() => {
-    localStorage.setItem('bangkok_debug_mode', debugMode.toString());
+    localStorage.setItem('foufou_debug_mode', debugMode.toString());
   }, [debugMode]);
   useEffect(() => {
-    localStorage.setItem('bangkok_debug_categories', JSON.stringify(debugCategories));
+    localStorage.setItem('foufou_debug_categories', JSON.stringify(debugCategories));
   }, [debugCategories]);
   
   useEffect(() => {
@@ -1781,10 +1776,8 @@ const FouFouApp = () => {
   }, [currentView, wizardStep]);
 
   useEffect(() => {
-    localStorage.setItem('pendingLocations', JSON.stringify(pendingLocations));
   }, [pendingLocations]);
   useEffect(() => {
-    localStorage.setItem('pendingInterests', JSON.stringify(pendingInterests));
   }, [pendingInterests]);
 
   const syncPendingItems = async () => {
@@ -1957,7 +1950,6 @@ const FouFouApp = () => {
         return fix ? { ...loc, mapsUrl: fix.newUrl } : loc;
       });
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
     }
   }, [customLocations, locationsLoading, selectedCityId]);
 
@@ -2007,8 +1999,7 @@ const FouFouApp = () => {
           return fix ? { ...loc, areas: fix.areas, area: fix.area, outsideArea: fix.outsideArea } : loc;
         });
         setCustomLocations(updated);
-        localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
-      }
+        }
     }
   }, [customLocations, locationsLoading, selectedCityId]);
   useEffect(() => {
@@ -2033,13 +2024,7 @@ const FouFouApp = () => {
       
       return () => routesRef.off('value', onValue);
     } else {
-      try {
-        const saved = localStorage.getItem('bangkok_saved_routes');
-        if (saved) {
-          setSavedRoutes(JSON.parse(saved));
-        }
-      } catch (e) {
-      }
+      setSavedRoutes([]);
       markLoaded('routes');
     }
   }, [selectedCityId]);
@@ -2077,19 +2062,7 @@ const FouFouApp = () => {
       
       return () => locationsRef.off('value', onValue);
     } else {
-      try {
-        const allLocs = JSON.parse(localStorage.getItem('bangkok_custom_locations') || '[]');
-        const cityLocs = allLocs.filter(l => (l.cityId || 'bangkok') === selectedCityId).map(loc => {
-          if (loc.outsideArea && loc.lat && loc.lng && window.BKK.getAreasForCoordinates) {
-            const detected = window.BKK.getAreasForCoordinates(loc.lat, loc.lng);
-            if (detected.length > 0) loc.outsideArea = false;
-          }
-          return loc;
-        });
-        setCustomLocations(cityLocs);
-      } catch (e) {
-        console.error('[LOCALSTORAGE] Error loading locations:', e);
-      }
+      setCustomLocations([]);
       setLocationsLoading(false);
       markLoaded('locations');
     }
@@ -2144,14 +2117,6 @@ const FouFouApp = () => {
       
       return () => interestsRef.off('value', unsubscribe);
     } else {
-      try {
-        const customInts = localStorage.getItem('bangkok_custom_interests');
-        if (customInts) {
-          setCustomInterests(JSON.parse(customInts));
-        }
-      } catch (e) {
-        console.error('[LOCALSTORAGE] Error loading interests:', e);
-      }
       markLoaded('interests');
     }
   }, []);
@@ -2262,7 +2227,7 @@ const FouFouApp = () => {
     };
     
     if (isFirebaseAvailable && database) {
-      const userId = localStorage.getItem('bangkok_user_id') || 'unknown';
+      const userId = authUser?.uid || 'unknown';
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
       const userStatusRef = database.ref(`users/${userId}/interestStatus`);
@@ -2290,7 +2255,7 @@ const FouFouApp = () => {
         markLoaded('status');
       });
       
-      const userStatusRef2 = database.ref(`users/${localStorage.getItem('bangkok_user_id') || 'unknown'}/interestStatus`);
+      const userStatusRef2 = database.ref(`users/${authUser?.uid || 'unknown'}/interestStatus`);
       userStatusRef2.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -2298,16 +2263,7 @@ const FouFouApp = () => {
         }
       });
     } else {
-      try {
-        const saved = localStorage.getItem('bangkok_interest_status');
-        if (saved) {
-          setInterestStatus({ ...hardDefaults, ...JSON.parse(saved) });
-        } else {
-          setInterestStatus(hardDefaults);
-        }
-      } catch (e) {
-        setInterestStatus(hardDefaults);
-      }
+      setInterestStatus(hardDefaults);
       markLoaded('status');
     }
   }, []);
@@ -2335,14 +2291,7 @@ const FouFouApp = () => {
           console.error('[REFRESH] Error loading saved routes:', e);
         }
       } else {
-        try {
-          const saved = localStorage.getItem('bangkok_saved_routes');
-          if (saved) {
-            setSavedRoutes(JSON.parse(saved));
-          }
-        } catch (e) {
-          console.error('[REFRESH] Error loading saved routes:', e);
-        }
+        setSavedRoutes([]);
       }
       
       if (isFirebaseAvailable && database) {
@@ -2462,27 +2411,7 @@ const FouFouApp = () => {
         
         showToast(t('toast.dataRefreshed'), 'success');
       } else {
-        try {
-          const customLocs = localStorage.getItem('bangkok_custom_locations');
-          if (customLocs) setCustomLocations(JSON.parse(customLocs));
-        } catch (e) {}
-        try {
-          const customInts = localStorage.getItem('bangkok_custom_interests');
-          if (customInts) setCustomInterests(JSON.parse(customInts));
-        } catch (e) {}
-        try {
-          const saved = localStorage.getItem('bangkok_interest_status');
-          if (saved) {
-            const builtInIds = interestOptions.map(i => i.id);
-            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
-            const defaultStatus = {};
-            builtInIds.forEach(id => { defaultStatus[id] = true; });
-            uncoveredIds.forEach(id => { defaultStatus[id] = false; });
-            setInterestStatus({ ...defaultStatus, ...JSON.parse(saved) });
-          }
-        } catch (e) {}
-        
-        showToast(t('toast.dataRefreshedLocal'), 'warning');
+        showToast(t('toast.noConnection'), 'warning');
       }
     } catch (error) {
       console.error('[REFRESH] Unexpected error:', error);
@@ -2493,19 +2422,15 @@ const FouFouApp = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem('bangkok_route_type', routeType);
+    localStorage.setItem('foufou_route_type', routeType);
   }, [routeType]);
 
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     
-    let userId = localStorage.getItem('bangkok_user_id');
-    if (!userId) {
-      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-      localStorage.setItem('bangkok_user_id', userId);
-    }
+    const userId = authUser?.uid || 'anonymous';
     
-    const hasSavedPrefs = !!localStorage.getItem('bangkok_preferences');
+    const hasSavedPrefs = !!localStorage.getItem('foufou_preferences');
     database.ref('settings').on('value', (snap) => {
       const s = snap.val() || {};
       
@@ -2557,14 +2482,12 @@ const FouFouApp = () => {
       
     });
     
-    const isAdmin = localStorage.getItem('bangkok_is_admin') === 'true';
-    
     if (!isAdmin) {
-      const lastLogTime = parseInt(localStorage.getItem('bangkok_last_log_time') || '0');
+      const lastLogTime = parseInt(localStorage.getItem('foufou_last_log_time') || '0');
       const oneHour = 60 * 60 * 1000;
       
       if (Date.now() - lastLogTime >= oneHour) {
-        localStorage.setItem('bangkok_last_log_time', Date.now().toString());
+        localStorage.setItem('foufou_last_log_time', Date.now().toString());
         
         const now = new Date();
         const jan1 = new Date(now.getFullYear(), 0, 1);
@@ -2598,7 +2521,7 @@ const FouFouApp = () => {
     const feedbackEntry = {
       category: feedbackCategory,
       text: feedbackText.trim(),
-      userId: authUser?.uid || localStorage.getItem('bangkok_user_id') || 'unknown',
+      userId: authUser?.uid || authUser?.uid || 'unknown',
       userEmail: authUser?.email || '',
       currentView: currentView || 'unknown',
       wizardStep: wizardStep || 0,
@@ -2650,7 +2573,7 @@ const FouFouApp = () => {
         feedbackCountRef.current = arr.length;
         
         if (prevCount === null) {
-          const lastSeen = parseInt(localStorage.getItem('bangkok_last_seen_feedback') || '0');
+          const lastSeen = parseInt(localStorage.getItem('foufou_last_seen_feedback') || '0');
           const hasUnseen = arr.some(f => f.timestamp > lastSeen);
           if (hasUnseen) setHasNewFeedback(true);
         }
@@ -2665,7 +2588,7 @@ const FouFouApp = () => {
 
   const markFeedbackAsSeen = () => {
     const latest = feedbackList.length > 0 ? feedbackList[0].timestamp : Date.now();
-    localStorage.setItem('bangkok_last_seen_feedback', latest.toString());
+    localStorage.setItem('foufou_last_seen_feedback', latest.toString());
     setHasNewFeedback(false);
   };
 
@@ -3640,7 +3563,7 @@ const FouFouApp = () => {
   useEffect(() => {
     if (!isDataLoaded) return;
     const { maxStops, fetchMoreCount, _selectedMapArea, ...userPrefs } = formData;
-    localStorage.setItem('bangkok_preferences', JSON.stringify(userPrefs));
+    localStorage.setItem('foufou_preferences', JSON.stringify(userPrefs));
   }, [formData, isDataLoaded]);
 
   const checkForUpdates = async (silent = false) => {
@@ -3682,7 +3605,7 @@ const FouFouApp = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('bangkok_right_col_width', rightColWidth.toString());
+    localStorage.setItem('foufou_right_col_width', rightColWidth.toString());
   }, [rightColWidth]);
 
   useEffect(() => {
@@ -5119,17 +5042,7 @@ const FouFouApp = () => {
     return stripped;
   };
 
-  const saveRoutesToStorage = (routes) => {
-    if (isFirebaseAvailable && database) {
-      return;
-    }
-    try {
-      const stripped = routes.map(stripRouteForStorage);
-      localStorage.setItem('bangkok_saved_routes', JSON.stringify(stripped));
-    } catch (e) {
-      console.error('[STORAGE] Failed to save routes:', e);
-      showToast(t('toast.storageFull'), 'error');
-    }
+  const saveRoutesToStorage = (_routes) => {
   };
 
   const quickSaveRoute = () => {
@@ -5253,7 +5166,6 @@ const FouFouApp = () => {
     } else {
       const updated = customInterests.filter(i => i.id !== interestId);
       setCustomInterests(updated);
-      localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
       
       if (locationsUsingInterest.length > 0) {
         showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
@@ -5275,16 +5187,14 @@ const FouFouApp = () => {
     }
     
     if (isFirebaseAvailable && database) {
-      const userId = localStorage.getItem('bangkok_user_id') || 'unknown';
+      const userId = authUser?.uid || 'unknown';
       database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
         .then(() => {
         })
         .catch(err => {
           console.error('Error updating interest status to Firebase, saving locally:', err);
-          localStorage.setItem('bangkok_interest_status', JSON.stringify(updatedStatus));
         });
     } else {
-      localStorage.setItem('bangkok_interest_status', JSON.stringify(updatedStatus));
     }
   };
 
@@ -5310,19 +5220,17 @@ const FouFouApp = () => {
     }));
     
     if (isFirebaseAvailable && database) {
-      const userId = localStorage.getItem('bangkok_user_id') || 'unknown';
+      const userId = authUser?.uid || 'unknown';
       try {
         await database.ref(`users/${userId}/interestStatus`).set(defaults);
         setInterestStatus(defaults);
         showToast(t('interests.interestsReset'), 'success');
       } catch (err) {
         console.error('Error resetting interest status to Firebase, falling back to localStorage:', err);
-        localStorage.setItem('bangkok_interest_status', JSON.stringify(defaults));
         setInterestStatus(defaults);
         showToast(t('interests.interestsReset'), 'success');
       }
     } else {
-      localStorage.setItem('bangkok_interest_status', JSON.stringify(defaults));
       setInterestStatus(defaults);
       showToast(t('interests.interestsReset'), 'success');
     }
@@ -5449,7 +5357,6 @@ const FouFouApp = () => {
     } else {
       const updated = customLocations.filter(loc => loc.id !== locationId);
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(t('places.placeDeleted'), 'success');
     }
   };
@@ -5493,7 +5400,6 @@ const FouFouApp = () => {
         return loc;
       });
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       
       const statusText = 
         newStatus === 'blacklist' ? t('route.skipPermanently') : 
@@ -5733,7 +5639,6 @@ const FouFouApp = () => {
     } else {
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
       setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
       setTimeout(() => handleEditLocation(locationToAdd), 300);
@@ -6042,10 +5947,7 @@ const FouFouApp = () => {
       setInterestConfig(newConfig);
       setInterestStatus(newStatus);
       
-      localStorage.setItem('bangkok_custom_interests', JSON.stringify(newInterests));
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(newLocations));
       saveRoutesToStorage(newRoutes);
-      localStorage.setItem('bangkok_interest_status', JSON.stringify(newStatus));
     }
     
     setShowImportDialog(false);
@@ -6374,7 +6276,6 @@ const FouFouApp = () => {
     } else {
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(t('places.placeAdded'), 'success');
       
       if (!closeAfter) {
@@ -6497,7 +6398,6 @@ const FouFouApp = () => {
         loc.id === editingLocation.id ? updatedLocation : loc
       );
       setCustomLocations(updated);
-      localStorage.setItem('bangkok_custom_locations', JSON.stringify(updated));
       showToast(t('places.placeUpdated'), 'success');
       if (!closeAfter) {
         setEditingLocation(updatedLocation);
@@ -10166,7 +10066,7 @@ const FouFouApp = () => {
                 
                 {/* Current Device Info */}
                 <div className="text-xs bg-white rounded-lg p-2 border border-red-200 mb-3">
-                  <strong>{t("general.currentDevice")}:</strong> {localStorage.getItem('bangkok_user_id')?.slice(-12) || 'N/A'}
+                  <strong>{t("general.currentDevice")}:</strong> {authUser?.uid?.slice(-12) || 'N/A'}
                   <br />
                   <strong>{t("general.status")}:</strong> 
                   <span className="text-green-600 font-bold"> 🔓 {t("general.open")}</span>
@@ -12747,7 +12647,6 @@ const FouFouApp = () => {
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
                               setCustomInterests(updated);
-                              localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             }
                           }
                           
@@ -12820,7 +12719,7 @@ const FouFouApp = () => {
                                 showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
                                 saveToPendingInterest(newInterestData, searchConfig);
                               });
-                            const userId = localStorage.getItem('bangkok_user_id') || 'unknown';
+                            const userId = authUser?.uid || 'unknown';
                             database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
                             database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
                             if (Object.keys(searchConfig).length > 0) {
@@ -12830,7 +12729,6 @@ const FouFouApp = () => {
                           } else {
                             const updated = [...customInterests, newInterestData];
                             setCustomInterests(updated);
-                            localStorage.setItem('bangkok_custom_interests', JSON.stringify(updated));
                             showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
                           }
                           window._savingInterest = false;
