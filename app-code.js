@@ -7480,7 +7480,7 @@ const FouFouApp = () => {
                       cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
-                  >🗺️ {t('wizard.showMap')}</button>
+                  >🗺️ {t('wizard.showMapFavArea')}</button>
                 </div>
               </div>
               {/* Fixed find places button — hidden when overlays are open */}
@@ -7602,7 +7602,7 @@ const FouFouApp = () => {
                       cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
-                  >🗺️ {t('wizard.showMap')}</button>
+                  >🗺️ {t('wizard.showMapFavInterest')}</button>
                 </div>
               </div>
               {/* Fixed continue button — hidden when overlays are open */}
@@ -11942,7 +11942,7 @@ const FouFouApp = () => {
                   {/* Row 2: Skip + Delete (edit mode only) — editor/admin only */}
                   {showEditLocationDialog && editingLocation && (isAdmin || isEditor) && (
                     <div className="flex gap-1.5 pt-1 border-t border-gray-200">
-                      {editingLocation.status === 'blacklist' ? (
+                      {editingLocation.status === 'blacklist' && (
                         <button
                           onClick={() => {
                             toggleLocationStatus(editingLocation.id);
@@ -11952,17 +11952,6 @@ const FouFouApp = () => {
                           style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
                         >
                           ✅ {t("general.restoreActive")}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            toggleLocationStatus(editingLocation.id);
-                            setShowEditLocationDialog(false);
-                            setEditingLocation(null);
-                          }}
-                          style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #93c5fd', background: '#eff6ff', color: '#1e40af' }}
-                        >
-                          🚫 {t('route.skipPermanently')}
                         </button>
                       )}
                       <button
@@ -13249,20 +13238,7 @@ const FouFouApp = () => {
                       placeholder={t('places.descriptionPlaceholder') || 'תיאור קצר של המקום...'}
                       style={{ width: '100%', minHeight: '50px', padding: '6px 8px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '8px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                     />
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                      <button
-                        onClick={() => {
-                          const loc = modalImageCtx.location;
-                          const desc = modalImageCtx.description || '';
-                          if (loc.firebaseId && isFirebaseAvailable && database) {
-                            database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/description`).set(desc);
-                            setCustomLocations(prev => prev.map(l => l.name === loc.name ? {...l, description: desc} : l));
-                            showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
-                          }
-                        }}
-                        style={{ padding: '3px 10px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                      >💾 {t('general.save') || 'שמור'}</button>
-                    </div>
+
                   </div>
                 ) : (
                   modalImageCtx.description && (

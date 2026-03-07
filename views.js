@@ -853,7 +853,7 @@
                       cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
-                  >🗺️ {t('wizard.showMap')}</button>
+                  >🗺️ {t('wizard.showMapFavArea')}</button>
                 </div>
               </div>
               {/* Fixed find places button — hidden when overlays are open */}
@@ -977,7 +977,7 @@
                       cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
-                  >🗺️ {t('wizard.showMap')}</button>
+                  >🗺️ {t('wizard.showMapFavInterest')}</button>
                 </div>
               </div>
               {/* Fixed continue button — hidden when overlays are open */}
