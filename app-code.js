@@ -6634,7 +6634,7 @@ const FouFouApp = () => {
       padding: '8px 12px', marginBottom: '10px',
       background: 'linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%)',
       borderRadius: '12px', border: '1px solid #e0e7ff',
-      direction: isRTL ? 'rtl' : 'ltr'
+      direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'
     }}>
       <span style={{ fontSize: '22px', flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
