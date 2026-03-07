@@ -1685,7 +1685,7 @@
                   >
                     📍 {t("general.openRoute")}
                   </button>
-                  {!(editingRoute.locked && !isUnlocked) && (
+                  {!(editingRoute.system) && !(editingRoute.locked && !isUnlocked) && (
                     <button
                       onClick={() => {
                         showConfirm(`${t("general.deleteRoute")} "${editingRoute.name}"?`, () => {

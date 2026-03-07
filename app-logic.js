@@ -2003,6 +2003,7 @@
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
       window.BKK.cleanupInProgress(database);
+      window.BKK.seedSystemRoutes(database);
       // NOTE: cleanupOrphanedInterests REMOVED — it was deleting valid interests!
       // The function checked for types/textSearch on the interest object, but search config
       // is stored separately in settings/interestConfig/{id}. So non-privateOnly interests

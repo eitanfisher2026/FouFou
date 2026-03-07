@@ -1901,14 +1901,15 @@
                           </div>
                         )}
                         <div
-                          className={`flex items-center justify-between gap-2 rounded-lg p-2 border border-gray-200 bg-white hover:bg-blue-50 cursor-pointer`}
+                          className={`flex items-center justify-between gap-2 rounded-lg p-2 border cursor-pointer ${savedRoute.system ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-gray-200 bg-white hover:bg-blue-50'}`}
                           style={{ overflow: 'hidden' }}
                           onClick={() => loadSavedRoute(savedRoute)}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap">
+                              {savedRoute.system && <span style={{ fontSize: '11px' }} title="מסלול מומלץ">⭐</span>}
                               <span className="font-medium text-sm truncate">{savedRoute.name}</span>
-                              {savedRoute.locked && isUnlocked && <span title={t("general.locked")} style={{ fontSize: '11px' }}>🔒</span>}
+                              {savedRoute.locked && isUnlocked && !savedRoute.system && <span title={t("general.locked")} style={{ fontSize: '11px' }}>🔒</span>}
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
                                 const obj = interestMap[intId];
                                 if (!obj?.icon) return null;
@@ -1924,12 +1925,12 @@
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingRoute({...savedRoute});
-                              setRouteDialogMode('edit');
+                              setRouteDialogMode(savedRoute.system || (savedRoute.locked && !isUnlocked) ? 'view' : 'edit');
                               setShowRouteDialog(true);
                             }}
                             className="text-xs px-1 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"
-                            title={savedRoute.locked && !isUnlocked ? t("general.viewOnly") : t("places.detailsEdit")}
-                          >{savedRoute.locked && !isUnlocked ? '👁️' : '✏️'}</button>
+                            title={savedRoute.system ? t("general.viewOnly") : (savedRoute.locked && !isUnlocked ? t("general.viewOnly") : t("places.detailsEdit"))}
+                          >{savedRoute.system || (savedRoute.locked && !isUnlocked) ? '👁️' : '✏️'}</button>
                         </div>
                       </React.Fragment>
                     );

@@ -388,3 +388,116 @@ window.BKK.cityData.bangkok = {
     "entertainment": "קולנוע, תיאטרון, מופעים"
   }
 };
+
+
+window.BKK.cityData.bangkok.systemRoutes = [
+  {
+    "id": "sys_bkk_chinatown_loop",
+    "name": "צ'יינהטאון וטלאט נוי",
+    "notes": "לולאת הליכה של 3-4 שעות דרך השכונות הסיניות ההיסטוריות",
+    "circular": true,
+    "cityId": "bangkok",
+    "areaName": "Chinatown",
+    "system": true,
+    "locked": true,
+    "savedAt": "2024-01-01T00:00:00.000Z",
+    "preferences": { "hours": 4, "interests": ["temples","cafes","markets","graffiti","architecture"] },
+    "stops": [
+      { "name": "Wat Mangkon Kamalawat", "lat": 13.7408, "lng": 100.5133, "interests": ["temples"], "address": "Charoen Krung Rd, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Wat+Mangkon+Kamalawat+Bangkok" },
+      { "name": "Yaowarat Road", "lat": 13.7397, "lng": 100.5148, "interests": ["markets","food"], "address": "Yaowarat Rd, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Yaowarat+Road+Bangkok" },
+      { "name": "Song Wat Road", "lat": 13.7368, "lng": 100.5096, "interests": ["architecture","cafes"], "address": "Song Wat Rd, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Song+Wat+Road+Bangkok" },
+      { "name": "So Heng Tai Mansion", "lat": 13.7329, "lng": 100.5093, "interests": ["architecture"], "address": "Talat Noi, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=So+Heng+Tai+Mansion+Bangkok" },
+      { "name": "Mother Roaster", "lat": 13.7336, "lng": 100.5087, "interests": ["cafes","graffiti"], "address": "Talat Noi Soi 3, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Mother+Roaster+Bangkok" },
+      { "name": "Talat Noi Street Art", "lat": 13.7342, "lng": 100.5078, "interests": ["graffiti"], "address": "Talat Noi, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Talat+Noi+Street+Art+Bangkok" },
+      { "name": "Chao Phraya River View", "lat": 13.7311, "lng": 100.5118, "interests": ["canals"], "address": "Talat Noi Pier, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=13.7311,100.5118" }
+    ]
+  },
+  {
+    "id": "sys_bkk_four_communities",
+    "name": "ארבע קהילות ליד הנהר",
+    "notes": "מסלול ייחודי שחוצה קהילות סינית, מוסלמית ופורטוגזית — כולל מעבורת לצד השני של הנהר",
+    "circular": false,
+    "cityId": "bangkok",
+    "areaName": "Riverside",
+    "system": true,
+    "locked": true,
+    "savedAt": "2024-01-01T00:00:00.000Z",
+    "preferences": { "hours": 5, "interests": ["temples","markets","architecture","canals"] },
+    "stops": [
+      { "name": "Yaowarat Road - הקהילה הסינית", "lat": 13.7397, "lng": 100.5148, "interests": ["markets","temples"], "address": "Yaowarat Rd, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=Yaowarat+Road+Bangkok" },
+      { "name": "So Heng Tai Mansion - טלאט נוי", "lat": 13.7329, "lng": 100.5093, "interests": ["architecture"], "address": "Talat Noi, Samphanthawong", "mapsUrl": "https://maps.google.com/?q=So+Heng+Tai+Mansion+Bangkok" },
+      { "name": "Si Phraya Pier - הקהילה המוסלמית", "lat": 13.7267, "lng": 100.5142, "interests": ["markets","canals"], "address": "Si Phraya Rd, Bang Rak", "mapsUrl": "https://maps.google.com/?q=Si+Phraya+Pier+Bangkok" },
+      { "name": "Santa Cruz Church - קהילה פורטוגזית", "lat": 13.7322, "lng": 100.4892, "interests": ["architecture","temples"], "address": "Soi Kudeejeen, Thonburi", "mapsUrl": "https://maps.google.com/?q=Santa+Cruz+Church+Bangkok" },
+      { "name": "Wat Kalayanamit", "lat": 13.7295, "lng": 100.4888, "interests": ["temples"], "address": "Soi Wat Kalayanamit, Thonburi", "mapsUrl": "https://maps.google.com/?q=Wat+Kalayanamit+Bangkok" }
+    ]
+  },
+  {
+    "id": "sys_bkk_nang_loeng",
+    "name": "נאנג לואנג — בנגקוק של פעם",
+    "notes": "שכונה שנשארה כמו לפני 100 שנה, עם שוק ותיק ובתי עץ ישנים. כ-2 שעות",
+    "circular": true,
+    "cityId": "bangkok",
+    "areaName": "Old Bangkok",
+    "system": true,
+    "locked": true,
+    "savedAt": "2024-01-01T00:00:00.000Z",
+    "preferences": { "hours": 2, "interests": ["markets","architecture","temples","food"] },
+    "stops": [
+      { "name": "Wat Saket - הר הזהב", "lat": 13.7534, "lng": 100.5072, "interests": ["temples"], "address": "Chakkraphatdi Phong Rd, Pom Prap", "mapsUrl": "https://maps.google.com/?q=Wat+Saket+Golden+Mount+Bangkok" },
+      { "name": "Nang Loeng Market", "lat": 13.7608, "lng": 100.5117, "interests": ["markets","food"], "address": "Nakhon Sawan Rd, Pom Prap", "mapsUrl": "https://maps.google.com/?q=Nang+Loeng+Market+Bangkok" },
+      { "name": "רחובות העץ הישנים - נאנג לואנג", "lat": 13.7615, "lng": 100.5105, "interests": ["architecture"], "address": "Nang Loeng, Pom Prap", "mapsUrl": "https://maps.google.com/?q=13.7615,100.5105" },
+      { "name": "Wat Sunthon Thammathan", "lat": 13.7572, "lng": 100.5095, "interests": ["temples"], "address": "Nang Loeng, Pom Prap", "mapsUrl": "https://maps.google.com/?q=Wat+Sunthon+Thammathan+Bangkok" }
+    ]
+  },
+  {
+    "id": "sys_bkk_bang_krachao",
+    "name": "בנג קראצ'או — הריאה הירוקה",
+    "notes": "כפר טרופי בלב הנהר, 15 דקות ממרכז העיר. שכירת אופניים מומלצת. 3-4 שעות",
+    "circular": true,
+    "cityId": "bangkok",
+    "areaName": "Bang Krachao",
+    "system": true,
+    "locked": true,
+    "savedAt": "2024-01-01T00:00:00.000Z",
+    "preferences": { "hours": 4, "interests": ["parks","markets","canals"] },
+    "stops": [
+      { "name": "Bang Nam Phueng Floating Market", "lat": 13.6698, "lng": 100.5900, "interests": ["markets","food"], "address": "Bang Nam Phueng, Phra Pradaeng", "mapsUrl": "https://maps.google.com/?q=Bang+Nam+Phueng+Floating+Market" },
+      { "name": "Sri Nakhon Khuean Khan Park", "lat": 13.6715, "lng": 100.5948, "interests": ["parks"], "address": "Bang Krachao, Phra Pradaeng", "mapsUrl": "https://maps.google.com/?q=Sri+Nakhon+Khuean+Khan+Park+Bangkok" },
+      { "name": "שבילי התעלות - בנג קראצ'או", "lat": 13.6745, "lng": 100.5880, "interests": ["canals","parks"], "address": "Bang Krachao, Phra Pradaeng", "mapsUrl": "https://maps.google.com/?q=13.6745,100.5880" }
+    ]
+  }
+];
+
+// Seed system routes to Firebase once (idempotent — checks by id before writing)
+window.BKK.seedSystemRoutes = function(database) {
+  if (!database) return;
+  var cities = window.BKK.cityData || {};
+  Object.keys(cities).forEach(function(cityId) {
+    var sysRoutes = cities[cityId].systemRoutes;
+    if (!sysRoutes || sysRoutes.length === 0) return;
+    var flagKey = 'foufou_sys_routes_seeded_' + cityId;
+    if (localStorage.getItem(flagKey) === 'true') return;
+    database.ref('cities/' + cityId + '/routes')
+      .orderByChild('system').equalTo(true)
+      .once('value')
+      .then(function(snap) {
+        var existing = snap.val() || {};
+        var existingIds = Object.values(existing).map(function(r) { return r.id; });
+        var toSeed = sysRoutes.filter(function(r) { return !existingIds.includes(r.id); });
+        if (toSeed.length === 0) {
+          localStorage.setItem(flagKey, 'true');
+          return;
+        }
+        var writes = toSeed.map(function(route) {
+          return database.ref('cities/' + cityId + '/routes').push(route);
+        });
+        return Promise.all(writes).then(function() {
+          console.log('[SEED] Seeded ' + toSeed.length + ' system routes for ' + cityId);
+          localStorage.setItem(flagKey, 'true');
+        });
+      })
+      .catch(function(e) {
+        console.warn('[SEED] Error seeding system routes for ' + cityId, e);
+      });
+  });
+};
