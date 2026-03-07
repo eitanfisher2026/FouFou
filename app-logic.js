@@ -1275,6 +1275,7 @@
         const opt = allInterestOptions.find(o => o.id === id);
         return { id, label: tLabel(opt) || id };
       }),
+      stats: routeObj.stats || null,
       stops: (routeObj.stops || []).map(s => ({
         name: s.name,
         rating: s.rating,
@@ -1295,6 +1296,15 @@
       lines.push(`\n${'='.repeat(60)}`);
       lines.push(`SESSION ${si + 1} — ${s.time} — ${s.city} / ${s.areaName || s.area} (${s.searchMode}${s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''})`);
       lines.push(`Interests: ${s.interests.map(i => i.label).join(', ')}`);
+      if (s.stats) {
+        lines.push(`Stats: custom=${s.stats.custom} | fetched=${s.stats.fetched} | total=${s.stats.total} | maxStops=${s.stats.maxStops}`);
+        if (s.stats.interestLimits) {
+          lines.push(`Limits: ${Object.entries(s.stats.interestLimits).map(([k,v])=>`${k}=${v}`).join(', ')}`);
+        }
+        if (s.stats.interestResults) {
+          lines.push(`Results: ${Object.entries(s.stats.interestResults).map(([k,v])=>`${k}: custom=${v.custom}, google=${v.fetched}, total=${v.total}`).join(' | ')}`);
+        }
+      }
       lines.push(`${'='.repeat(60)}`);
       (s.stops || []).forEach((st, i) => {
         const d = st._debug;
@@ -5030,6 +5040,10 @@
           const sortedPlaces = sortedAll.slice(0, actualNeeded);
           const cachedPlaces = sortedAll.slice(actualNeeded);
           
+          if (actualNeeded === 0) {
+            console.log(`[ROUTE] ${interest}: have ${customToUse.length} custom, limit=${stopsForThisInterest} → skipping Google results (actualNeeded=0)`);
+          }
+          
           // Store unused places in cache for "find more"
           googleCacheRef.current[interest] = cachedPlaces;
           console.log(`[ROUTE] 📋 ${interest}: picked ${sortedPlaces.length}/${sortedAll.length}, cached ${cachedPlaces.length}`);
@@ -5238,7 +5252,12 @@
         stats: {
           custom: customStops.length,
           fetched: uniqueStops.length - customStops.length,
-          total: uniqueStops.length
+          total: uniqueStops.length,
+          maxStops: maxStops,
+          interestLimits: { ...interestLimits },
+          interestResults: Object.fromEntries(
+            Object.entries(interestResults).map(([k, v]) => [k, { custom: v.custom, fetched: v.fetched, total: v.total }])
+          )
         },
         // Warning if didn't reach maxStops
         incomplete: uniqueStops.length < maxStops ? {
