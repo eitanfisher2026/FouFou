@@ -1177,9 +1177,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
 
             {/* Manual mode header — shown in wizard manual mode */}
-            {routeChoiceMade === 'manual' && route && (
-              {renderStepHeader('🛠️', t('wizard.manualMode'), t('wizard.manualDesc'))}
-            )}
+            {routeChoiceMade === 'manual' && route && renderStepHeader('🛠️', t('wizard.manualMode'), t('wizard.manualDesc'))}
 
             {route && routeChoiceMade === 'manual' && renderContextHint('hint_manual')}
 
