@@ -1699,31 +1699,8 @@
       </div>
     );
     
-    // Default: styled info button — visible, clickable, with speaker indicator
+    // Default: popup only (buttons rendered by renderStepHeader inline)
     return (<>
-      <div style={{ display: 'flex', justifyContent: isRTL ? 'flex-start' : 'flex-end', alignItems: 'center', gap: '4px', margin: '2px 0', lineHeight: 1 }}>
-        {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-          style={{ ...btnStyle, color: '#d1d5db', fontSize: '10px' }}>✏️</button>}
-        <button
-          onClick={() => setOpenHintPopup(openHintPopup === hintId ? null : hintId)}
-          title={isRTL ? 'הסבר מורחב (כולל השמעה)' : 'More info (includes audio)'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '3px',
-            padding: '2px 7px', fontSize: '11px', fontWeight: '600',
-            background: openHintPopup === hintId ? '#dbeafe' : '#f0f9ff',
-            color: '#2563eb',
-            border: '1px solid #93c5fd',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(37,99,235,0.08)',
-            transition: 'all 0.15s',
-            userSelect: 'none'
-          }}
-        >
-          <span style={{ fontSize: '12px' }}>ℹ</span>
-          {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
-        </button>
-      </div>
       {openHintPopup === hintId && (<>
           <div onClick={closeHintPopup} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
           <div

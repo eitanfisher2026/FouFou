@@ -1593,29 +1593,6 @@ const FouFouApp = () => {
     );
     
     return (<>
-      <div style={{ display: 'flex', justifyContent: isRTL ? 'flex-start' : 'flex-end', alignItems: 'center', gap: '4px', margin: '2px 0', lineHeight: 1 }}>
-        {isAdmin && <button onClick={() => { setHintEditId(hintId); setHintEditText(txt); }}
-          style={{ ...btnStyle, color: '#d1d5db', fontSize: '10px' }}>✏️</button>}
-        <button
-          onClick={() => setOpenHintPopup(openHintPopup === hintId ? null : hintId)}
-          title={isRTL ? 'הסבר מורחב (כולל השמעה)' : 'More info (includes audio)'}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '3px',
-            padding: '2px 7px', fontSize: '11px', fontWeight: '600',
-            background: openHintPopup === hintId ? '#dbeafe' : '#f0f9ff',
-            color: '#2563eb',
-            border: '1px solid #93c5fd',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(37,99,235,0.08)',
-            transition: 'all 0.15s',
-            userSelect: 'none'
-          }}
-        >
-          <span style={{ fontSize: '12px' }}>ℹ</span>
-          {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
-        </button>
-      </div>
       {openHintPopup === hintId && (<>
           <div onClick={closeHintPopup} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
           <div
@@ -6595,21 +6572,47 @@ const FouFouApp = () => {
 
 
 
-  const renderStepHeader = (icon, title, subtitle) => {
+  const renderStepHeader = (icon, title, subtitle, hintId) => {
     const isRTL = window.BKK.i18n.isRTL();
+    const lang = window.BKK.i18n.currentLang || 'he';
+    const hasAudio = hintId && !!hintAudioUrls[hintId + '_' + lang];
+    const s = hintId && getHelpSection(hintId);
+    const hintTxt = (s && s.content && s.content.trim()) || '';
+    const showHintBtn = hintId && (hintTxt || isAdmin);
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '8px 12px', marginBottom: '10px',
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '6px 10px', marginBottom: '8px',
         background: 'linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%)',
-        borderRadius: '12px', border: '1px solid #e0e7ff',
+        borderRadius: '10px', border: '1px solid #e0e7ff',
         direction: isRTL ? 'rtl' : 'ltr'
       }}>
-        <span style={{ fontSize: '22px', flexShrink: 0 }}>{icon}</span>
+        <span style={{ fontSize: '18px', flexShrink: 0 }}>{icon}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e293b', lineHeight: 1.2 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{subtitle}</div>}
+          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', lineHeight: 1.2 }}>{title}</div>
+          {subtitle && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{subtitle}</div>}
         </div>
+        {showHintBtn && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+            {isAdmin && <button onClick={() => { const s2 = getHelpSection(hintId); setHintEditId(hintId); setHintEditText((s2 && s2.content) || ''); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0 1px' }}>✏️</button>}
+            <button
+              onClick={() => setOpenHintPopup(openHintPopup === hintId ? null : hintId)}
+              title={isRTL ? 'הסבר מורחב' : 'More info'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '2px',
+                padding: '2px 7px', fontSize: '11px', fontWeight: '600',
+                background: openHintPopup === hintId ? '#dbeafe' : '#f0f9ff',
+                color: '#2563eb', border: '1px solid #93c5fd',
+                borderRadius: '20px', cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(37,99,235,0.08)'
+              }}
+            >
+              <span style={{ fontSize: '11px' }}>ℹ</span>
+              {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
