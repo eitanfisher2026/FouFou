@@ -3873,7 +3873,10 @@
   // Filter custom interests by city scope (must be before allInterestOptions)
   const cityCustomInterests = useMemo(() => {
     return (customInterests || []).filter(i => {
-      if (i.scope === 'local') return (i.cityId || '') === selectedCityId;
+      // If interest has explicit cityId, scope it — regardless of scope field
+      if (i.cityId) return i.cityId === selectedCityId;
+      // scope: 'local' without cityId — also city-specific (shouldn't happen but guard it)
+      if (i.scope === 'local') return false;
       return true;
     });
   }, [customInterests, selectedCityId]);
@@ -4156,6 +4159,8 @@
         const status = interestStatus[opt.id];
         if (opt.uncovered) return status === true;
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
+        // Custom interests (not built-in, not uncovered): undefined = OFF by default
+        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
         return status !== false;
       })
       .map(opt => opt.id);
@@ -6251,7 +6256,7 @@
     const bestArea = detectedAreas.length > 0 ? detectedAreas[0] : (window.BKK.getClosestArea(place.lat, place.lng) || formData.area);
     const isOutside = detectedAreas.length === 0;
     
-    const locationToAdd = {
+    let locationToAdd = {
       id: Date.now(),
       name: place.name,
       description: (place.description && !place.description.startsWith('⭐')) ? place.description : '',

@@ -3522,7 +3522,8 @@ const FouFouApp = () => {
 
   const cityCustomInterests = useMemo(() => {
     return (customInterests || []).filter(i => {
-      if (i.scope === 'local') return (i.cityId || '') === selectedCityId;
+      if (i.cityId) return i.cityId === selectedCityId;
+      if (i.scope === 'local') return false;
       return true;
     });
   }, [customInterests, selectedCityId]);
@@ -3780,6 +3781,7 @@ const FouFouApp = () => {
         const status = interestStatus[opt.id];
         if (opt.uncovered) return status === true;
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
+        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
         return status !== false;
       })
       .map(opt => opt.id);
@@ -5587,7 +5589,7 @@ const FouFouApp = () => {
     const bestArea = detectedAreas.length > 0 ? detectedAreas[0] : (window.BKK.getClosestArea(place.lat, place.lng) || formData.area);
     const isOutside = detectedAreas.length === 0;
     
-    const locationToAdd = {
+    let locationToAdd = {
       id: Date.now(),
       name: place.name,
       description: (place.description && !place.description.startsWith('⭐')) ? place.description : '',
@@ -6869,6 +6871,7 @@ const FouFouApp = () => {
                 if (!isInterestValid(o.id)) return false;
                 const status = interestStatus[o.id];
                 if (o.uncovered) return status === true;
+                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
                 return status !== false;
               }).length },
               { icon: '⚙️', label: t('settings.title'), view: 'settings' },
@@ -7496,6 +7499,7 @@ const FouFouApp = () => {
                       const status = interestStatus[option.id];
                       if (option.uncovered) return status === true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
+                      if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
                       return status !== false;
                     });
                     const groupOrder = [];
@@ -7833,6 +7837,7 @@ const FouFouApp = () => {
                         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
                         const status = interestStatus[interest];
                         if (opt.uncovered) return status === true;
+                        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
                         return status !== false;
                       })
                       .map(([interest, stops]) => {

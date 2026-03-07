@@ -278,6 +278,7 @@
                 if (!isInterestValid(o.id)) return false;
                 const status = interestStatus[o.id];
                 if (o.uncovered) return status === true;
+                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
                 return status !== false;
               }).length },
               { icon: '⚙️', label: t('settings.title'), view: 'settings' },
@@ -909,6 +910,7 @@
                       const status = interestStatus[option.id];
                       if (option.uncovered) return status === true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
+                      if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
                       return status !== false;
                     });
                     // Sort by group, preserving order within groups
@@ -1253,6 +1255,7 @@
                         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
                         const status = interestStatus[interest];
                         if (opt.uncovered) return status === true;
+                        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
                         return status !== false;
                       })
                       .map(([interest, stops]) => {
