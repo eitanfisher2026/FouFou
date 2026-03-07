@@ -10800,6 +10800,8 @@ const FouFouApp = () => {
                   if (aStatus === 'hidden') return false;
                   if (aStatus === 'draft' && !isUnlocked) return false;
                   if (!usedInterests.has(i.id)) return false;
+                  if (interestStatus[i.id] === false) return false;
+                  if (i.uncovered && !interestStatus[i.id]) return false;
                   return true;
                 });
                 const areas = window.BKK.areaOptions || [];

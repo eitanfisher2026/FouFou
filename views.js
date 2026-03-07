@@ -4172,6 +4172,10 @@
                   if (aStatus === 'hidden') return false;
                   if (aStatus === 'draft' && !isUnlocked) return false;
                   if (!usedInterests.has(i.id)) return false;
+                  // Only show interests that are enabled for this user
+                  if (interestStatus[i.id] === false) return false;
+                  // Uncovered interests only shown if explicitly enabled
+                  if (i.uncovered && !interestStatus[i.id]) return false;
                   return true;
                 });
                 const areas = window.BKK.areaOptions || [];
