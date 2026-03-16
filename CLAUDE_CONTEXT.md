@@ -117,6 +117,17 @@ City data:
   city-malaga.js
 ```
 
+## ⚠️ Version Bump — MANDATORY
+**כל זיפ שנוצר חייב להעלות את מספר הגרסה (patch).** לפני כל `zip`, יש לבצע:
+```bash
+# 1. העלאת גרסה ב-config.js (למשל 3.8.67 → 3.8.68)
+sed -i "s/VERSION = '3\.8\.\([0-9]*\)'/VERSION = '3.8.$(($(grep -o "3\.8\.[0-9]*" config.js | cut -d. -f3) + 1))'/g" config.js
+
+# 2. עדכון version.json בהתאם
+python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1); open('version.json','w').write('{\"version\": \"'+v+'\"}')"
+```
+אסור לדלג על זה — כל שינוי = bump, גם bugfix קטן.
+
 ## Packaging
 ```bash
 VERSION=$(python3 -c "import re; s=open('config.js').read(); print(re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1).replace('.','_'))")

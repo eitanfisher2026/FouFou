@@ -3378,7 +3378,12 @@
             }).filter(place => place.lat !== 0 && place.lng !== 0);
             
             addDebugLog('API', `Got ${places.length} results from retry`, { names: places.slice(0, 5).map(p => p.name) });
-            return places;
+            const filteredPlaces = blacklistWords.length === 0 ? places : places.filter(place => {
+              const placeName = place.name.toLowerCase();
+              const placeTypeList = (place.googleTypes || []).map(t => t.toLowerCase().replace(/_/g, ' '));
+              return !blacklistWords.some(word => placeName.includes(word) || placeTypeList.some(type => type.includes(word)));
+            });
+            return filteredPlaces;
           }
           return []; // No results from any type
         }
