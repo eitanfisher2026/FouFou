@@ -3430,13 +3430,17 @@
             primaryType: place.primaryType || '-'
           };
           
-          // Filter 1: Blacklist check - filter out places with blacklisted words in name
+          // Filter 1: Blacklist check - filter out places with blacklisted words in name OR types
           if (blacklistWords.length > 0) {
-            const matchedWord = blacklistWords.find(word => placeName.includes(word));
+            const placeTypes = (place.types || []).concat(place.primaryType ? [place.primaryType] : []).map(t => t.toLowerCase().replace(/_/g, ' '));
+            const matchedWord = blacklistWords.find(word =>
+              placeName.includes(word) ||
+              placeTypes.some(type => type.includes(word))
+            );
             if (matchedWord) {
               blacklistFilteredCount++;
               debugEntry.status = '❌ BLACKLIST';
-              debugEntry.reason = `name contains "${matchedWord}"`;
+              debugEntry.reason = `name or type contains "${matchedWord}"`;
               debugPlaceResults.push(debugEntry);
               return false;
             }
