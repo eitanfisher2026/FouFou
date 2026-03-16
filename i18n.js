@@ -999,6 +999,7 @@ help: {
     loginRequired: 'יש להתחבר כדי לדרג',
     ratingRequired: 'יש לבחור לפחות כוכב אחד',
   },
+  systemParams: {
     tabTitle: 'פרמטרים',
     title: 'פרמטרי מערכת (אלגוריתם)',
     subtitle: 'ערכים אלה משפיעים על חיפוש, בניית מסלול ותיעדוף.',
@@ -1995,6 +1996,7 @@ help: {
     loginRequired: 'Login required to rate',
     ratingRequired: 'Please select at least one star',
   },
+  systemParams: {
     tabTitle: 'Parameters',
     title: 'System Parameters (Algorithm)',
     subtitle: 'These values affect search, route building, and prioritization.',
