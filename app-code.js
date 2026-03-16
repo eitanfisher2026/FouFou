@@ -1173,6 +1173,7 @@ const FouFouApp = () => {
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState('general');
   const [feedbackList, setFeedbackList] = useState([]);
+  const [myFeedbackList, setMyFeedbackList] = useState([]); // own feedback for non-admin users
   const [showFeedbackList, setShowFeedbackList] = useState(false);
   const [hasNewFeedback, setHasNewFeedback] = useState(false);
 
@@ -2599,11 +2600,13 @@ const FouFouApp = () => {
       showToast(t('settings.writeFeedback'), 'warning');
       return;
     }
-    
+
+    const existingEntry = myFeedbackList.length > 0 ? myFeedbackList[0] : null;
+
     const feedbackEntry = {
       category: feedbackCategory,
       text: feedbackText.trim(),
-      userId: authUser?.uid || authUser?.uid || 'unknown',
+      userId: authUser?.uid || 'unknown',
       userEmail: authUser?.email || '',
       currentView: currentView || 'unknown',
       wizardStep: wizardStep || 0,
@@ -2612,31 +2615,43 @@ const FouFouApp = () => {
       date: new Date().toISOString(),
       resolved: false
     };
-    
+
     if (isFirebaseAvailable && database) {
-      database.ref('feedback').push(feedbackEntry)
-        .then(() => {
-          showToast(t('toast.feedbackThanks'), 'success');
-          setFeedbackText('');
-          setFeedbackCategory('general');
-          setShowFeedbackDialog(false);
-        })
-        .catch((err) => {
-          console.error('[FEEDBACK] ❌ Error:', err);
-          showToast(`${t('toast.sendError')}: ${err.message || err}`, 'error');
-        });
+      if (existingEntry && existingEntry.firebaseId) {
+        database.ref(`feedback/${existingEntry.firebaseId}`).update(feedbackEntry)
+          .then(() => {
+            showToast(t('toast.feedbackThanks'), 'success');
+            setFeedbackText('');
+            setFeedbackCategory('general');
+            setShowFeedbackDialog(false);
+          })
+          .catch((err) => {
+            showToast(`${t('toast.sendError')}: ${err.message || err}`, 'error');
+          });
+      } else {
+        database.ref('feedback').push(feedbackEntry)
+          .then((ref) => {
+            showToast(t('toast.feedbackThanks'), 'success');
+            setMyFeedbackList(prev => [{ ...feedbackEntry, firebaseId: ref.key }, ...prev].slice(0, 10));
+            setFeedbackText('');
+            setFeedbackCategory('general');
+            setShowFeedbackDialog(false);
+          })
+          .catch((err) => {
+            showToast(`${t('toast.sendError')}: ${err.message || err}`, 'error');
+          });
+      }
     } else {
       showToast(t('toast.firebaseUnavailable'), 'error');
     }
   };
 
-  const feedbackCountRef = useRef(null); // track count to detect new arrivals
+  const feedbackCountRef = useRef(null);
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
-    if (!isCurrentUserAdmin) return;
-    
+
     const feedbackRef = database.ref('feedback').orderByChild('timestamp').limitToLast(100);
-    
+
     const unsubscribe = feedbackRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -2645,30 +2660,34 @@ const FouFouApp = () => {
           firebaseId: key
         })).sort((a, b) => b.timestamp - a.timestamp);
         setFeedbackList(arr);
-        
-        const prevCount = feedbackCountRef.current;
-        if (prevCount !== null && arr.length > prevCount) {
-          const newest = arr[0];
-          setHasNewFeedback(true);
-          showToast(`💬 ${t('settings.newFeedback')}: "${(newest.text || '').slice(0, 40)}${(newest.text || '').length > 40 ? '...' : ''}"`, 'info', 5000);
+        if (authUser && authUser.uid) {
+          setMyFeedbackList(arr.filter(f => f.userId === authUser.uid));
         }
-        feedbackCountRef.current = arr.length;
-        
-        if (prevCount === null) {
-          const lastSeen = parseInt(localStorage.getItem('foufou_last_seen_feedback') || '0');
-          const hasUnseen = arr.some(f => f.timestamp > lastSeen);
-          if (hasUnseen) setHasNewFeedback(true);
+        if (isCurrentUserAdmin) {
+          const prevCount = feedbackCountRef.current;
+          if (prevCount !== null && arr.length > prevCount) {
+            const newest = arr[0];
+            setHasNewFeedback(true);
+            showToast(`💬 ${t('settings.newFeedback')}: "${(newest.text || '').slice(0, 40)}${(newest.text || '').length > 40 ? '...' : ''}"`, 'info', 5000);
+          }
+          feedbackCountRef.current = arr.length;
+          if (prevCount === null) {
+            const lastSeen = parseInt(localStorage.getItem('foufou_last_seen_feedback') || '0');
+            const hasUnseen = arr.some(f => f.timestamp > lastSeen);
+            if (hasUnseen) setHasNewFeedback(true);
+          }
         }
       } else {
         setFeedbackList([]);
+        setMyFeedbackList([]);
         feedbackCountRef.current = 0;
       }
     });
-    
+
     return () => feedbackRef.off('value', unsubscribe);
   }, [isCurrentUserAdmin]);
 
-  const markFeedbackAsSeen = () => {
+    const markFeedbackAsSeen = () => {
     const latest = feedbackList.length > 0 ? feedbackList[0].timestamp : Date.now();
     localStorage.setItem('foufou_last_seen_feedback', latest.toString());
     setHasNewFeedback(false);
@@ -2685,7 +2704,10 @@ const FouFouApp = () => {
   const deleteFeedback = (feedbackItem) => {
     if (isFirebaseAvailable && database && feedbackItem.firebaseId) {
       database.ref(`feedback/${feedbackItem.firebaseId}`).remove()
-        .then(() => showToast(t('toast.feedbackDeleted'), 'success'));
+        .then(() => {
+          showToast(t('toast.feedbackDeleted'), 'success');
+          setMyFeedbackList(prev => prev.filter(f => f.firebaseId !== feedbackItem.firebaseId));
+        });
     }
   };
 
@@ -13585,61 +13607,116 @@ const FouFouApp = () => {
 
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}
-      {showFeedbackDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 200 }}>
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl">
+      {showFeedbackDialog && (() => {
+        const currentUserId = authUser?.uid || null;
+        const myExisting = myFeedbackList.length > 0 ? myFeedbackList[0] : null;
+        const [editingMyFeedback, setEditingMyFeedback] = React.useState(false);
+        return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
-              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
+              <h3 className="text-base font-bold">{`\u{1F4AC} ${t("settings.sendFeedback")}`}</h3>
+              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">\u2715</button>
             </div>
-            <div className="p-4 space-y-3">
-              <div className="flex gap-2">
-                {[
-                  { id: 'bug', label: t('general.bug'), color: 'red' },
-                  { id: 'idea', label: t('general.idea'), color: 'yellow' },
-                  { id: 'general', label: t('general.generalFeedback'), color: 'blue' }
-                ].map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setFeedbackCategory(cat.id)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      feedbackCategory === cat.id
-                        ? cat.color === 'red' ? 'bg-red-100 border-2 border-red-400 text-red-700'
-                        : cat.color === 'yellow' ? 'bg-yellow-100 border-2 border-yellow-400 text-yellow-700'
-                        : 'bg-blue-100 border-2 border-blue-400 text-blue-700'
-                        : 'bg-gray-100 border-2 border-transparent text-gray-500'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-              
-              <textarea
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-                placeholder={t("settings.feedbackPlaceholder")}
-                className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
-                rows={4}
-                autoFocus
-                dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"}
-              />
-              
-              <button
-                onClick={submitFeedback}
-                disabled={!feedbackText.trim()}
-                className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all ${
-                  feedbackText.trim()
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                📨 {t('settings.send')}
-              </button>
+            <div className="p-4 space-y-3 overflow-y-auto flex-1">
+
+              {/* Form: show only if no existing feedback, or if editing */}
+              {(!myExisting || editingMyFeedback) ? (
+                <>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'bug', label: t('general.bug'), color: 'red' },
+                      { id: 'idea', label: t('general.idea'), color: 'yellow' },
+                      { id: 'general', label: t('general.generalFeedback'), color: 'blue' }
+                    ].map(cat => (
+                      <button key={cat.id} onClick={() => setFeedbackCategory(cat.id)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          feedbackCategory === cat.id
+                            ? cat.color === 'red' ? 'bg-red-100 border-2 border-red-400 text-red-700'
+                            : cat.color === 'yellow' ? 'bg-yellow-100 border-2 border-yellow-400 text-yellow-700'
+                            : 'bg-blue-100 border-2 border-blue-400 text-blue-700'
+                            : 'bg-gray-100 border-2 border-transparent text-gray-500'
+                        }`}>{cat.label}</button>
+                    ))}
+                  </div>
+                  <textarea value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder={t("settings.feedbackPlaceholder")}
+                    className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
+                    rows={4} autoFocus dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={submitFeedback} disabled={!feedbackText.trim()}
+                      className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${feedbackText.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                      \u{1F4E8} {t('settings.send')}
+                    </button>
+                    {editingMyFeedback && (
+                      <button onClick={() => setEditingMyFeedback(false)}
+                        style={{ padding: '0 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>
+                        {t('general.cancel')}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* User already submitted — show their entry with edit option */
+                <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', marginBottom: '6px' }}>
+                    \u{1F4AC} {t('settings.myPastFeedback')}
+                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> \u2713 {t('places.handled') || 'טופל'}</span>}
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => { setFeedbackText(myExisting.text); setFeedbackCategory(myExisting.category || 'general'); setEditingMyFeedback(true); }}
+                      style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#dbeafe', border: '1px solid #93c5fd', fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', cursor: 'pointer' }}>
+                      \u270F\uFE0F {t('general.edit') || 'ערוך'}
+                    </button>
+                    <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(myExisting))}
+                      style={{ padding: '6px 12px', borderRadius: '8px', background: '#fee2e2', border: '1px solid #fca5a5', fontSize: '12px', fontWeight: 'bold', color: '#dc2626', cursor: 'pointer' }}>
+                      \u{1F5D1}\uFE0F
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* All feedback list */}
+              {feedbackList.length > 0 && (
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
+                    \u{1F4CB} {t('settings.allFeedback') || 'כל המשובים'} ({feedbackList.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {feedbackList.map(f => {
+                      const isOwn = currentUserId && f.userId === currentUserId;
+                      const canDelete = isOwn || isCurrentUserAdmin;
+                      return (
+                        <div key={f.firebaseId} style={{ background: isOwn ? '#eff6ff' : '#f9fafb', border: `1px solid ${isOwn ? '#bfdbfe' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px', opacity: f.resolved ? 0.65 : 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '\u{1F41B}' : f.category === 'idea' ? '\u{1F4A1}' : '\u{1F4AD}'}</span>
+                                {isOwn && <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }}>{t('general.me') || 'אני'}</span>}
+                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>\u2713</span>}
+                                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
+                              </div>
+                              <p style={{ fontSize: '12px', color: '#374151', margin: 0 }}>{f.text}</p>
+                            </div>
+                            {canDelete && (
+                              <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(f))}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#ef4444', opacity: 0.5, flexShrink: 0, padding: '2px' }}>
+                                \u{1F5D1}\uFE0F
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Feedback List Dialog (Admin Only) */}
       {showFeedbackList && (

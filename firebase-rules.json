@@ -1,0 +1,68 @@
+{
+  "rules": {
+    "cities": {
+      "$cityId": {
+        "locations": {
+          ".read": true,
+          ".write": true
+        },
+        "routes": {
+          ".read": true,
+          ".write": true
+        },
+        "reviews": {
+          ".read": true,
+          "$placeKey": {
+            ".read": true,
+            "$userId": {
+              ".write": "auth != null && auth.uid === $userId",
+              ".validate": "newData.hasChildren(['rating', 'timestamp'])"
+            }
+          }
+        }
+      }
+    },
+    "settings": {
+      ".read": true,
+      ".write": true
+    },
+    "customInterests": {
+      ".read": true,
+      ".write": true
+    },
+    "helpContent": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
+    },
+    "helpAudio": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
+    },
+    "helpAudioDuration": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
+    },
+    "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2",
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() >= 2)"
+      }
+    },
+    "accessStats": {
+      ".read": true,
+      ".write": true
+    },
+    "feedback": {
+      ".read": "auth != null",
+      "$feedbackId": {
+        ".write": "auth != null && (!data.exists() && newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() >= 2)",
+        ".validate": "newData.hasChildren(['text', 'userId', 'timestamp'])"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

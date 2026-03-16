@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.76
+// FouFou app-data.js v3.8.78
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -111,6 +111,7 @@ general: {
   city: 'עיר',
   all: 'כל',
   allCity: 'כל העיר',
+  me: 'אני',
   close: 'סגור',
   cancel: 'ביטול',
   confirm: 'אישור',
@@ -794,6 +795,9 @@ settings: {
   send: 'שלח',
   writeFeedback: 'אנא כתוב משוב',
   feedbackPlaceholder: 'ספר לנו מה חשבת...',
+  myPastFeedback: 'המשוב שלי',
+  deleteFeedbackConfirm: 'למחוק משוב זה?',
+  allFeedback: 'כל המשובים',
   setPassword: 'הגדר סיסמה',
   changePassword: 'שנה סיסמת מערכת:',
   setNewPassword: 'הגדר סיסמת מערכת:',
@@ -1788,6 +1792,9 @@ settings: {
   send: 'Send',
   writeFeedback: 'Please write feedback',
   feedbackPlaceholder: 'Tell us what you think...',
+  myPastFeedback: 'My feedback',
+  deleteFeedbackConfirm: 'Delete this feedback?',
+  allFeedback: 'All feedback',
   setPassword: 'Set password',
   changePassword: 'Change system password:',
   setNewPassword: 'Set system password:',
@@ -3491,7 +3498,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.76';
+window.BKK.VERSION = '3.8.78';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
