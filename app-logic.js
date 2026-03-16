@@ -511,8 +511,37 @@
   };
   const routeTimeModeRef = React.useRef('auto');
   const getEffectiveTimeMode = () => routeTimeModeRef.current === 'auto' ? getAutoTimeMode() : routeTimeModeRef.current;
-  
-  const [savedRoutes, setSavedRoutes] = useState([]);
+
+  // Shared helper: determine a stop's best time (day/night/anytime)
+  // Checks in order: explicit bestTime field → name keywords → interestConfig → interest defaults
+  const NIGHT_NAME_KEYWORDS = ['night market', 'nightmarket', 'night bazaar', 'night bazar', 'talat rot fai', 'asiatique'];
+  const DAY_NAME_KEYWORDS = ['morning market', 'breakfast market'];
+  const INTEREST_DEFAULT_TIMES = {
+    temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
+    beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
+    culture: 'day', history: 'day', markets: 'day', shopping: 'day',
+    nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
+  };
+  const getStopBestTime = (stop) => {
+    // 1. Explicit per-stop override
+    if (stop.bestTime) return stop.bestTime;
+    // 2. Name-based detection (catches "night market", "Asiatique" etc.)
+    const nameLower = (stop.name || '').toLowerCase();
+    if (NIGHT_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'night';
+    if (DAY_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'day';
+    // 3. interestConfig bestTime (Firebase-configurable per interest)
+    for (const id of (stop.interests || [])) {
+      const cfg = interestConfig[id];
+      if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
+    }
+    // 4. Hard-coded interest defaults
+    for (const id of (stop.interests || [])) {
+      if (INTEREST_DEFAULT_TIMES[id]) return INTEREST_DEFAULT_TIMES[id];
+    }
+    return 'anytime';
+  };
+
+
   const [customLocations, setCustomLocations] = useState([]);
   const [pendingLocations, setPendingLocations] = useState([]);
   const [pendingInterests, setPendingInterests] = useState([]);
@@ -4427,27 +4456,7 @@
     // Sort each bucket: custom/pinned first, then by time match, then by rating
     const timeMode = getEffectiveTimeMode(); // 'day' or 'night'
     
-    // Get a stop's preferred time from its interest config
-    const getStopBestTime = (stop) => {
-      if (stop.bestTime) return stop.bestTime;
-      const stopInterests = stop.interests || [];
-      for (const id of stopInterests) {
-        // Check interestConfig (user-defined)
-        const iCfg = interestConfig[id];
-        if (iCfg?.bestTime && iCfg.bestTime !== 'anytime') return iCfg.bestTime;
-      }
-      // Check slotConfig defaults
-      const defaultTimes = {
-        temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
-        beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
-        culture: 'day', history: 'day', markets: 'day', shopping: 'day',
-        nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
-      };
-      for (const id of stopInterests) {
-        if (defaultTimes[id]) return defaultTimes[id];
-      }
-      return 'anytime';
-    };
+    // Get a stop's preferred time — uses shared getStopBestTime helper
     
     // Time score: matching=sp.timeScoreMatch, anytime=sp.timeScoreAnytime, conflicting=sp.timeScoreConflict
     const timeScore = (stop) => {
@@ -5260,26 +5269,9 @@
       // even if they are custom/favorites. Within non-conflict: custom first, then rating.
       {
         const timeMode = getEffectiveTimeMode();
-        const defaultTimes = {
-          temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
-          beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
-          culture: 'day', history: 'day', markets: 'day', shopping: 'day',
-          nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
-        };
-        const getStopTime = (stop) => {
-          const interests = stop.interests || [];
-          for (const id of interests) {
-            const cfg = interestConfig[id];
-            if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
-          }
-          for (const id of interests) {
-            if (defaultTimes[id]) return defaultTimes[id];
-          }
-          return 'anytime';
-        };
         uniqueStops.sort((a, b) => {
-          const aTime = getStopTime(a);
-          const bTime = getStopTime(b);
+          const aTime = getStopBestTime(a);
+          const bTime = getStopBestTime(b);
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
           const bConflict = (bTime !== 'anytime' && bTime !== timeMode) ? 1 : 0;
           if (aConflict !== bConflict) return aConflict - bConflict;

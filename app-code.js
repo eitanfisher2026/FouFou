@@ -496,8 +496,30 @@ const FouFouApp = () => {
   };
   const routeTimeModeRef = React.useRef('auto');
   const getEffectiveTimeMode = () => routeTimeModeRef.current === 'auto' ? getAutoTimeMode() : routeTimeModeRef.current;
-  
-  const [savedRoutes, setSavedRoutes] = useState([]);
+
+  const NIGHT_NAME_KEYWORDS = ['night market', 'nightmarket', 'night bazaar', 'night bazar', 'talat rot fai', 'asiatique'];
+  const DAY_NAME_KEYWORDS = ['morning market', 'breakfast market'];
+  const INTEREST_DEFAULT_TIMES = {
+    temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
+    beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
+    culture: 'day', history: 'day', markets: 'day', shopping: 'day',
+    nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
+  };
+  const getStopBestTime = (stop) => {
+    if (stop.bestTime) return stop.bestTime;
+    const nameLower = (stop.name || '').toLowerCase();
+    if (NIGHT_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'night';
+    if (DAY_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'day';
+    for (const id of (stop.interests || [])) {
+      const cfg = interestConfig[id];
+      if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
+    }
+    for (const id of (stop.interests || [])) {
+      if (INTEREST_DEFAULT_TIMES[id]) return INTEREST_DEFAULT_TIMES[id];
+    }
+    return 'anytime';
+  };
+
   const [customLocations, setCustomLocations] = useState([]);
   const [pendingLocations, setPendingLocations] = useState([]);
   const [pendingInterests, setPendingInterests] = useState([]);
@@ -4004,25 +4026,6 @@ const FouFouApp = () => {
     
     const timeMode = getEffectiveTimeMode(); // 'day' or 'night'
     
-    const getStopBestTime = (stop) => {
-      if (stop.bestTime) return stop.bestTime;
-      const stopInterests = stop.interests || [];
-      for (const id of stopInterests) {
-        const iCfg = interestConfig[id];
-        if (iCfg?.bestTime && iCfg.bestTime !== 'anytime') return iCfg.bestTime;
-      }
-      const defaultTimes = {
-        temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
-        beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
-        culture: 'day', history: 'day', markets: 'day', shopping: 'day',
-        nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
-      };
-      for (const id of stopInterests) {
-        if (defaultTimes[id]) return defaultTimes[id];
-      }
-      return 'anytime';
-    };
-    
     const timeScore = (stop) => {
       const bt = getStopBestTime(stop);
       if (bt === 'anytime') return sp.timeScoreAnytime;
@@ -4707,26 +4710,9 @@ const FouFouApp = () => {
 
       {
         const timeMode = getEffectiveTimeMode();
-        const defaultTimes = {
-          temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
-          beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
-          culture: 'day', history: 'day', markets: 'day', shopping: 'day',
-          nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
-        };
-        const getStopTime = (stop) => {
-          const interests = stop.interests || [];
-          for (const id of interests) {
-            const cfg = interestConfig[id];
-            if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
-          }
-          for (const id of interests) {
-            if (defaultTimes[id]) return defaultTimes[id];
-          }
-          return 'anytime';
-        };
         uniqueStops.sort((a, b) => {
-          const aTime = getStopTime(a);
-          const bTime = getStopTime(b);
+          const aTime = getStopBestTime(a);
+          const bTime = getStopBestTime(b);
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
           const bConflict = (bTime !== 'anytime' && bTime !== timeMode) ? 1 : 0;
           if (aConflict !== bConflict) return aConflict - bConflict;
