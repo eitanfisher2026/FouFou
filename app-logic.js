@@ -543,6 +543,7 @@
 
 
   const [customLocations, setCustomLocations] = useState([]);
+  const [savedRoutes, setSavedRoutes] = useState([]);
   const [pendingLocations, setPendingLocations] = useState([]);
   const [pendingInterests, setPendingInterests] = useState([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
