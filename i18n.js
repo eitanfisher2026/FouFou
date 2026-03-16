@@ -1086,8 +1086,9 @@ help: {
     inYourList: 'קיים ברשימה שלך',
     fromGoogle: 'מגוגל',
     noGoogleId: 'ללא קישור גוגל',
-    updateWithGoogle: 'עדכן בנתוני גוגל',
+    updateWithGoogle: 'עדכן מועדף בנתוני גוגל',
     updatedWithGoogle: 'עודכן בנתוני גוגל',
+    openExisting: 'פתח מועדף קיים לעריכה',
   },
 }, // end Hebrew
 
@@ -2078,8 +2079,9 @@ help: {
     inYourList: 'In your list',
     fromGoogle: 'From Google',
     noGoogleId: 'No Google link',
-    updateWithGoogle: 'Update with Google data',
+    updateWithGoogle: 'Update favorite with Google data',
     updatedWithGoogle: 'Updated with Google data',
+    openExisting: 'Open existing favorite',
   },
 } // end English
 

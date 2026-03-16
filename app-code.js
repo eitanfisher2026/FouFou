@@ -11485,16 +11485,16 @@ const FouFouApp = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {isFromGoogle ? (
                   <>
+                    <button onClick={() => handleDedupConfirm('accept')}
+                      style={{ width: '100%', padding: '11px', fontSize: '13px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '10px', cursor: 'pointer' }}>
+                      📍 {t('dedup.openExisting')}
+                    </button>
                     <button onClick={() => handleDedupConfirm('updateWithGoogle')}
-                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
+                      style={{ width: '100%', padding: '11px', fontSize: '13px', fontWeight: 'bold', background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
                       🔄 {t('dedup.updateWithGoogle')}
                     </button>
-                    <button onClick={() => handleDedupConfirm('accept')}
-                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
-                      ✅ {t('dedup.alreadyExists')}
-                    </button>
                     <button onClick={() => handleDedupConfirm('addNew')}
-                      style={{ width: '100%', padding: '11px', fontSize: '13px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '10px', cursor: 'pointer' }}>
+                      style={{ width: '100%', padding: '11px', fontSize: '13px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
                       ➕ {t('dedup.addAsNew')}
                     </button>
                   </>
