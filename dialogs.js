@@ -2922,9 +2922,9 @@
                 >{t('reviews.cancel')}</button>
                 <button
                   onClick={saveReview}
-                  disabled={reviewDialog.myRating === 0 && !reviewDialog.myText.trim()}
+                  disabled={reviewDialog.myRating === 0}
                   className="flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white"
-                  style={{ background: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'pointer' : 'not-allowed' }}
+                  style={{ background: reviewDialog.myRating > 0 ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: reviewDialog.myRating > 0 ? 'pointer' : 'not-allowed' }}
                 >{t('reviews.save')} ⭐</button>
               </div>
             </div>

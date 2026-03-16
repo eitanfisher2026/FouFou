@@ -997,8 +997,8 @@ help: {
     allReviews: 'כל הביקורות',
     rate: 'דרג',
     loginRequired: 'יש להתחבר כדי לדרג',
+    ratingRequired: 'יש לבחור לפחות כוכב אחד',
   },
-  sysParams: {
     tabTitle: 'פרמטרים',
     title: 'פרמטרי מערכת (אלגוריתם)',
     subtitle: 'ערכים אלה משפיעים על חיפוש, בניית מסלול ותיעדוף.',
@@ -1993,8 +1993,8 @@ help: {
     allReviews: 'All Reviews',
     rate: 'Rate',
     loginRequired: 'Login required to rate',
+    ratingRequired: 'Please select at least one star',
   },
-  sysParams: {
     tabTitle: 'Parameters',
     title: 'System Parameters (Algorithm)',
     subtitle: 'These values affect search, route building, and prioritization.',

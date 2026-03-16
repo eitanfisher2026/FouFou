@@ -5589,7 +5589,11 @@ const FouFouApp = () => {
             const ratings = Object.values(data).map(r => r.rating).filter(r => r > 0);
             if (ratings.length > 0) {
               avgs[placeKey] = { avg: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
+            } else {
+              setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
             }
+          } else {
+            setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
           }
         } catch (e) { /* skip individual errors */ }
       }
@@ -5645,13 +5649,17 @@ const FouFouApp = () => {
       setReviewDialog(null);
       return;
     }
+    if (reviewDialog.myRating === 0) {
+      showToast(t('reviews.ratingRequired') || 'יש לבחור לפחות כוכב אחד', 'warning');
+      return;
+    }
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const uid = authUser.uid;
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
-    
+
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+      if (db) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
         await db.ref(path).set({
           rating: reviewDialog.myRating,
@@ -5662,7 +5670,7 @@ const FouFouApp = () => {
         showToast(t('reviews.saved'), 'success');
         loadReviewAverages([reviewDialog.place?.name || '']);
       } else {
-        if (!db) showToast('No database connection', 'error');
+        showToast('No database connection', 'error');
       }
     } catch (e) {
       console.error('[REVIEWS] Save error:', e.message, e.code);
@@ -5676,36 +5684,47 @@ const FouFouApp = () => {
     if (!authUser?.uid) return;
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const uid = authUser.uid;
-    
+    const placeName = reviewDialog.place?.name || '';
+    const placeKey = reviewDialog.placeKey;
+
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
       if (db) {
-        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`).remove();
+        await db.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+        const data = snap.val();
+        const updated = data ? Object.entries(data).map(([ruid, r]) => ({
+          odvisitorId: ruid, rating: r.rating || 0, text: r.text || '',
+          userName: r.userName || ruid.slice(0, 8), timestamp: r.timestamp || 0
+        })).sort((a, b) => b.timestamp - a.timestamp) : [];
+        setReviewDialog(prev => prev ? { ...prev, reviews: updated, myRating: 0, myText: '', hasChanges: false } : null);
+        loadReviewAverages([placeName]);
         showToast(t('reviews.deleted'), 'success');
-        loadReviewAverages([reviewDialog.place?.name || '']);
       }
     } catch (e) {
       console.error('[REVIEWS] Delete error:', e);
+      showToast(t('reviews.saveError') || 'שגיאה במחיקה', 'error');
     }
-    setReviewDialog(null);
   };
 
   const deleteReviewByAdmin = async (targetUid) => {
     if (!reviewDialog || !isCurrentUserAdmin) return;
     const cityId = window.BKK.selectedCityId || 'bangkok';
+    const placeName = reviewDialog.place?.name || '';
+    const placeKey = reviewDialog.placeKey;
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
       if (db) {
-        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${targetUid}`).remove();
-        showToast(t('reviews.deleted'), 'success');
-        const snap = await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}`).once('value');
+        await db.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
           odvisitorId: uid, rating: r.rating || 0, text: r.text || '',
           userName: r.userName || uid.slice(0, 8), timestamp: r.timestamp || 0
         })).sort((a, b) => b.timestamp - a.timestamp) : [];
         setReviewDialog(prev => prev ? { ...prev, reviews: updated } : null);
-        loadReviewAverages([reviewDialog.place?.name || '']);
+        loadReviewAverages([placeName]);
+        showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
       console.error('[REVIEWS] Admin delete error:', e);
@@ -14354,9 +14373,9 @@ const FouFouApp = () => {
                 >{t('reviews.cancel')}</button>
                 <button
                   onClick={saveReview}
-                  disabled={reviewDialog.myRating === 0 && !reviewDialog.myText.trim()}
+                  disabled={reviewDialog.myRating === 0}
                   className="flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white"
-                  style={{ background: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: (reviewDialog.myRating > 0 || reviewDialog.myText.trim()) ? 'pointer' : 'not-allowed' }}
+                  style={{ background: reviewDialog.myRating > 0 ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#d1d5db', cursor: reviewDialog.myRating > 0 ? 'pointer' : 'not-allowed' }}
                 >{t('reviews.save')} ⭐</button>
               </div>
             </div>

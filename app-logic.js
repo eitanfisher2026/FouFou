@@ -6266,7 +6266,13 @@
             const ratings = Object.values(data).map(r => r.rating).filter(r => r > 0);
             if (ratings.length > 0) {
               avgs[placeKey] = { avg: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
+            } else {
+              // No ratings left — clear from state
+              setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
             }
+          } else {
+            // Node deleted entirely — clear from state
+            setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
           }
         } catch (e) { /* skip individual errors */ }
       }
@@ -6324,31 +6330,28 @@
       setReviewDialog(null);
       return;
     }
+    if (reviewDialog.myRating === 0) {
+      showToast(t('reviews.ratingRequired') || 'יש לבחור לפחות כוכב אחד', 'warning');
+      return;
+    }
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const uid = authUser.uid;
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
-    
-    console.log('[REVIEWS] Saving:', { cityId, placeKey: reviewDialog.placeKey, uid, rating: reviewDialog.myRating, text: reviewDialog.myText });
-    
+
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      console.log('[REVIEWS] Save attempt:', { database: !!db, rating: reviewDialog.myRating, text: reviewDialog.myText });
-      if (db && (reviewDialog.myRating > 0 || reviewDialog.myText.trim())) {
+      if (db) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
-        console.log('[REVIEWS] Saving to:', path);
         await db.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
           timestamp: Date.now()
         });
-        console.log('[REVIEWS] Save SUCCESS');
         showToast(t('reviews.saved'), 'success');
-        // Refresh this place's average
         loadReviewAverages([reviewDialog.place?.name || '']);
       } else {
-        console.log('[REVIEWS] Save skipped - no db or empty review', { db: !!db, rating: reviewDialog.myRating });
-        if (!db) showToast('No database connection', 'error');
+        showToast('No database connection', 'error');
       }
     } catch (e) {
       console.error('[REVIEWS] Save error:', e.message, e.code);
@@ -6362,37 +6365,49 @@
     if (!authUser?.uid) return;
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const uid = authUser.uid;
-    
+    const placeName = reviewDialog.place?.name || '';
+    const placeKey = reviewDialog.placeKey;
+
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
       if (db) {
-        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`).remove();
+        await db.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
+        // Refresh reviews inside dialog
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+        const data = snap.val();
+        const updated = data ? Object.entries(data).map(([ruid, r]) => ({
+          odvisitorId: ruid, rating: r.rating || 0, text: r.text || '',
+          userName: r.userName || ruid.slice(0, 8), timestamp: r.timestamp || 0
+        })).sort((a, b) => b.timestamp - a.timestamp) : [];
+        setReviewDialog(prev => prev ? { ...prev, reviews: updated, myRating: 0, myText: '', hasChanges: false } : null);
+        // Refresh average in list (place name captured before dialog closes)
+        loadReviewAverages([placeName]);
         showToast(t('reviews.deleted'), 'success');
-        loadReviewAverages([reviewDialog.place?.name || '']);
       }
     } catch (e) {
       console.error('[REVIEWS] Delete error:', e);
+      showToast(t('reviews.saveError') || 'שגיאה במחיקה', 'error');
     }
-    setReviewDialog(null);
   };
 
   const deleteReviewByAdmin = async (targetUid) => {
     if (!reviewDialog || !isCurrentUserAdmin) return;
     const cityId = window.BKK.selectedCityId || 'bangkok';
+    const placeName = reviewDialog.place?.name || '';
+    const placeKey = reviewDialog.placeKey;
     try {
       const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
       if (db) {
-        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${targetUid}`).remove();
-        showToast(t('reviews.deleted'), 'success');
-        // Refresh reviews in dialog
-        const snap = await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}`).once('value');
+        await db.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
+        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
           odvisitorId: uid, rating: r.rating || 0, text: r.text || '',
           userName: r.userName || uid.slice(0, 8), timestamp: r.timestamp || 0
         })).sort((a, b) => b.timestamp - a.timestamp) : [];
         setReviewDialog(prev => prev ? { ...prev, reviews: updated } : null);
-        loadReviewAverages([reviewDialog.place?.name || '']);
+        loadReviewAverages([placeName]);
+        showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
       console.error('[REVIEWS] Admin delete error:', e);
