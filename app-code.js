@@ -13615,7 +13615,7 @@ const FouFouApp = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">{`\u{1F4AC} ${t("settings.sendFeedback")}`}</h3>
+              <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
               <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">\u2715</button>
             </div>
             <div className="p-4 space-y-3 overflow-y-auto flex-1">
@@ -13646,7 +13646,7 @@ const FouFouApp = () => {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={submitFeedback} disabled={!feedbackText.trim()}
                       className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${feedbackText.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-                      \u{1F4E8} {t('settings.send')}
+                      📨 {t('settings.send')}
                     </button>
                     {editingMyFeedback && (
                       <button onClick={() => setEditingMyFeedback(false)}
@@ -13660,7 +13660,7 @@ const FouFouApp = () => {
                 /* User already submitted — show their entry with edit option */
                 <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', borderRadius: '10px', padding: '10px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', marginBottom: '6px' }}>
-                    \u{1F4AC} {t('settings.myPastFeedback')}
+                    💬 {t('settings.myPastFeedback')}
                     {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> \u2713 {t('places.handled') || 'טופל'}</span>}
                   </div>
                   <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
@@ -13671,7 +13671,7 @@ const FouFouApp = () => {
                     </button>
                     <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(myExisting))}
                       style={{ padding: '6px 12px', borderRadius: '8px', background: '#fee2e2', border: '1px solid #fca5a5', fontSize: '12px', fontWeight: 'bold', color: '#dc2626', cursor: 'pointer' }}>
-                      \u{1F5D1}\uFE0F
+                      🗑️
                     </button>
                   </div>
                 </div>
@@ -13681,7 +13681,7 @@ const FouFouApp = () => {
               {feedbackList.length > 0 && (
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
-                    \u{1F4CB} {t('settings.allFeedback') || 'כל המשובים'} ({feedbackList.length})
+                    📋 {t('settings.allFeedback') || 'כל המשובים'} ({feedbackList.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {feedbackList.map(f => {
@@ -13692,7 +13692,7 @@ const FouFouApp = () => {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '\u{1F41B}' : f.category === 'idea' ? '\u{1F4A1}' : '\u{1F4AD}'}</span>
+                                <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '🐛' : f.category === 'idea' ? '💡' : '💭'}</span>
                                 {isOwn && <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }}>{t('general.me') || 'אני'}</span>}
                                 {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>\u2713</span>}
                                 <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
@@ -13702,7 +13702,7 @@ const FouFouApp = () => {
                             {canDelete && (
                               <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(f))}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#ef4444', opacity: 0.5, flexShrink: 0, padding: '2px' }}>
-                                \u{1F5D1}\uFE0F
+                                🗑️
                               </button>
                             )}
                           </div>
