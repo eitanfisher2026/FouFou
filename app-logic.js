@@ -4471,13 +4471,17 @@
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
-        // Custom (user-added) locations get priority
+        // Time conflict overrides everything — a conflicting stop goes below all non-conflicting stops
+        const aTime = timeScore(a);
+        const bTime = timeScore(b);
+        const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
+        const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
+        if (aConflict !== bConflict) return aConflict - bConflict;
+        // Among non-conflicting: custom (user-added) locations get priority
         const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
         const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
         if (aCustom !== bCustom) return bCustom - aCustom;
-        // Time match: prefer stops matching current time of day
-        const aTime = timeScore(a);
-        const bTime = timeScore(b);
+        // Time match (anytime vs match)
         if (aTime !== bTime) return bTime - aTime;
         // Rating
         return stopScore(b) - stopScore(a);
@@ -4503,6 +4507,9 @@
       disabled.sort((a, b) => {
         const aTime = timeScore(a);
         const bTime = timeScore(b);
+        const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
+        const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
+        if (aConflict !== bConflict) return aConflict - bConflict;
         if (aTime !== bTime) return bTime - aTime;
         return stopScore(b) - stopScore(a);
       });
@@ -5002,20 +5009,21 @@
       // Clear Google cache for fresh route generation
       googleCacheRef.current = {};
       
-      // ROUND 1: Fill from custom locations first (up to limit), then API for gaps
+      // ROUND 1: Collect custom stops first, then fire all Google API calls in parallel
+
+      // Step A: collect custom stops per interest and add to allStops (Set-based dedup)
+      const customPerInterest = {};
+      const addedCustomNames = new Set();
       for (const interest of searchInterests) {
         const stopsForThisInterest = interestLimits[interest] || 2;
-        
-        // Get custom stops for this interest, sorted by rating
-        const customStopsForInterest = customStops.filter(stop => 
-          stop.interests && stop.interests.includes(interest)
-        );
-        
-        // Take only up to the limit from custom stops
-        const customToUse = customStopsForInterest.slice(0, stopsForThisInterest);
-        // Add custom stops that aren't already in allStops
+        const customToUse = customStops
+          .filter(stop => stop.interests && stop.interests.includes(interest))
+          .slice(0, stopsForThisInterest);
+        customPerInterest[interest] = customToUse;
         for (const cs of customToUse) {
-          if (!allStops.some(s => s.name.toLowerCase().trim() === cs.name.toLowerCase().trim())) {
+          const key = cs.name.toLowerCase().trim();
+          if (!addedCustomNames.has(key)) {
+            addedCustomNames.add(key);
             allStops.push({ ...cs, _debug: {
               source: 'custom',
               interestId: interest,
@@ -5026,101 +5034,98 @@
             }});
           }
         }
-        
-        // Always call Google API regardless of custom count — custom stops shouldn't block Google results
-        // neededFromApi only determines how many to PICK, not whether to call
-        const neededFromApi = stopsForThisInterest; // always fetch full quota from Google
-        
-        {
-          // Check if this is a private-only interest (no Google API calls)
-          const interestObj = allInterestOptions.find(o => o.id === interest);
-          const interestPrivateOnly = interestObj?.privateOnly || false;
-          
-          let fetchedPlaces = [];
-          
-          if (interestPrivateOnly) {
-            console.log(`[ROUTE] Skipping API for private interest: ${interest}`);
-          } else {
-          try {
-            console.log(`[ROUTE] Fetching for interest: ${interest} (limit ${stopsForThisInterest}, have ${customToUse.length} custom)`);
-            const radiusOverride = isRadiusMode ? { 
-              lat: formData.currentLat, 
-              lng: formData.currentLng, 
-              radius: formData.radiusMeters 
-            } : null;
-            fetchedPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
-          } catch (error) {
-            // Track errors for user notification
-            fetchErrors.push({
-              interest,
-              error: error.message || 'Unknown error',
-              details: error.details || {}
-            });
-            console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
-            fetchedPlaces = [];
-          }
-          } // end if !privateOnly
-          
-          // Filter blacklisted places (status='blacklist') BEFORE sorting
-          fetchedPlaces = filterBlacklist(fetchedPlaces);
-          
-          // Filter out Google places that duplicate custom locations
-          fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
-          
-          // In radius mode: HARD filter by actual distance (API locationBias doesn't guarantee this)
-          if (isRadiusMode) {
-            const beforeFilter = fetchedPlaces.length;
-            fetchedPlaces = fetchedPlaces.filter(p => {
-              const dist = calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng);
-              return dist <= formData.radiusMeters;
-            });
-            const removed = beforeFilter - fetchedPlaces.length;
-            if (removed > 0) {
-              addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
-              console.log(`[RADIUS] Filtered ${removed}/${beforeFilter} places beyond radius`);
-            }
-          }
-          
-          // Sort
-          let sortedAll;
-          if (isRadiusMode) {
-            sortedAll = fetchedPlaces
-              .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
-              .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
-          } else {
-            sortedAll = fetchedPlaces
-              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
-          }
-          
-          // Take only what's needed beyond custom stops already added
-          const actualNeeded = Math.max(0, stopsForThisInterest - customToUse.length);
-          const sortedPlaces = sortedAll.slice(0, actualNeeded);
-          const cachedPlaces = sortedAll.slice(actualNeeded);
-          
-          if (actualNeeded === 0) {
-            console.log(`[ROUTE] ${interest}: have ${customToUse.length} custom, limit=${stopsForThisInterest} → skipping Google results (actualNeeded=0)`);
-          }
-          
-          // Store unused places in cache for "find more"
-          googleCacheRef.current[interest] = cachedPlaces;
-          console.log(`[ROUTE] 📋 ${interest}: picked ${sortedPlaces.length}/${sortedAll.length}, cached ${cachedPlaces.length}`);
-          sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
-          if (cachedPlaces.length > 0) {
-            console.log(`  [cached: ${cachedPlaces.slice(0, 5).map(p => p.name).join(', ')}${cachedPlaces.length > 5 ? '...' : ''}]`);
-          }
-          
-          // Track results
-          interestResults[interest] = {
-            requested: stopsForThisInterest,
-            custom: customToUse.length,
-            fetched: sortedPlaces.length,
-            total: customToUse.length + sortedPlaces.length,
-            allPlaces: sortedAll // Keep all for round 2
-          };
-          
-          // Add to allStops
-          allStops.push(...sortedPlaces);
+      }
+
+      // Step B: fire all Google API calls in parallel
+      const fetchResults = await Promise.all(searchInterests.map(async interest => {
+        const interestObj = allInterestOptions.find(o => o.id === interest);
+        if (interestObj?.privateOnly) {
+          console.log(`[ROUTE] Skipping API for private interest: ${interest}`);
+          return { interest, places: [] };
         }
+        try {
+          const stopsForThisInterest = interestLimits[interest] || 2;
+          console.log(`[ROUTE] Fetching for interest: ${interest} (limit ${stopsForThisInterest}, have ${customPerInterest[interest].length} custom)`);
+          const radiusOverride = isRadiusMode ? {
+            lat: formData.currentLat,
+            lng: formData.currentLng,
+            radius: formData.radiusMeters
+          } : null;
+          const places = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+          return { interest, places };
+        } catch (error) {
+          fetchErrors.push({ interest, error: error.message || 'Unknown error', details: error.details || {} });
+          console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
+          return { interest, places: [] };
+        }
+      }));
+
+      // Step C: process each result and build allStops
+      for (const { interest, places: rawPlaces } of fetchResults) {
+        const stopsForThisInterest = interestLimits[interest] || 2;
+        const customToUse = customPerInterest[interest];
+
+        let fetchedPlaces = rawPlaces;
+
+        // Filter blacklisted places (status='blacklist') BEFORE sorting
+        fetchedPlaces = filterBlacklist(fetchedPlaces);
+
+        // Filter out Google places that duplicate custom locations
+        fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
+
+        // In radius mode: HARD filter by actual distance (API locationBias doesn't guarantee this)
+        if (isRadiusMode) {
+          const beforeFilter = fetchedPlaces.length;
+          fetchedPlaces = fetchedPlaces.filter(p => {
+            const dist = calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng);
+            return dist <= formData.radiusMeters;
+          });
+          const removed = beforeFilter - fetchedPlaces.length;
+          if (removed > 0) {
+            addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
+            console.log(`[RADIUS] Filtered ${removed}/${beforeFilter} places beyond radius`);
+          }
+        }
+
+        // Sort
+        let sortedAll;
+        if (isRadiusMode) {
+          sortedAll = fetchedPlaces
+            .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
+            .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+        } else {
+          sortedAll = [...fetchedPlaces]
+            .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+        }
+
+        // Take only what's needed beyond custom stops already added
+        const actualNeeded = Math.max(0, stopsForThisInterest - customToUse.length);
+        const sortedPlaces = sortedAll.slice(0, actualNeeded);
+        const cachedPlaces = sortedAll.slice(actualNeeded);
+
+        if (actualNeeded === 0) {
+          console.log(`[ROUTE] ${interest}: have ${customToUse.length} custom, limit=${stopsForThisInterest} → skipping Google results (actualNeeded=0)`);
+        }
+
+        // Store unused places in cache for "find more"
+        googleCacheRef.current[interest] = cachedPlaces;
+        console.log(`[ROUTE] 📋 ${interest}: picked ${sortedPlaces.length}/${sortedAll.length}, cached ${cachedPlaces.length}`);
+        sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
+        if (cachedPlaces.length > 0) {
+          console.log(`  [cached: ${cachedPlaces.slice(0, 5).map(p => p.name).join(', ')}${cachedPlaces.length > 5 ? '...' : ''}]`);
+        }
+
+        // Track results
+        interestResults[interest] = {
+          requested: stopsForThisInterest,
+          custom: customToUse.length,
+          fetched: sortedPlaces.length,
+          total: customToUse.length + sortedPlaces.length,
+          allPlaces: sortedAll // Keep all for round 2 (already sorted)
+        };
+
+        // Add to allStops
+        allStops.push(...sortedPlaces);
       }
       
       // Remove duplicates after round 1 - check ONLY exact name match
@@ -5171,10 +5176,8 @@
           const roomLeft = Math.max(0, interestMax - currentCount);
           
           if (canAddMore > 0 && roomLeft > 0) {
-            const ratingSort = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
-            const distSort = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
+            // allPlaces is already sorted from Round 1 — just slice the next batch
             const morePlaces = result.allPlaces
-              .sort(isRadiusMode ? distSort : ratingSort)
               .slice(alreadyUsed, alreadyUsed + Math.min(canAddMore, roomLeft));
             
             additionalPlaces.push(...morePlaces);

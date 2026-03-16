@@ -4042,11 +4042,14 @@ const FouFouApp = () => {
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
+        const aTime = timeScore(a);
+        const bTime = timeScore(b);
+        const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
+        const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
+        if (aConflict !== bConflict) return aConflict - bConflict;
         const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
         const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
         if (aCustom !== bCustom) return bCustom - aCustom;
-        const aTime = timeScore(a);
-        const bTime = timeScore(b);
         if (aTime !== bTime) return bTime - aTime;
         return stopScore(b) - stopScore(a);
       });
@@ -4067,6 +4070,9 @@ const FouFouApp = () => {
       disabled.sort((a, b) => {
         const aTime = timeScore(a);
         const bTime = timeScore(b);
+        const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
+        const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
+        if (aConflict !== bConflict) return aConflict - bConflict;
         if (aTime !== bTime) return bTime - aTime;
         return stopScore(b) - stopScore(a);
       });
@@ -4494,16 +4500,18 @@ const FouFouApp = () => {
       
       googleCacheRef.current = {};
       
+      const customPerInterest = {};
+      const addedCustomNames = new Set();
       for (const interest of searchInterests) {
         const stopsForThisInterest = interestLimits[interest] || 2;
-        
-        const customStopsForInterest = customStops.filter(stop => 
-          stop.interests && stop.interests.includes(interest)
-        );
-        
-        const customToUse = customStopsForInterest.slice(0, stopsForThisInterest);
+        const customToUse = customStops
+          .filter(stop => stop.interests && stop.interests.includes(interest))
+          .slice(0, stopsForThisInterest);
+        customPerInterest[interest] = customToUse;
         for (const cs of customToUse) {
-          if (!allStops.some(s => s.name.toLowerCase().trim() === cs.name.toLowerCase().trim())) {
+          const key = cs.name.toLowerCase().trim();
+          if (!addedCustomNames.has(key)) {
+            addedCustomNames.add(key);
             allStops.push({ ...cs, _debug: {
               source: 'custom',
               interestId: interest,
@@ -4514,83 +4522,82 @@ const FouFouApp = () => {
             }});
           }
         }
-        
-        const neededFromApi = stopsForThisInterest; // always fetch full quota from Google
-        
-        {
-          const interestObj = allInterestOptions.find(o => o.id === interest);
-          const interestPrivateOnly = interestObj?.privateOnly || false;
-          
-          let fetchedPlaces = [];
-          
-          if (interestPrivateOnly) {
-          } else {
-          try {
-            const radiusOverride = isRadiusMode ? { 
-              lat: formData.currentLat, 
-              lng: formData.currentLng, 
-              radius: formData.radiusMeters 
-            } : null;
-            fetchedPlaces = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
-          } catch (error) {
-            fetchErrors.push({
-              interest,
-              error: error.message || 'Unknown error',
-              details: error.details || {}
-            });
-            console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
-            fetchedPlaces = [];
-          }
-          } // end if !privateOnly
-          
-          fetchedPlaces = filterBlacklist(fetchedPlaces);
-          
-          fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
-          
-          if (isRadiusMode) {
-            const beforeFilter = fetchedPlaces.length;
-            fetchedPlaces = fetchedPlaces.filter(p => {
-              const dist = calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng);
-              return dist <= formData.radiusMeters;
-            });
-            const removed = beforeFilter - fetchedPlaces.length;
-            if (removed > 0) {
-              addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
-            }
-          }
-          
-          let sortedAll;
-          if (isRadiusMode) {
-            sortedAll = fetchedPlaces
-              .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
-              .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
-          } else {
-            sortedAll = fetchedPlaces
-              .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
-          }
-          
-          const actualNeeded = Math.max(0, stopsForThisInterest - customToUse.length);
-          const sortedPlaces = sortedAll.slice(0, actualNeeded);
-          const cachedPlaces = sortedAll.slice(actualNeeded);
-          
-          if (actualNeeded === 0) {
-          }
-          
-          googleCacheRef.current[interest] = cachedPlaces;
-          sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
-          if (cachedPlaces.length > 0) {
-          }
-          
-          interestResults[interest] = {
-            requested: stopsForThisInterest,
-            custom: customToUse.length,
-            fetched: sortedPlaces.length,
-            total: customToUse.length + sortedPlaces.length,
-            allPlaces: sortedAll // Keep all for round 2
-          };
-          
-          allStops.push(...sortedPlaces);
+      }
+
+      const fetchResults = await Promise.all(searchInterests.map(async interest => {
+        const interestObj = allInterestOptions.find(o => o.id === interest);
+        if (interestObj?.privateOnly) {
+          return { interest, places: [] };
         }
+        try {
+          const stopsForThisInterest = interestLimits[interest] || 2;
+          const radiusOverride = isRadiusMode ? {
+            lat: formData.currentLat,
+            lng: formData.currentLng,
+            radius: formData.radiusMeters
+          } : null;
+          const places = await fetchGooglePlaces(isRadiusMode ? null : formData.area, [interest], radiusOverride);
+          return { interest, places };
+        } catch (error) {
+          fetchErrors.push({ interest, error: error.message || 'Unknown error', details: error.details || {} });
+          console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
+          return { interest, places: [] };
+        }
+      }));
+
+      for (const { interest, places: rawPlaces } of fetchResults) {
+        const stopsForThisInterest = interestLimits[interest] || 2;
+        const customToUse = customPerInterest[interest];
+
+        let fetchedPlaces = rawPlaces;
+
+        fetchedPlaces = filterBlacklist(fetchedPlaces);
+
+        fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
+
+        if (isRadiusMode) {
+          const beforeFilter = fetchedPlaces.length;
+          fetchedPlaces = fetchedPlaces.filter(p => {
+            const dist = calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng);
+            return dist <= formData.radiusMeters;
+          });
+          const removed = beforeFilter - fetchedPlaces.length;
+          if (removed > 0) {
+            addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
+          }
+        }
+
+        let sortedAll;
+        if (isRadiusMode) {
+          sortedAll = fetchedPlaces
+            .map(p => ({ ...p, _dist: calcDistance(formData.currentLat, formData.currentLng, p.lat, p.lng) }))
+            .sort((a, b) => a._dist - b._dist || (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+        } else {
+          sortedAll = [...fetchedPlaces]
+            .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
+        }
+
+        const actualNeeded = Math.max(0, stopsForThisInterest - customToUse.length);
+        const sortedPlaces = sortedAll.slice(0, actualNeeded);
+        const cachedPlaces = sortedAll.slice(actualNeeded);
+
+        if (actualNeeded === 0) {
+        }
+
+        googleCacheRef.current[interest] = cachedPlaces;
+        sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
+        if (cachedPlaces.length > 0) {
+        }
+
+        interestResults[interest] = {
+          requested: stopsForThisInterest,
+          custom: customToUse.length,
+          fetched: sortedPlaces.length,
+          total: customToUse.length + sortedPlaces.length,
+          allPlaces: sortedAll // Keep all for round 2 (already sorted)
+        };
+
+        allStops.push(...sortedPlaces);
       }
       
       const seen = new Set();
@@ -4632,10 +4639,7 @@ const FouFouApp = () => {
           const roomLeft = Math.max(0, interestMax - currentCount);
           
           if (canAddMore > 0 && roomLeft > 0) {
-            const ratingSort = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
-            const distSort = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
             const morePlaces = result.allPlaces
-              .sort(isRadiusMode ? distSort : ratingSort)
               .slice(alreadyUsed, alreadyUsed + Math.min(canAddMore, roomLeft));
             
             additionalPlaces.push(...morePlaces);
