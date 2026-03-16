@@ -532,7 +532,7 @@
                   </div>
                   {/* Ratings row — Google + FouFou */}
                   {(() => {
-                    const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
+                    const pk = (newLocation.name || '').replace(/[.#$/\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
                     // Always show — at minimum shows "rate" link
@@ -2066,7 +2066,7 @@
                 )}
                 {modalImageCtx.location && (() => {
                   const loc = modalImageCtx.location;
-                  const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_');
+                  const pk = (loc.name || '').replace(/[.#$/\[\]]/g, '_');
                   const ra = reviewAverages[pk];
                   const gR = loc.googleRating;
                   return (

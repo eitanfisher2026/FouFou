@@ -282,7 +282,7 @@ const FouFouApp = () => {
 
   const [currentView, setCurrentView] = useState('form');
   const [currentLang, setCurrentLang] = useState(() => {
-    return window.BKK.i18n.currentLang || 'he';
+    try { return (window.BKK && window.BKK.i18n && window.BKK.i18n.currentLang) || 'he'; } catch(e) { return 'he'; }
   });
   const [selectedCityId, setSelectedCityId] = useState(() => {
     try { return localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) { return 'bangkok'; }
@@ -2137,6 +2137,8 @@ const FouFouApp = () => {
             return loc;
           });
           setCustomLocations(locationsArray);
+          const allNames = locationsArray.filter(l => l.status !== 'blacklist').map(l => l.name);
+          if (allNames.length > 0) loadReviewAverages(allNames);
         } else {
           setCustomLocations([]);
         }
@@ -4061,7 +4063,7 @@ const FouFouApp = () => {
     const stopScore = (s) => {
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
       if (s.source === 'custom' || s.custom) {
-        const pk = (s.name || '').replace(/[.#$/\\[\]]/g, '_');
+        const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
         const ra = reviewAverages[pk];
         if (ra && ra.count > 0) {
           return googleScore + ra.avg * sp.foufouRatingBoost;
@@ -5584,7 +5586,7 @@ const FouFouApp = () => {
       const cityId = window.BKK.selectedCityId || 'bangkok';
       const avgs = {};
       for (const name of placeNames) {
-        const placeKey = (name || '').replace(/[.#$/\\[\]]/g, '_');
+        const placeKey = (name || '').replace(/[.#$/\[\]]/g, '_');
         try {
           const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
           const data = snap.val();
@@ -12013,7 +12015,7 @@ const FouFouApp = () => {
                   </div>
                   {/* Ratings row — Google + FouFou */}
                   {(() => {
-                    const pk = (newLocation.name || '').replace(/[.#$/\\[\]]/g, '_');
+                    const pk = (newLocation.name || '').replace(/[.#$/\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
                     return (
@@ -13522,7 +13524,7 @@ const FouFouApp = () => {
                 )}
                 {modalImageCtx.location && (() => {
                   const loc = modalImageCtx.location;
-                  const pk = (loc.name || '').replace(/[.#$/\\[\]]/g, '_');
+                  const pk = (loc.name || '').replace(/[.#$/\[\]]/g, '_');
                   const ra = reviewAverages[pk];
                   const gR = loc.googleRating;
                   return (

@@ -268,7 +268,7 @@
 
   const [currentView, setCurrentView] = useState('form');
   const [currentLang, setCurrentLang] = useState(() => {
-    return window.BKK.i18n.currentLang || 'he';
+    try { return (window.BKK && window.BKK.i18n && window.BKK.i18n.currentLang) || 'he'; } catch(e) { return 'he'; }
   });
   const [selectedCityId, setSelectedCityId] = useState(() => {
     try { return localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) { return 'bangkok'; }
@@ -2317,6 +2317,9 @@
           });
           setCustomLocations(locationsArray);
           console.log('[FIREBASE] Loaded', locationsArray.length, 'locations for', selectedCityId);
+          // Load review averages for all custom locations
+          const allNames = locationsArray.filter(l => l.status !== 'blacklist').map(l => l.name);
+          if (allNames.length > 0) loadReviewAverages(allNames);
         } else {
           setCustomLocations([]);
         }
@@ -4491,7 +4494,7 @@
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
       // Boost favorites with FouFou user ratings
       if (s.source === 'custom' || s.custom) {
-        const pk = (s.name || '').replace(/[.#$/\\[\]]/g, '_');
+        const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
         const ra = reviewAverages[pk];
         if (ra && ra.count > 0) {
           // FouFou rating (1-5) * weight factor — high-rated favorites get priority
@@ -6261,7 +6264,7 @@
       const cityId = window.BKK.selectedCityId || 'bangkok';
       const avgs = {};
       for (const name of placeNames) {
-        const placeKey = (name || '').replace(/[.#$/\\[\]]/g, '_');
+        const placeKey = (name || '').replace(/[.#$/\[\]]/g, '_');
         try {
           const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
           const data = snap.val();
