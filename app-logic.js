@@ -5223,20 +5223,14 @@
       
       // In radius mode: detect area for each stop + filter out places outside known areas + add distance
       if (isRadiusMode) {
-        const beforeCount = uniqueStops.length;
+        // In radius mode: keep all stops within distance — area membership is irrelevant
         uniqueStops = uniqueStops.map(stop => {
           const detectedArea = detectAreaFromCoords(stop.lat, stop.lng);
           const distFromCenter = Math.round(calcDistance(formData.currentLat, formData.currentLng, stop.lat, stop.lng));
-          return { ...stop, detectedArea, distFromCenter };
-        }).filter(stop => {
-          if (stop.detectedArea) return true;
-          console.log('[RADIUS] Filtered out (outside known areas):', stop.name);
-          return false;
+          // Use detected area or fall back to closest area — never discard based on area
+          const closestArea = detectedArea || window.BKK.getClosestArea(stop.lat, stop.lng) || formData.area;
+          return { ...stop, detectedArea: closestArea, distFromCenter };
         });
-        const filtered = beforeCount - uniqueStops.length;
-        if (filtered > 0) {
-          addDebugLog('ROUTE', `Radius: filtered ${filtered} places outside known areas`);
-        }
       } else {
         // In area mode: set detectedArea = formData.area for all
         uniqueStops = uniqueStops.map(stop => ({ ...stop, detectedArea: formData.area }));

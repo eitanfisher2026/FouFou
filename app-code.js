@@ -4674,19 +4674,12 @@ const FouFouApp = () => {
       }
       
       if (isRadiusMode) {
-        const beforeCount = uniqueStops.length;
         uniqueStops = uniqueStops.map(stop => {
           const detectedArea = detectAreaFromCoords(stop.lat, stop.lng);
           const distFromCenter = Math.round(calcDistance(formData.currentLat, formData.currentLng, stop.lat, stop.lng));
-          return { ...stop, detectedArea, distFromCenter };
-        }).filter(stop => {
-          if (stop.detectedArea) return true;
-          return false;
+          const closestArea = detectedArea || window.BKK.getClosestArea(stop.lat, stop.lng) || formData.area;
+          return { ...stop, detectedArea: closestArea, distFromCenter };
         });
-        const filtered = beforeCount - uniqueStops.length;
-        if (filtered > 0) {
-          addDebugLog('ROUTE', `Radius: filtered ${filtered} places outside known areas`);
-        }
       } else {
         uniqueStops = uniqueStops.map(stop => ({ ...stop, detectedArea: formData.area }));
       }
