@@ -2821,7 +2821,7 @@
         const avgRating = reviewDialog.reviews.length > 0 
           ? (reviewDialog.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewDialog.reviews.filter(r => r.rating > 0).length || 0).toFixed(1)
           : null;
-        const visitorId = window.BKK.visitorId || 'anonymous';
+        const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
         
         const handleClose = () => {
           if (reviewDialog.hasChanges) {
@@ -2836,7 +2836,7 @@
         };
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={handleClose}>
+          <div className="fixed inset-0 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10200 }} onClick={handleClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="p-3 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-xl">
@@ -2889,17 +2889,21 @@
                 ) : (
                   reviewDialog.reviews.map((review, idx) => {
                     const isMe = review.odvisitorId === visitorId;
+                    const canDelete = isMe || isCurrentUserAdmin;
                     return (
                       <div key={idx} className={`p-2 rounded-lg mb-2 ${isMe ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + review.userName : review.userName}</span>
+                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + (review.userName || t('general.me')) : review.userName}</span>
                             {review.rating > 0 && <span className="text-amber-500 text-xs">{'★'.repeat(review.rating)}</span>}
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] text-gray-400">{new Date(review.timestamp).toLocaleDateString()}</span>
-                            {isMe && (
-                              <button onClick={deleteMyReview} className="text-red-400 hover:text-red-600 text-xs" title={t('reviews.deleteReview')}>🗑️</button>
+                            {canDelete && (
+                              <button
+                                onClick={() => isMe ? deleteMyReview() : deleteReviewByAdmin(review.odvisitorId)}
+                                className="text-red-400 hover:text-red-600 text-xs"
+                                title={t('reviews.deleteReview')}>🗑️</button>
                             )}
                           </div>
                         </div>

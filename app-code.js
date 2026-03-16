@@ -4879,10 +4879,10 @@ const FouFouApp = () => {
 
       saveDebugSession(newRoute);
       
-      const lockedNames = newRoute.stops
-        .filter(s => s.custom && (s.locked || customLocations.find(cl => cl.name === s.name)?.locked))
+      const customNames = newRoute.stops
+        .filter(s => s.custom || customLocations.find(cl => cl.name === s.name))
         .map(s => s.name);
-      if (lockedNames.length > 0) loadReviewAverages(lockedNames);
+      if (customNames.length > 0) loadReviewAverages(customNames);
       
       if (disabledStops.length > 0) {
         const newStopNames = new Set(newRoute.stops.map(s => (s.name || '').toLowerCase().trim()));
@@ -5682,11 +5682,34 @@ const FouFouApp = () => {
       if (db) {
         await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`).remove();
         showToast(t('reviews.deleted'), 'success');
+        loadReviewAverages([reviewDialog.place?.name || '']);
       }
     } catch (e) {
       console.error('[REVIEWS] Delete error:', e);
     }
     setReviewDialog(null);
+  };
+
+  const deleteReviewByAdmin = async (targetUid) => {
+    if (!reviewDialog || !isCurrentUserAdmin) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    try {
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${targetUid}`).remove();
+        showToast(t('reviews.deleted'), 'success');
+        const snap = await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}`).once('value');
+        const data = snap.val();
+        const updated = data ? Object.entries(data).map(([uid, r]) => ({
+          odvisitorId: uid, rating: r.rating || 0, text: r.text || '',
+          userName: r.userName || uid.slice(0, 8), timestamp: r.timestamp || 0
+        })).sort((a, b) => b.timestamp - a.timestamp) : [];
+        setReviewDialog(prev => prev ? { ...prev, reviews: updated } : null);
+        loadReviewAverages([reviewDialog.place?.name || '']);
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Admin delete error:', e);
+    }
   };
 
   const handleEditLocation = (loc, navList) => {
@@ -14230,7 +14253,7 @@ const FouFouApp = () => {
         const avgRating = reviewDialog.reviews.length > 0 
           ? (reviewDialog.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviewDialog.reviews.filter(r => r.rating > 0).length || 0).toFixed(1)
           : null;
-        const visitorId = window.BKK.visitorId || 'anonymous';
+        const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
         
         const handleClose = () => {
           if (reviewDialog.hasChanges) {
@@ -14245,7 +14268,7 @@ const FouFouApp = () => {
         };
         
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={handleClose}>
+          <div className="fixed inset-0 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10200 }} onClick={handleClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="p-3 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-xl">
@@ -14298,17 +14321,21 @@ const FouFouApp = () => {
                 ) : (
                   reviewDialog.reviews.map((review, idx) => {
                     const isMe = review.odvisitorId === visitorId;
+                    const canDelete = isMe || isCurrentUserAdmin;
                     return (
                       <div key={idx} className={`p-2 rounded-lg mb-2 ${isMe ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + review.userName : review.userName}</span>
+                            <span className="text-xs font-bold text-gray-700">{isMe ? '👤 ' + (review.userName || t('general.me')) : review.userName}</span>
                             {review.rating > 0 && <span className="text-amber-500 text-xs">{'★'.repeat(review.rating)}</span>}
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-[9px] text-gray-400">{new Date(review.timestamp).toLocaleDateString()}</span>
-                            {isMe && (
-                              <button onClick={deleteMyReview} className="text-red-400 hover:text-red-600 text-xs" title={t('reviews.deleteReview')}>🗑️</button>
+                            {canDelete && (
+                              <button
+                                onClick={() => isMe ? deleteMyReview() : deleteReviewByAdmin(review.odvisitorId)}
+                                className="text-red-400 hover:text-red-600 text-xs"
+                                title={t('reviews.deleteReview')}>🗑️</button>
                             )}
                           </div>
                         </div>

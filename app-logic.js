@@ -5453,11 +5453,11 @@
       // Save debug session for field debugging
       saveDebugSession(newRoute);
       
-      // Load review averages for locked custom places
-      const lockedNames = newRoute.stops
-        .filter(s => s.custom && (s.locked || customLocations.find(cl => cl.name === s.name)?.locked))
+      // Load review averages for all custom places
+      const customNames = newRoute.stops
+        .filter(s => s.custom || customLocations.find(cl => cl.name === s.name))
         .map(s => s.name);
-      if (lockedNames.length > 0) loadReviewAverages(lockedNames);
+      if (customNames.length > 0) loadReviewAverages(customNames);
       
       // Clean up disabled stops: keep only those that still exist in the new route
       if (disabledStops.length > 0) {
@@ -6368,11 +6368,35 @@
       if (db) {
         await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`).remove();
         showToast(t('reviews.deleted'), 'success');
+        loadReviewAverages([reviewDialog.place?.name || '']);
       }
     } catch (e) {
       console.error('[REVIEWS] Delete error:', e);
     }
     setReviewDialog(null);
+  };
+
+  const deleteReviewByAdmin = async (targetUid) => {
+    if (!reviewDialog || !isCurrentUserAdmin) return;
+    const cityId = window.BKK.selectedCityId || 'bangkok';
+    try {
+      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
+      if (db) {
+        await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}/${targetUid}`).remove();
+        showToast(t('reviews.deleted'), 'success');
+        // Refresh reviews in dialog
+        const snap = await db.ref(`cities/${cityId}/reviews/${reviewDialog.placeKey}`).once('value');
+        const data = snap.val();
+        const updated = data ? Object.entries(data).map(([uid, r]) => ({
+          odvisitorId: uid, rating: r.rating || 0, text: r.text || '',
+          userName: r.userName || uid.slice(0, 8), timestamp: r.timestamp || 0
+        })).sort((a, b) => b.timestamp - a.timestamp) : [];
+        setReviewDialog(prev => prev ? { ...prev, reviews: updated } : null);
+        loadReviewAverages([reviewDialog.place?.name || '']);
+      }
+    } catch (e) {
+      console.error('[REVIEWS] Admin delete error:', e);
+    }
   };
 
   const handleEditLocation = (loc, navList) => {
