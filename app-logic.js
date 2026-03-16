@@ -1255,6 +1255,7 @@
 
   // Feedback System
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [editingMyFeedback, setEditingMyFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState('general');
   const [feedbackList, setFeedbackList] = useState([]);
@@ -2877,6 +2878,7 @@
             showToast(t('toast.feedbackThanks'), 'success');
             setFeedbackText('');
             setFeedbackCategory('general');
+            setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
           })
           .catch((err) => {
@@ -2890,6 +2892,7 @@
             setMyFeedbackList(prev => [{ ...feedbackEntry, firebaseId: ref.key }, ...prev].slice(0, 10));
             setFeedbackText('');
             setFeedbackCategory('general');
+            setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
           })
           .catch((err) => {

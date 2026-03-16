@@ -1170,6 +1170,7 @@ const FouFouApp = () => {
   const isCurrentUserAdmin = isRealAdmin; // backward compat — uses real role, not impersonated
 
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [editingMyFeedback, setEditingMyFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackCategory, setFeedbackCategory] = useState('general');
   const [feedbackList, setFeedbackList] = useState([]);
@@ -2623,6 +2624,7 @@ const FouFouApp = () => {
             showToast(t('toast.feedbackThanks'), 'success');
             setFeedbackText('');
             setFeedbackCategory('general');
+            setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
           })
           .catch((err) => {
@@ -2635,6 +2637,7 @@ const FouFouApp = () => {
             setMyFeedbackList(prev => [{ ...feedbackEntry, firebaseId: ref.key }, ...prev].slice(0, 10));
             setFeedbackText('');
             setFeedbackCategory('general');
+            setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
           })
           .catch((err) => {
@@ -13652,13 +13655,12 @@ const FouFouApp = () => {
       {showFeedbackDialog && (() => {
         const currentUserId = authUser?.uid || null;
         const myExisting = myFeedbackList.length > 0 ? myFeedbackList[0] : null;
-        const [editingMyFeedback, setEditingMyFeedback] = React.useState(false);
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
               <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
-              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">\u2715</button>
+              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); setEditingMyFeedback(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
             </div>
             <div className="p-4 space-y-3 overflow-y-auto flex-1">
 
