@@ -5256,6 +5256,41 @@
         return;
       }
 
+      // Sort uniqueStops for display: time-conflict stops go to the bottom,
+      // even if they are custom/favorites. Within non-conflict: custom first, then rating.
+      {
+        const timeMode = getEffectiveTimeMode();
+        const defaultTimes = {
+          temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
+          beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day',
+          culture: 'day', history: 'day', markets: 'day', shopping: 'day',
+          nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
+        };
+        const getStopTime = (stop) => {
+          const interests = stop.interests || [];
+          for (const id of interests) {
+            const cfg = interestConfig[id];
+            if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
+          }
+          for (const id of interests) {
+            if (defaultTimes[id]) return defaultTimes[id];
+          }
+          return 'anytime';
+        };
+        uniqueStops.sort((a, b) => {
+          const aTime = getStopTime(a);
+          const bTime = getStopTime(b);
+          const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
+          const bConflict = (bTime !== 'anytime' && bTime !== timeMode) ? 1 : 0;
+          if (aConflict !== bConflict) return aConflict - bConflict;
+          // Within same conflict group: custom first, then rating
+          const aCustom = (a.source === 'custom' || a.custom) ? 1 : 0;
+          const bCustom = (b.source === 'custom' || b.custom) ? 1 : 0;
+          if (aCustom !== bCustom) return bCustom - aCustom;
+          return (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
+        });
+      }
+
       // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
