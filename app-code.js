@@ -5696,26 +5696,31 @@ const FouFouApp = () => {
     setShowEditLocationDialog(true);
   };
   
-  const addGooglePlaceToCustom = async (place) => {
-    const exists = customLocations.find(loc => 
-      loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
-    );
-    
-    if (exists) {
-      showToast(`"${place.name}" ${t("places.alreadyInMyList")}`, 'warning');
-      return false;
-    }
-    
-    if (place.lat && place.lng) {
-      const nearbyDup = customLocations.find(loc => {
-        if (!loc.lat || !loc.lng) return false;
-        const dlat = (loc.lat - place.lat) * 111320;
-        const dlng = (loc.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
-        return Math.sqrt(dlat * dlat + dlng * dlng) < 50; // within 50m
-      });
-      if (nearbyDup) {
-        showToast(`"${place.name}" ${t("places.alreadyInMyList")} (${nearbyDup.name})`, 'warning');
+  const addGooglePlaceToCustom = async (place, forceAdd = false) => {
+    if (!forceAdd) {
+      const existsByName = customLocations.find(loc =>
+        loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
+      );
+      if (existsByName) {
+        setDedupConfirm({ type: 'custom', match: existsByName, pendingGooglePlace: place,
+          _distance: 0 });
         return false;
+      }
+
+      if (place.lat && place.lng) {
+        const nearbyDup = customLocations.find(loc => {
+          if (!loc.lat || !loc.lng) return false;
+          const dlat = (loc.lat - place.lat) * 111320;
+          const dlng = (loc.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
+          return Math.sqrt(dlat * dlat + dlng * dlng) < 50;
+        });
+        if (nearbyDup) {
+          const dlat = (nearbyDup.lat - place.lat) * 111320;
+          const dlng = (nearbyDup.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
+          const dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng));
+          setDedupConfirm({ type: 'custom', match: { ...nearbyDup, _distance: dist }, pendingGooglePlace: place });
+          return false;
+        }
       }
     }
     
@@ -6181,13 +6186,45 @@ const FouFouApp = () => {
   const handleDedupConfirm = (action) => {
     if (!dedupConfirm) return;
     const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
-    
-    if (loc.uploadedImage) {
+
+    if (loc?.uploadedImage) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
     }
-    
+
+    if (action === 'updateWithGoogle') {
+      const gp = dedupConfirm.pendingGooglePlace;
+      if (gp && match) {
+        const updates = {
+          googlePlaceId: gp.googlePlaceId || match.googlePlaceId || null,
+          googleRating: gp.rating || match.googleRating || null,
+          googleRatingCount: gp.ratingCount || match.googleRatingCount || 0,
+          address: gp.address || match.address || '',
+          mapsUrl: gp.mapsUrl || match.mapsUrl || '',
+          fromGoogle: true
+        };
+        if (!match.name || match.name.toLowerCase().trim() !== gp.name.toLowerCase().trim()) {
+          updates._googleName = gp.name; // store as hint, don't overwrite user's name
+        }
+        const updated = customLocations.map(l =>
+          l.id === match.id ? { ...l, ...updates } : l
+        );
+        setCustomLocations(updated);
+        if (isFirebaseAvailable && database && match.firebaseKey) {
+          database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}`).update(updates);
+        }
+        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success', 3000);
+      }
+      setDedupConfirm(null);
+      return;
+    }
+
     if (action === 'accept') {
-      if (type === 'google') {
+      if (dedupConfirm.pendingGooglePlace) {
+        setDedupConfirm(null);
+        setTimeout(() => handleEditLocation(match), 200);
+        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+        return;
+      }      if (type === 'google') {
         const googleData = {
           ...loc,
           name: match.name,
@@ -6222,8 +6259,12 @@ const FouFouApp = () => {
         }
       }
     } else if (action === 'addNew') {
-      addCustomLocation(closeAfter);
-      showToast('\u2705 ' + t('trail.saved'), 'success');
+      if (dedupConfirm.pendingGooglePlace) {
+        addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
+      } else {
+        addCustomLocation(closeAfter);
+        showToast('\u2705 ' + t('trail.saved'), 'success');
+      }
     }
     
     if (closeQuickCapture) setShowQuickCapture(false);
@@ -11380,54 +11421,94 @@ const FouFouApp = () => {
 
         {/* Dedup Confirmation Dialog */}
         {dedupConfirm && (() => {
-          const { type, loc, match } = dedupConfirm;
-          const interest = allInterestOptions.find(o => match.interests?.includes(o.id) || loc.interests?.includes(o.id));
+          const { type, loc, match, pendingGooglePlace } = dedupConfirm;
+          const interest = allInterestOptions.find(o => match.interests?.includes(o.id) || loc?.interests?.includes(o.id) || pendingGooglePlace?.interests?.includes(o.id));
           const icon = interest?.icon?.startsWith?.('data:') ? '📍' : (interest?.icon || '📍');
+          const isFromGoogle = !!pendingGooglePlace; // came from addGooglePlaceToCustom
           return (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4" style={{ zIndex: 10200 }}>
-            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '380px', width: '100%', padding: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '400px', width: '100%', padding: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <div style={{ fontSize: '28px', marginBottom: '4px' }}>{type === 'google' ? '🌐' : '📍'}</div>
+                <div style={{ fontSize: '28px', marginBottom: '4px' }}>{isFromGoogle ? '⚠️' : (type === 'google' ? '🌐' : '📍')}</div>
                 <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1f2937' }}>
-                  {type === 'google' ? t('dedup.googleMatch') : t('dedup.customExists')}
+                  {isFromGoogle ? t('dedup.customExists') : (type === 'google' ? t('dedup.googleMatch') : t('dedup.customExists'))}
                 </div>
-                <div style={{ fontSize: '11px', color: '#9ca3af' }}>{match._distance || 0}m</div>
+                {match._distance > 0 && <div style={{ fontSize: '11px', color: '#9ca3af' }}>{match._distance}m</div>}
               </div>
-              
-              {/* Match card */}
-              <div style={{ background: '#fefce8', border: '2px solid #eab308', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
-                {/* Show saved image for custom matches */}
-                {type === 'custom' && match.uploadedImage && (
-                  <div style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', maxHeight: '140px' }}>
-                    <img src={match.uploadedImage} alt={match.name} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
+
+              {isFromGoogle ? (
+                /* Two-sided comparison: existing custom vs incoming Google */
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  {/* Existing custom location */}
+                  <div style={{ flex: 1, background: '#fefce8', border: '2px solid #eab308', borderRadius: '12px', padding: '10px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#92400e', marginBottom: '6px' }}>📍 {t('dedup.inYourList')}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>{match.name}</div>
+                    {match.googleRating && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>⭐ {match.googleRating?.toFixed?.(1) || match.googleRating}</div>}
+                    {match.address && <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>{match.address}</div>}
+                    {!match.googlePlaceId && <div style={{ fontSize: '10px', color: '#ef4444', marginTop: '4px' }}>⚠️ {t('dedup.noGoogleId')}</div>}
                   </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '24px' }}>{icon}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#374151' }}>{match.name}</div>
-                    {type === 'google' && match.rating && (
-                      <div style={{ fontSize: '11px', color: '#92400e' }}>⭐ {match.rating.toFixed(1)} ({match.ratingCount || 0})</div>
-                    )}
-                    {match.address && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{match.address}</div>}
-                    {type === 'custom' && match.description && (
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>{match.description}</div>
-                    )}
+                  {/* Incoming Google place */}
+                  <div style={{ flex: 1, background: '#f0f9ff', border: '2px solid #0ea5e9', borderRadius: '12px', padding: '10px' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#0369a1', marginBottom: '6px' }}>🌐 {t('dedup.fromGoogle')}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>{pendingGooglePlace.name}</div>
+                    {pendingGooglePlace.rating && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>⭐ {pendingGooglePlace.rating?.toFixed?.(1) || pendingGooglePlace.rating} ({pendingGooglePlace.ratingCount || 0})</div>}
+                    {pendingGooglePlace.address && <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>{pendingGooglePlace.address}</div>}
                   </div>
                 </div>
-              </div>
-              
-              {/* 3 action buttons */}
+              ) : (
+                /* Original single-card display for camera flow */
+                <div style={{ background: '#fefce8', border: '2px solid #eab308', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
+                  {type === 'custom' && match.uploadedImage && (
+                    <div style={{ marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', maxHeight: '140px' }}>
+                      <img src={match.uploadedImage} alt={match.name} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '24px' }}>{icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#374151' }}>{match.name}</div>
+                      {type === 'google' && match.rating && (
+                        <div style={{ fontSize: '11px', color: '#92400e' }}>⭐ {match.rating.toFixed(1)} ({match.ratingCount || 0})</div>
+                      )}
+                      {match.address && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{match.address}</div>}
+                      {type === 'custom' && match.description && (
+                        <div style={{ fontSize: '10px', color: '#6b7280' }}>{match.description}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button onClick={() => handleDedupConfirm('accept')}
-                  style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
-                  ✅ {type === 'google' ? t('dedup.useThis') : t('dedup.alreadyExists')}
-                </button>
-                <button onClick={() => handleDedupConfirm('addNew')}
-                  style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
-                  ➕ {t('dedup.addAsNew')}
-                </button>
+                {isFromGoogle ? (
+                  <>
+                    <button onClick={() => handleDedupConfirm('updateWithGoogle')}
+                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
+                      🔄 {t('dedup.updateWithGoogle')}
+                    </button>
+                    <button onClick={() => handleDedupConfirm('accept')}
+                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
+                      ✅ {t('dedup.alreadyExists')}
+                    </button>
+                    <button onClick={() => handleDedupConfirm('addNew')}
+                      style={{ width: '100%', padding: '11px', fontSize: '13px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '10px', cursor: 'pointer' }}>
+                      ➕ {t('dedup.addAsNew')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => handleDedupConfirm('accept')}
+                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
+                      ✅ {type === 'google' ? t('dedup.useThis') : t('dedup.alreadyExists')}
+                    </button>
+                    <button onClick={() => handleDedupConfirm('addNew')}
+                      style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 'bold', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>
+                      ➕ {t('dedup.addAsNew')}
+                    </button>
+                  </>
+                )}
                 <button onClick={() => handleDedupConfirm('cancel')}
                   style={{ width: '100%', padding: '10px', fontSize: '13px', fontWeight: 'bold', background: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '10px', cursor: 'pointer' }}>
                   ✕ {t('general.cancel')}

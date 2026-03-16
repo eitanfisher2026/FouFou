@@ -6387,28 +6387,33 @@
   };
   
   // Add Google place to My Locations
-  const addGooglePlaceToCustom = async (place) => {
-    // Check if already exists (by name, case-insensitive)
-    const exists = customLocations.find(loc => 
-      loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
-    );
-    
-    if (exists) {
-      showToast(`"${place.name}" ${t("places.alreadyInMyList")}`, 'warning');
-      return false;
-    }
-    
-    // Check for nearby duplicates by coordinates
-    if (place.lat && place.lng) {
-      const nearbyDup = customLocations.find(loc => {
-        if (!loc.lat || !loc.lng) return false;
-        const dlat = (loc.lat - place.lat) * 111320;
-        const dlng = (loc.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
-        return Math.sqrt(dlat * dlat + dlng * dlng) < 50; // within 50m
-      });
-      if (nearbyDup) {
-        showToast(`"${place.name}" ${t("places.alreadyInMyList")} (${nearbyDup.name})`, 'warning');
+  const addGooglePlaceToCustom = async (place, forceAdd = false) => {
+    if (!forceAdd) {
+      // Check if already exists (by name, case-insensitive)
+      const existsByName = customLocations.find(loc =>
+        loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
+      );
+      if (existsByName) {
+        setDedupConfirm({ type: 'custom', match: existsByName, pendingGooglePlace: place,
+          _distance: 0 });
         return false;
+      }
+
+      // Check for nearby duplicates by coordinates
+      if (place.lat && place.lng) {
+        const nearbyDup = customLocations.find(loc => {
+          if (!loc.lat || !loc.lng) return false;
+          const dlat = (loc.lat - place.lat) * 111320;
+          const dlng = (loc.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
+          return Math.sqrt(dlat * dlat + dlng * dlng) < 50;
+        });
+        if (nearbyDup) {
+          const dlat = (nearbyDup.lat - place.lat) * 111320;
+          const dlng = (nearbyDup.lng - place.lng) * 111320 * Math.cos(place.lat * Math.PI / 180);
+          const dist = Math.round(Math.sqrt(dlat * dlat + dlng * dlng));
+          setDedupConfirm({ type: 'custom', match: { ...nearbyDup, _distance: dist }, pendingGooglePlace: place });
+          return false;
+        }
       }
     }
     
@@ -6909,14 +6914,49 @@
   const handleDedupConfirm = (action) => {
     if (!dedupConfirm) return;
     const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
-    
+
     // Always save photo to device
-    if (loc.uploadedImage) {
+    if (loc?.uploadedImage) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
     }
-    
+
+    if (action === 'updateWithGoogle') {
+      // Update existing custom location with Google data (rating, address, placeId, name if different)
+      const gp = dedupConfirm.pendingGooglePlace;
+      if (gp && match) {
+        const updates = {
+          googlePlaceId: gp.googlePlaceId || match.googlePlaceId || null,
+          googleRating: gp.rating || match.googleRating || null,
+          googleRatingCount: gp.ratingCount || match.googleRatingCount || 0,
+          address: gp.address || match.address || '',
+          mapsUrl: gp.mapsUrl || match.mapsUrl || '',
+          fromGoogle: true
+        };
+        // Only update name if existing has none or they match loosely
+        if (!match.name || match.name.toLowerCase().trim() !== gp.name.toLowerCase().trim()) {
+          updates._googleName = gp.name; // store as hint, don't overwrite user's name
+        }
+        const updated = customLocations.map(l =>
+          l.id === match.id ? { ...l, ...updates } : l
+        );
+        setCustomLocations(updated);
+        if (isFirebaseAvailable && database && match.firebaseKey) {
+          database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}`).update(updates);
+        }
+        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success', 3000);
+      }
+      setDedupConfirm(null);
+      return;
+    }
+
     if (action === 'accept') {
-      if (type === 'google') {
+      // From addGooglePlaceToCustom: open the existing location for editing
+      if (dedupConfirm.pendingGooglePlace) {
+        setDedupConfirm(null);
+        setTimeout(() => handleEditLocation(match), 200);
+        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+        return;
+      }      if (type === 'google') {
         const googleData = {
           ...loc,
           name: match.name,
@@ -6952,8 +6992,13 @@
         }
       }
     } else if (action === 'addNew') {
-      addCustomLocation(closeAfter);
-      showToast('\u2705 ' + t('trail.saved'), 'success');
+      if (dedupConfirm.pendingGooglePlace) {
+        // Came from addGooglePlaceToCustom — force-add bypassing dedup check
+        addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
+      } else {
+        addCustomLocation(closeAfter);
+        showToast('\u2705 ' + t('trail.saved'), 'success');
+      }
     }
     // action === 'cancel' — do nothing (photo already saved above)
     

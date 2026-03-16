@@ -1083,6 +1083,11 @@ help: {
     scanByCoords: 'חיפוש לפי קרבה בלבד',
     scanCoordsButton: 'קרבה',
     confirmDelete: 'למחוק את המקום?',
+    inYourList: 'קיים ברשימה שלך',
+    fromGoogle: 'מגוגל',
+    noGoogleId: 'ללא קישור גוגל',
+    updateWithGoogle: 'עדכן בנתוני גוגל',
+    updatedWithGoogle: 'עודכן בנתוני גוגל',
   },
 }, // end Hebrew
 
@@ -2070,6 +2075,11 @@ help: {
     scanByCoords: 'Search by proximity only',
     scanCoordsButton: 'Proximity',
     confirmDelete: 'Delete this place?',
+    inYourList: 'In your list',
+    fromGoogle: 'From Google',
+    noGoogleId: 'No Google link',
+    updateWithGoogle: 'Update with Google data',
+    updatedWithGoogle: 'Updated with Google data',
   },
 } // end English
 
