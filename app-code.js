@@ -7276,27 +7276,8 @@ const FouFouApp = () => {
             <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
             {renderContextHint('hint_trail')}
 
-            {/* Camera Button row — doc button on left, camera fills rest */}
+            {/* Camera Button row — doc button on left (after camera in DOM = left in RTL) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
-              {(() => {
-                const lang = window.BKK.i18n.currentLang || 'he';
-                const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
-                const s = getHelpSection('hint_trail');
-                const txt = (s && s.content && s.content.trim()) || '';
-                if (!txt && !isAdmin) return null;
-                return (
-                  <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
-                    {isAdmin && (
-                      <button onClick={() => { setHintEditId('hint_trail'); setHintEditText(txt); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
-                    )}
-                    <button onClick={() => setOpenHintPopup(openHintPopup === 'hint_trail' ? null : 'hint_trail')}
-                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'hint_trail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
-                      <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
-                    </button>
-                  </div>
-                );
-              })()}
             <button
               onClick={() => {
                 const defaultInterests = activeTrail.lastInterest 
@@ -7352,6 +7333,25 @@ const FouFouApp = () => {
               <span style={{ fontSize: '18px' }}>📸</span>
               <span>{t('trail.capturePlace')}</span>
             </button>
+              {(() => {
+                const lang = window.BKK.i18n.currentLang || 'he';
+                const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
+                const s = getHelpSection('hint_trail');
+                const txt = (s && s.content && s.content.trim()) || '';
+                if (!txt && !isAdmin) return null;
+                return (
+                  <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
+                    {isAdmin && (
+                      <button onClick={() => { setHintEditId('hint_trail'); setHintEditText(txt); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
+                    )}
+                    <button onClick={() => setOpenHintPopup(openHintPopup === 'hint_trail' ? null : 'hint_trail')}
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'hint_trail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
+                      <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Trail Stops — compact list */}
@@ -7460,7 +7460,7 @@ const FouFouApp = () => {
                                 color: '#059669', whiteSpace: 'nowrap'
                               }}
                               title={t('trail.addToFavorites')}
-                            >{t('nav.favorites')}</button>
+                            >{`+${t('trail.addToFavoriteShort')}`}</button>
                           );
                         }
                       })()}
