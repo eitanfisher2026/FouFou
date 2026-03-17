@@ -1,5 +1,5 @@
 // ===== QUICK ADD PLACE DIALOG — standalone React component =====
-const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, interestConfig, selectedCityId, isUnlocked, tLabel, t, onSave, onCancel }) => {
+const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, selectedCityId, isUnlocked, tLabel, t, onSave, onCancel }) => {
   const [qaName, setQaName] = React.useState(place.name || '');
   const [qaDescription, setQaDescription] = React.useState('');
   const [qaNotes, setQaNotes] = React.useState('');
@@ -9,14 +9,11 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, intere
   const [qaImage, setQaImage] = React.useState(null);
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
   const qaStopRecRef = React.useRef(null);
-  const qaFileRef = React.useRef(null);
 
-  const startQaRecording = (field) => {
+  const startRec = (field) => {
     if (qaRecordingField) {
       if (qaStopRecRef.current) qaStopRecRef.current();
-      qaStopRecRef.current = null;
-      setQaRecordingField(null);
-      return;
+      qaStopRecRef.current = null; setQaRecordingField(null); return;
     }
     setQaRecordingField(field);
     const stop = window.BKK.startSpeechToText({
@@ -32,27 +29,14 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, intere
     qaStopRecRef.current = stop;
   };
 
-  const handleQaImage = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setQaImage(ev.target.result);
-    reader.readAsDataURL(file);
-  };
-
   const handleSave = () => {
-    const enriched = {
-      ...place,
-      name: qaName.trim() || place.name,
-      description: qaDescription.trim(),
-      notes: qaNotes.trim(),
-      interests: qaInterests.length > 0 ? qaInterests : place.interests,
-      uploadedImage: qaImage || null,
-    };
-    onSave(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
+    onSave(
+      { ...place, name: qaName.trim() || place.name, description: qaDescription.trim(), notes: qaNotes.trim(), interests: qaInterests.length > 0 ? qaInterests : place.interests, uploadedImage: qaImage || null },
+      qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null
+    );
   };
 
-  // EXACT same filter as wizard interest selector in views.js
+  // Exact same filter as wizard interest selector
   const activeInterests = allInterestOptions.filter(option => {
     const aStatus = option.adminStatus || 'active';
     if (aStatus === 'hidden') return false;
@@ -65,122 +49,117 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, intere
   });
 
   const isRTL = window.BKK.i18n.isRTL();
-
-  const MicBtn = ({ field }) => !window.BKK.speechSupported ? null : (
-    <button type="button"
-      onClick={() => startQaRecording(field)}
-      style={{
-        width: '32px', height: '32px', borderRadius: '50%', border: 'none',
-        cursor: 'pointer', flexShrink: 0,
-        background: qaRecordingField === field ? '#ef4444' : '#f3f4f6',
-        color: qaRecordingField === field ? 'white' : '#6b7280',
-        fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: qaRecordingField === field ? 'pulse 1s ease-in-out infinite' : 'none'
-      }}
-    >{qaRecordingField === field ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}</button>
-  );
-
-  const labelStyle = {
-    fontSize: '11px', fontWeight: '600', color: '#6b7280',
-    display: 'block', marginBottom: '4px',
-    textAlign: isRTL ? 'right' : 'left'
-  };
-  const textareaStyle = {
-    flex: 1, padding: '8px', border: '1px solid #e5e7eb',
-    borderRadius: '10px', fontSize: '13px', resize: 'vertical',
-    direction: isRTL ? 'rtl' : 'ltr', minHeight: '60px'
-  };
+  const labelCls = 'block text-xs font-bold mb-1';
+  const textareaStyle = { direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', minHeight: '55px', resize: 'vertical', lineHeight: '1.4' };
+  const micStyle = (active) => ({
+    width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
+    background: active ? '#ef4444' : '#f3f4f6', color: active ? 'white' : '#6b7280',
+    fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    animation: active ? 'pulse 1s ease-in-out infinite' : 'none',
+    boxShadow: active ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+  });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2"
-      style={{ zIndex: 10300 }}>
-      <div style={{
-        background: 'white', borderRadius: '12px',
-        width: '100%', maxWidth: '672px',
-        maxHeight: '95vh', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column',
-        direction: isRTL ? 'rtl' : 'ltr',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-      }}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2" style={{ zIndex: 10300 }}>
+      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[95vh] flex flex-col shadow-2xl">
 
-        {/* Header — same purple-to-pink gradient as addLocation dialog */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+        {/* Header — identical to addLocation dialog */}
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between" style={{ flexShrink: 0 }}>
           <h3 className="text-base font-bold">{'\u2B50 '}{t('trail.addToFavorites')}</h3>
-          <button onClick={onCancel} style={{
-            background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white',
-            borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer',
-            fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>{'✕'}</button>
+          <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
+        <div className="overflow-y-auto p-3 space-y-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
 
           {/* Name */}
           <div>
-            <label style={labelStyle}>{t('places.placeName') || '\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD'}</label>
+            <label className={labelCls}>{t('places.placeName') || '\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD'}</label>
             <input value={qaName} onChange={e => setQaName(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', direction: isRTL ? 'rtl' : 'ltr' }} />
+              className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+              style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '16px' }} />
           </div>
 
-          {/* Attach image — paperclip icon, no camera capture */}
+          {/* Image — same two-button pattern as addLocation dialog */}
           <div>
-            <label style={labelStyle}>{t('places.attachPhoto') || '\u05E6\u05E8\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4'}</label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-              <div
-                onClick={() => qaFileRef.current?.click()}
-                style={{
-                  width: '40px', flexShrink: 0, borderRadius: '8px', cursor: 'pointer',
-                  border: '1px solid #e5e7eb', overflow: 'hidden',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: '#f9fafb', fontSize: '18px'
-                }}>
-                {qaImage
-                  ? <img src={qaImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : '\uD83D\uDCCE'
-                }
+            <label className={labelCls}>{`\uD83D\uDCF7 ${t('general.image') || '\u05EA\u05DE\u05D5\u05E0\u05D4'}`}</label>
+            {qaImage ? (
+              <div className="relative">
+                <img src={qaImage} alt="Preview" className="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90"
+                  onClick={() => {}} />
+                <button onClick={() => setQaImage(null)}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold hover:bg-red-600">✕</button>
               </div>
-              <button type="button" onClick={() => qaFileRef.current?.click()}
-                style={{
-                  flex: 1, padding: '8px 12px',
-                  background: '#faf5ff', border: '1px dashed #c4b5fd',
-                  borderRadius: '10px', color: '#7c3aed',
-                  fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-                }}>
-                {qaImage
-                  ? `\uD83D\uDCCE ${t('places.replacePhoto') || '\u05D4\u05D7\u05DC\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4'}`
-                  : `\uD83D\uDCCE ${t('places.attachPhoto') || '\u05E6\u05E8\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4'}`
-                }
-              </button>
-              <input ref={qaFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleQaImage} />
-            </div>
+            ) : (
+              <div className="flex gap-2">
+                {/* Camera */}
+                <button type="button" className="flex-1 p-3 border-2 border-dashed border-green-400 rounded-lg text-center cursor-pointer hover:bg-green-50"
+                  onClick={async () => {
+                    const result = await window.BKK.openCamera();
+                    if (!result) return;
+                    const compressed = await window.BKK.compressImage(result.dataUrl);
+                    setQaImage(compressed);
+                  }}>
+                  <span className="text-2xl">\uD83D\uDCF8</span>
+                  <div className="text-xs text-green-700 mt-1 font-bold">{t('general.takePhoto') || '\u05E6\u05DC\u05DD'}</div>
+                </button>
+                {/* Gallery */}
+                <label className="flex-1 p-3 border-2 border-dashed border-purple-300 rounded-lg text-center cursor-pointer hover:bg-purple-50 block">
+                  <span className="text-2xl">\uD83D\uDDBC\uFE0F</span>
+                  <div className="text-xs text-gray-600 mt-1">{t('general.clickToUpload') || '\u05E6\u05E8\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4'}</div>
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const compressed = await window.BKK.compressImage(reader.result);
+                        setQaImage(compressed);
+                      };
+                      reader.readAsDataURL(file);
+                    }} />
+                </label>
+              </div>
+            )}
           </div>
 
-          {/* Description */}
+          {/* Description + mic */}
           <div>
-            <label style={labelStyle}>{t('places.description') || '\u05EA\u05D9\u05D0\u05D5\u05E8'}</label>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+            <label className={labelCls}>{`\uD83D\uDCDD ${t('places.description') || '\u05EA\u05D9\u05D0\u05D5\u05E8'}`}</label>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
               <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
                 placeholder={t('places.descriptionPlaceholder') || '\u05EA\u05D9\u05D0\u05D5\u05E8 \u05E7\u05E6\u05E8...'}
+                className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
-              <MicBtn field="description" />
+              {window.BKK.speechSupported && (
+                <button type="button" onClick={() => startRec('description')} style={micStyle(qaRecordingField === 'description')}
+                  title={qaRecordingField === 'description' ? t('speech.stopRecording') : t('speech.startRecording')}>
+                  {qaRecordingField === 'description' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Notes + mic */}
           <div>
-            <label style={labelStyle}>{t('places.notes') || '\u05D4\u05E2\u05E8\u05D5\u05EA'}</label>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+            <label className={labelCls}>{`\uD83D\uDCAD ${t('places.notes') || '\u05D4\u05E2\u05E8\u05D5\u05EA'}`}</label>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
               <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
                 placeholder={t('places.notes') || '\u05D4\u05E2\u05E8\u05D5\u05EA...'}
+                className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
-              <MicBtn field="notes" />
+              {window.BKK.speechSupported && (
+                <button type="button" onClick={() => startRec('notes')} style={micStyle(qaRecordingField === 'notes')}
+                  title={qaRecordingField === 'notes' ? t('speech.stopRecording') : t('speech.startRecording')}>
+                  {qaRecordingField === 'notes' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Interests — filtered exactly like the wizard selector */}
+          {/* Interests — exact same filter as wizard */}
           <div>
-            <label style={labelStyle}>{t('general.interests') || '\u05EA\u05D7\u05D5\u05DE\u05D9\u05DD'}</label>
+            <label className={labelCls}>{t('general.interests') || '\u05EA\u05D7\u05D5\u05DE\u05D9\u05DD'}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {activeInterests.map(opt => {
                 const sel = qaInterests.includes(opt.id);
@@ -189,18 +168,8 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, intere
                 return (
                   <button key={opt.id} type="button"
                     onClick={() => setQaInterests(prev => sel ? prev.filter(i => i !== opt.id) : [...prev, opt.id])}
-                    style={{
-                      padding: '4px 10px', borderRadius: '20px', cursor: 'pointer',
-                      border: `2px solid ${sel ? '#a855f7' : '#e5e7eb'}`,
-                      background: sel ? '#faf5ff' : 'white',
-                      color: sel ? '#7c3aed' : '#6b7280',
-                      fontSize: '12px', fontWeight: '600',
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                    {isImg
-                      ? <img src={iconRaw} alt="" style={{ width: '14px', height: '14px' }} />
-                      : <span>{iconRaw}</span>
-                    }
+                    style={{ padding: '4px 10px', borderRadius: '20px', cursor: 'pointer', border: `2px solid ${sel ? '#a855f7' : '#e5e7eb'}`, background: sel ? '#faf5ff' : 'white', color: sel ? '#7c3aed' : '#6b7280', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {isImg ? <img src={iconRaw} alt="" style={{ width: '14px', height: '14px' }} /> : <span>{iconRaw}</span>}
                     {tLabel(opt) || opt.labelEn}
                   </button>
                 );
@@ -208,44 +177,46 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, intere
             </div>
           </div>
 
-          {/* Rating — stars + text field */}
+          {/* Rating */}
           <div style={{ background: '#fefce8', borderRadius: '12px', padding: '12px', border: '1px solid #fde68a' }}>
-            <label style={{ ...labelStyle, color: '#92400e', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#92400e', marginBottom: '8px', textAlign: isRTL ? 'right' : 'left' }}>
               {`\u2B50 ${t('reviews.rate') || '\u05D3\u05E8\u05D2'} (${t('general.optional') || '\u05DC\u05D0 \u05D7\u05D5\u05D1\u05D4'})`}
             </label>
             <div style={{ display: 'flex', gap: '4px', marginBottom: qaRatingScore > 0 ? '8px' : '0' }}>
               {[1,2,3,4,5].map(n => (
-                <button key={n} type="button"
-                  onClick={() => setQaRatingScore(qaRatingScore === n ? 0 : n)}
-                  style={{ fontSize: '26px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: '0 2px' }}>
-                  {'\u2B50'}
-                </button>
+                <button key={n} type="button" onClick={() => setQaRatingScore(qaRatingScore === n ? 0 : n)}
+                  style={{ fontSize: '26px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: '0 2px' }}>{'\u2B50'}</button>
               ))}
             </div>
             {qaRatingScore > 0 && (
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                 <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
                   placeholder={t('reviews.writeReview') || '\u05DB\u05EA\u05D5\u05D1 \u05D1\u05D9\u05E7\u05D5\u05E8\u05EA...'}
-                  style={{ ...textareaStyle, border: '1px solid #fde68a' }} />
-                <MicBtn field="rating" />
+                  className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
+                  style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', resize: 'vertical' }} />
+                {window.BKK.speechSupported && (
+                  <button type="button" onClick={() => startRec('rating')} style={micStyle(qaRecordingField === 'rating')}>
+                    {qaRecordingField === 'rating' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                  </button>
+                )}
               </div>
             )}
           </div>
-
         </div>
 
-        {/* Footer — fixed at bottom */}
-        <div style={{ display: 'flex', gap: '8px', padding: '12px 16px', borderTop: '1px solid #f3f4f6', flexShrink: 0 }}>
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: '8px', padding: '10px 16px', borderTop: '1px solid #f3f4f6', flexShrink: 0 }}>
           <button onClick={handleSave}
-            style={{ flex: 2, padding: '11px', background: 'linear-gradient(to right, #a855f7, #ec4899)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>
+            className="flex-1 py-2.5 font-bold text-white rounded-xl text-base"
+            style={{ background: 'linear-gradient(to right, #a855f7, #ec4899)', border: 'none', cursor: 'pointer', flex: 2 }}>
             {`\uD83D\uDCBE ${t('general.save')}`}
           </button>
           <button onClick={onCancel}
-            style={{ flex: 1, padding: '11px', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>
+            className="py-2.5 font-bold rounded-xl text-base"
+            style={{ background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', flex: 1 }}>
             {t('general.cancel')}
           </button>
         </div>
-
       </div>
     </div>
   );

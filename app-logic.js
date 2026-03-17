@@ -6252,6 +6252,12 @@
             console.error('[FIREBASE] Error deleting location:', error);
             showToast(t('toast.deleteError'), 'error');
           });
+        // Also delete all reviews for this location (by name key)
+        if (locationToDelete.name) {
+          const pk = locationToDelete.name.replace(/[.#$/\[\]]/g, '_');
+          database.ref(`cities/${selectedCityId}/reviews/${pk}`).remove()
+            .catch(() => {}); // silent — reviews may not exist
+        }
       }
     } else {
       // STATIC MODE: localStorage (local)

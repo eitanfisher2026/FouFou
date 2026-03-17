@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.9
+// FouFou app-data.js v3.9.11
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3564,7 +3564,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.9';
+window.BKK.VERSION = '3.9.11';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4233,47 +4233,37 @@ window.BKK.reverseGeocode = async (lat, lng) => {
  * Compress image file to target size
  * @returns {Promise<string>} base64 compressed image (fallback) or URL
  */
-window.BKK.compressImage = (file, maxSizeKB = 150) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
+window.BKK.compressImage = (input, maxSizeKB = 120) => {
+  return new Promise((resolve) => {
+    const process = (src) => {
       const img = new Image();
       img.onload = () => {
+        const maxDimension = 900;
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDimension) { h = Math.round((h / w) * maxDimension); w = maxDimension; }
+        else if (h > maxDimension) { w = Math.round((w / h) * maxDimension); h = maxDimension; }
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        const maxDimension = 600;
-        if (width > height && width > maxDimension) {
-          height = (height / width) * maxDimension;
-          width = maxDimension;
-        } else if (height > maxDimension) {
-          width = (width / height) * maxDimension;
-          height = maxDimension;
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.82;
+        let result = canvas.toDataURL('image/jpeg', quality);
+        while (result.length > maxSizeKB * 1024 * 1.37 && quality > 0.2) {
+          quality = Math.round((quality - 0.1) * 10) / 10;
+          result = canvas.toDataURL('image/jpeg', quality);
         }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        let quality = 0.7;
-        let compressed = canvas.toDataURL('image/jpeg', quality);
-        
-        while (compressed.length > maxSizeKB * 1024 * 1.37 && quality > 0.2) {
-          quality -= 0.1;
-          compressed = canvas.toDataURL('image/jpeg', quality);
-        }
-        
-        resolve(compressed);
+        resolve(result);
       };
-      img.src = e.target.result;
+      img.onerror = () => resolve(typeof input === 'string' ? input : null);
+      img.src = src;
     };
-    
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    if (typeof input === 'string') {
+      process(input); // already a dataUrl
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => process(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(input);
+    }
   });
 };
 
@@ -4815,37 +4805,6 @@ window.BKK.openCamera = () => {
       reader.readAsDataURL(file);
     };
     input.click();
-  });
-};
-
-// ============================================================================
-// ============================================================================
-window.BKK.compressImage = (input, maxWidth = 1200, quality = 0.7) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width;
-      let h = img.height;
-      if (w > maxWidth) {
-        h = Math.round(h * (maxWidth / w));
-        w = maxWidth;
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', quality);
-      resolve(compressed);
-    };
-    img.onerror = () => resolve(typeof input === 'string' ? input : null);
-    if (typeof input === 'string') {
-      img.src = input;
-    } else {
-      const reader = new FileReader();
-      reader.onload = () => { img.src = reader.result; };
-      reader.readAsDataURL(input);
-    }
   });
 };
 

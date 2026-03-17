@@ -558,14 +558,52 @@
                   })()}
                   <div>
                     <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
-                    <textarea
-                      value={newLocation.notes || ''}
-                      onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
-                      placeholder={t("places.notes")}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
-                      rows="2"
-                    />
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                      <textarea
+                        value={newLocation.notes || ''}
+                        onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
+                        placeholder={t("places.notes")}
+                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
+                        rows="2"
+                      />
+                      {window.BKK.speechSupported && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isRecording) {
+                              if (stopRecordingRef.current) stopRecordingRef.current();
+                              stopRecordingRef.current = null;
+                              setIsRecording(false);
+                            } else {
+                              setIsRecording(true);
+                              const stop = window.BKK.startSpeechToText({
+                                maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+                                onResult: (text) => {
+                                  setNewLocation(prev => ({...prev, notes: text}));
+                                },
+                                onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
+                                onError: (error) => {
+                                  setIsRecording(false); stopRecordingRef.current = null;
+                                  if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
+                                }
+                              });
+                              stopRecordingRef.current = stop;
+                            }
+                          }}
+                          style={{
+                            width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                            background: isRecording ? '#ef4444' : '#f3f4f6', color: isRecording ? 'white' : '#6b7280',
+                            fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
+                            boxShadow: isRecording ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+                          }}
+                          title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
+                        >
+                          {isRecording ? '⏹️' : '🎤'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
