@@ -6605,7 +6605,9 @@
     if (isFirebaseAvailable && database) {
       try {
         const ref = await database.ref(`cities/${selectedCityId}/locations`).push(enriched);
-        saved = { ...enriched, firebaseKey: ref.key };
+        saved = { ...enriched, firebaseId: ref.key };
+        // Immediately update local state so the list refreshes without waiting for Firebase sync
+        setCustomLocations(prev => [...prev, saved]);
         addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
       } catch (error) {
         saveToPending(enriched);

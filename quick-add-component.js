@@ -54,7 +54,7 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
   const micStyle = (active) => ({
     width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
     background: active ? '#ef4444' : '#f3f4f6', color: active ? 'white' : '#6b7280',
-    fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
     animation: active ? 'pulse 1s ease-in-out infinite' : 'none',
     boxShadow: active ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
   });
@@ -65,7 +65,7 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
         {/* Header — identical to addLocation dialog */}
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between" style={{ flexShrink: 0 }}>
-          <h3 className="text-base font-bold">{'\u2B50 '}{t('trail.addToFavorites')}</h3>
+          <h3 className="text-base font-bold">⭐ {t('trail.addToFavorites')}</h3>
           <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
 
@@ -74,7 +74,7 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
           {/* Name */}
           <div>
-            <label className={labelCls}>{t('places.placeName') || '\u05E9\u05DD \u05D4\u05DE\u05E7\u05D5\u05DD'}</label>
+            <label className={labelCls}>{t('places.placeName')}</label>
             <input value={qaName} onChange={e => setQaName(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
               style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '16px' }} />
@@ -82,17 +82,15 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
           {/* Image — same two-button pattern as addLocation dialog */}
           <div>
-            <label className={labelCls}>{`\uD83D\uDCF7 ${t('general.image') || '\u05EA\u05DE\u05D5\u05E0\u05D4'}`}</label>
+            <label className={labelCls}>{`📷 ${t('general.image')}`}</label>
             {qaImage ? (
               <div className="relative">
-                <img src={qaImage} alt="Preview" className="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90"
-                  onClick={() => {}} />
+                <img src={qaImage} alt="Preview" className="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90" />
                 <button onClick={() => setQaImage(null)}
                   className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold hover:bg-red-600">✕</button>
               </div>
             ) : (
               <div className="flex gap-2">
-                {/* Camera */}
                 <button type="button" className="flex-1 p-3 border-2 border-dashed border-green-400 rounded-lg text-center cursor-pointer hover:bg-green-50"
                   onClick={async () => {
                     const result = await window.BKK.openCamera();
@@ -100,22 +98,18 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
                     const compressed = await window.BKK.compressImage(result.dataUrl);
                     setQaImage(compressed);
                   }}>
-                  <span className="text-2xl">\uD83D\uDCF8</span>
-                  <div className="text-xs text-green-700 mt-1 font-bold">{t('general.takePhoto') || '\u05E6\u05DC\u05DD'}</div>
+                  <span className="text-2xl">📸</span>
+                  <div className="text-xs text-green-700 mt-1 font-bold">{t('general.takePhoto')}</div>
                 </button>
-                {/* Gallery */}
                 <label className="flex-1 p-3 border-2 border-dashed border-purple-300 rounded-lg text-center cursor-pointer hover:bg-purple-50 block">
-                  <span className="text-2xl">\uD83D\uDDBC\uFE0F</span>
-                  <div className="text-xs text-gray-600 mt-1">{t('general.clickToUpload') || '\u05E6\u05E8\u05E3 \u05EA\u05DE\u05D5\u05E0\u05D4'}</div>
+                  <span className="text-2xl">🖼️</span>
+                  <div className="text-xs text-gray-600 mt-1">{t('general.clickToUpload')}</div>
                   <input type="file" accept="image/*" className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       const reader = new FileReader();
-                      reader.onload = async () => {
-                        const compressed = await window.BKK.compressImage(reader.result);
-                        setQaImage(compressed);
-                      };
+                      reader.onload = async () => { setQaImage(await window.BKK.compressImage(reader.result)); };
                       reader.readAsDataURL(file);
                     }} />
                 </label>
@@ -125,16 +119,16 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
           {/* Description + mic */}
           <div>
-            <label className={labelCls}>{`\uD83D\uDCDD ${t('places.description') || '\u05EA\u05D9\u05D0\u05D5\u05E8'}`}</label>
+            <label className={labelCls}>{`📝 ${t('places.description')}`}</label>
             <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
               <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
-                placeholder={t('places.descriptionPlaceholder') || '\u05EA\u05D9\u05D0\u05D5\u05E8 \u05E7\u05E6\u05E8...'}
+                placeholder={t('places.description')}
                 className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec('description')} style={micStyle(qaRecordingField === 'description')}
                   title={qaRecordingField === 'description' ? t('speech.stopRecording') : t('speech.startRecording')}>
-                  {qaRecordingField === 'description' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                  {qaRecordingField === 'description' ? '⏹️' : '🎤'}
                 </button>
               )}
             </div>
@@ -142,24 +136,24 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
           {/* Notes + mic */}
           <div>
-            <label className={labelCls}>{`\uD83D\uDCAD ${t('places.notes') || '\u05D4\u05E2\u05E8\u05D5\u05EA'}`}</label>
+            <label className={labelCls}>{`💭 ${t('places.notes')}`}</label>
             <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
               <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
-                placeholder={t('places.notes') || '\u05D4\u05E2\u05E8\u05D5\u05EA...'}
+                placeholder={t('places.notes')}
                 className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec('notes')} style={micStyle(qaRecordingField === 'notes')}
                   title={qaRecordingField === 'notes' ? t('speech.stopRecording') : t('speech.startRecording')}>
-                  {qaRecordingField === 'notes' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                  {qaRecordingField === 'notes' ? '⏹️' : '🎤'}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Interests — exact same filter as wizard */}
+          {/* Interests */}
           <div>
-            <label className={labelCls}>{t('general.interests') || '\u05EA\u05D7\u05D5\u05DE\u05D9\u05DD'}</label>
+            <label className={labelCls}>{t('general.interests')}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {activeInterests.map(opt => {
                 const sel = qaInterests.includes(opt.id);
@@ -180,23 +174,23 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
           {/* Rating */}
           <div style={{ background: '#fefce8', borderRadius: '12px', padding: '12px', border: '1px solid #fde68a' }}>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#92400e', marginBottom: '8px', textAlign: isRTL ? 'right' : 'left' }}>
-              {`\u2B50 ${t('reviews.rate') || '\u05D3\u05E8\u05D2'} (${t('general.optional') || '\u05DC\u05D0 \u05D7\u05D5\u05D1\u05D4'})`}
+              {`⭐ ${t('reviews.rate')} (${t('general.optional')})`}
             </label>
             <div style={{ display: 'flex', gap: '4px', marginBottom: qaRatingScore > 0 ? '8px' : '0' }}>
               {[1,2,3,4,5].map(n => (
                 <button key={n} type="button" onClick={() => setQaRatingScore(qaRatingScore === n ? 0 : n)}
-                  style={{ fontSize: '26px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: '0 2px' }}>{'\u2B50'}</button>
+                  style={{ fontSize: '26px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: '0 2px' }}>⭐</button>
               ))}
             </div>
             {qaRatingScore > 0 && (
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                 <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
-                  placeholder={t('reviews.writeReview') || '\u05DB\u05EA\u05D5\u05D1 \u05D1\u05D9\u05E7\u05D5\u05E8\u05EA...'}
+                  placeholder={t('reviews.writeReview')}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
                   style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', resize: 'vertical' }} />
                 {window.BKK.speechSupported && (
                   <button type="button" onClick={() => startRec('rating')} style={micStyle(qaRecordingField === 'rating')}>
-                    {qaRecordingField === 'rating' ? '\u23F9\uFE0F' : '\uD83C\uDF99\uFE0F'}
+                    {qaRecordingField === 'rating' ? '⏹️' : '🎤'}
                   </button>
                 )}
               </div>
@@ -209,7 +203,7 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
           <button onClick={handleSave}
             className="flex-1 py-2.5 font-bold text-white rounded-xl text-base"
             style={{ background: 'linear-gradient(to right, #a855f7, #ec4899)', border: 'none', cursor: 'pointer', flex: 2 }}>
-            {`\uD83D\uDCBE ${t('general.save')}`}
+            💾 {t('general.save')}
           </button>
           <button onClick={onCancel}
             className="py-2.5 font-bold rounded-xl text-base"
