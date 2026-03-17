@@ -4843,21 +4843,23 @@ const FouFouApp = () => {
       setRoute(newRoute);
 
       (() => {
-        const groupedStops = {};
+        const seenInterests = [];
         newRoute.stops.forEach(stop => {
           (stop.interests || []).forEach(id => {
-            if (!groupedStops[id]) groupedStops[id] = [];
-            groupedStops[id].push(stop);
+            if (!seenInterests.includes(id)) seenInterests.push(id);
           });
-          if (!stop.interests || stop.interests.length === 0) {
-            if (!groupedStops['_manual']) groupedStops['_manual'] = [];
-            groupedStops['_manual'].push(stop);
-          }
         });
 
         const selectedIds = newRoute.preferences?.interests || formData.interests || [];
-        const interestLines = Object.keys(groupedStops)
-          .filter(id => id !== '_manual' && selectedIds.includes(id))
+        const interestCounts = {};
+        newRoute.stops.forEach(stop => {
+          (stop.interests || []).forEach(id => {
+            interestCounts[id] = (interestCounts[id] || 0) + 1;
+          });
+        });
+
+        const interestLines = seenInterests
+          .filter(id => selectedIds.includes(id))
           .map(id => {
             const opt = allInterestOptions.find(o => o.id === id);
             if (!opt) return null;
@@ -4868,7 +4870,7 @@ const FouFouApp = () => {
               ? ((baseOpt?.icon && !baseOpt.icon.startsWith('data:')) ? baseOpt.icon + ' ' : '🏷️ ')
               : (iconRaw ? iconRaw + ' ' : '');
             const label = tLabel(opt) || opt.labelEn || id;
-            const n = groupedStops[id].length;
+            const n = interestCounts[id] || 0;
             return `${icon}${label} (${n})`;
           })
           .filter(Boolean)
@@ -4891,7 +4893,7 @@ const FouFouApp = () => {
           sourceLine,
           t('toast.statsHint'),
         ].filter(Boolean).join('\n');
-        showToast(msg, 'info', 'sticky');
+        showToast(msg, 'info');
       })();
 
       saveDebugSession(newRoute);

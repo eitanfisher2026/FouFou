@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.87
+// FouFou app-data.js v3.8.88
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -794,10 +794,10 @@ toast: {
   statsSourceCustomOnly: 'כל המקומות נבחרו מרשימת המועדפים שלך',
   statsSourceGoogleOnly: 'כל המקומות הובאו מגוגל',
   statsSourceMixed: '{custom} מועדפים ו-{google} מקומות מגוגל',
-  statsHint: 'ניתן לשנות סדר, להוסיף נקודות ולשנות נקודת התחלה',
+  statsHint: 'מומלץ לפתוח את התיעוד במסך כדי להבין איך לשנות את המסלול',
   addedFromSearch: 'נוסף מחיפוש',
-  privateOnlyTitle: 'תחום מועדפים בלבד',
-  privateOnlyBody: 'התחום "{label}" מחפש ממועדפים בלבד',
+  privateOnlyTitle: 'תחום ללא חיפוש בגוגל',
+  privateOnlyBody: 'התחום "{label}" אינו מחפש מקומות בגוגל אלא עושה שימוש רק במקומות מועדפים של המערכת',
   roleUpdated: 'תפקיד עודכן',
   noConnection: 'אין חיבור לאינטרנט',
 },
@@ -1818,10 +1818,10 @@ toast: {
   statsSourceCustomOnly: 'All places selected from your favorites',
   statsSourceGoogleOnly: 'All places brought from Google',
   statsSourceMixed: '{custom} favorites and {google} places from Google',
-  statsHint: 'You can reorder, add stops and change the start point',
+  statsHint: 'Open the documentation panel on screen to learn how to edit the route',
   addedFromSearch: 'Added from search',
-  privateOnlyTitle: 'Favorites-only interest',
-  privateOnlyBody: 'The interest "{label}" searches favorites only',
+  privateOnlyTitle: 'No Google search for this interest',
+  privateOnlyBody: 'The interest "{label}" does not search Google — it only uses places from the system favorites',
   roleUpdated: 'Role updated',
   noConnection: 'No internet connection',
 },
@@ -3552,7 +3552,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.87';
+window.BKK.VERSION = '3.8.88';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
