@@ -616,7 +616,7 @@
       speechMaxSeconds: 15,
       speechRate: 1.0,
       // Toast display duration (ms)
-      toastDuration: 3000,
+      toastDuration: 4000,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }

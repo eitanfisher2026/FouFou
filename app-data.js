@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.88
+// FouFou app-data.js v3.8.89
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -383,8 +383,8 @@ wizard: {
   placesFound: 'מקומות נמצאו!',
   yallaGo: 'יאללה לדרך! 🗺️',
   yallaDesc: 'חשב מסלול אופטימלי ופתח בגוגל מפות',
-  manualMode: 'סידור ידני',
-  manualDesc: 'בחר עצירות, שנה סדר, התאם את המסלול',
+  manualMode: 'המסלול שלך',
+  manualDesc: 'בחן את המקומות שנבחרו. באפשרותך לשנות ולעדכן כרצונך',
   customizeRoute: 'כוונן מסלול ידנית',
   customizeDesc: 'בחר נקודת התחלה, השהה נקודות, שנה סדר',
   orScrollToCustomize: 'או גלול למטה לכוונן ידנית',
@@ -1401,8 +1401,8 @@ wizard: {
   placesFound: 'places found!',
   yallaGo: 'Let\'s Go! 🗺️',
   yallaDesc: 'Calculate optimal route and open in Google Maps',
-  manualMode: 'Manual Setup',
-  manualDesc: 'Pick stops, reorder, customize your route',
+  manualMode: 'Your Route',
+  manualDesc: 'Review the selected places. Feel free to edit and update as you like',
   customizeRoute: 'Customize route',
   customizeDesc: 'Choose start point, skip stops, reorder',
   orScrollToCustomize: 'or scroll down to customize manually',
@@ -3552,7 +3552,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.88';
+window.BKK.VERSION = '3.8.89';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

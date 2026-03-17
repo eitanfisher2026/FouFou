@@ -943,6 +943,13 @@
                               ? formData.interests.filter(id => id !== option.id)
                               : [...formData.interests, option.id];
                             setFormData({...formData, interests: newInterests});
+                            if (!isSelected && option.privateOnly) {
+                              const label = tLabel(option) || option.id;
+                              showToast(
+                                `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                'info'
+                              );
+                            }
                           }}
                           style={{
                             padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
@@ -1160,7 +1167,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3 space-y-3">
 
             {/* Manual mode header — with doc button */}
-            {routeChoiceMade === 'manual' && route && renderStepHeader('🛠️', t('wizard.manualMode'), t('wizard.manualDesc'), 'hint_manual')}
+            {routeChoiceMade === 'manual' && route && renderStepHeader('🗺️', t('wizard.manualMode'), t('wizard.manualDesc'), 'hint_manual')}
 
             {route && routeChoiceMade === 'manual' && renderContextHint('hint_manual')}
             {route && routeChoiceMade === 'manual' && renderContextHint('hint_route_menu')}
