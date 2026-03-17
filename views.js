@@ -374,11 +374,10 @@
           <div className="view-fade-in">
             {/* Compact header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
-                {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
-              </button>
-              <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🐾 {t('trail.activeTitle')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
+                  {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
+                </button>
                 {(() => {
                   const lang = window.BKK.i18n.currentLang || 'he';
                   const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
@@ -398,6 +397,9 @@
                     </div>
                   );
                 })()}
+              </div>
+              <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🐾 {t('trail.activeTitle')}</span>
               </div>
               <span style={{ fontSize: '10px', color: '#9ca3af' }}>
                 ⏱️ {(() => { const mins = Math.round((Date.now() - activeTrail.startedAt) / 60000); return mins < 60 ? `${mins} ${t('general.min')}` : `${Math.floor(mins/60)}h ${mins%60}m`; })()}
@@ -451,15 +453,15 @@
                 }
               }}
               style={{
-                width: '100%', padding: '14px', marginBottom: '8px',
+                width: '100%', padding: '10px', marginBottom: '8px',
                 background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                color: 'white', border: 'none', borderRadius: '14px',
-                fontSize: '16px', fontWeight: 'bold', cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(34,197,94,0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                color: 'white', border: 'none', borderRadius: '12px',
+                fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
+                boxShadow: '0 3px 10px rgba(34,197,94,0.35)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
               }}
             >
-              <span style={{ fontSize: '22px' }}>📸</span>
+              <span style={{ fontSize: '18px' }}>📸</span>
               <span>{t('trail.capturePlace')}</span>
             </button>
 
@@ -572,7 +574,7 @@
                                 color: '#059669', whiteSpace: 'nowrap'
                               }}
                               title={t('trail.addToFavorites')}
-                            >＋ {t('trail.addToFavorites')}</button>
+                            >＋ {t('trail.addToFavoriteShort') || t('nav.favorites')}</button>
                           );
                         }
                       })()}
