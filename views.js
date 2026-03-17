@@ -533,17 +533,21 @@
                             else {
                               const googleRating = stop.description && stop.description.match(/⭐\s*([\d.]+)\s*\((\d+)/);
                               const ratingInfo = googleRating ? `\n${t('trail.googleRating')}: ⭐ ${googleRating[1]} (${googleRating[2]} ${t('reviews.title')})` : '';
-                              showConfirm(t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo, () => {
-                                addGooglePlaceToCustom(stop).then(result => {
-                                  if (result !== false) {
-                                    setTimeout(() => {
-                                      const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
-                                        customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
-                                      if (added) handleEditLocation(added);
-                                    }, 500);
-                                  }
-                                });
-                              });
+                              showConfirm(
+                                t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo,
+                                () => {
+                                  addGooglePlaceToCustom(stop).then(result => {
+                                    if (result !== false) {
+                                      setTimeout(() => {
+                                        const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
+                                          customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
+                                        if (added) handleEditLocation(added);
+                                      }, 500);
+                                    }
+                                  });
+                                },
+                                { confirmLabel: t('trail.addGoogleConfirm') || t('general.confirm'), confirmColor: '#059669' }
+                              );
                             }
                           }}
                           style={{
@@ -1455,15 +1459,22 @@
                                       );
                                     })()}
                                   </a>
-                                  {/* Add to favorites — compact inline star, Google places only */}
-                                  {!isCustom && !isDisabled && (() => {
+                                  {/* Add to favorites — compact inline star, editors/admins only (regular users add during active trail) */}
+                                  {!isCustom && !isDisabled && isEditor && (() => {
                                     const existingLoc = customLocations.find(loc => loc.name.toLowerCase().trim() === stop.name.toLowerCase().trim());
                                     if (existingLoc) return null; // already in favorites, stop has ✅ elsewhere
                                     const placeId = stop.id || stop.name;
                                     const isAdding = addingPlaceIds.includes(placeId);
                                     return (
                                       <button
-                                        onClick={(e) => { e.preventDefault(); addGooglePlaceToCustom(stop); }}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          showConfirm(
+                                            t('trail.addGoogleToFavorites').replace('{name}', stop.name),
+                                            () => addGooglePlaceToCustom(stop),
+                                            { confirmLabel: t('trail.addGoogleConfirm') || t('general.confirm'), confirmColor: '#059669' }
+                                          );
+                                        }}
                                         disabled={isAdding}
                                         title={t('route.addToMyList')}
                                         style={{

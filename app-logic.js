@@ -1919,8 +1919,8 @@
     setShowHelp(true);
   };
 
-  const showConfirm = (message, onConfirm) => {
-    setConfirmConfig({ message, onConfirm });
+  const showConfirm = (message, onConfirm, options = {}) => {
+    setConfirmConfig({ message, onConfirm, ...options });
     setShowConfirmDialog(true);
   };
 

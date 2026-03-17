@@ -2179,9 +2179,10 @@
                   setShowConfirmDialog(false);
                   if (confirmConfig.onConfirm) confirmConfig.onConfirm();
                 }}
-                className="flex-1 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600"
+                className="flex-1 py-2 text-white rounded-lg font-bold"
+                style={{ background: confirmConfig.confirmColor || '#ef4444' }}
               >
-                {t('general.confirm')}
+                {confirmConfig.confirmLabel || t('general.confirm')}
               </button>
               <button
                 onClick={() => setShowConfirmDialog(false)}
