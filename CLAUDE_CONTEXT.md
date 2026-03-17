@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.15` (Mar 17, 2026)
+- **גרסה:** `3.9.16` (Mar 17, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -992,7 +992,20 @@ What I did before:
 
 ---
 
-## Major Changes This Session (v3.8.83 -> v3.9.14)
+## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.16 — Active Trail UX fixes
+- FAB (floating 📸 button) now visible during active trail mode — was hidden by `!activeTrail` condition
+- Active trail stop rows: added `flexWrap: 'wrap'` — button moves to next line when stop name is long
+- Add-to-favorites button label: `+מועדף` -> `⭐+ שמור` (Hebrew) / `⭐+ Save` (English) — reflects both saving and rating
+
+### v3.9.15 — Documentation and context
+- CLAUDE_CONTEXT.md: added versioning rules block (no letters in version, bump every zip, check context before packaging)
+- CLAUDE_CONTEXT.md: added full Google Places filtering section (7 layers)
+- CLAUDE_CONTEXT.md: fixed Layer 7 — favorites do NOT always win, stopScore formula determines priority
+- build.py: fixed missing `import os` that prevented builds
+
+## Major Changes (v3.8.83 -> v3.9.14)
 
 ### i18n & UX
 - Toast system: pushed to params, stats toast in correct order

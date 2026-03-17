@@ -492,6 +492,7 @@
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px',
                       background: '#f9fafb', borderRadius: '6px', fontSize: '11px',
+                      flexWrap: 'wrap',
                     }}>
                       <span style={{
                         width: '18px', height: '18px', borderRadius: '50%',
@@ -554,7 +555,7 @@
                                 color: '#059669', whiteSpace: 'nowrap'
                               }}
                               title={t('trail.addToFavorites')}
-                            >{`+${t('trail.addToFavoriteShort')}`}</button>
+                            >{`⭐+ ${t('trail.addToFavoriteShort')}`}</button>
                           );
                         }
                       })()}
@@ -1016,7 +1017,7 @@
         {/* Wizard Step 3 = results */}
         
         {/* FAB: Quick Capture — draggable, available when no active trail */}
-        {!activeTrail && !showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
+        {!showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
           const pos = fabPos || { right: 16, bottom: 80 };
           const style = fabPos 
             ? { position: 'fixed', left: pos.left + 'px', top: pos.top + 'px', zIndex: 1000 }
