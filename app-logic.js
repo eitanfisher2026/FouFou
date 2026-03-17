@@ -4566,12 +4566,29 @@
     }
     
     // Smart ordering: category determines position in day
-    // attraction/nature early, shopping mid, break/meal interspersed, experience last
-    const categoryPosition = { attraction: 1, nature: 2, shopping: 3, experience: 4, meal: 5, break: 6 };
+    // Derived from slot config to keep a single source of truth.
+    // slot->category mapping: middle/bookend=meal, end/late=experience, early/any=attraction
+    const slotToCategory = { middle: 'meal', bookend: 'meal', end: 'experience', late: 'experience', early: 'attraction', any: 'attraction' };
+    const defaultSlotForCategory = {
+      cafes: 'bookend', food: 'middle', restaurants: 'middle',
+      markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+      architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+      artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+      nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+    };
     const getCategory = (stop) => {
       const stopInterests = stop.interests || [];
       for (const id of selectedInterests) {
-        if (stopInterests.includes(id) && limits[id]) return limits[id].category;
+        if (!stopInterests.includes(id)) continue;
+        // 1. Explicit category on interest object
+        const cat = limits[id]?.category;
+        if (cat && cat !== 'attraction') return cat;
+        // 2. Derive from interestConfig routeSlot (Firebase-configurable)
+        const cfgSlot = interestConfig[id]?.routeSlot;
+        if (cfgSlot && slotToCategory[cfgSlot]) return slotToCategory[cfgSlot];
+        // 3. Derive from built-in slot defaults
+        const builtinSlot = defaultSlotForCategory[id];
+        if (builtinSlot) return slotToCategory[builtinSlot];
       }
       return 'attraction';
     };

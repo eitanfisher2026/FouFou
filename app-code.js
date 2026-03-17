@@ -4123,11 +4123,24 @@ const FouFouApp = () => {
       selected.push(...extra);
     }
     
-    const categoryPosition = { attraction: 1, nature: 2, shopping: 3, experience: 4, meal: 5, break: 6 };
+    const slotToCategory = { middle: 'meal', bookend: 'meal', end: 'experience', late: 'experience', early: 'attraction', any: 'attraction' };
+    const defaultSlotForCategory = {
+      cafes: 'bookend', food: 'middle', restaurants: 'middle',
+      markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+      architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+      artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+      nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+    };
     const getCategory = (stop) => {
       const stopInterests = stop.interests || [];
       for (const id of selectedInterests) {
-        if (stopInterests.includes(id) && limits[id]) return limits[id].category;
+        if (!stopInterests.includes(id)) continue;
+        const cat = limits[id]?.category;
+        if (cat && cat !== 'attraction') return cat;
+        const cfgSlot = interestConfig[id]?.routeSlot;
+        if (cfgSlot && slotToCategory[cfgSlot]) return slotToCategory[cfgSlot];
+        const builtinSlot = defaultSlotForCategory[id];
+        if (builtinSlot) return slotToCategory[builtinSlot];
       }
       return 'attraction';
     };
