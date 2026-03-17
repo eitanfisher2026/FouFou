@@ -447,17 +447,17 @@
               {(() => {
                 const lang = window.BKK.i18n.currentLang || 'he';
                 const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
-                const s = getHelpSection('hint_trail');
+                const s = getHelpSection('activeTrail');
                 const txt = (s && s.content && s.content.trim()) || '';
                 if (!txt && !isAdmin) return null;
                 return (
                   <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
                     {isAdmin && (
-                      <button onClick={() => { setHintEditId('hint_trail'); setHintEditText(txt); }}
+                      <button onClick={() => { setHintEditId('activeTrail'); setHintEditText(txt); }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
                     )}
-                    <button onClick={() => setOpenHintPopup(openHintPopup === 'hint_trail' ? null : 'hint_trail')}
-                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'hint_trail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
+                    <button onClick={() => setOpenHintPopup(openHintPopup === 'activeTrail' ? null : 'activeTrail')}
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'activeTrail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
                       <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
                     </button>
                   </div>
@@ -491,15 +491,13 @@
                     return (
                     <div key={idx} style={{
                       display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px',
-                      background: isSkipped ? '#fef2f2' : '#f9fafb', borderRadius: '6px', fontSize: '11px',
-                      opacity: isSkipped ? 0.5 : 1
+                      background: '#f9fafb', borderRadius: '6px', fontSize: '11px',
                     }}>
                       <span style={{
                         width: '18px', height: '18px', borderRadius: '50%',
-                        background: isSkipped ? '#fecaca' : (window.BKK.stopColorPalette[idx % window.BKK.stopColorPalette.length]),
+                        background: isSkipped ? '#d1d5db' : (window.BKK.stopColorPalette[idx % window.BKK.stopColorPalette.length]),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '9px', fontWeight: 'bold', color: 'white', flexShrink: 0,
-                        opacity: isSkipped ? 0.4 : 1
                       }}>{letter}</span>
                       <span
                         onClick={() => {
@@ -527,8 +525,8 @@
                         {stop.name}
                         {!isSkipped && isFavorite && <img src="icon-32x32.png" alt="FouFou" style={{ width: '12px', height: '12px', flexShrink: 0 }} />}
                       </span>
-                      {/* Add to favorites / Rate button */}
-                      {!isSkipped && (() => {
+                      {/* Add to favorites / Rate button — always visible even for skipped stops */}
+                      {(() => {
                         if (isFavorite) {
                           // Already a favorite — show rating or invite to rate
                           return (
