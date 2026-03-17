@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.83
+// FouFou app-data.js v3.8.84
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -776,15 +776,6 @@ toast: {
   newVersionAvailable: 'גרסה חדשה זמינה:',
   removedFromRoute: 'הוסר מהמסלול',
   addedMorePlaces: 'נוספו מקומות ל',
-  statsTitle: 'המסלול שלך מוכן!',
-  statsInterestsHeader: 'תחומי עניין במסלול:',
-  statsSourceCustomOnly: 'כל המקומות נבחרו מרשימת המועדפים שלך',
-  statsSourceGoogleOnly: 'כל המקומות הובאו מגוגל',
-  statsSourceMixed: '{custom} מועדפים ו-{google} מקומות מגוגל',
-  statsHint: 'ניתן לשנות סדר, להוסיף נקודות ולשנות נקודת התחלה',
-  privateOnlyTitle: 'תחום מועדפים בלבד',
-  privateOnlyBody: 'התחום "{label}" מחפש ממועדפים בלבד — ללא חיפוש בגוגל',
-  roleUpdated: 'תפקיד עודכן',
   noMoreInInterest: 'לא נמצאו עוד מקומות ב',
   errorsGettingPlaces: 'שגיאות בקבלת מקומות:',
   googleApiUnavailable: 'Google API זמנית לא זמין — נסה שוב בעוד כמה שניות',
@@ -1072,6 +1063,8 @@ help: {
     maxWaypointsDesc: 'מקסימום waypoints בלינק גוגל מפות',
     defaultRadiusLabel: 'רדיוס ברירת מחדל (מ\')',
     defaultRadiusDesc: 'רדיוס חיפוש התחלתי למשתמשים חדשים',
+    toastDurationLabel: 'זמן הצגת הודעה (ms)',
+    toastDurationDesc: 'כמה זמן מוצגת הודעה על המסך (אלפיות שנייה)',
   },
   dedup: {
     title: 'מקום דומה נמצא בקרבת מקום!',
@@ -1784,15 +1777,6 @@ toast: {
   newVersionAvailable: 'New version available:',
   removedFromRoute: 'Removed from route',
   addedMorePlaces: 'places added to',
-  statsTitle: 'Your route is ready!',
-  statsInterestsHeader: 'Interests in route:',
-  statsSourceCustomOnly: 'All places selected from your favorites',
-  statsSourceGoogleOnly: 'All places brought from Google',
-  statsSourceMixed: '{custom} favorites and {google} places from Google',
-  statsHint: 'You can reorder, add stops and change the start point',
-  privateOnlyTitle: 'Favorites-only interest',
-  privateOnlyBody: 'The interest "{label}" searches favorites only — no Google search',
-  roleUpdated: 'Role updated',
   noMoreInInterest: 'No more places in',
   errorsGettingPlaces: 'Errors getting places:',
   googleApiUnavailable: 'Google API temporarily unavailable — try again in a few seconds',
@@ -2078,6 +2062,8 @@ help: {
     maxWaypointsDesc: 'Max waypoints in Google Maps link',
     defaultRadiusLabel: 'Default radius (m)',
     defaultRadiusDesc: 'Initial search radius for new users',
+    toastDurationLabel: 'Toast duration (ms)',
+    toastDurationDesc: 'How long a message stays on screen (milliseconds)',
   },
   dedup: {
     title: 'Similar place found nearby!',
@@ -3518,7 +3504,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.83';
+window.BKK.VERSION = '3.8.84';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

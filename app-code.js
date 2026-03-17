@@ -4878,18 +4878,18 @@ const FouFouApp = () => {
         const googleInRoute = newRoute.stops.filter(s => !s.custom).length;
         let sourceLine = '';
         if (customInRoute > 0 && googleInRoute > 0)
-          sourceLine = t('toast.statsSourceMixed').replace('{custom}', customInRoute).replace('{google}', googleInRoute);
+          sourceLine = `${customInRoute} מקומות נבחרו מרשימת המועדפים של פופו ו-${googleInRoute} נוספו מגוגל`;
         else if (customInRoute > 0)
-          sourceLine = t('toast.statsSourceCustomOnly');
+          sourceLine = `כל המקומות נבחרו מתוך רשימת המקומות המועדפים של פופו`;
         else if (googleInRoute > 0)
-          sourceLine = t('toast.statsSourceGoogleOnly');
+          sourceLine = `כל המקומות הובאו מגוגל`;
 
         const msg = [
-          t('toast.statsTitle'),
-          t('toast.statsInterestsHeader'),
+          `המסלול המומלץ מורכב מהתחומים הבאים:`,
           interestLines,
           sourceLine,
-          t('toast.statsHint'),
+          `ניתן לראות את מיקום המקומות במפה ותכנון, לשנות סדר, להוסיף נקודות משלך ולשנות נקודת התחלה.`,
+          `מידע נוסף דרך כפתור התיעוד`
         ].filter(Boolean).join('\n');
         showToast(msg, 'info', 'sticky');
       })();
@@ -10707,6 +10707,7 @@ const FouFouApp = () => {
                   { key: 'fetchMoreCount', label: t('sysParams.fetchMore'), desc: t('sysParams.fetchMoreDesc'), min: 1, max: 10, step: 1, type: 'int' },
                   { key: 'googleMaxWaypoints', label: t('sysParams.maxWaypoints'), desc: t('sysParams.maxWaypointsDesc'), min: 5, max: 25, step: 1, type: 'int' },
                   { key: 'defaultRadius', label: t('sysParams.defaultRadius'), desc: t('sysParams.defaultRadiusDesc'), min: 100, max: 5000, step: 100, type: 'int' },
+                  { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
                   { key: 'includeDrafts', label: t('sysParams.includeDrafts') || '✏️ כלול טיוטות', desc: t('sysParams.includeDraftsDesc') || 'הצג מקומות טיוטה במסלולים, מפות ורשימות', type: 'bool' },
                 ]},
                 { title: t('sysParams.sectionDedup'), icon: '🔍', color: '#8b5cf6', params: [
