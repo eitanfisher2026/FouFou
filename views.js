@@ -525,42 +525,57 @@
                         {stop.name}
                         {!isSkipped && isFavorite && <img src="icon-32x32.png" alt="FouFou" style={{ width: '12px', height: '12px', flexShrink: 0 }} />}
                       </span>
-                      {/* Star + rating */}
-                      {!isSkipped && (
-                        <button
-                          onClick={() => {
-                            if (isFavorite) { openReviewDialog(isFavorite); }
-                            else {
-                              const googleRating = stop.description && stop.description.match(/⭐\s*([\d.]+)\s*\((\d+)/);
-                              const ratingInfo = googleRating ? `\n${t('trail.googleRating')}: ⭐ ${googleRating[1]} (${googleRating[2]} ${t('reviews.title')})` : '';
-                              showConfirm(
-                                t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo,
-                                () => {
-                                  addGooglePlaceToCustom(stop).then(result => {
-                                    if (result !== false) {
-                                      setTimeout(() => {
-                                        const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
-                                          customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
-                                        if (added) handleEditLocation(added);
-                                      }, 500);
-                                    }
-                                  });
-                                },
-                                { confirmLabel: t('trail.addGoogleConfirm') || t('general.confirm'), confirmColor: '#059669' }
-                              );
-                            }
-                          }}
-                          style={{
-                            background: isFavorite ? 'none' : 'rgba(234,179,8,0.15)',
-                            border: isFavorite ? 'none' : '1px dashed #eab308',
-                            borderRadius: '4px', cursor: 'pointer', padding: '0 3px',
-                            fontSize: isFavorite ? '11px' : '14px', flexShrink: 0,
-                            color: isFavorite ? (ra ? '#f59e0b' : '#9ca3af') : '#eab308',
-                            whiteSpace: 'nowrap'
-                          }}
-                          title={isFavorite ? t('trail.ratePlace') : t('trail.addToFavorites')}
-                        >{isFavorite ? (ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : '⭐') : '☆'}</button>
-                      )}
+                      {/* Add to favorites / Rate button */}
+                      {!isSkipped && (() => {
+                        if (isFavorite) {
+                          // Already a favorite — show rating or invite to rate
+                          return (
+                            <button
+                              onClick={() => openReviewDialog(isFavorite)}
+                              style={{
+                                background: ra ? '#fefce8' : '#f9fafb',
+                                border: `1px solid ${ra ? '#fde68a' : '#e5e7eb'}`,
+                                borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
+                                fontSize: '10px', fontWeight: '600', flexShrink: 0,
+                                color: ra ? '#92400e' : '#9ca3af', whiteSpace: 'nowrap'
+                              }}
+                              title={t('trail.ratePlace')}
+                            >{ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : `${t('trail.ratePlace')} ⭐`}</button>
+                          );
+                        } else {
+                          // Not a favorite — invite to add
+                          return (
+                            <button
+                              onClick={() => {
+                                const googleRating = stop.description && stop.description.match(/⭐\s*([\d.]+)\s*\((\d+)/);
+                                const ratingInfo = googleRating ? `\n${t('trail.googleRating')}: ⭐ ${googleRating[1]} (${googleRating[2]} ${t('reviews.title')})` : '';
+                                showConfirm(
+                                  t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo,
+                                  () => {
+                                    addGooglePlaceToCustom(stop).then(result => {
+                                      if (result !== false) {
+                                        setTimeout(() => {
+                                          const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
+                                            customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
+                                          if (added) handleEditLocation(added);
+                                        }, 500);
+                                      }
+                                    });
+                                  },
+                                  { confirmLabel: t('trail.addGoogleConfirm'), confirmColor: '#059669' }
+                                );
+                              }}
+                              style={{
+                                background: '#f0fdf4', border: '1px solid #6ee7b7',
+                                borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
+                                fontSize: '10px', fontWeight: '600', flexShrink: 0,
+                                color: '#059669', whiteSpace: 'nowrap'
+                              }}
+                              title={t('trail.addToFavorites')}
+                            >＋ {t('trail.addToFavorites')}</button>
+                          );
+                        }
+                      })()}
 {/* Skip button removed — skipping is handled internally by continuefrom */}
                     </div>
                     );
