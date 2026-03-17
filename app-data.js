@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.84
+// FouFou app-data.js v3.8.87
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -112,6 +112,8 @@ general: {
   all: 'כל',
   allCity: 'כל העיר',
   me: 'אני',
+  viewImage: 'הצג תמונה',
+  fromGoogleCache: 'מגוגל (מאוחסן)',
   close: 'סגור',
   cancel: 'ביטול',
   confirm: 'אישור',
@@ -493,6 +495,8 @@ route: {
   timeAfternoon: 'אחה״צ',
   timeNight: 'ערב/לילה',
   stops: 'עצירות',
+  myRoute: 'המסלול שלי',
+  reoptimizing: 'מסדר מסלול...',
   places: 'מקומות',
   savedAs: 'נשמר:',
   startPoint: 'נקודת התחלה',
@@ -519,6 +523,7 @@ places: {
   placeName: 'שם המקום',
   enterPlaceName: 'אנא הזן שם למקום',
   nameExists: 'שם זה כבר קיים',
+  handled: 'טופל',
   placeExists: 'מקום עם שם זה כבר קיים',
   address: 'כתובת',
   notes: 'הערות...',
@@ -784,7 +789,17 @@ toast: {
   outsideAreaWarning: 'אזהרה: המיקום מחוץ לאזורים שנבחרו. נשמר בכל זאת.',
   fileDownloaded: 'הקובץ הורד!',
   invalidFileNoData: 'קובץ לא תקין - לא נמצאו נתונים',
+  statsTitle: 'המסלול שלך מוכן!',
+  statsInterestsHeader: 'תחומי עניין במסלול:',
+  statsSourceCustomOnly: 'כל המקומות נבחרו מרשימת המועדפים שלך',
+  statsSourceGoogleOnly: 'כל המקומות הובאו מגוגל',
+  statsSourceMixed: '{custom} מועדפים ו-{google} מקומות מגוגל',
+  statsHint: 'ניתן לשנות סדר, להוסיף נקודות ולשנות נקודת התחלה',
   addedFromSearch: 'נוסף מחיפוש',
+  privateOnlyTitle: 'תחום מועדפים בלבד',
+  privateOnlyBody: 'התחום "{label}" מחפש ממועדפים בלבד',
+  roleUpdated: 'תפקיד עודכן',
+  noConnection: 'אין חיבור לאינטרנט',
 },
 
 // --- Settings ---
@@ -808,6 +823,9 @@ settings: {
   refreshData: 'רענן את כל הנתונים',
   deleteAllConfirm: 'למחוק את כל לוג הכניסות? פעולה זו בלתי הפיכה.',
   deleteAllFeedback: 'למחוק את כל המשובים?',
+  accessStats: 'סטטיסטיקות גישה',
+  totalVisits: 'סה"כ ביקורים',
+  exportSchema: 'ייצא סכמה (ל-AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'שפה',
   password: 'סיסמה',
@@ -978,7 +996,10 @@ help: {
     configs: 'הגדרות:',
     locations: 'מקומות:',
     routes: 'מסלולים:',
-    importedAsDrafts: 'מקומות יובאו כטיוטות — סקור במועדפים > טיוטות',
+    filterImport: 'סנן',
+  lastImport: 'ייבוא אחרון',
+  showAll: 'הצג הכל',
+  importedAsDrafts: 'מקומות יובאו כטיוטות — סקור במועדפים > טיוטות',
   },
   reviews: {
     title: 'ביקורות',
@@ -1000,7 +1021,7 @@ help: {
     loginRequired: 'יש להתחבר כדי לדרג',
     ratingRequired: 'יש לבחור לפחות כוכב אחד',
   },
-  systemParams: {
+  sysParams: {
     tabTitle: 'פרמטרים',
     title: 'פרמטרי מערכת (אלגוריתם)',
     subtitle: 'ערכים אלה משפיעים על חיפוש, בניית מסלול ותיעדוף.',
@@ -1064,6 +1085,10 @@ help: {
     defaultRadiusLabel: 'רדיוס ברירת מחדל (מ\')',
     defaultRadiusDesc: 'רדיוס חיפוש התחלתי למשתמשים חדשים',
     toastDurationLabel: 'זמן הצגת הודעה (ms)',
+    includeDrafts: 'כלול טיוטות',
+    includeDraftsDesc: 'הצג מקומות טיוטה במסלולים, מפות ורשימות',
+    speechDuration: 'הקלטה (שניות)',
+    speechDurationDesc: 'משך הקלטה מרבי לתיאור קולי',
     toastDurationDesc: 'כמה זמן מוצגת הודעה על המסך (אלפיות שנייה)',
   },
   dedup: {
@@ -1495,6 +1520,8 @@ route: {
   timeAfternoon: 'Afternoon',
   timeNight: 'Evening',
   stops: 'stops',
+  myRoute: 'My route',
+  reoptimizing: 'Reordering route...',
   places: 'places',
   savedAs: 'Saved:',
   startPoint: 'Starting point',
@@ -1520,6 +1547,7 @@ places: {
   placeName: 'Place name',
   enterPlaceName: 'Please enter a place name',
   nameExists: 'This name already exists',
+  handled: 'Handled',
   placeExists: 'A place with this name already exists',
   address: 'Address',
   notes: 'Notes...',
@@ -1785,7 +1813,17 @@ toast: {
   outsideAreaWarning: 'Warning: Location outside selected areas. Saved anyway.',
   fileDownloaded: 'File downloaded!',
   invalidFileNoData: 'Invalid file - no data found',
+  statsTitle: 'Your route is ready!',
+  statsInterestsHeader: 'Interests in route:',
+  statsSourceCustomOnly: 'All places selected from your favorites',
+  statsSourceGoogleOnly: 'All places brought from Google',
+  statsSourceMixed: '{custom} favorites and {google} places from Google',
+  statsHint: 'You can reorder, add stops and change the start point',
   addedFromSearch: 'Added from search',
+  privateOnlyTitle: 'Favorites-only interest',
+  privateOnlyBody: 'The interest "{label}" searches favorites only',
+  roleUpdated: 'Role updated',
+  noConnection: 'No internet connection',
 },
 
 settings: {
@@ -1808,6 +1846,9 @@ settings: {
   refreshData: 'Refresh all data',
   deleteAllConfirm: 'Delete all access logs? This action cannot be undone.',
   deleteAllFeedback: 'Delete all feedback?',
+  accessStats: 'Access statistics',
+  totalVisits: 'Total visits',
+  exportSchema: 'Export schema (for AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'Language',
   password: 'Password',
@@ -1977,7 +2018,10 @@ help: {
     configs: 'Settings:',
     locations: 'Places:',
     routes: 'Routes:',
-    importedAsDrafts: 'Places imported as drafts — review in Favorites > Drafts',
+    filterImport: 'Filter',
+  lastImport: 'Last import',
+  showAll: 'Show all',
+  importedAsDrafts: 'Places imported as drafts — review in Favorites > Drafts',
   },
   reviews: {
     title: 'Reviews',
@@ -1999,7 +2043,7 @@ help: {
     loginRequired: 'Login required to rate',
     ratingRequired: 'Please select at least one star',
   },
-  systemParams: {
+  sysParams: {
     tabTitle: 'Parameters',
     title: 'System Parameters (Algorithm)',
     subtitle: 'These values affect search, route building, and prioritization.',
@@ -2063,6 +2107,10 @@ help: {
     defaultRadiusLabel: 'Default radius (m)',
     defaultRadiusDesc: 'Initial search radius for new users',
     toastDurationLabel: 'Toast duration (ms)',
+    includeDrafts: 'Include drafts',
+    includeDraftsDesc: 'Show draft places in routes, maps and lists',
+    speechDuration: 'Recording (seconds)',
+    speechDurationDesc: 'Max recording duration for voice input',
     toastDurationDesc: 'How long a message stays on screen (milliseconds)',
   },
   dedup: {
@@ -3504,7 +3552,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.84';
+window.BKK.VERSION = '3.8.87';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

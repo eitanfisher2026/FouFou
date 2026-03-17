@@ -211,7 +211,7 @@
       await database.ref(`users/${uid}/role`).set(newRole);
       // Refresh allUsers if open
       if (showUserManagement) authLoadAllUsers();
-      showToast(`✅ ${t('toast.roleUpdated') || 'Role updated'}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
+      showToast(`✅ ${t('toast.roleUpdated')}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
       console.error('[AUTH] Update role error:', err);
       showToast('❌ ' + err.message, 'error');
@@ -3998,7 +3998,7 @@
     console.info(`[RATING-REFRESH] ════════════════════════════════`);
     
     showToast(
-      `⭐ ${stats.updated} ${t('settings.updated') || 'עודכנו'} / ${stats.total} ${t('settings.scanned') || 'נסרקו'} (${stats.unchanged} ${t('settings.unchangedRating') || 'ללא שינוי'}) · $${estCost}`,
+      `⭐ ${stats.updated} ${t('settings.updated')} / ${stats.total} ${t('settings.scanned') || 'נסרקו'} (${stats.unchanged} ${t('settings.unchangedRating') || 'ללא שינוי'}) · $${estCost}`,
       stats.updated > 0 ? 'success' : 'info'
     );
     setRatingsRefreshProgress(null);
@@ -5450,18 +5450,18 @@
         const googleInRoute = newRoute.stops.filter(s => !s.custom).length;
         let sourceLine = '';
         if (customInRoute > 0 && googleInRoute > 0)
-          sourceLine = `${customInRoute} מקומות נבחרו מרשימת המועדפים של פופו ו-${googleInRoute} נוספו מגוגל`;
+          sourceLine = t('toast.statsSourceMixed').replace('{custom}', customInRoute).replace('{google}', googleInRoute);
         else if (customInRoute > 0)
-          sourceLine = `כל המקומות נבחרו מתוך רשימת המקומות המועדפים של פופו`;
+          sourceLine = t('toast.statsSourceCustomOnly');
         else if (googleInRoute > 0)
-          sourceLine = `כל המקומות הובאו מגוגל`;
+          sourceLine = t('toast.statsSourceGoogleOnly');
 
         const msg = [
-          `המסלול המומלץ מורכב מהתחומים הבאים:`,
+          t('toast.statsTitle'),
+          t('toast.statsInterestsHeader'),
           interestLines,
           sourceLine,
-          `ניתן לראות את מיקום המקומות במפה ותכנון, לשנות סדר, להוסיף נקודות משלך ולשנות נקודת התחלה.`,
-          `מידע נוסף דרך כפתור התיעוד`
+          t('toast.statsHint'),
         ].filter(Boolean).join('\n');
         showToast(msg, 'info', 'sticky');
       })();
@@ -6269,8 +6269,7 @@
   
   const loadReviewAverages = async (placeNames) => {
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (!db || !placeNames.length) return;
+      if (!database || !placeNames.length) return;
       const cityId = window.BKK.selectedCityId || 'bangkok';
       const avgs = {};
       for (const name of placeNames) {
@@ -6308,8 +6307,7 @@
     // Load existing reviews from Firebase
     let reviews = [];
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
+      if (database) {
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
@@ -6355,10 +6353,9 @@
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
 
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
+      if (database) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
-        await db.ref(path).set({
+        await database.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
@@ -6385,9 +6382,8 @@
     const placeKey = reviewDialog.placeKey;
 
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
-        await db.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
+      if (database) {
+        await database.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
         // Refresh reviews inside dialog
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
@@ -6412,9 +6408,8 @@
     const placeName = reviewDialog.place?.name || '';
     const placeKey = reviewDialog.placeKey;
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
-        await db.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
+      if (database) {
+        await database.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
@@ -6980,7 +6975,7 @@
     addCustomLocation(closeAfter);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
-      showToast('\u2705 ' + t('trail.saved'), 'success');
+      showToast('✅ ' + t('trail.saved'), 'success');
     }
   };
 
@@ -7017,7 +7012,7 @@
         if (isFirebaseAvailable && database && match.firebaseKey) {
           database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}`).update(updates);
         }
-        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success', 3000);
+        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success');
       }
       setDedupConfirm(null);
       return;
@@ -7028,7 +7023,7 @@
       if (dedupConfirm.pendingGooglePlace) {
         setDedupConfirm(null);
         setTimeout(() => handleEditLocation(match), 200);
-        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         return;
       }      if (type === 'google') {
         const googleData = {
@@ -7038,12 +7033,12 @@
           lng: match.lng || loc.lng,
           address: match.address || '',
           mapsUrl: match.mapsUrl || '',
-          description: `\u2B50 ${match.rating?.toFixed(1) || 'N/A'} (${match.ratingCount || 0})`,
+          description: `⭐ ${match.rating?.toFixed(1) || 'N/A'} (${match.ratingCount || 0})`,
           googlePlace: true,
           googlePlaceId: match.googlePlaceId || ''
         };
         addCustomLocation(closeAfter, googleData);
-        showToast(`\uD83D\uDCCD ${t('dedup.googleMatch')}: ${match.name}`, 'success', 4000);
+        showToast(`📍 ${t('dedup.googleMatch')}: ${match.name}`, 'success');
       } else {
         // Custom match — don't add, merge interests if needed
         const newInterests = loc.interests.filter(i => !match.interests?.includes(i));
@@ -7060,9 +7055,9 @@
             const opt = allInterestOptions.find(o => o.id === id);
             return opt ? (tLabel(opt) || id) : id;
           }).join(', ');
-          showToast(`\uD83D\uDD17 "${match.name}" +${interestNames}`, 'success', 4000);
+          showToast(`🔗 "${match.name}" +${interestNames}`, 'success');
         } else {
-          showToast(`\u2705 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+          showToast(`✅ "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         }
       }
     } else if (action === 'addNew') {
@@ -7071,7 +7066,7 @@
         addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
       } else {
         addCustomLocation(closeAfter);
-        showToast('\u2705 ' + t('trail.saved'), 'success');
+        showToast('✅ ' + t('trail.saved'), 'success');
       }
     }
     // action === 'cancel' — do nothing (photo already saved above)

@@ -551,7 +551,7 @@
                           <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
                             style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                          >☆ {t('reviews.rate') || 'דרג'}</span>
+                          >☆ {t('reviews.rate')}</span>
                         )}
                       </div>
                     );
@@ -2084,7 +2084,7 @@
                         <span
                           onClick={() => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); openReviewDialog(loc); }}
                           style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                        >☆ {t('reviews.rate') || 'דרג'}</span>
+                        >☆ {t('reviews.rate')}</span>
                       )}
                     </div>
                   );
@@ -2249,13 +2249,13 @@
                 <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', borderRadius: '10px', padding: '10px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', marginBottom: '6px' }}>
                     💬 {t('settings.myPastFeedback')}
-                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> \u2713 {t('places.handled') || 'טופל'}</span>}
+                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> ✓ {t('places.handled')}</span>}
                   </div>
                   <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => { setFeedbackText(myExisting.text); setFeedbackCategory(myExisting.category || 'general'); setEditingMyFeedback(true); }}
                       style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#dbeafe', border: '1px solid #93c5fd', fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', cursor: 'pointer' }}>
-                      \u270F\uFE0F {t('general.edit') || 'ערוך'}
+                      ✏️ {t('general.edit') || 'ערוך'}
                     </button>
                     <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(myExisting))}
                       style={{ padding: '6px 12px', borderRadius: '8px', background: '#fee2e2', border: '1px solid #fca5a5', fontSize: '12px', fontWeight: 'bold', color: '#dc2626', cursor: 'pointer' }}>
@@ -2269,7 +2269,7 @@
               {feedbackList.length > 0 && (
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
-                    📋 {t('settings.allFeedback') || 'כל המשובים'} ({feedbackList.length})
+                    📋 {t('settings.allFeedback')} ({feedbackList.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {feedbackList.map(f => {
@@ -2282,7 +2282,7 @@
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '🐛' : f.category === 'idea' ? '💡' : '💭'}</span>
                                 {isOwn && <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }}>{t('general.me') || 'אני'}</span>}
-                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>\u2713</span>}
+                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>✓</span>}
                                 <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
                               </div>
                               <p style={{ fontSize: '12px', color: '#374151', margin: 0 }}>{f.text}</p>
@@ -3351,7 +3351,7 @@
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '12px', marginBottom: '12px', border: '1px solid #bbf7d0' }}>
                   {authUser.photoURL && <img src={authUser.photoURL} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{authUser.displayName || authUser.email || (t('auth.anonymous') || 'אנונימי')}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{authUser.displayName || authUser.email || (t('auth.anonymous'))}</div>
                     {authUser.email && <div style={{ fontSize: '11px', color: '#6b7280' }}>{authUser.email}</div>}
                     <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>
                       {userRole === 2 ? '👑 Admin' : userRole === 1 ? '✏️ Editor' : '👤 ' + (t('auth.regular') || 'משתמש')}

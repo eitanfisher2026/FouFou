@@ -229,7 +229,7 @@ const FouFouApp = () => {
     try {
       await database.ref(`users/${uid}/role`).set(newRole);
       if (showUserManagement) authLoadAllUsers();
-      showToast(`✅ ${t('toast.roleUpdated') || 'Role updated'}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
+      showToast(`✅ ${t('toast.roleUpdated')}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
       console.error('[AUTH] Update role error:', err);
       showToast('❌ ' + err.message, 'error');
@@ -3632,7 +3632,7 @@ const FouFouApp = () => {
     console.info(`[RATING-REFRESH] ════════════════════════════════`);
     
     showToast(
-      `⭐ ${stats.updated} ${t('settings.updated') || 'עודכנו'} / ${stats.total} ${t('settings.scanned') || 'נסרקו'} (${stats.unchanged} ${t('settings.unchangedRating') || 'ללא שינוי'}) · $${estCost}`,
+      `⭐ ${stats.updated} ${t('settings.updated')} / ${stats.total} ${t('settings.scanned') || 'נסרקו'} (${stats.unchanged} ${t('settings.unchangedRating') || 'ללא שינוי'}) · $${estCost}`,
       stats.updated > 0 ? 'success' : 'info'
     );
     setRatingsRefreshProgress(null);
@@ -4878,18 +4878,18 @@ const FouFouApp = () => {
         const googleInRoute = newRoute.stops.filter(s => !s.custom).length;
         let sourceLine = '';
         if (customInRoute > 0 && googleInRoute > 0)
-          sourceLine = `${customInRoute} מקומות נבחרו מרשימת המועדפים של פופו ו-${googleInRoute} נוספו מגוגל`;
+          sourceLine = t('toast.statsSourceMixed').replace('{custom}', customInRoute).replace('{google}', googleInRoute);
         else if (customInRoute > 0)
-          sourceLine = `כל המקומות נבחרו מתוך רשימת המקומות המועדפים של פופו`;
+          sourceLine = t('toast.statsSourceCustomOnly');
         else if (googleInRoute > 0)
-          sourceLine = `כל המקומות הובאו מגוגל`;
+          sourceLine = t('toast.statsSourceGoogleOnly');
 
         const msg = [
-          `המסלול המומלץ מורכב מהתחומים הבאים:`,
+          t('toast.statsTitle'),
+          t('toast.statsInterestsHeader'),
           interestLines,
           sourceLine,
-          `ניתן לראות את מיקום המקומות במפה ותכנון, לשנות סדר, להוסיף נקודות משלך ולשנות נקודת התחלה.`,
-          `מידע נוסף דרך כפתור התיעוד`
+          t('toast.statsHint'),
         ].filter(Boolean).join('\n');
         showToast(msg, 'info', 'sticky');
       })();
@@ -5593,8 +5593,7 @@ const FouFouApp = () => {
   
   const loadReviewAverages = async (placeNames) => {
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (!db || !placeNames.length) return;
+      if (!database || !placeNames.length) return;
       const cityId = window.BKK.selectedCityId || 'bangkok';
       const avgs = {};
       for (const name of placeNames) {
@@ -5629,8 +5628,7 @@ const FouFouApp = () => {
     
     let reviews = [];
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
+      if (database) {
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
@@ -5675,10 +5673,9 @@ const FouFouApp = () => {
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
 
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
+      if (database) {
         const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
-        await db.ref(path).set({
+        await database.ref(path).set({
           rating: reviewDialog.myRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
@@ -5705,9 +5702,8 @@ const FouFouApp = () => {
     const placeKey = reviewDialog.placeKey;
 
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
-        await db.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
+      if (database) {
+        await database.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([ruid, r]) => ({
@@ -5730,9 +5726,8 @@ const FouFouApp = () => {
     const placeName = reviewDialog.place?.name || '';
     const placeKey = reviewDialog.placeKey;
     try {
-      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-      if (db) {
-        await db.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
+      if (database) {
+        await database.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
@@ -6261,7 +6256,7 @@ const FouFouApp = () => {
     addCustomLocation(closeAfter);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
-      showToast('\u2705 ' + t('trail.saved'), 'success');
+      showToast('✅ ' + t('trail.saved'), 'success');
     }
   };
 
@@ -6294,7 +6289,7 @@ const FouFouApp = () => {
         if (isFirebaseAvailable && database && match.firebaseKey) {
           database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}`).update(updates);
         }
-        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success', 3000);
+        showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success');
       }
       setDedupConfirm(null);
       return;
@@ -6304,7 +6299,7 @@ const FouFouApp = () => {
       if (dedupConfirm.pendingGooglePlace) {
         setDedupConfirm(null);
         setTimeout(() => handleEditLocation(match), 200);
-        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+        showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         return;
       }      if (type === 'google') {
         const googleData = {
@@ -6314,12 +6309,12 @@ const FouFouApp = () => {
           lng: match.lng || loc.lng,
           address: match.address || '',
           mapsUrl: match.mapsUrl || '',
-          description: `\u2B50 ${match.rating?.toFixed(1) || 'N/A'} (${match.ratingCount || 0})`,
+          description: `⭐ ${match.rating?.toFixed(1) || 'N/A'} (${match.ratingCount || 0})`,
           googlePlace: true,
           googlePlaceId: match.googlePlaceId || ''
         };
         addCustomLocation(closeAfter, googleData);
-        showToast(`\uD83D\uDCCD ${t('dedup.googleMatch')}: ${match.name}`, 'success', 4000);
+        showToast(`📍 ${t('dedup.googleMatch')}: ${match.name}`, 'success');
       } else {
         const newInterests = loc.interests.filter(i => !match.interests?.includes(i));
         if (newInterests.length > 0) {
@@ -6335,9 +6330,9 @@ const FouFouApp = () => {
             const opt = allInterestOptions.find(o => o.id === id);
             return opt ? (tLabel(opt) || id) : id;
           }).join(', ');
-          showToast(`\uD83D\uDD17 "${match.name}" +${interestNames}`, 'success', 4000);
+          showToast(`🔗 "${match.name}" +${interestNames}`, 'success');
         } else {
-          showToast(`\u2705 "${match.name}" ${t('dedup.alreadyExists')}`, 'info', 3000);
+          showToast(`✅ "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         }
       }
     } else if (action === 'addNew') {
@@ -6345,7 +6340,7 @@ const FouFouApp = () => {
         addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
       } else {
         addCustomLocation(closeAfter);
-        showToast('\u2705 ' + t('trail.saved'), 'success');
+        showToast('✅ ' + t('trail.saved'), 'success');
       }
     }
     
@@ -7141,7 +7136,7 @@ const FouFouApp = () => {
                 key={item.view}
                 onClick={() => {
                   if (item.view === 'settings' && !isAdmin) {
-                    showToast(t('auth.needAdmin') || 'נדרשת הרשאת מנהל', 'warning');
+                    showToast(t('auth.needAdmin'), 'warning');
                     setShowHeaderMenu(false);
                     return;
                   }
@@ -7174,7 +7169,7 @@ const FouFouApp = () => {
               }}
             >
               <span style={{ fontSize: '15px' }}>{authUser ? '👤' : '🔑'}</span>
-              <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous') || 'אנונימי')) : (t('auth.signIn') || 'התחבר')}</span>
+              <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous'))) : (t('auth.signIn') || 'התחבר')}</span>
               {authUser && <span style={{ fontSize: '9px', marginRight: 'auto', marginLeft: '4px', padding: '1px 5px', borderRadius: '4px', background: isAdmin ? '#fef2f2' : isEditor ? '#f3e8ff' : '#f3f4f6', color: isAdmin ? '#dc2626' : isEditor ? '#7c3aed' : '#9ca3af' }}>{isAdmin ? 'Admin' : isEditor ? 'Editor' : ''}{roleOverride !== null ? ' 🎭' : ''}</span>}
             </button>
             {isRealAdmin && (
@@ -7188,7 +7183,7 @@ const FouFouApp = () => {
                 }}
               >
                 <span style={{ fontSize: '15px' }}>👥</span>
-                <span>{t('auth.userManagement') || 'ניהול משתמשים'}</span>
+                <span>{t('auth.userManagement')}</span>
               </button>
             )}
           </div>
@@ -7356,7 +7351,7 @@ const FouFouApp = () => {
                           if (isSkipped) return;
                           if (isFavorite) {
                             if (!isFavorite.mapsUrl && !isFavorite.googlePlaceId && !isFavorite.placeId && !isFavorite.address) {
-                              showToast(t('places.favoriteNotOnGoogle') || '📍 מקום מועדף', 'info');
+                              showToast(t('places.favoriteNotOnGoogle'), 'info');
                             }
                             setModalImage(isFavorite.uploadedImage || '__placeholder__');
                             setModalImageCtx({ description: isFavorite.description, location: isFavorite });
@@ -8016,7 +8011,7 @@ const FouFouApp = () => {
                 {isReoptimizing && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(239,246,255,0.85)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', gap: '8px' }}>
                     <div style={{ width: '28px', height: '28px', border: '3px solid #e5e7eb', borderTopColor: '#6d28d9', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: '600' }}>{t('route.reoptimizing') || 'מסדר מסלול...'}</span>
+                    <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: '600' }}>{t('route.reoptimizing')}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-2">
@@ -8130,7 +8125,7 @@ const FouFouApp = () => {
                                         e.preventDefault();
                                         const cl = customLocations.find(loc => loc.name === stop.name);
                                         if (cl) {
-                                          showToast(t('places.favoriteNotOnGoogle') || '📍 מקום מועדף — לא קיים בגוגל', 'info');
+                                          showToast(t('places.favoriteNotOnGoogle'), 'info');
                                           setModalImage(cl.uploadedImage || '__placeholder__');
                                           setModalImageCtx({ description: cl.description, location: cl });
                                           setShowImageModal(true);
@@ -8221,7 +8216,7 @@ const FouFouApp = () => {
                                           marginInlineStart: 'auto', fontWeight: '500'
                                         }}
                                         title={isDisabled ? t('trail.unskip') : t('trail.skip')}
-                                      >{isDisabled ? ('▶ ' + (t('trail.unskip') || 'חזור')) : ('⏸ ' + (t('trail.skip') || 'דלג'))}</span>
+                                      >{isDisabled ? ('▶ ' + (t('trail.unskip'))) : ('⏸ ' + (t('trail.skip')))}</span>
                                       {/* Trash for manually added stops — inline at end of row */}
                                       {stop.manuallyAdded && (
                                         <button
@@ -8433,7 +8428,7 @@ const FouFouApp = () => {
                           if (navigator.share) { navigator.share({ title: routeName, text: shareText }); }
                           else { navigator.clipboard.writeText(shareText); showToast(t('route.routeCopied'), 'success'); }
                         }, disabled: !route?.optimized },
-                        { icon: route.name ? '✓' : '⬇', label: route.name ? `${t('route.savedAs')} ${route.name}` : ((!authUser || authUser.isAnonymous) ? (t('auth.loginToSave') || 'התחבר כדי לשמור') : t('route.saveRoute')), action: () => {
+                        { icon: route.name ? '✓' : '⬇', label: route.name ? `${t('route.savedAs')} ${route.name}` : ((!authUser || authUser.isAnonymous) ? (t('auth.loginToSave')) : t('route.saveRoute')), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                           setShowRouteMenu(false);
                           if (!route.name && route?.optimized) quickSaveRoute();
@@ -8930,12 +8925,12 @@ const FouFouApp = () => {
                 if (batchCount === 0) return null;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: filterImportBatch ? '#dcfce7' : '#f0fdf4', border: `1px solid ${filterImportBatch ? '#86efac' : '#bbf7d0'}`, borderRadius: '8px', padding: '4px 10px', marginBottom: '6px', fontSize: '11px' }}>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>📦 {t('import.lastImport') || 'Last import'}: {batchCount} {t('route.places') || 'places'}</span>
+                    <span style={{ fontWeight: 'bold', color: '#166534' }}>📦 {t('import.lastImport')}: {batchCount} {t('route.places') || 'places'}</span>
                     <button
                       onClick={() => setFilterImportBatch(!filterImportBatch)}
                       style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer',
                         background: filterImportBatch ? '#16a34a' : '#e5e7eb', color: filterImportBatch ? 'white' : '#374151' }}
-                    >{filterImportBatch ? (t('import.showAll') || 'Show all') : (t('import.filterImport') || 'Filter')}</button>
+                    >{filterImportBatch ? (t('import.showAll')) : (t('import.filterImport'))}</button>
                   </div>
                 );
               })()}
@@ -9040,7 +9035,7 @@ const FouFouApp = () => {
                                     style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                       ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                     }}
-                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
                                   >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
@@ -9093,7 +9088,7 @@ const FouFouApp = () => {
                                   style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                     ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                   }}
-                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
                                 >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
                               ); })()}
                               <button onClick={() => handleEditLocation(loc, flatNavList)}
@@ -10053,7 +10048,7 @@ const FouFouApp = () => {
             {/* Voice & Speech Rate */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect') || 'קול השמעה'}`}</h3>
+                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect')}`}</h3>
                 {ttsVoices.length > 0 && (
                 <select
                   value={selectedVoice}
@@ -10072,14 +10067,14 @@ const FouFouApp = () => {
                   }}
                   style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '12px', direction: 'ltr', marginBottom: '8px' }}
                 >
-                  <option value="">{t('settings.defaultVoice') || 'ברירת מחדל'}</option>
+                  <option value="">{t('settings.defaultVoice')}</option>
                   {ttsVoices.filter(v => v.lang === 'he-IL' || v.lang === 'en-US' || v.lang === 'en-GB').map(v => (
                     <option key={v.name} value={v.name}>{v.name} {v.localService ? '' : '☁️'}</option>
                   ))}
                 </select>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span className="text-xs font-bold text-gray-600">{`⏩ ${t('settings.speechRate') || 'קצב'}:`}</span>
+                  <span className="text-xs font-bold text-gray-600">{`⏩ ${t('settings.speechRate')}:`}</span>
                   {[0.7, 0.85, 1.0, 1.2, 1.5].map(rate => (
                     <button key={rate}
                       onClick={() => {
@@ -10148,7 +10143,7 @@ const FouFouApp = () => {
                   {ratingsRefreshProgress ? (
                     <>
                       <span className="animate-spin">⭐</span>
-                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated') || 'עודכנו'})</span>
+                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated')})</span>
                     </>
                   ) : (
                     <>
@@ -10177,7 +10172,7 @@ const FouFouApp = () => {
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={() => {
-                        if (myDrafts.length === 0) { showToast(t('settings.noDrafts') || 'אין טיוטות לאישור', 'info'); return; }
+                        if (myDrafts.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
                         showConfirm(`${t('settings.approveMyConfirm') || 'לאשר'} ${myDrafts.length} ${t('settings.myDrafts') || 'טיוטות שלי'}?`, () => {
                           let count = 0;
                           myDrafts.forEach(loc => {
@@ -10187,7 +10182,7 @@ const FouFouApp = () => {
                             }
                           });
                           setCustomLocations(prev => prev.map(l => myDrafts.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved') || 'אושרו'}`, 'success');
+                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
                         });
                       }}
                       disabled={myDrafts.length === 0}
@@ -10198,7 +10193,7 @@ const FouFouApp = () => {
                     {isAdmin && (
                     <button
                       onClick={() => {
-                        if (cityLocs.length === 0) { showToast(t('settings.noDrafts') || 'אין טיוטות לאישור', 'info'); return; }
+                        if (cityLocs.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
                         showConfirm(`${t('settings.approveAllConfirm') || 'לאשר'} ${cityLocs.length} ${t('settings.allDrafts') || 'טיוטות'}? (${myDrafts.length} ${t('settings.mine') || 'שלי'} + ${otherDrafts} ${t('settings.others') || 'אחרים'})`, () => {
                           let count = 0;
                           cityLocs.forEach(loc => {
@@ -10208,7 +10203,7 @@ const FouFouApp = () => {
                             }
                           });
                           setCustomLocations(prev => prev.map(l => cityLocs.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved') || 'אושרו'}`, 'success');
+                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
                         });
                       }}
                       disabled={cityLocs.length === 0}
@@ -10708,7 +10703,7 @@ const FouFouApp = () => {
                   { key: 'googleMaxWaypoints', label: t('sysParams.maxWaypoints'), desc: t('sysParams.maxWaypointsDesc'), min: 5, max: 25, step: 1, type: 'int' },
                   { key: 'defaultRadius', label: t('sysParams.defaultRadius'), desc: t('sysParams.defaultRadiusDesc'), min: 100, max: 5000, step: 100, type: 'int' },
                   { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
-                  { key: 'includeDrafts', label: t('sysParams.includeDrafts') || '✏️ כלול טיוטות', desc: t('sysParams.includeDraftsDesc') || 'הצג מקומות טיוטה במסלולים, מפות ורשימות', type: 'bool' },
+                  { key: 'includeDrafts', label: t('sysParams.includeDrafts'), desc: t('sysParams.includeDraftsDesc'), type: 'bool' },
                 ]},
                 { title: t('sysParams.sectionDedup'), icon: '🔍', color: '#8b5cf6', params: [
                   { key: 'dedupRadiusMeters', label: t('sysParams.dedupRadius'), desc: t('sysParams.dedupRadiusDesc'), min: 10, max: 200, step: 10, type: 'int' },
@@ -10725,7 +10720,7 @@ const FouFouApp = () => {
                   { key: 'timeConflictPenalty', label: t('sysParams.timePenalty'), desc: t('sysParams.timePenaltyDesc'), min: 0, max: 20, step: 1, type: 'int' },
                   { key: 'slotEarlyThreshold', label: t('sysParams.earlyThreshold'), desc: t('sysParams.earlyThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
                   { key: 'slotLateThreshold', label: t('sysParams.lateThreshold'), desc: t('sysParams.lateThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
-                  { key: 'speechMaxSeconds', label: t('sysParams.speechDuration') || '🎤 הקלטה (שניות)', desc: t('sysParams.speechDurationDesc') || 'משך הקלטה מרבי לתיאור קולי', min: 5, max: 60, step: 5, type: 'int' },
+                  { key: 'speechMaxSeconds', label: t('sysParams.speechDuration'), desc: t('sysParams.speechDurationDesc'), min: 5, max: 60, step: 5, type: 'int' },
                   { key: 'slotEndThreshold', label: t('sysParams.endThreshold'), desc: t('sysParams.endThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
                   { key: 'slotPenaltyMultiplier', label: t('sysParams.slotPenalty'), desc: t('sysParams.slotPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
                   { key: 'slotEndPenaltyMultiplier', label: t('sysParams.endPenalty'), desc: t('sysParams.endPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
@@ -11244,7 +11239,7 @@ const FouFouApp = () => {
                           {!ra && (
                             <button onClick={() => openReviewDialog(loc)}
                               style={{ fontSize: '9px', color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '0 4px', cursor: 'pointer' }}>
-                              ☆ {t('reviews.rate') || 'דרג'}
+                              ☆ {t('reviews.rate')}
                             </button>
                           )}
                         </div>
@@ -12046,7 +12041,7 @@ const FouFouApp = () => {
                           <span
                             onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
                             style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                          >☆ {t('reviews.rate') || 'דרג'}</span>
+                          >☆ {t('reviews.rate')}</span>
                         )}
                       </div>
                     );
@@ -13555,7 +13550,7 @@ const FouFouApp = () => {
                         <span
                           onClick={() => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); openReviewDialog(loc); }}
                           style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                        >☆ {t('reviews.rate') || 'דרג'}</span>
+                        >☆ {t('reviews.rate')}</span>
                       )}
                     </div>
                   );
@@ -13720,13 +13715,13 @@ const FouFouApp = () => {
                 <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', borderRadius: '10px', padding: '10px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', marginBottom: '6px' }}>
                     💬 {t('settings.myPastFeedback')}
-                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> \u2713 {t('places.handled') || 'טופל'}</span>}
+                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> ✓ {t('places.handled')}</span>}
                   </div>
                   <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => { setFeedbackText(myExisting.text); setFeedbackCategory(myExisting.category || 'general'); setEditingMyFeedback(true); }}
                       style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#dbeafe', border: '1px solid #93c5fd', fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', cursor: 'pointer' }}>
-                      \u270F\uFE0F {t('general.edit') || 'ערוך'}
+                      ✏️ {t('general.edit') || 'ערוך'}
                     </button>
                     <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(myExisting))}
                       style={{ padding: '6px 12px', borderRadius: '8px', background: '#fee2e2', border: '1px solid #fca5a5', fontSize: '12px', fontWeight: 'bold', color: '#dc2626', cursor: 'pointer' }}>
@@ -13740,7 +13735,7 @@ const FouFouApp = () => {
               {feedbackList.length > 0 && (
                 <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
-                    📋 {t('settings.allFeedback') || 'כל המשובים'} ({feedbackList.length})
+                    📋 {t('settings.allFeedback')} ({feedbackList.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {feedbackList.map(f => {
@@ -13753,7 +13748,7 @@ const FouFouApp = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '🐛' : f.category === 'idea' ? '💡' : '💭'}</span>
                                 {isOwn && <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }}>{t('general.me') || 'אני'}</span>}
-                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>\u2713</span>}
+                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>✓</span>}
                                 <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
                               </div>
                               <p style={{ fontSize: '12px', color: '#374151', margin: 0 }}>{f.text}</p>
@@ -14814,7 +14809,7 @@ const FouFouApp = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f0fdf4', borderRadius: '12px', marginBottom: '12px', border: '1px solid #bbf7d0' }}>
                   {authUser.photoURL && <img src={authUser.photoURL} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{authUser.displayName || authUser.email || (t('auth.anonymous') || 'אנונימי')}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{authUser.displayName || authUser.email || (t('auth.anonymous'))}</div>
                     {authUser.email && <div style={{ fontSize: '11px', color: '#6b7280' }}>{authUser.email}</div>}
                     <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>
                       {userRole === 2 ? '👑 Admin' : userRole === 1 ? '✏️ Editor' : '👤 ' + (t('auth.regular') || 'משתמש')}

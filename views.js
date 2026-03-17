@@ -288,7 +288,7 @@
                 onClick={() => {
                   if (item.view === 'settings' && !isAdmin) {
                     // Only admin can access settings
-                    showToast(t('auth.needAdmin') || 'נדרשת הרשאת מנהל', 'warning');
+                    showToast(t('auth.needAdmin'), 'warning');
                     setShowHeaderMenu(false);
                     return;
                   }
@@ -321,7 +321,7 @@
               }}
             >
               <span style={{ fontSize: '15px' }}>{authUser ? '👤' : '🔑'}</span>
-              <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous') || 'אנונימי')) : (t('auth.signIn') || 'התחבר')}</span>
+              <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous'))) : (t('auth.signIn') || 'התחבר')}</span>
               {authUser && <span style={{ fontSize: '9px', marginRight: 'auto', marginLeft: '4px', padding: '1px 5px', borderRadius: '4px', background: isAdmin ? '#fef2f2' : isEditor ? '#f3e8ff' : '#f3f4f6', color: isAdmin ? '#dc2626' : isEditor ? '#7c3aed' : '#9ca3af' }}>{isAdmin ? 'Admin' : isEditor ? 'Editor' : ''}{roleOverride !== null ? ' 🎭' : ''}</span>}
             </button>
             {isRealAdmin && (
@@ -335,7 +335,7 @@
                 }}
               >
                 <span style={{ fontSize: '15px' }}>👥</span>
-                <span>{t('auth.userManagement') || 'ניהול משתמשים'}</span>
+                <span>{t('auth.userManagement')}</span>
               </button>
             )}
           </div>
@@ -504,7 +504,7 @@
                           if (isSkipped) return;
                           if (isFavorite) {
                             if (!isFavorite.mapsUrl && !isFavorite.googlePlaceId && !isFavorite.placeId && !isFavorite.address) {
-                              showToast(t('places.favoriteNotOnGoogle') || '📍 מקום מועדף', 'info');
+                              showToast(t('places.favoriteNotOnGoogle'), 'info');
                             }
                             setModalImage(isFavorite.uploadedImage || '__placeholder__');
                             setModalImageCtx({ description: isFavorite.description, location: isFavorite });
@@ -1171,7 +1171,7 @@
                 {isReoptimizing && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(239,246,255,0.85)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', gap: '8px' }}>
                     <div style={{ width: '28px', height: '28px', border: '3px solid #e5e7eb', borderTopColor: '#6d28d9', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: '600' }}>{t('route.reoptimizing') || 'מסדר מסלול...'}</span>
+                    <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: '600' }}>{t('route.reoptimizing')}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-2">
@@ -1291,7 +1291,7 @@
                                         e.preventDefault();
                                         const cl = customLocations.find(loc => loc.name === stop.name);
                                         if (cl) {
-                                          showToast(t('places.favoriteNotOnGoogle') || '📍 מקום מועדף — לא קיים בגוגל', 'info');
+                                          showToast(t('places.favoriteNotOnGoogle'), 'info');
                                           setModalImage(cl.uploadedImage || '__placeholder__');
                                           setModalImageCtx({ description: cl.description, location: cl });
                                           setShowImageModal(true);
@@ -1382,7 +1382,7 @@
                                           marginInlineStart: 'auto', fontWeight: '500'
                                         }}
                                         title={isDisabled ? t('trail.unskip') : t('trail.skip')}
-                                      >{isDisabled ? ('▶ ' + (t('trail.unskip') || 'חזור')) : ('⏸ ' + (t('trail.skip') || 'דלג'))}</span>
+                                      >{isDisabled ? ('▶ ' + (t('trail.unskip'))) : ('⏸ ' + (t('trail.skip')))}</span>
                                       {/* Trash for manually added stops — inline at end of row */}
                                       {stop.manuallyAdded && (
                                         <button
@@ -1595,7 +1595,7 @@
                           if (navigator.share) { navigator.share({ title: routeName, text: shareText }); }
                           else { navigator.clipboard.writeText(shareText); showToast(t('route.routeCopied'), 'success'); }
                         }, disabled: !route?.optimized },
-                        { icon: route.name ? '✓' : '⬇', label: route.name ? `${t('route.savedAs')} ${route.name}` : ((!authUser || authUser.isAnonymous) ? (t('auth.loginToSave') || 'התחבר כדי לשמור') : t('route.saveRoute')), action: () => {
+                        { icon: route.name ? '✓' : '⬇', label: route.name ? `${t('route.savedAs')} ${route.name}` : ((!authUser || authUser.isAnonymous) ? (t('auth.loginToSave')) : t('route.saveRoute')), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                           setShowRouteMenu(false);
                           if (!route.name && route?.optimized) quickSaveRoute();
@@ -2095,12 +2095,12 @@
                 if (batchCount === 0) return null;
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: filterImportBatch ? '#dcfce7' : '#f0fdf4', border: `1px solid ${filterImportBatch ? '#86efac' : '#bbf7d0'}`, borderRadius: '8px', padding: '4px 10px', marginBottom: '6px', fontSize: '11px' }}>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>📦 {t('import.lastImport') || 'Last import'}: {batchCount} {t('route.places') || 'places'}</span>
+                    <span style={{ fontWeight: 'bold', color: '#166534' }}>📦 {t('import.lastImport')}: {batchCount} {t('route.places') || 'places'}</span>
                     <button
                       onClick={() => setFilterImportBatch(!filterImportBatch)}
                       style={{ padding: '2px 8px', borderRadius: '4px', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer',
                         background: filterImportBatch ? '#16a34a' : '#e5e7eb', color: filterImportBatch ? 'white' : '#374151' }}
-                    >{filterImportBatch ? (t('import.showAll') || 'Show all') : (t('import.filterImport') || 'Filter')}</button>
+                    >{filterImportBatch ? (t('import.showAll')) : (t('import.filterImport'))}</button>
                   </div>
                 );
               })()}
@@ -2205,7 +2205,7 @@
                                     style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                       ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                     }}
-                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
                                   >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
@@ -2258,7 +2258,7 @@
                                   style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                     ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                   }}
-                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate') || 'דרג')}
+                                  title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
                                 >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
                               ); })()}
                               <button onClick={() => handleEditLocation(loc, flatNavList)}
@@ -3229,7 +3229,7 @@
             {/* Voice & Speech Rate */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect') || 'קול השמעה'}`}</h3>
+                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect')}`}</h3>
                 {ttsVoices.length > 0 && (
                 <select
                   value={selectedVoice}
@@ -3248,14 +3248,14 @@
                   }}
                   style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '12px', direction: 'ltr', marginBottom: '8px' }}
                 >
-                  <option value="">{t('settings.defaultVoice') || 'ברירת מחדל'}</option>
+                  <option value="">{t('settings.defaultVoice')}</option>
                   {ttsVoices.filter(v => v.lang === 'he-IL' || v.lang === 'en-US' || v.lang === 'en-GB').map(v => (
                     <option key={v.name} value={v.name}>{v.name} {v.localService ? '' : '☁️'}</option>
                   ))}
                 </select>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span className="text-xs font-bold text-gray-600">{`⏩ ${t('settings.speechRate') || 'קצב'}:`}</span>
+                  <span className="text-xs font-bold text-gray-600">{`⏩ ${t('settings.speechRate')}:`}</span>
                   {[0.7, 0.85, 1.0, 1.2, 1.5].map(rate => (
                     <button key={rate}
                       onClick={() => {
@@ -3325,7 +3325,7 @@
                   {ratingsRefreshProgress ? (
                     <>
                       <span className="animate-spin">⭐</span>
-                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated') || 'עודכנו'})</span>
+                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated')})</span>
                     </>
                   ) : (
                     <>
@@ -3355,7 +3355,7 @@
                   <div style={{ display: 'flex', gap: '6px' }}>
                     <button
                       onClick={() => {
-                        if (myDrafts.length === 0) { showToast(t('settings.noDrafts') || 'אין טיוטות לאישור', 'info'); return; }
+                        if (myDrafts.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
                         showConfirm(`${t('settings.approveMyConfirm') || 'לאשר'} ${myDrafts.length} ${t('settings.myDrafts') || 'טיוטות שלי'}?`, () => {
                           let count = 0;
                           myDrafts.forEach(loc => {
@@ -3365,7 +3365,7 @@
                             }
                           });
                           setCustomLocations(prev => prev.map(l => myDrafts.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved') || 'אושרו'}`, 'success');
+                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
                         });
                       }}
                       disabled={myDrafts.length === 0}
@@ -3376,7 +3376,7 @@
                     {isAdmin && (
                     <button
                       onClick={() => {
-                        if (cityLocs.length === 0) { showToast(t('settings.noDrafts') || 'אין טיוטות לאישור', 'info'); return; }
+                        if (cityLocs.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
                         showConfirm(`${t('settings.approveAllConfirm') || 'לאשר'} ${cityLocs.length} ${t('settings.allDrafts') || 'טיוטות'}? (${myDrafts.length} ${t('settings.mine') || 'שלי'} + ${otherDrafts} ${t('settings.others') || 'אחרים'})`, () => {
                           let count = 0;
                           cityLocs.forEach(loc => {
@@ -3386,7 +3386,7 @@
                             }
                           });
                           setCustomLocations(prev => prev.map(l => cityLocs.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved') || 'אושרו'}`, 'success');
+                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
                         });
                       }}
                       disabled={cityLocs.length === 0}
@@ -3904,7 +3904,7 @@
                   { key: 'googleMaxWaypoints', label: t('sysParams.maxWaypoints'), desc: t('sysParams.maxWaypointsDesc'), min: 5, max: 25, step: 1, type: 'int' },
                   { key: 'defaultRadius', label: t('sysParams.defaultRadius'), desc: t('sysParams.defaultRadiusDesc'), min: 100, max: 5000, step: 100, type: 'int' },
                   { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
-                  { key: 'includeDrafts', label: t('sysParams.includeDrafts') || '✏️ כלול טיוטות', desc: t('sysParams.includeDraftsDesc') || 'הצג מקומות טיוטה במסלולים, מפות ורשימות', type: 'bool' },
+                  { key: 'includeDrafts', label: t('sysParams.includeDrafts'), desc: t('sysParams.includeDraftsDesc'), type: 'bool' },
                 ]},
                 { title: t('sysParams.sectionDedup'), icon: '🔍', color: '#8b5cf6', params: [
                   { key: 'dedupRadiusMeters', label: t('sysParams.dedupRadius'), desc: t('sysParams.dedupRadiusDesc'), min: 10, max: 200, step: 10, type: 'int' },
@@ -3921,7 +3921,7 @@
                   { key: 'timeConflictPenalty', label: t('sysParams.timePenalty'), desc: t('sysParams.timePenaltyDesc'), min: 0, max: 20, step: 1, type: 'int' },
                   { key: 'slotEarlyThreshold', label: t('sysParams.earlyThreshold'), desc: t('sysParams.earlyThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
                   { key: 'slotLateThreshold', label: t('sysParams.lateThreshold'), desc: t('sysParams.lateThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
-                  { key: 'speechMaxSeconds', label: t('sysParams.speechDuration') || '🎤 הקלטה (שניות)', desc: t('sysParams.speechDurationDesc') || 'משך הקלטה מרבי לתיאור קולי', min: 5, max: 60, step: 5, type: 'int' },
+                  { key: 'speechMaxSeconds', label: t('sysParams.speechDuration'), desc: t('sysParams.speechDurationDesc'), min: 5, max: 60, step: 5, type: 'int' },
                   { key: 'slotEndThreshold', label: t('sysParams.endThreshold'), desc: t('sysParams.endThresholdDesc'), min: 0.1, max: 0.9, step: 0.05, type: 'float' },
                   { key: 'slotPenaltyMultiplier', label: t('sysParams.slotPenalty'), desc: t('sysParams.slotPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
                   { key: 'slotEndPenaltyMultiplier', label: t('sysParams.endPenalty'), desc: t('sysParams.endPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
@@ -4447,7 +4447,7 @@
                           {!ra && (
                             <button onClick={() => openReviewDialog(loc)}
                               style={{ fontSize: '9px', color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '0 4px', cursor: 'pointer' }}>
-                              ☆ {t('reviews.rate') || 'דרג'}
+                              ☆ {t('reviews.rate')}
                             </button>
                           )}
                         </div>
