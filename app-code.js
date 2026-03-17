@@ -451,6 +451,8 @@ const FouFouApp = () => {
   });
   const [skippedTrailStops, setSkippedTrailStops] = useState(new Set());
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+  const [quickAddPlace, setQuickAddPlace] = useState(null); // Google place being added
   const [fabPos, setFabPos] = useState(() => {
     try { const s = localStorage.getItem('foufou_fab_pos'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   });
@@ -5875,40 +5877,50 @@ const FouFouApp = () => {
     };
     locationToAdd.mapsUrl = window.BKK.getGoogleMapsUrl(locationToAdd);
     locationToAdd = sanitizeMapsUrl(locationToAdd);
-    
-    if (isFirebaseAvailable && database) {
-      try {
-        const ref = await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
-        try {
-          await Promise.race([
-            ref.once('value'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-          ]);
-          addDebugLog('ADD', `Added "${place.name}" to Firebase (server verified)`);
-          showToast(`✅ "${place.name}" ${t("places.addedToYourList")}`, 'success');
-        } catch (e) {
-          showToast(`💾 "${place.name}" — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
-        }
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        setTimeout(() => handleEditLocation(locationToAdd), 300);
-        return true;
-      } catch (error) {
-        console.error('[FIREBASE] Error adding Google place, saving to pending:', error);
-        addDebugLog('ERROR', `Failed to add "${place.name}", saved to pending`, error);
-        saveToPending(locationToAdd);
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        return false;
-      }
-    } else {
-      const updated = [...customLocations, locationToAdd];
-      setCustomLocations(updated);
-      showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
-      setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-      setTimeout(() => handleEditLocation(locationToAdd), 300);
-      return true;
-    }
+
+    setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+    setQuickAddPlace(locationToAdd);
+    setShowQuickAddDialog(true);
+    return true;
   };
   
+  const saveQuickAddPlace = async (enriched, rating) => {
+    const placeId = enriched.id || enriched.name;
+    setAddingPlaceIds(prev => [...prev, placeId]);
+    let saved = null;
+    if (isFirebaseAvailable && database) {
+      try {
+        const ref = await database.ref(`cities/${selectedCityId}/locations`).push(enriched);
+        saved = { ...enriched, firebaseKey: ref.key };
+        addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
+      } catch (error) {
+        saveToPending(enriched);
+        saved = enriched;
+        showToast(`💾 "${enriched.name}" — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
+      }
+    } else {
+      setCustomLocations(prev => [...prev, enriched]);
+      saved = enriched;
+    }
+    if (rating && rating.score > 0 && saved && isFirebaseAvailable && database) {
+      try {
+        const pk = (enriched.name || '').replace(/[.#$/\[\]]/g, '_');
+        const uid = authUser?.uid || window.BKK.visitorId;
+        await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
+          score: rating.score,
+          text: rating.text || '',
+          timestamp: Date.now(),
+          uid,
+          userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+        });
+      } catch(e) { /* rating save failure is non-critical */ }
+    }
+    setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+    setShowQuickAddDialog(false);
+    setQuickAddPlace(null);
+    showToast(`✅ "${enriched.name}" ${t('places.addedToYourList')}`, 'success');
+  };
+
   const handleImportMerge = async () => {
     let addedInterests = 0;
     let skippedInterests = 0;
@@ -7276,7 +7288,7 @@ const FouFouApp = () => {
             <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
             {renderContextHint('hint_trail')}
 
-            {/* Camera Button row — doc button on left (after camera in DOM = left in RTL) */}
+            {/* Camera Button row — doc button on left (after camera in DOM = left in RTL, closes naturally (ok) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
@@ -7432,25 +7444,7 @@ const FouFouApp = () => {
                         } else {
                           return (
                             <button
-                              onClick={() => {
-                                const googleRating = stop.description && stop.description.match(/⭐\s*([\d.]+)\s*\((\d+)/);
-                                const ratingInfo = googleRating ? `\n${t('trail.googleRating')}: ⭐ ${googleRating[1]} (${googleRating[2]} ${t('reviews.title')})` : '';
-                                showConfirm(
-                                  t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo,
-                                  () => {
-                                    addGooglePlaceToCustom(stop).then(result => {
-                                      if (result !== false) {
-                                        setTimeout(() => {
-                                          const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
-                                            customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
-                                          if (added) handleEditLocation(added);
-                                        }, 500);
-                                      }
-                                    });
-                                  },
-                                  { confirmLabel: t('trail.addGoogleConfirm'), confirmColor: '#059669' }
-                                );
-                              }}
+                              onClick={() => (addGooglePlaceToCustom(stop))}
                               style={{
                                 background: '#f0fdf4', border: '1px solid #6ee7b7',
                                 borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
@@ -8354,14 +8348,7 @@ const FouFouApp = () => {
                                     const isAdding = addingPlaceIds.includes(placeId);
                                     return (
                                       <button
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          showConfirm(
-                                            t('trail.addGoogleToFavorites').replace('{name}', stop.name),
-                                            () => addGooglePlaceToCustom(stop),
-                                            { confirmLabel: t('trail.addGoogleConfirm') || t('general.confirm'), confirmColor: '#059669' }
-                                          );
-                                        }}
+                                        onClick={(e) => { e.preventDefault(); addGooglePlaceToCustom(stop); }}
                                         disabled={isAdding}
                                         title={t('route.addToMyList')}
                                         style={{
@@ -14479,6 +14466,189 @@ const FouFouApp = () => {
           </div>
         );
       })()}
+
+        {/* ===== QUICK ADD PLACE DIALOG ===== */}
+        {showQuickAddDialog && quickAddPlace && (() => {
+          const [qaName, setQaName] = React.useState(quickAddPlace.name || '');
+          const [qaDescription, setQaDescription] = React.useState('');
+          const [qaNotes, setQaNotes] = React.useState('');
+          const [qaInterests, setQaInterests] = React.useState(quickAddPlace.interests || []);
+          const [qaRatingScore, setQaRatingScore] = React.useState(0);
+          const [qaRatingText, setQaRatingText] = React.useState('');
+          const [qaImage, setQaImage] = React.useState(null);
+          const [qaRecordingField, setQaRecordingField] = React.useState(null);
+          const qaStopRecRef = React.useRef(null);
+          const qaFileRef = React.useRef(null);
+
+          const startQaRecording = (field) => {
+            if (qaRecordingField) { if (qaStopRecRef.current) qaStopRecRef.current(); return; }
+            setQaRecordingField(field);
+            const stop = window.BKK.startSpeechToText({
+              maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+              onResult: (text) => {
+                if (field === 'description') setQaDescription(prev => (prev ? prev + ' ' : '') + text);
+                if (field === 'notes') setQaNotes(prev => (prev ? prev + ' ' : '') + text);
+                if (field === 'rating') setQaRatingText(prev => (prev ? prev + ' ' : '') + text);
+              },
+              onEnd: () => { setQaRecordingField(null); qaStopRecRef.current = null; },
+              onError: () => { setQaRecordingField(null); qaStopRecRef.current = null; }
+            });
+            qaStopRecRef.current = stop;
+          };
+
+          const stopQaRecording = () => {
+            if (qaStopRecRef.current) qaStopRecRef.current();
+            qaStopRecRef.current = null;
+            setQaRecordingField(null);
+          };
+
+          const handleQaImage = (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => setQaImage(ev.target.result);
+            reader.readAsDataURL(file);
+          };
+
+          const handleSave = () => {
+            const enriched = {
+              ...quickAddPlace,
+              name: qaName.trim() || quickAddPlace.name,
+              description: qaDescription.trim(),
+              notes: qaNotes.trim(),
+              interests: qaInterests.length > 0 ? qaInterests : quickAddPlace.interests,
+              uploadedImage: qaImage || null,
+            };
+            saveQuickAddPlace(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
+          };
+
+          const activeInterests = allInterestOptions.filter(opt => {
+            if (opt.adminStatus === 'hidden') return false;
+            if (opt.adminStatus === 'draft' && !isUnlocked) return false;
+            if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
+            if (opt.custom || opt.id?.startsWith('custom_')) {
+              return interestStatus[opt.id] !== false;
+            }
+            return true;
+          });
+
+          const MicBtn = ({ field }) => !window.BKK.speechSupported ? null : (
+            <button type="button" onClick={() => qaRecordingField === field ? stopQaRecording() : startQaRecording(field)}
+              style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
+                background: qaRecordingField === field ? '#ef4444' : '#f3f4f6',
+                color: qaRecordingField === field ? 'white' : '#6b7280', fontSize: '15px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: qaRecordingField === field ? 'pulse 1s ease-in-out infinite' : 'none' }}
+            >{qaRecordingField === field ? '⏹️' : '🎤'}</button>
+          );
+
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-end justify-center" style={{ zIndex: 10300 }}>
+              <div style={{ background: 'white', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '500px', maxHeight: '92vh', overflow: 'auto', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                {/* Header */}
+                <div style={{ background: 'linear-gradient(135deg, #059669, #047857)', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '20px 20px 0 0', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '15px' }}>⭐ {t('trail.addToFavorites')}</span>
+                  <button onClick={() => { setShowQuickAddDialog(false); setQuickAddPlace(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>
+
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Name */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', display: 'block', marginBottom: '4px' }}>{t('general.name') || t('addLocation.name')}</label>
+                    <input value={qaName} onChange={e => setQaName(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  </div>
+
+                  {/* Image */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', display: 'block', marginBottom: '6px' }}>{t('places.addPhoto') || t('places.camera')}</label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {qaImage
+                        ? <img src={qaImage} alt="" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }} />
+                        : <div style={{ width: '64px', height: '64px', background: '#f3f4f6', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>📷</div>
+                      }
+                      <button type="button" onClick={() => qaFileRef.current?.click()}
+                        style={{ flex: 1, padding: '8px', background: '#f0fdf4', border: '1px dashed #6ee7b7', borderRadius: '10px', color: '#059669', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                        {qaImage ? t('places.addPhoto') : `📸 ${t('places.addPhoto')}`}
+                      </button>
+                      <input ref={qaFileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleQaImage} />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', display: 'block', marginBottom: '4px' }}>{t('places.description') || 'תיאור'}</label>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                      <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)} rows={2}
+                        style={{ flex: 1, padding: '8px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
+                      <MicBtn field="description" />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', display: 'block', marginBottom: '4px' }}>{t('addLocation.notes') || 'הערות'}</label>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                      <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)} rows={2}
+                        style={{ flex: 1, padding: '8px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
+                      <MicBtn field="notes" />
+                    </div>
+                  </div>
+
+                  {/* Interests */}
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#6b7280', display: 'block', marginBottom: '6px' }}>{t('general.interests')}</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {activeInterests.map(opt => {
+                        const sel = qaInterests.includes(opt.id);
+                        const iconRaw = opt.icon || '';
+                        const isImg = iconRaw.startsWith('data:') || iconRaw.startsWith('http');
+                        return (
+                          <button key={opt.id} type="button" onClick={() => setQaInterests(prev => sel ? prev.filter(i => i !== opt.id) : [...prev, opt.id])}
+                            style={{ padding: '4px 10px', borderRadius: '20px', border: `2px solid ${sel ? '#2563eb' : '#e5e7eb'}`, background: sel ? '#eff6ff' : 'white', color: sel ? '#2563eb' : '#6b7280', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {isImg ? <img src={iconRaw} alt="" style={{ width: '14px', height: '14px' }} /> : <span>{iconRaw}</span>}
+                            {tLabel(opt) || opt.labelEn}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  <div style={{ background: '#fefce8', borderRadius: '12px', padding: '12px', border: '1px solid #fde68a' }}>
+                    <label style={{ fontSize: '11px', fontWeight: '600', color: '#92400e', display: 'block', marginBottom: '8px' }}>⭐ {t('reviews.rate')} ({t('general.optional') || 'לא חובה'})</label>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                      {[1,2,3,4,5].map(n => (
+                        <button key={n} type="button" onClick={() => setQaRatingScore(qaRatingScore === n ? 0 : n)}
+                          style={{ fontSize: '24px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.3, lineHeight: 1 }}>⭐</button>
+                      ))}
+                    </div>
+                    {qaRatingScore > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                        <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
+                          placeholder={t('reviews.writeReview') || 'כתוב חוות דעת...'}
+                          style={{ flex: 1, padding: '8px', border: '1px solid #fde68a', borderRadius: '10px', fontSize: '13px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }} />
+                        <MicBtn field="rating" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer buttons */}
+                  <div style={{ display: 'flex', gap: '8px', paddingBottom: '8px' }}>
+                    <button onClick={handleSave}
+                      style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #059669, #047857)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      💾 {t('general.save')}
+                    </button>
+                    <button onClick={() => { setShowQuickAddDialog(false); setQuickAddPlace(null); }}
+                      style={{ flex: 1, padding: '12px', background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      {t('general.cancel')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ===== QUICK CAPTURE DIALOG (Light) ===== */}
         {showQuickCapture && (

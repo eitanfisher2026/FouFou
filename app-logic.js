@@ -459,6 +459,8 @@
   });
   const [skippedTrailStops, setSkippedTrailStops] = useState(new Set());
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
+  const [quickAddPlace, setQuickAddPlace] = useState(null); // Google place being added
   const [fabPos, setFabPos] = useState(() => {
     try { const s = localStorage.getItem('foufou_fab_pos'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   });
@@ -6567,47 +6569,57 @@
     };
     locationToAdd.mapsUrl = window.BKK.getGoogleMapsUrl(locationToAdd);
     locationToAdd = sanitizeMapsUrl(locationToAdd);
-    
-    // Save to Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
-      try {
-        const ref = await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
-        // Verify server received it by reading back
-        try {
-          await Promise.race([
-            ref.once('value'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-          ]);
-          addDebugLog('ADD', `Added "${place.name}" to Firebase (server verified)`);
-          showToast(`✅ "${place.name}" ${t("places.addedToYourList")}`, 'success');
-        } catch (e) {
-          // Firebase SDK has it cached, will auto-sync
-          showToast(`💾 "${place.name}" — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
-        }
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        // Auto-open edit dialog for the newly added place
-        setTimeout(() => handleEditLocation(locationToAdd), 300);
-        return true;
-      } catch (error) {
-        console.error('[FIREBASE] Error adding Google place, saving to pending:', error);
-        addDebugLog('ERROR', `Failed to add "${place.name}", saved to pending`, error);
-        saveToPending(locationToAdd);
-        setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        return false;
-      }
-    } else {
-      const updated = [...customLocations, locationToAdd];
-      setCustomLocations(updated);
-      showToast(`"${place.name}" ${t("places.addedToYourList")}`, 'success');
-      setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-      setTimeout(() => handleEditLocation(locationToAdd), 300);
-      return true;
-    }
+
+    // Open quick-add dialog for user to enrich and optionally rate before saving
+    setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+    setQuickAddPlace(locationToAdd);
+    setShowQuickAddDialog(true);
+    return true;
   };
+  
   
 
   
-  // Import function - add new only, skip existing
+  // Save a place from the QuickAddDialog (enriched by user before saving)
+  const saveQuickAddPlace = async (enriched, rating) => {
+    const placeId = enriched.id || enriched.name;
+    setAddingPlaceIds(prev => [...prev, placeId]);
+    let saved = null;
+    if (isFirebaseAvailable && database) {
+      try {
+        const ref = await database.ref(`cities/${selectedCityId}/locations`).push(enriched);
+        saved = { ...enriched, firebaseKey: ref.key };
+        addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
+      } catch (error) {
+        saveToPending(enriched);
+        saved = enriched;
+        showToast(`💾 "${enriched.name}" — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
+      }
+    } else {
+      setCustomLocations(prev => [...prev, enriched]);
+      saved = enriched;
+    }
+    // Save rating if provided
+    if (rating && rating.score > 0 && saved && isFirebaseAvailable && database) {
+      try {
+        const pk = (enriched.name || '').replace(/[.#$/\[\]]/g, '_');
+        const uid = authUser?.uid || window.BKK.visitorId;
+        await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
+          score: rating.score,
+          text: rating.text || '',
+          timestamp: Date.now(),
+          uid,
+          userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+        });
+      } catch(e) { /* rating save failure is non-critical */ }
+    }
+    setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+    setShowQuickAddDialog(false);
+    setQuickAddPlace(null);
+    showToast(`✅ "${enriched.name}" ${t('places.addedToYourList')}`, 'success');
+  };
+
+  
   const handleImportMerge = async () => {
     let addedInterests = 0;
     let skippedInterests = 0;

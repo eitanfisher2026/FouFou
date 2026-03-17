@@ -387,7 +387,7 @@
             <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
             {renderContextHint('hint_trail')}
 
-            {/* Camera Button row — doc button on left (after camera in DOM = left in RTL) */}
+            {/* Camera Button row — doc button on left (after camera in DOM = left in RTL, closes naturally (ok) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
@@ -543,28 +543,10 @@
                             >{ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : `${t('trail.ratePlace')} ⭐`}</button>
                           );
                         } else {
-                          // Not a favorite — invite to add
+                          // Not a favorite — open QuickAddDialog
                           return (
                             <button
-                              onClick={() => {
-                                const googleRating = stop.description && stop.description.match(/⭐\s*([\d.]+)\s*\((\d+)/);
-                                const ratingInfo = googleRating ? `\n${t('trail.googleRating')}: ⭐ ${googleRating[1]} (${googleRating[2]} ${t('reviews.title')})` : '';
-                                showConfirm(
-                                  t('trail.addGoogleToFavorites').replace('{name}', stop.name) + ratingInfo,
-                                  () => {
-                                    addGooglePlaceToCustom(stop).then(result => {
-                                      if (result !== false) {
-                                        setTimeout(() => {
-                                          const added = customLocations.find(cl => cl.name.toLowerCase().trim() === stop.name.toLowerCase().trim()) ||
-                                            customLocations.find(cl => cl.lat && stop.lat && Math.abs(cl.lat - stop.lat) < 0.0001 && Math.abs(cl.lng - stop.lng) < 0.0001);
-                                          if (added) handleEditLocation(added);
-                                        }, 500);
-                                      }
-                                    });
-                                  },
-                                  { confirmLabel: t('trail.addGoogleConfirm'), confirmColor: '#059669' }
-                                );
-                              }}
+                              onClick={() => (addGooglePlaceToCustom(stop))}
                               style={{
                                 background: '#f0fdf4', border: '1px solid #6ee7b7',
                                 borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
@@ -1482,14 +1464,7 @@
                                     const isAdding = addingPlaceIds.includes(placeId);
                                     return (
                                       <button
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          showConfirm(
-                                            t('trail.addGoogleToFavorites').replace('{name}', stop.name),
-                                            () => addGooglePlaceToCustom(stop),
-                                            { confirmLabel: t('trail.addGoogleConfirm') || t('general.confirm'), confirmColor: '#059669' }
-                                          );
-                                        }}
+                                        onClick={(e) => { e.preventDefault(); addGooglePlaceToCustom(stop); }}
                                         disabled={isAdding}
                                         title={t('route.addToMyList')}
                                         style={{
