@@ -1573,11 +1573,6 @@
                       {[
                         { icon: '+', label: t('route.addManualStop').replace('➕ ', ''), action: () => { setShowRouteMenu(false); setShowManualAddDialog(true); } },
                         { icon: '≡', label: t('route.reorderStops'), action: () => { setShowRouteMenu(false); reorderOriginalStopsRef.current = route?.stops ? [...route.stops] : null; setShowRoutePreview(true); }, disabled: !route?.optimized },
-                        ...(isAdmin ? [{ icon: '✦', label: t('route.helpMePlan'), action: () => {
-                          setShowRouteMenu(false);
-                          const result = runSmartPlan({ skipSmartSelect: true });
-                          if (result) showToast(`✦ ${result.optimized.length} ${t('route.stops')}`, 'success');
-                        }}] : []),
                         { icon: '↗', label: t('general.shareRoute'), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                           setShowRouteMenu(false);

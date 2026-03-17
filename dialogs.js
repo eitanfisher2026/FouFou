@@ -3234,6 +3234,7 @@
                     const changed = orig && curr && (orig.length !== curr.length || orig.some((s, i) => s.name !== curr[i]?.name));
                     setShowRoutePreview(false);
                     if (changed) {
+                      userManualOrderRef.current = true;
                       setRoute(prev => prev ? { ...prev, optimized: false } : prev);
                       showToast(t('route.orderUpdated'), 'success');
                     }

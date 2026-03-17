@@ -419,6 +419,7 @@
   
   const [showRoutePreview, setShowRoutePreview] = useState(false); // Route reorder dialog
   const reorderOriginalStopsRef = React.useRef(null); // Snapshot of stops before reorder
+  const userManualOrderRef = React.useRef(false); // True after user manually reordered stops
   const [showRouteMenu, setShowRouteMenu] = useState(false); // Hamburger menu in route results
   const [showHeaderMenu, setShowHeaderMenu] = useState(false); // Main hamburger menu in header
   const [routeChoiceMade, setRouteChoiceMade] = useState(null); // null | 'manual' — controls wizard step 3 split
@@ -1347,7 +1348,11 @@
     const changed = startPointCoords?.lat !== prev?.lat || startPointCoords?.lng !== prev?.lng;
     prevStartPointRef.current = startPointCoords;
     if (changed && startPointCoords?.lat && startPointCoords?.lng && route?.stops?.length >= 2) {
-      scheduleReoptimize();
+      if (userManualOrderRef.current) {
+        showToast(t('route.manualOrderKept'), 'info');
+      } else {
+        scheduleReoptimize();
+      }
     }
   }, [startPointCoords]);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false); // legacy
@@ -5321,17 +5326,39 @@
         return;
       }
 
-      // Sort uniqueStops for display: time-conflict stops go to the bottom,
-      // even if they are custom/favorites. Within non-conflict: custom first, then rating.
+      // Sort uniqueStops for display: slot position first, then time-conflict, then custom/rating.
       {
         const timeMode = getEffectiveTimeMode();
+        // Same slot mapping as optimizeStopOrder — single source of truth
+        const slotOrder = { early: 1, any: 2, bookend: 2, middle: 3, late: 4, end: 4 };
+        const defaultSlotForId = {
+          cafes: 'bookend', food: 'middle', restaurants: 'middle',
+          markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+          architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+          artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+          nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+        };
+        const getSlotOrder = (stop) => {
+          for (const id of (stop.interests || [])) {
+            if (!searchInterests.includes(id)) continue;
+            const cfgSlot = interestConfig[id]?.routeSlot;
+            const slot = cfgSlot || defaultSlotForId[id] || 'any';
+            return slotOrder[slot] ?? 2;
+          }
+          return 2;
+        };
         uniqueStops.sort((a, b) => {
+          // 1. Slot position (early before middle before end)
+          const aSlot = getSlotOrder(a);
+          const bSlot = getSlotOrder(b);
+          if (aSlot !== bSlot) return aSlot - bSlot;
+          // 2. Time conflict (conflicting goes last within same slot)
           const aTime = getStopBestTime(a);
           const bTime = getStopBestTime(b);
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
           const bConflict = (bTime !== 'anytime' && bTime !== timeMode) ? 1 : 0;
           if (aConflict !== bConflict) return aConflict - bConflict;
-          // Within same conflict group: custom first, then rating
+          // 3. Custom first, then rating
           const aCustom = (a.source === 'custom' || a.custom) ? 1 : 0;
           const bCustom = (b.source === 'custom' || b.custom) ? 1 : 0;
           if (aCustom !== bCustom) return bCustom - aCustom;
@@ -5429,6 +5456,7 @@
       });
 
       setRoute(newRoute);
+      userManualOrderRef.current = false; // new route resets manual order flag
 
       // ── Friendly stats toast — interests ordered as they appear in route ──
       (() => {

@@ -416,6 +416,7 @@ const FouFouApp = () => {
   
   const [showRoutePreview, setShowRoutePreview] = useState(false); // Route reorder dialog
   const reorderOriginalStopsRef = React.useRef(null); // Snapshot of stops before reorder
+  const userManualOrderRef = React.useRef(false); // True after user manually reordered stops
   const [showRouteMenu, setShowRouteMenu] = useState(false); // Hamburger menu in route results
   const [showHeaderMenu, setShowHeaderMenu] = useState(false); // Main hamburger menu in header
   const [routeChoiceMade, setRouteChoiceMade] = useState(null); // null | 'manual' — controls wizard step 3 split
@@ -1249,7 +1250,11 @@ const FouFouApp = () => {
     const changed = startPointCoords?.lat !== prev?.lat || startPointCoords?.lng !== prev?.lng;
     prevStartPointRef.current = startPointCoords;
     if (changed && startPointCoords?.lat && startPointCoords?.lng && route?.stops?.length >= 2) {
-      scheduleReoptimize();
+      if (userManualOrderRef.current) {
+        showToast(t('route.manualOrderKept'), 'info');
+      } else {
+        scheduleReoptimize();
+      }
     }
   }, [startPointCoords]);
   const [showVersionPasswordDialog, setShowVersionPasswordDialog] = useState(false); // legacy
@@ -4763,7 +4768,27 @@ const FouFouApp = () => {
 
       {
         const timeMode = getEffectiveTimeMode();
+        const slotOrder = { early: 1, any: 2, bookend: 2, middle: 3, late: 4, end: 4 };
+        const defaultSlotForId = {
+          cafes: 'bookend', food: 'middle', restaurants: 'middle',
+          markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+          architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+          artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+          nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+        };
+        const getSlotOrder = (stop) => {
+          for (const id of (stop.interests || [])) {
+            if (!searchInterests.includes(id)) continue;
+            const cfgSlot = interestConfig[id]?.routeSlot;
+            const slot = cfgSlot || defaultSlotForId[id] || 'any';
+            return slotOrder[slot] ?? 2;
+          }
+          return 2;
+        };
         uniqueStops.sort((a, b) => {
+          const aSlot = getSlotOrder(a);
+          const bSlot = getSlotOrder(b);
+          if (aSlot !== bSlot) return aSlot - bSlot;
           const aTime = getStopBestTime(a);
           const bTime = getStopBestTime(b);
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
@@ -4854,6 +4879,7 @@ const FouFouApp = () => {
       }
 
       setRoute(newRoute);
+      userManualOrderRef.current = false; // new route resets manual order flag
 
       (() => {
         const seenInterests = [];
@@ -8421,11 +8447,6 @@ const FouFouApp = () => {
                       {[
                         { icon: '+', label: t('route.addManualStop').replace('➕ ', ''), action: () => { setShowRouteMenu(false); setShowManualAddDialog(true); } },
                         { icon: '≡', label: t('route.reorderStops'), action: () => { setShowRouteMenu(false); reorderOriginalStopsRef.current = route?.stops ? [...route.stops] : null; setShowRoutePreview(true); }, disabled: !route?.optimized },
-                        ...(isAdmin ? [{ icon: '✦', label: t('route.helpMePlan'), action: () => {
-                          setShowRouteMenu(false);
-                          const result = runSmartPlan({ skipSmartSelect: true });
-                          if (result) showToast(`✦ ${result.optimized.length} ${t('route.stops')}`, 'success');
-                        }}] : []),
                         { icon: '↗', label: t('general.shareRoute'), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                           setShowRouteMenu(false);
@@ -14714,6 +14735,7 @@ const FouFouApp = () => {
                     const changed = orig && curr && (orig.length !== curr.length || orig.some((s, i) => s.name !== curr[i]?.name));
                     setShowRoutePreview(false);
                     if (changed) {
+                      userManualOrderRef.current = true;
                       setRoute(prev => prev ? { ...prev, optimized: false } : prev);
                       showToast(t('route.orderUpdated'), 'success');
                     }
