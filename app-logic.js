@@ -5347,12 +5347,18 @@
           }
           return 2;
         };
+        // DEBUG: log slot for each stop
+        uniqueStops.forEach(s => {
+          const slot = getSlotOrder(s);
+          const interests = (s.interests || []).join(',');
+          addDebugLog('SLOT', `${s.name} → slot=${slot} interests=[${interests}] custom=${!!(s.custom||s.source==='custom')}`);
+        });
+
         uniqueStops.sort((a, b) => {
           // 1. Slot position (early before middle before end)
           const aSlot = getSlotOrder(a);
           const bSlot = getSlotOrder(b);
-          if (aSlot !== bSlot) return aSlot - bSlot;
-          // 2. Time conflict (conflicting goes last within same slot)
+          if (aSlot !== bSlot) return aSlot - bSlot;          // 2. Time conflict (conflicting goes last within same slot)
           const aTime = getStopBestTime(a);
           const bTime = getStopBestTime(b);
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
