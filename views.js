@@ -374,30 +374,9 @@
           <div className="view-fade-in">
             {/* Compact header row */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
-                  {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
-                </button>
-                {(() => {
-                  const lang = window.BKK.i18n.currentLang || 'he';
-                  const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
-                  const s = getHelpSection('hint_trail');
-                  const txt = (s && s.content && s.content.trim()) || '';
-                  if (!txt && !isAdmin) return null;
-                  return (
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      {isAdmin && (
-                        <button onClick={() => { setHintEditId('hint_trail'); setHintEditText(txt); }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
-                      )}
-                      <button onClick={() => setOpenHintPopup(openHintPopup === 'hint_trail' ? null : 'hint_trail')}
-                        style={{ height: '28px', borderRadius: '10px', padding: '0 7px', border: '1px solid #d1d5db', background: openHintPopup === 'hint_trail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '13px', color: '#374151' }}>
-                        <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
+              <button onClick={() => switchLanguage(currentLang === 'he' ? 'en' : 'he')} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '2px 8px', color: '#6b7280', fontSize: '10px', cursor: 'pointer' }}>
+                {currentLang === 'he' ? '🇬🇧 EN' : '🇮🇱 עב'}
+              </button>
               <div style={{ textAlign: 'center', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 'bold' }}>🐾 {t('trail.activeTitle')}</span>
               </div>
@@ -408,7 +387,27 @@
             <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
             {renderContextHint('hint_trail')}
 
-            {/* Camera Button — compact */}
+            {/* Camera Button row — doc button on left, camera fills rest */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
+              {(() => {
+                const lang = window.BKK.i18n.currentLang || 'he';
+                const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
+                const s = getHelpSection('hint_trail');
+                const txt = (s && s.content && s.content.trim()) || '';
+                if (!txt && !isAdmin) return null;
+                return (
+                  <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
+                    {isAdmin && (
+                      <button onClick={() => { setHintEditId('hint_trail'); setHintEditText(txt); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
+                    )}
+                    <button onClick={() => setOpenHintPopup(openHintPopup === 'hint_trail' ? null : 'hint_trail')}
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'hint_trail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
+                      <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
+                    </button>
+                  </div>
+                );
+              })()}
             <button
               onClick={() => {
                 const defaultInterests = activeTrail.lastInterest 
@@ -453,7 +452,7 @@
                 }
               }}
               style={{
-                width: '100%', padding: '10px', marginBottom: '8px',
+                flex: 1, padding: '10px',
                 background: 'linear-gradient(135deg, #22c55e, #16a34a)',
                 color: 'white', border: 'none', borderRadius: '12px',
                 fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
@@ -464,6 +463,7 @@
               <span style={{ fontSize: '18px' }}>📸</span>
               <span>{t('trail.capturePlace')}</span>
             </button>
+            </div>
 
             {/* Trail Stops — compact list */}
             {activeTrail.stops?.length > 0 && (
@@ -574,7 +574,7 @@
                                 color: '#059669', whiteSpace: 'nowrap'
                               }}
                               title={t('trail.addToFavorites')}
-                            >＋ {t('trail.addToFavoriteShort') || t('nav.favorites')}</button>
+                            >{t('nav.favorites')}</button>
                           );
                         }
                       })()}
