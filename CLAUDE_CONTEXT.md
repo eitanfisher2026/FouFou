@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.16` (Mar 17, 2026)
+- **גרסה:** `3.9.19` (Mar 17, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -993,6 +993,15 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.17 — Double confirmation on reload fixed
+- `applyUpdate()`: replaced `window.location.reload(true)` with `window.location.replace(pathname + '?_r=timestamp')`
+  - `reload(true)` triggers browser-native "Changes may not be saved" confirm on Android Chrome (due to form inputs on page)
+  - Navigation via `replace()` bypasses browser confirm entirely — one less dialog
+- Footer "🔄 רענן" button: removed `showConfirm()` wrapper — applyUpdate() called directly (browser was showing TWO confirms)
+- RULE: Never use `window.location.reload(true)` — deprecated, behaves same as `reload()` in modern browsers
+- RULE: Never change the URL during applyUpdate (no `?_r=...`) — breaks Firebase `signInWithRedirect` pending state
+- RULE: Always call `window.removeEventListener('beforeunload', window.__beforeUnloadHandler)` BEFORE any navigation in applyUpdate — the handler causes Android Chrome to partially tear down the JS context (including Firebase auth) while showing the native "Leave site?" dialog, resulting in user appearing logged out after reload
 
 ### v3.9.16 — Active Trail UX fixes
 - FAB (floating 📸 button) now visible during active trail mode — was hidden by `!activeTrail` condition

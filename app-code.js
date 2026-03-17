@@ -3941,12 +3941,18 @@ const FouFouApp = () => {
   };
 
   const applyUpdate = () => {
+    if (window.__beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', window.__beforeUnloadHandler);
+    }
+    const doReload = () => { window.location.reload(); };
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
-      });
+        doReload();
+      }).catch(doReload);
+    } else {
+      doReload();
     }
-    window.location.reload(true);
   };
 
   useEffect(() => {
@@ -11197,7 +11203,7 @@ const FouFouApp = () => {
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={() => { showConfirm(t('general.confirmRefresh'), () => applyUpdate()); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
+            <button onClick={() => applyUpdate()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
         )}
@@ -15341,7 +15347,8 @@ const FouFouApp = () => {
 // Wait for Firebase, then init and render
 window.__firebaseReady.then(function(sdkLoaded) {
   if (sdkLoaded) initFirebase();
-  window.addEventListener('beforeunload', function(e) { e.preventDefault(); e.returnValue = ''; return ''; });
+  window.__beforeUnloadHandler = function(e) { e.preventDefault(); e.returnValue = ''; return ''; };
+  window.addEventListener('beforeunload', window.__beforeUnloadHandler);
   window.BKK._navHistory = [];
   window.BKK._historyDepth = 0;
   window.BKK.pushNavState = function(state) {

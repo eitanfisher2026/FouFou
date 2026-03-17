@@ -4119,7 +4119,7 @@
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={() => { showConfirm(t('general.confirmRefresh'), () => applyUpdate()); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
+            <button onClick={() => applyUpdate()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
           </div>
         </div>
         )}

@@ -4103,13 +4103,25 @@
   };
 
   const applyUpdate = () => {
-    // Clear all caches and hard reload
+    // Remove beforeunload handler FIRST to prevent browser native "Leave site?" confirm dialog.
+    // That dialog causes partial JS teardown on Android Chrome — Firebase auth gets into a broken
+    // state and the user appears logged out on first load after update.
+    // The handler is stored as window.__beforeUnloadHandler so we can remove it here.
+    if (window.__beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', window.__beforeUnloadHandler);
+    }
+    // Clear service-worker / PWA caches, then do a simple reload.
+    // Do NOT use reload(true) — it is deprecated and behaves same as reload() in modern browsers.
+    // Do NOT change the URL (?_r=...) — that can break Firebase signInWithRedirect pending state.
+    const doReload = () => { window.location.reload(); };
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
-      });
+        doReload();
+      }).catch(doReload);
+    } else {
+      doReload();
     }
-    window.location.reload(true);
   };
 
   // Auto-check for updates on load (silent)

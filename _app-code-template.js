@@ -61,7 +61,8 @@ const FouFouApp = () => {
 // Wait for Firebase, then init and render
 window.__firebaseReady.then(function(sdkLoaded) {
   if (sdkLoaded) initFirebase();
-  window.addEventListener('beforeunload', function(e) { e.preventDefault(); e.returnValue = ''; return ''; });
+  window.__beforeUnloadHandler = function(e) { e.preventDefault(); e.returnValue = ''; return ''; };
+  window.addEventListener('beforeunload', window.__beforeUnloadHandler);
   window.BKK._navHistory = [];
   window.BKK._historyDepth = 0;
   window.BKK.pushNavState = function(state) {
