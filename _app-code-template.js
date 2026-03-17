@@ -41,6 +41,8 @@ function initFirebase() {
 const GOOGLE_PLACES_API_KEY = window.BKK.GOOGLE_PLACES_API_KEY;
 const GOOGLE_PLACES_API_URL = window.BKK.GOOGLE_PLACES_API_URL;
 
+// __INSERT_QUICK_ADD_COMPONENT__
+
 const FouFouApp = () => {
 
 // __INSERT_APP_LOGIC__

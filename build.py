@@ -107,7 +107,9 @@ def build():
     print(f"📄 app-data.js ({data_kb:.0f}KB)")
 
     # === BUILD FILE 2: app-code.js (JSX app code) ===
+    quick_add_component = read_file('quick-add-component.js') if __import__('os').path.exists('quick-add-component.js') else ''
     app_code = code_template
+    app_code = app_code.replace('// __INSERT_QUICK_ADD_COMPONENT__', quick_add_component)
     app_code = app_code.replace('// __INSERT_APP_LOGIC__', app_logic)
     app_code = app_code.replace('// __INSERT_VIEWS__', views)
     app_code = app_code.replace('// __INSERT_DIALOGS__', dialogs)
