@@ -43,17 +43,13 @@ const GOOGLE_PLACES_API_URL = window.BKK.GOOGLE_PLACES_API_URL;
 
 const FouFouApp = () => {
 
-  // Load saved preferences
   const loadPreferences = () => {
     try {
       const saved = localStorage.getItem('foufou_preferences');
       if (saved) {
         const prefs = JSON.parse(saved);
-        // Admin-controlled settings: always use defaults (Firebase will override on load)
-        // Don't trust localStorage values since admin may have changed them
         prefs.maxStops = 10;
         prefs.fetchMoreCount = prefs.fetchMoreCount || 3;
-        // User-specific settings preserved from last session
         if (!prefs.searchMode) prefs.searchMode = 'area';
         if (prefs.searchMode === 'radius' && prefs.radiusMeters === 15000 && prefs.radiusPlaceName === t('general.allCity')) prefs.searchMode = 'all';
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
@@ -62,7 +58,6 @@ const FouFouApp = () => {
         return prefs;
       }
     } catch (e) {}
-    // First time user: area and interests empty, defaults for everything else
     return {
       hours: 3,
       area: '',
@@ -83,10 +78,6 @@ const FouFouApp = () => {
     };
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // AUTH STATE — Firebase Authentication + Role-based access
-  // Roles: 0 = regular, 1 = editor, 2 = admin
-  // ═══════════════════════════════════════════════════════════════
   const [authUser, setAuthUser] = useState(null); // Firebase auth user object
   const [authLoading, setAuthLoading] = useState(true); // true until onAuthStateChanged fires
   const [userRole, setUserRole] = useState(0); // 0=regular, 1=editor, 2=admin (real role from Firebase)
@@ -100,40 +91,29 @@ const FouFouApp = () => {
   const [loginError, setLoginError] = useState('');
   const [roleOverride, setRoleOverride] = useState(null); // null = no override, 0/1/2 = impersonate
 
-  // Effective role: override if set (admin testing), otherwise real role
   const effectiveRole = (roleOverride !== null && userRole >= 2) ? roleOverride : userRole;
 
-  // Computed role checks use effectiveRole
   const isEditor = effectiveRole >= 1;
   const isAdmin = effectiveRole >= 2;
-  // But keep real admin check for impersonation UI itself
   const isRealAdmin = userRole >= 2;
   const isUnlocked = isEditor; // backward compat — most old checks mean "can edit content"
   const setIsUnlocked = () => {}; // noop — role is determined by Firebase Auth
   const setIsCurrentUserAdmin = () => {}; // noop — role is determined by Firebase Auth
 
-  // ═══════════════════════════════════════════════════════════════
-  // AUTH LISTENER — watches Firebase Auth state changes
-  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     if (!auth) { setAuthLoading(false); return; }
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setAuthUser(user);
       if (user) {
-        console.log('[AUTH] Signed in:', user.email || user.uid.slice(0,8) + '(anonymous)');
-        // Load or create user profile from Firebase
         try {
           const snap = await database.ref(`users/${user.uid}`).once('value');
           let profile = snap.val();
           if (!profile) {
-            // First login — create profile
-            // Bootstrap: if no users exist yet, make this user admin
             let initialRole = 0;
             try {
               const allUsersSnap = await database.ref('users').once('value');
               if (!allUsersSnap.val() || Object.keys(allUsersSnap.val()).length === 0) {
                 initialRole = 2; // First user ever = admin
-                console.log('[AUTH] 🎉 First user — granting admin role');
               }
             } catch (e) { /* ignore */ }
             profile = {
@@ -146,9 +126,7 @@ const FouFouApp = () => {
               lastLogin: new Date().toISOString()
             };
             await database.ref(`users/${user.uid}`).set(profile);
-            console.log('[AUTH] Created new user profile, role:', initialRole);
           } else {
-            // Update last login
             database.ref(`users/${user.uid}/lastLogin`).set(new Date().toISOString());
             if (user.email && profile.email !== user.email) {
               database.ref(`users/${user.uid}/email`).set(user.email);
@@ -157,7 +135,6 @@ const FouFouApp = () => {
           setUserProfile(profile);
           setUserRole(profile.role || 0);
 
-          // Run one-time migrations for admin
           if ((profile.role || 0) >= 2) {
             migrateAddedBy(user.uid);
           }
@@ -166,7 +143,6 @@ const FouFouApp = () => {
           setUserRole(0);
         }
       } else {
-        console.log('[AUTH] Signed out');
         setUserProfile(null);
         setUserRole(0);
       }
@@ -175,7 +151,6 @@ const FouFouApp = () => {
     return () => unsubscribe();
   }, []);
 
-  // Auth functions
   const authSignInGoogle = async () => {
     if (!auth) return;
     setLoginError('');
@@ -186,7 +161,6 @@ const FouFouApp = () => {
     } catch (err) {
       console.error('[AUTH] Google sign-in error:', err);
       if (err.code === 'auth/popup-blocked') {
-        // Fallback to redirect
         try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } catch (e2) { setLoginError(e2.message); }
       } else {
         setLoginError(err.message);
@@ -254,7 +228,6 @@ const FouFouApp = () => {
     if (!isRealAdmin || !database) return;
     try {
       await database.ref(`users/${uid}/role`).set(newRole);
-      // Refresh allUsers if open
       if (showUserManagement) authLoadAllUsers();
       showToast(`✅ ${t('toast.roleUpdated')}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
@@ -276,9 +249,6 @@ const FouFouApp = () => {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  // MIGRATION: Stamp addedBy on existing locations (one-time)
-  // ═══════════════════════════════════════════════════════════════
   const migrateAddedBy = async (adminUid) => {
     if (!isFirebaseAvailable || !database || !adminUid) return;
     const migKey = 'foufou_migration_addedBy_done';
@@ -303,7 +273,6 @@ const FouFouApp = () => {
       }
       localStorage.setItem(migKey, new Date().toISOString());
       if (total > 0) {
-        console.log(`[MIGRATION] Stamped addedBy on ${total} locations`);
         addDebugLog('MIGRATION', `addedBy stamped on ${total} locations`);
       }
     } catch (err) {
@@ -328,7 +297,6 @@ const FouFouApp = () => {
   const reoptimizeTimerRef = React.useRef(null);
   const [isReoptimizing, setIsReoptimizing] = useState(false);
 
-  // Trigger 3: auto-reoptimize when disabled stops change (skip/unskip)
   const prevDisabledRef = React.useRef(disabledStops);
   React.useEffect(() => {
     if (!route?.stops?.length) { prevDisabledRef.current = disabledStops; return; }
@@ -339,13 +307,9 @@ const FouFouApp = () => {
   
   // === SHARED HELPERS (avoid code duplication) ===
   
-  // Check if a stop is disabled — single source of truth
   const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim());
   const isStopDisabledRef = (stop) => (disabledStopsRef.current || []).includes((stop.name || '').toLowerCase().trim());
   
-  // Find smart start point: GPS nearest → circular first → null (let optimizer pick)
-  // Debounced auto-reoptimize — called when stops/start change, never cuts stops
-  // Uses runSmartPlanRef so setTimeout always calls the LATEST version (avoids stale closure)
   const runSmartPlanRef = React.useRef(null);
   const scheduleReoptimize = () => {
     if (reoptimizeTimerRef.current) clearTimeout(reoptimizeTimerRef.current);
@@ -370,9 +334,6 @@ const FouFouApp = () => {
         if (nearest) return { lat: nearest.lat, lng: nearest.lng, address: nearest.name };
       }
     }
-    // No GPS — pick start based on area center (or city center as fallback)
-    // For circular: nearest stop to area center (natural anchor for a loop)
-    // For linear: nearest stop to area center (reasonable entry point, even if not a true endpoint)
     const areaId = formData?.area;
     const areaObj = (window.BKK.areaOptions || []).find(a => a.id === areaId);
     const refLat = areaObj?.lat ?? window.BKK.activeCityData?.center?.lat ?? window.BKK.selectedCity?.center?.lat;
@@ -391,8 +352,6 @@ const FouFouApp = () => {
     return null;
   };
   
-  // Full smart plan: select stops, find start, optimize, update state
-  // Returns { optimized, disabled, autoStart, isCircular } or null on failure
   const runSmartPlan = (options = {}) => {
     const { openMap = false, startTrail = false, skipSmartSelect = false, overrideStart = null, overrideType = null } = options;
     
@@ -402,7 +361,6 @@ const FouFouApp = () => {
     
     const isCircular = overrideType !== null ? overrideType === 'circular' : routeType === 'circular';
     
-    // Step 1: Smart select or respect manual choices
     let selected, disabledList, newDisabled;
     if (skipSmartSelect) {
       const curDisabled = disabledStopsRef.current || [];
@@ -410,7 +368,6 @@ const FouFouApp = () => {
       disabledList = allStops.filter(s => curDisabled.includes((s.name || '').toLowerCase().trim()));
       newDisabled = curDisabled;
     }
-    // Always ensure manuallyAdded stops are in selected (never dropped by smart select)
     if (selected.length > 0) {
       const manualInDisabled = disabledList.filter(s => s.manuallyAdded);
       if (manualInDisabled.length > 0) {
@@ -426,22 +383,18 @@ const FouFouApp = () => {
     }
     if (selected.length < 2) { showToast(t('places.noPlacesWithCoords'), 'warning'); return null; }
     
-    // Step 2: Find start point
     let autoStart = overrideStart || startPointCoordsRef.current;
     if (!autoStart) {
       const gps = (formData.currentLat && formData.currentLng) ? { lat: formData.currentLat, lng: formData.currentLng } : null;
       autoStart = findSmartStart(selected, gps, isCircular);
     }
     
-    // Step 3: Optimize route order
     const optimized = optimizeStopOrder(selected, autoStart, isCircular);
     
-    // For linear without explicit start: use first optimized stop
     if (!autoStart && optimized.length > 0) {
       autoStart = { lat: optimized[0].lat, lng: optimized[0].lng, address: optimized[0].name };
     }
     
-    // Step 4: Update state
     setStartPointCoords(autoStart);
     startPointCoordsRef.current = autoStart;
     setFormData(prev => ({...prev, startPoint: autoStart?.address || (autoStart ? `${autoStart.lat},${autoStart.lng}` : '')}));
@@ -449,7 +402,6 @@ const FouFouApp = () => {
     const newStops = [...optimized, ...disabledList];
     setRoute(prev => prev ? { ...prev, stops: newStops, circular: isCircular, optimized: true, startPoint: autoStart?.address, startPointCoords: autoStart } : prev);
     
-    // Step 5: Optional actions
     if (startTrail) startActiveTrail(optimized, formData.interests, formData.area);
     if (openMap && autoStart) {
       const urls = window.BKK.buildGoogleMapsUrls(
@@ -469,16 +421,12 @@ const FouFouApp = () => {
   const [showHeaderMenu, setShowHeaderMenu] = useState(false); // Main hamburger menu in header
   const [routeChoiceMade, setRouteChoiceMade] = useState(null); // null | 'manual' — controls wizard step 3 split
   
-  // Auto-compute route whenever route exists with stops but isn't optimized
-  // Skip in wizard mode when user hasn't chosen Yalla/Manual yet
   const autoComputeRef = React.useRef(false);
   React.useEffect(() => {
     if (route && route.stops && route.stops.length >= 2 && !route.optimized && !autoComputeRef.current) {
-      // Don't auto-compute while wizard choice screen is showing
       if (routeChoiceMade === null) return;
       autoComputeRef.current = true;
       const timer = setTimeout(() => {
-        console.log('[AUTO-COMPUTE] Route not optimized, auto-computing...');
         recomputeForMap(null, undefined, true); // skipSmartSelect: respect user's manual disable choices
         autoComputeRef.current = false;
       }, 300);
@@ -492,7 +440,6 @@ const FouFouApp = () => {
       const saved = localStorage.getItem('foufou_active_trail');
       if (saved) {
         const trail = JSON.parse(saved);
-        // Auto-expire after configured hours
         if (trail.startedAt && (Date.now() - trail.startedAt) > (window.BKK.systemParams?.trailTimeoutHours || 8) * 60 * 60 * 1000) {
           localStorage.removeItem('foufou_active_trail');
           return null;
@@ -511,12 +458,9 @@ const FouFouApp = () => {
   const [isRecording, setIsRecording] = useState(false);
   const stopRecordingRef = React.useRef(null);
 
-  // Detect return from Google Maps — check localStorage for activeTrail
-  // Also check for app updates when returning to tab
   React.useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        // Check for active trail
         try {
           const saved = localStorage.getItem('foufou_active_trail');
           if (saved) {
@@ -537,29 +481,23 @@ const FouFouApp = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
   const [routeType, setRouteType] = useState(() => {
-    // Load from localStorage or default to 'circular'
     const saved = localStorage.getItem('foufou_route_type');
     return saved || 'circular';
   }); // 'circular' or 'linear'
   
-  // Time-of-day mode for content-aware routing (uses city-level settings)
   const getAutoTimeMode = () => {
     const h = new Date().getHours();
     const dayStart = window.BKK.dayStartHour ?? 6;
     const nightStart = window.BKK.nightStartHour ?? 17;
-    // Day = dayStart..nightStart, Night = nightStart..dayStart (wraps midnight)
     if (nightStart > dayStart) {
       return (h >= dayStart && h < nightStart) ? 'day' : 'night';
     } else {
-      // nightStart < dayStart (e.g. night=22, day=8)
       return (h >= dayStart || h < nightStart) ? 'day' : 'night';
     }
   };
   const routeTimeModeRef = React.useRef('auto');
   const getEffectiveTimeMode = () => routeTimeModeRef.current === 'auto' ? getAutoTimeMode() : routeTimeModeRef.current;
 
-  // Shared helper: determine a stop's best time (day/night/anytime)
-  // Checks in order: explicit bestTime field → name keywords → interestConfig → interest defaults
   const NIGHT_NAME_KEYWORDS = ['night market', 'nightmarket', 'night bazaar', 'night bazar', 'talat rot fai', 'asiatique'];
   const DAY_NAME_KEYWORDS = ['morning market', 'breakfast market'];
   const INTEREST_DEFAULT_TIMES = {
@@ -569,24 +507,19 @@ const FouFouApp = () => {
     nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night'
   };
   const getStopBestTime = (stop) => {
-    // 1. Explicit per-stop override
     if (stop.bestTime) return stop.bestTime;
-    // 2. Name-based detection (catches "night market", "Asiatique" etc.)
     const nameLower = (stop.name || '').toLowerCase();
     if (NIGHT_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'night';
     if (DAY_NAME_KEYWORDS.some(kw => nameLower.includes(kw))) return 'day';
-    // 3. interestConfig bestTime (Firebase-configurable per interest)
     for (const id of (stop.interests || [])) {
       const cfg = interestConfig[id];
       if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
     }
-    // 4. Hard-coded interest defaults
     for (const id of (stop.interests || [])) {
       if (INTEREST_DEFAULT_TIMES[id]) return INTEREST_DEFAULT_TIMES[id];
     }
     return 'anytime';
   };
-
 
   const [customLocations, setCustomLocations] = useState([]);
   const [savedRoutes, setSavedRoutes] = useState([]);
@@ -621,34 +554,27 @@ const FouFouApp = () => {
   const [customInterests, setCustomInterests] = useState([]);
   const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }
   
-  // Interest search configuration (editable)
   const [interestConfig, setInterestConfig] = useState({});
 
-  // System parameters — configurable scoring/optimization values
   if (!window.BKK._defaultSystemParams) {
     window.BKK._defaultSystemParams = {
-      // App settings (admin-controlled)
       maxStops: 10,
       fetchMoreCount: 3,
       googleMaxWaypoints: 12,
       defaultRadius: 500,
-      // Dedup
       dedupRadiusMeters: 50,
       dedupGoogleEnabled: 1,
       dedupCustomEnabled: 1,
-      // Trail
       trailTimeoutHours: 8,
       defaultInterestWeight: 3,
       maxContentPasses: 3,
       contentReorderEnabled: true,
       maxContentGeoIncrease: 0.05, // Max 5% distance increase for content reordering (was 25%!)
       twoOptMaxPasses: 20, // 2-opt improvement passes for route optimization
-      // Time scoring
       timeScoreMatch: 2,
       timeScoreAnytime: 1,
       timeScoreConflict: 0,
       timeConflictPenalty: 3,
-      // Slot positioning
       slotEarlyThreshold: 0.4,
       slotLateThreshold: 0.6,
       slotEndThreshold: 0.7,
@@ -656,12 +582,9 @@ const FouFouApp = () => {
       slotEndPenaltyMultiplier: 4,
       gapPenaltyMultiplier: 2,
       includeDrafts: true,
-      // FouFou rating boost (multiplier for user ratings in bucket sort)
       foufouRatingBoost: 2,
-      // Speech recording
       speechMaxSeconds: 15,
       speechRate: 1.0,
-      // Toast display duration (ms)
       toastDuration: 4000,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
@@ -704,10 +627,8 @@ const FouFouApp = () => {
   const [startPointCoords, setStartPointCoords] = useState(null); // { lat, lng, address }
   const leafletMapRef = React.useRef(null);
   
-  // Cache for unused Google Places results per interest (avoids redundant API calls)
   const googleCacheRef = React.useRef({});
 
-  // Leaflet Map initialization (lazy-loaded)
   React.useEffect(() => {
     if (!showMapModal) {
       if (leafletMapRef.current) {
@@ -717,15 +638,12 @@ const FouFouApp = () => {
       return;
     }
     
-    // Lazy load Leaflet on first use
     window.BKK.loadLeaflet().then(function(loaded) {
       if (!loaded || !showMapModal) return;
     
-    // Wait for DOM
     const timer = setTimeout(() => {
       const container = document.getElementById('leaflet-map-container');
       if (!container) return;
-      // Clean previous map if exists
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
@@ -735,13 +653,11 @@ const FouFouApp = () => {
         const coords = window.BKK.areaCoordinates || {};
         const areas = window.BKK.areaOptions || [];
         
-        // Generate area colors dynamically from palette
         const colorPalette = window.BKK.stopColorPalette;
         const areaColors = {};
         areas.forEach((area, i) => { areaColors[area.id] = colorPalette[i % colorPalette.length]; });
         
         if (mapMode === 'areas') {
-          // All areas mode - center on selected city
           const cityCenter = window.BKK.selectedCity?.center || window.BKK.activeCityData?.center || { lat: 0, lng: 0 };
           const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
           L.tileLayer(window.BKK.getTileUrl(), {
@@ -762,7 +678,6 @@ const FouFouApp = () => {
               '<span style="color:#666;font-size:11px;">' + area.labelEn + '</span><br/>' +
               '<span style="color:#999;font-size:10px;">Radius: ' + c.radius + ' m</span></div>'
             );
-            // Name label with background for readability
             L.marker([c.lat, c.lng], {
               icon: L.divIcon({
                 className: '',
@@ -773,7 +688,6 @@ const FouFouApp = () => {
             allCircles.push(circle);
           });
           
-          // Auto-fit to show all areas
           if (allCircles.length > 0) {
             const group = L.featureGroup(allCircles);
             map.fitBounds(group.getBounds().pad(0.1));
@@ -781,7 +695,6 @@ const FouFouApp = () => {
           
           leafletMapRef.current = map;
         } else if (mapMode === 'radius') {
-          // Radius mode
           const lat = formData.currentLat;
           const lng = formData.currentLng;
           if (!lat || !lng) return;
@@ -791,13 +704,11 @@ const FouFouApp = () => {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
-          // Radius circle FIRST (so marker is on top)
           const radiusCircle = L.circle([lat, lng], {
             radius: formData.radiusMeters, color: window.BKK.mapConfig.radiusSearch.color, fillColor: window.BKK.mapConfig.radiusSearch.color,
             fillOpacity: window.BKK.mapConfig.radiusSearch.fillOpacity, weight: window.BKK.mapConfig.radiusSearch.weight, dashArray: window.BKK.mapConfig.radiusSearch.dash
           }).addTo(map);
           
-          // Center marker (red, prominent)
           L.circleMarker([lat, lng], {
             radius: window.BKK.mapConfig.radiusSearch.centerRadius, color: window.BKK.mapConfig.radiusSearch.color, fillColor: window.BKK.mapConfig.radiusSearch.color,
             fillOpacity: 1, weight: 2
@@ -807,10 +718,8 @@ const FouFouApp = () => {
             '<span style="font-size:11px;color:#666;">Radius: ' + formData.radiusMeters + ' m</span></div>'
           ).openPopup();
           
-          // Fit to circle bounds
           map.fitBounds(radiusCircle.getBounds().pad(0.15));
           
-          // Show area circles faintly for context
           areas.forEach(area => {
             const c = coords[area.id];
             if (!c) return;
@@ -829,7 +738,6 @@ const FouFouApp = () => {
           
           leafletMapRef.current = map;
         } else if (mapMode === 'stops') {
-          // Stops mode - show route points on map (fullscreen)
           const stops = mapStops.filter(s => s.lat && s.lng);
           if (stops.length === 0) return;
           
@@ -841,7 +749,6 @@ const FouFouApp = () => {
             attribution: '© OpenStreetMap contributors', maxZoom: 18
           }).addTo(map);
           
-          // Global callback for popup buttons
           const markerRefs = {};
           let startMarkerRef = null;
           const startPointCoordsRef_local = { current: startPointCoords };
@@ -864,17 +771,14 @@ const FouFouApp = () => {
               const clickedIdx = trailStops.findIndex(s => (s.name || '').toLowerCase().trim() === data.toLowerCase().trim());
               if (clickedIdx < 0) { map.closePopup(); return; }
 
-              // Skip all stops before clicked one in the trail
               const newSkipped = new Set();
               for (let si = 0; si < clickedIdx; si++) newSkipped.add(si);
               setSkippedTrailStops(newSkipped);
               setMapSkippedStops(new Set(newSkipped));
 
-              // Build Google Maps URL: origin = clicked stop, waypoints = remaining stops
               const origin = parseFloat(lat) + ',' + parseFloat(lng);
               const remaining = trailStops.slice(clickedIdx + 1).filter(s => s.lat && s.lng);
 
-              // For circular: add original first stop (A) as final destination
               const isCircular = activeTrail && activeTrail.circular;
               const firstStop = trailStops[0];
               if (isCircular && firstStop && firstStop.lat && clickedIdx > 0) {
@@ -886,7 +790,6 @@ const FouFouApp = () => {
               if (urls.length > 0) {
                 window.open(urls[0].url, 'city_explorer_map');
               } else {
-                // Last stop or no remaining — just open this stop in Google Maps
                 window.open(googleUrl || ('https://www.google.com/maps/search/?api=1&query=' + origin), 'city_explorer_map');
               }
               return;
@@ -897,7 +800,6 @@ const FouFouApp = () => {
               updateStartMarker(parseFloat(lat), parseFloat(lng), data);
               map.closePopup();
               showToast(`▶ ${data}`, 'success');
-              // Auto-recompute route with new start point
               const result = recomputeForMap(newStart, undefined, true);
               if (result) {
                 stopsOrderRef.current = result.optimized;
@@ -913,7 +815,6 @@ const FouFouApp = () => {
                 markerRefs[nameKey].label.setOpacity(0.3);
               }
               map.closePopup();
-              // If disabling the current start point, clear it so recompute picks a new one
               const curStart = startPointCoordsRef_local.current;
               if (curStart) {
                 const stopObj = stops.find(s => (s.name || '').toLowerCase().trim() === nameKey);
@@ -925,7 +826,6 @@ const FouFouApp = () => {
                 }
               }
               showToast(`⏸️ ${data}`, 'info');
-              // Trigger route recompute
               setRoute(prev => prev ? {...prev, optimized: false} : prev);
               setTimeout(() => { if (window._mapRedrawLine) window._mapRedrawLine(); }, 50);
             } else if (action === 'enable') {
@@ -936,7 +836,6 @@ const FouFouApp = () => {
               }
               map.closePopup();
               showToast(`▶️ ${data}`, 'success');
-              // Trigger route recompute
               setRoute(prev => prev ? {...prev, optimized: false} : prev);
               setTimeout(() => { if (window._mapRedrawLine) window._mapRedrawLine(); }, 50);
             }
@@ -946,14 +845,12 @@ const FouFouApp = () => {
           const isRTL = window.BKK.i18n.isRTL();
           const stopsOrderRef = { current: stops }; // Mutable ref for current stop order
           
-          // Initial start point marker (only if NOT overlapping with a stop)
           if (startPointCoords?.lat && startPointCoords?.lng) {
             const overlapsStop = stops.some(s => Math.abs(s.lat - startPointCoords.lat) < 0.0001 && Math.abs(s.lng - startPointCoords.lng) < 0.0001);
             if (!overlapsStop) {
               updateStartMarker(startPointCoords.lat, startPointCoords.lng, startPointCoords.address);
             }
           }
-          // Build sequential letter map: only active stops get letters
           const mapLetterMap = {};
           let mapLetterIdx = 0;
           stops.forEach((s, idx) => {
@@ -974,7 +871,6 @@ const FouFouApp = () => {
             
             const mc = window.BKK.mapConfig.marker;
             
-            // Green outer ring for start point
             if (isStart && !isDisabled) {
               L.circleMarker([stop.lat, stop.lng], {
                 radius: mc.startRingRadius, color: mc.startRingColor, fillColor: 'transparent',
@@ -1003,7 +899,6 @@ const FouFouApp = () => {
             const escapedName = (stop.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const googleUrl = window.BKK.getGoogleMapsUrl(stop) || ('https://www.google.com/maps/search/?api=1&query=' + stop.lat + ',' + stop.lng);
             
-            // Dynamic popup - different content based on whether trail is active
             const makePopup = () => {
               const isTrailActive = !!activeTrail;
               const curDisabled = disabledStopsRef.current || [];
@@ -1013,7 +908,6 @@ const FouFouApp = () => {
               const googleBtn = '<a href="' + googleUrl + '" target="_blank" style="flex:1;display:inline-block;padding:6px 10px;border-radius:8px;background:#3b82f6;color:white;text-decoration:none;font-size:12px;font-weight:bold;">Google Maps ↗</a>';
 
               if (isTrailActive) {
-                // Trail active: Google Maps + Continue from here
                 const continueLabel = isRTL ? 'המשך מנקודה זו ▶' : 'Continue from here ▶';
                 return '<div style="text-align:center;direction:' + (isRTL ? 'rtl' : 'ltr') + ';font-size:13px;min-width:160px;padding:4px 0;">' +
                   header +
@@ -1021,7 +915,6 @@ const FouFouApp = () => {
                   '<button onclick="window._mapStopAction(\'continuefrom\',\'' + escapedName + '\',' + stop.lat + ',' + stop.lng + ')" style="width:100%;padding:7px 8px;border-radius:8px;background:#16a34a;color:white;border:none;font-size:12px;font-weight:bold;cursor:pointer;">' + continueLabel + '</button>' +
                 '</div>';
               } else {
-                // No trail: Google Maps + Skip/Enable + Set start point (original)
                 const toggleAction = curIsDisabled ? 'enable' : 'disable';
                 const toggleLabel = curIsDisabled ? '▶️ ' + t('route.returnPlace') : '⏸️ ' + t('route.skipPlace');
                 const toggleColor = curIsDisabled ? '#059669' : '#ea580c';
@@ -1042,7 +935,6 @@ const FouFouApp = () => {
             markers.push(circle);
           });
           
-          // Route lines removed — map shows stops only, user navigates via Google Maps
           const redrawRouteLine = () => {}; // no-op (called from toggle handlers)
           
           if (markers.length > 0) {
@@ -1050,7 +942,6 @@ const FouFouApp = () => {
             map.fitBounds(group.getBounds().pad(0.15));
           }
           
-          // GPS locate-me button (top-right)
           const LocateControl = L.Control.extend({
             options: { position: 'topright' },
             onAdd: function() {
@@ -1089,18 +980,15 @@ const FouFouApp = () => {
           });
           new LocateControl().addTo(map);
           
-          // Store redraw for disable/enable callbacks
           window._mapRedrawLine = redrawRouteLine;
           window._mapStopsOrderRef = stopsOrderRef;
           
-          // User location blue dot
           if (mapUserLocation && mapUserLocation.lat && mapUserLocation.lng) {
             const userDot = L.circleMarker([mapUserLocation.lat, mapUserLocation.lng], {
               radius: 10, fillColor: '#4285F4', fillOpacity: 1,
               color: 'white', weight: 3, opacity: 1
             }).addTo(map);
             userDot.bindPopup(`<div style="text-align:center;font-size:12px;font-weight:bold;">📍 ${t('trail.youAreHere')}</div>`).openPopup();
-            // Add accuracy ring
             L.circle([mapUserLocation.lat, mapUserLocation.lng], {
               radius: mapUserLocation.accuracy || 30,
               fillColor: '#4285F4', fillOpacity: 0.1,
@@ -1110,19 +998,13 @@ const FouFouApp = () => {
           
           leafletMapRef.current = map;
         } else if (mapMode === 'favorites') {
-          // ═══════════════════════════════════════════════════════════════
-          // FAVORITES MAP — shows saved places colored by interest
-          // Supports: city overview, area focus, single place highlight
-          // ═══════════════════════════════════════════════════════════════
           const allInts = window.BKK.interestOptions || [];
           const showDrafts = window.BKK.systemParams?.includeDrafts !== false;
           
-          // Filter locations
           const locs = customLocations.filter(loc => {
             if (loc.status === 'blacklist') return false;
             if (!loc.lat || !loc.lng) return false;
             if (!showDrafts && !loc.locked) return false;
-            // Only show places whose interests are visible to this user
             const locInts = loc.interests || [];
             if (locInts.length > 0) {
               const hasVisibleInterest = locInts.some(id => {
@@ -1139,14 +1021,12 @@ const FouFouApp = () => {
               const la = loc.areas || (loc.area ? [loc.area] : []);
               if (!la.includes(mapFavArea)) return false;
             }
-            // Radius mode: don't filter — show all places, just display the ring
             if (mapFavFilter.size > 0) {
               if (!(loc.interests || []).some(i => mapFavFilter.has(i))) return false;
             }
             return true;
           });
           
-          // Determine center and zoom
           let cLat, cLng, defZoom;
           if (mapFocusPlace && mapFocusPlace.lat) {
             cLat = mapFocusPlace.lat; cLng = mapFocusPlace.lng; defZoom = 16;
@@ -1162,13 +1042,11 @@ const FouFouApp = () => {
           const map = L.map(container).setView([cLat, cLng], defZoom);
           L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
           
-          // Custom panes for z-order
           map.createPane('areaLabelsPane');
           map.getPane('areaLabelsPane').style.zIndex = window.BKK.mapConfig.area.labelsPaneZ;
           map.createPane('placeMarkersPane');
           map.getPane('placeMarkersPane').style.zIndex = window.BKK.mapConfig.area.markersPaneZ;
           
-          // Area circles — always show all, highlight selected with bold ring
           const areasOnly = locs.length === 0 && !mapFavRadius;
           const hasSelection = !!mapFavArea || !!mapFavRadius;
           const hasPlaceMarkers = locs.length > 0;
@@ -1178,7 +1056,6 @@ const FouFouApp = () => {
             if (!c) return;
             const isSelected = mapFavArea === area.id;
             const aColor = areaColors[area.id] || '#6b7280';
-            // Base circle — non-interactive when place markers exist (prevents click blocking)
             L.circle([c.lat, c.lng], {
               radius: c.radius,
               color: areasOnly ? aColor : (isSelected ? '#2563eb' : '#94a3b8'),
@@ -1189,7 +1066,6 @@ const FouFouApp = () => {
             }).addTo(map).on('click', () => {
               if (window._favMapAreaClick) window._favMapAreaClick(area.id);
             });
-            // Labels — always show all, non-interactive when place markers exist
             L.marker([c.lat, c.lng], {
               interactive: !hasPlaceMarkers,
               pane: 'areaLabelsPane',
@@ -1203,7 +1079,6 @@ const FouFouApp = () => {
             });
           });
           
-          // Radius circle — bold ring matching selected-area style
           if (mapFavRadius) {
             L.circle([mapFavRadius.lat, mapFavRadius.lng], {
               radius: mapFavRadius.meters,
@@ -1214,7 +1089,6 @@ const FouFouApp = () => {
             }).addTo(map);
           }
           
-          // CALLBACKS FIRST - must exist before any code that might crash
           window._favMapSheet = (loc) => { setMapBottomSheet(loc); };
           window._favMapAreaClick = (areaId) => {
             setMapFavArea(prev => prev === areaId ? null : areaId);
@@ -1222,7 +1096,6 @@ const FouFouApp = () => {
             setMapBottomSheet(null);
           };
           
-          // Place markers in placeMarkersPane (z-650), always on top
           const mkrs = [];
           locs.forEach(loc => {
             const pi = (loc.interests || [])[0];
@@ -1244,7 +1117,6 @@ const FouFouApp = () => {
             mkrs.push(m);
           });
           
-          // Fit bounds - own try/catch so errors never block anything
           try {
             if (!mapFocusPlace) {
               if (mapFavRadius) {
@@ -1261,7 +1133,6 @@ const FouFouApp = () => {
             }
           } catch(fitErr) { console.warn('[MAP] fitBounds warning:', fitErr); }
           
-          // User location blue dot
           if (mapUserLocation && mapUserLocation.lat) {
             L.circleMarker([mapUserLocation.lat, mapUserLocation.lng], {
               radius: window.BKK.mapConfig.gps.radius, color: '#2563eb', fillColor: window.BKK.mapConfig.gps.color, fillOpacity: 1, weight: window.BKK.mapConfig.gps.weight
@@ -1297,11 +1168,9 @@ const FouFouApp = () => {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importedData, setImportedData] = useState(null);
   
-  // Access Log System (Admin Only)
   const [accessStats, setAccessStats] = useState(null); // { total, weekly: { '2026-W08': { IL: 3, TH: 12 } } }
   const isCurrentUserAdmin = isRealAdmin; // backward compat — uses real role, not impersonated
 
-  // Feedback System
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [editingMyFeedback, setEditingMyFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -1311,11 +1180,9 @@ const FouFouApp = () => {
   const [showFeedbackList, setShowFeedbackList] = useState(false);
   const [hasNewFeedback, setHasNewFeedback] = useState(false);
 
-  // Confirm Dialog (replaces browser confirm)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ message: '', onConfirm: null });
 
-  // Help System
   const [showHelp, setShowHelp] = useState(false);
   const [helpEditing, setHelpEditing] = useState(false);
   const [helpEditText, setHelpEditText] = useState('');
@@ -1324,9 +1191,6 @@ const FouFouApp = () => {
   const [hintEditText, setHintEditText] = useState('');
   const [helpContext, setHelpContext] = useState('main');
   
-  // Debug Mode System
-  // Debug system with categories
-  // Categories: api, firebase, sync, route, interest, location, migration, all
   const [debugMode, setDebugMode] = useState(() => {
     return localStorage.getItem('foufou_debug_mode') === 'true';
   });
@@ -1351,16 +1215,13 @@ const FouFouApp = () => {
     if (t.locations && t.interests && t.config && t.status && t.routes) {
       setIsDataLoaded(true);
       window.scrollTo(0, 0);
-      // Preload Leaflet in background (2s delay to not compete with rendering)
       setTimeout(() => window.BKK.loadLeaflet(), 2000);
     }
   };
   
-  // Safety timeout - don't show loading forever
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!isDataLoaded) {
-        console.warn('[LOAD] Safety timeout - forcing data loaded after 5s');
         setIsDataLoaded(true);
         window.scrollTo(0, 0);
       }
@@ -1375,20 +1236,16 @@ const FouFouApp = () => {
     } catch(e) { return 130; }
   });
   
-  // Admin System - legacy state kept for backward compat during transition
   const [adminPassword, setAdminPassword] = useState(''); // legacy, will be removed
   const [adminUsers, setAdminUsers] = useState([]);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false); // legacy
   
-  // Refs for current values (needed by map closures to avoid stale state)
   const routeTypeRef = React.useRef(routeType);
   React.useEffect(() => { routeTypeRef.current = routeType; }, [routeType]);
   const startPointCoordsRef = React.useRef(startPointCoords);
   const prevStartPointRef = React.useRef(null);
   React.useEffect(() => {
     startPointCoordsRef.current = startPointCoords;
-    // Only reoptimize when start point ACTUALLY changes from user action
-    // (not when runSmartPlan internally sets it to the same value)
     const prev = prevStartPointRef.current;
     const changed = startPointCoords?.lat !== prev?.lat || startPointCoords?.lng !== prev?.lng;
     prevStartPointRef.current = startPointCoords;
@@ -1416,16 +1273,13 @@ const FouFouApp = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState(''); // For setting new password in admin panel
   
-  // Add debug log entry (console only, filtered by category)
   const searchDebugLogRef = useRef([]);
   const [searchDebugLog, setSearchDebugLog] = useState([]);
   const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
   
-  // Debug sessions — accumulated across searches, persisted to localStorage
   const [debugSessions, setDebugSessions] = useState(() => {
     try { return JSON.parse(localStorage.getItem('foufou_debug_sessions') || '[]'); } catch { return []; }
   });
-  // Debug popup removed — using floating debug panel instead
   const debugModeRef = useRef(debugMode);
   const debugCategoriesRef = useRef(debugCategories);
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
@@ -1444,7 +1298,6 @@ const FouFouApp = () => {
     }
   };
   
-  // Save debug preferences
   useEffect(() => {
     localStorage.setItem('foufou_debug_mode', debugMode.toString());
   }, [debugMode]);
@@ -1452,12 +1305,10 @@ const FouFouApp = () => {
     localStorage.setItem('foufou_debug_categories', JSON.stringify(debugCategories));
   }, [debugCategories]);
   
-  // Persist debug sessions (keep last 20 sessions)
   useEffect(() => {
     try { localStorage.setItem('foufou_debug_sessions', JSON.stringify(debugSessions.slice(-20))); } catch(e) {}
   }, [debugSessions]);
   
-  // Save a debug session after route generation
   const saveDebugSession = (routeObj) => {
     if (!debugModeRef.current) return;
     const session = {
@@ -1486,7 +1337,6 @@ const FouFouApp = () => {
     setDebugSessions(prev => [...prev, session]);
   };
   
-  // Export all debug sessions as text
   const exportDebugSessions = () => {
     if (debugSessions.length === 0) return;
     const lines = [];
@@ -1524,7 +1374,6 @@ const FouFouApp = () => {
     navigator.clipboard.writeText(text).then(() => {
       showToast('📋 Debug sessions copied to clipboard!', 'success');
     }).catch(() => {
-      // Fallback: download as file
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1534,7 +1383,6 @@ const FouFouApp = () => {
     });
   };
   
-  // Clear debug sessions
   const clearDebugSessions = () => {
     setDebugSessions([]);
     searchDebugLogRef.current = [];
@@ -1543,7 +1391,6 @@ const FouFouApp = () => {
     showToast('🗑️ Debug cleared', 'info');
   };
   
-  // Flagged stops for investigation
   const [debugFlagged, setDebugFlagged] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('foufou_debug_flagged') || '[]')); } catch(e) { return new Set(); }
   });
@@ -1583,7 +1430,6 @@ const FouFouApp = () => {
     catch(e) { const blob = new Blob([text], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'flagged-stops.txt'; a.click(); }
   };
   
-  // Help content - merge Firebase overrides over i18n defaults
   const helpContentBase = window.BKK.helpContent;
   const getHelpSection = (sectionId) => {
     const lang = window.BKK.i18n.currentLang || 'he';
@@ -1613,12 +1459,10 @@ const FouFouApp = () => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
     const tgtLang = srcLang === 'he' ? 'en' : 'he';
-    // Save original to source lang slot
     database.ref(`helpContent/${sectionId}/${srcLang}`).set(text);
     setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), [srcLang]: text } }));
     showToast('💾 נשמר, מתרגם...', 'info');
     setHintEditId(null);
-    // Translate and save to target lang slot
     try {
       const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=' + srcLang + '&tl=' + tgtLang + '&dt=t&q=' + encodeURIComponent(text));
       const data = await resp.json();
@@ -1629,7 +1473,6 @@ const FouFouApp = () => {
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
-  // TTS
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [ttsVoices, setTtsVoices] = useState([]);
@@ -1657,7 +1500,6 @@ const FouFouApp = () => {
   };
   const stopSpeaking = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); setIsSpeaking(false); setIsPaused(false); };
 
-  // Hint visit tracking
   const getHintVisits = (id) => parseInt(localStorage.getItem('foufou_hint_' + id) || '0');
   const trackHintVisit = (id) => {
     if (!window._hintTracked) window._hintTracked = {};
@@ -1671,8 +1513,6 @@ const FouFouApp = () => {
     setHintEditId(null);
   };
 
-  // Migrate old help content to hints (one-time, admin only)
-  // Speech-to-text for hint editing
   const [hintRecording, setHintRecording] = useState(false);
   const [hintInterimText, setHintInterimText] = useState('');
   const hintEditTextRef = React.useRef('');
@@ -1700,7 +1540,6 @@ const FouFouApp = () => {
     };
     recognition.onend = () => {
       setHintInterimText('');
-      // Auto-restart if user didn't manually stop
       if (window._hintRecognition) {
         try { recognition.start(); } catch(e) { setHintRecording(false); window._hintRecognition = null; }
       }
@@ -1721,11 +1560,9 @@ const FouFouApp = () => {
     setHintInterimText('');
   };
 
-  // Audio recording for hints (saves to Firebase Storage)
   const [hintAudioRecording, setHintAudioRecording] = useState(false);
   const [hintAudioUrls, setHintAudioUrls] = useState({});
   
-  // Load audio URLs from Firebase
   React.useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     database.ref('helpAudio').once('value').then(snap => {
@@ -1736,7 +1573,6 @@ const FouFouApp = () => {
 
   const [hintAudioDurations, setHintAudioDurations] = useState({});
   
-  // Load audio durations from Firebase
   React.useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     database.ref('helpAudioDuration').once('value').then(snap => {
@@ -1781,16 +1617,13 @@ const FouFouApp = () => {
     setHintAudioRecording(false);
   };
 
-  // Play hint: audio recording > TTS
   const playHint = (hintId, text) => {
-    // Always cancel any ongoing TTS first
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (window._hintAudio) { window._hintAudio.pause(); window._hintAudio = null; }
     
     const lang = window.BKK.i18n.currentLang || 'he';
     const audioUrl = hintAudioUrls[hintId + '_' + lang];
     if (audioUrl) {
-      // Play recording — do NOT fall through to TTS
       const audio = new Audio(audioUrl);
       window._hintAudio = audio;
       audio.onended = () => { setIsSpeaking(false); setIsPaused(false); window._hintAudio = null; };
@@ -1798,7 +1631,6 @@ const FouFouApp = () => {
       audio.play();
       return; // <-- critical: stop here, no TTS
     }
-    // No recording — use TTS
     speakHelp(text);
   };
   const pauseResumeHint = () => {
@@ -1807,7 +1639,6 @@ const FouFouApp = () => {
       else { window._hintAudio.pause(); setIsPaused(true); }
       return;
     }
-    // TTS pause/resume
     if (window.speechSynthesis) {
       if (isPaused) { window.speechSynthesis.resume(); setIsPaused(false); }
       else { window.speechSynthesis.pause(); setIsPaused(true); }
@@ -1819,7 +1650,6 @@ const FouFouApp = () => {
     setIsSpeaking(false); setIsPaused(false);
   };
 
-  // Render a context-sensitive hint bar
   const [openHintPopup, setOpenHintPopup] = useState(null);
   const [hintDragPos, setHintDragPos] = React.useState({ x: 0, y: 0 });
   const hintDragRef = React.useRef({ x: 0, y: 0, startX: 0, startY: 0, dragging: false });
@@ -1835,7 +1665,6 @@ const FouFouApp = () => {
     
     if (!txt && !isAdmin) return null;
     
-    // Admin editing mode
     if (hintEditId === hintId) return (
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
         <textarea value={hintEditText + (hintInterimText ? ' ' + hintInterimText : '')} 
@@ -1868,7 +1697,6 @@ const FouFouApp = () => {
       </div>
     );
     
-    // Empty (admin only) - small add button
     if (!txt && isAdmin) return (
       <div style={{ display: 'flex', justifyContent: isRTL ? 'flex-start' : 'flex-end', margin: '-4px 0 0 0', lineHeight: 1 }}>
         <button onClick={() => { setHintEditId(hintId); setHintEditText(''); }}
@@ -1876,7 +1704,6 @@ const FouFouApp = () => {
       </div>
     );
     
-    // Default: popup only (buttons rendered by renderStepHeader inline)
     return (<>
       {openHintPopup === hintId && (<>
           <div onClick={closeHintPopup} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
@@ -1969,7 +1796,6 @@ const FouFouApp = () => {
     setShowConfirmDialog(true);
   };
 
-  // Toast notification helper
   const showToast = (message, type = 'success', customDuration = null) => {
     setToastMessage({ message, type, sticky: customDuration === 'sticky' });
     if (customDuration !== 'sticky') {
@@ -1978,9 +1804,6 @@ const FouFouApp = () => {
     }
   };
 
-
-
-  // Geocode typed start point address to coordinates
   const validateStartPoint = async () => {
     const text = formData.startPoint?.trim();
     if (!text) {
@@ -1996,7 +1819,6 @@ const FouFouApp = () => {
         setStartPointCoords({ lat: result.lat, lng: result.lng, address: validatedAddress });
         setFormData(prev => ({ ...prev, startPoint: validatedAddress }));
         showToast(`${t("toast.addressVerified")} ${result.displayName || result.address}`, 'success');
-        console.log('[START_POINT] Geocoded:', text, '->', result);
       } else {
         showToast(t('places.addressNotFound'), 'warning');
       }
@@ -2007,8 +1829,6 @@ const FouFouApp = () => {
     setIsLocating(false);
   };
 
-
-  // Monitor Firebase connection state
   useEffect(() => {
     const handler = (e) => setFirebaseConnected(e.detail.connected);
     window.addEventListener('firebase-connection', handler);
@@ -2016,20 +1836,17 @@ const FouFouApp = () => {
     return () => window.removeEventListener('firebase-connection', handler);
   }, []);
 
-  // Push navigation state when view or wizard step changes
   useEffect(() => {
     if (window.BKK.pushNavState) {
       window.BKK.pushNavState({ view: currentView, wizardStep });
     }
   }, [currentView, wizardStep]);
 
-  // Handle Android/iOS back button
   useEffect(() => {
     const handler = (e) => {
       const prev = e.detail;
       if (!prev) return;
       
-      // Within wizard: go to previous step
       if (prev.wizardStep < wizardStep) {
         setWizardStep(prev.wizardStep);
         if (prev.wizardStep < 3) { setRoute(null); setCurrentView('form'); }
@@ -2037,7 +1854,6 @@ const FouFouApp = () => {
         return;
       }
       
-      // Normal navigation between views
       if (prev.view !== currentView) {
         setCurrentView(prev.view);
         window.scrollTo(0, 0);
@@ -2048,13 +1864,11 @@ const FouFouApp = () => {
     return () => window.removeEventListener('app-nav-back', handler);
   }, [currentView, wizardStep]);
 
-  // Save pending items to localStorage whenever they change
   useEffect(() => {
   }, [pendingLocations]);
   useEffect(() => {
   }, [pendingInterests]);
 
-  // Sync pending locations to Firebase
   const syncPendingItems = async () => {
     if (!isFirebaseAvailable || !database) return 0;
     if (!window.BKK.firebaseConnected) {
@@ -2064,7 +1878,6 @@ const FouFouApp = () => {
     
     let synced = 0;
     
-    // Sync pending locations
     if (pendingLocations.length > 0) {
       const remaining = [];
       for (const loc of pendingLocations) {
@@ -2072,22 +1885,18 @@ const FouFouApp = () => {
           const cityId = loc.cityId || selectedCityId;
           const { pendingAt, ...cleanLoc } = loc;
           const ref = await database.ref(`cities/${cityId}/locations`).push(cleanLoc);
-          // Verify server received it by reading back
           await Promise.race([
             ref.once('value'),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
           synced++;
-          console.log('[SYNC] Synced pending location:', loc.name);
         } catch (e) {
-          console.warn('[SYNC] Failed to sync location:', loc.name, e.message);
           remaining.push(loc);
         }
       }
       setPendingLocations(remaining);
     }
     
-    // Sync pending interests
     if (pendingInterests.length > 0) {
       const remaining = [];
       for (const item of pendingInterests) {
@@ -2097,15 +1906,12 @@ const FouFouApp = () => {
           if (searchConfig && Object.keys(searchConfig).length > 0) {
             await database.ref(`settings/interestConfig/${interestData.id}`).set(searchConfig);
           }
-          // Verify server received it by reading back
           await Promise.race([
             database.ref(`customInterests/${interestData.id}`).once('value'),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
           ]);
           synced++;
-          console.log('[SYNC] Synced pending interest:', interestData.label);
         } catch (e) {
-          console.warn('[SYNC] Failed to sync interest:', item.label, e.message);
           remaining.push(item);
         }
       }
@@ -2122,24 +1928,19 @@ const FouFouApp = () => {
     return synced;
   };
 
-  // Auto-sync when connection is restored
   useEffect(() => {
     if (firebaseConnected && isFirebaseAvailable && database) {
       if (pendingLocations.length > 0 || pendingInterests.length > 0) {
         const timer = setTimeout(() => {
-          console.log('[SYNC] Connection restored, syncing', pendingLocations.length, 'locations +', pendingInterests.length, 'interests');
           showToast(`🔄 ${t('toast.connectionRestored')}`, 'info');
           syncPendingItems();
         }, 3000);
         return () => clearTimeout(timer);
       } else {
-        // No pending items but connection just came back — inform user
-        console.log('[SYNC] Connection restored, no pending items');
       }
     }
   }, [firebaseConnected]);
 
-  // Helper: save to pending localStorage
   const saveToPending = (locationData) => {
     const pending = { ...locationData, pendingAt: new Date().toISOString() };
     setPendingLocations(prev => [...prev, pending]);
@@ -2152,20 +1953,14 @@ const FouFouApp = () => {
     showToast(`💾 ${interestData.label || interestData.name} — ${t('toast.savedPending')}`, 'warning', 'sticky');
   };
 
-  // One-time migration: move old customLocations to per-city structure
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       window.BKK.migrateLocationsToPerCity(database);
       window.BKK.cleanupInProgress(database);
       window.BKK.seedSystemRoutes(database);
-      // NOTE: cleanupOrphanedInterests REMOVED — it was deleting valid interests!
-      // The function checked for types/textSearch on the interest object, but search config
-      // is stored separately in settings/interestConfig/{id}. So non-privateOnly interests
-      // were incorrectly flagged as orphans and deleted.
     }
   }, []);
 
-  // Load user display names for addedBy resolution
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     database.ref('users').once('value').then(snap => {
@@ -2180,7 +1975,6 @@ const FouFouApp = () => {
     }).catch(() => {});
   }, [isFirebaseAvailable, database]);
 
-  // One-time mapsUrl repair: fix missing/coords-only mapsUrl for saved favorites
   const mapsUrlRepairDone = React.useRef(new Set());
   useEffect(() => {
     if (locationsLoading || !selectedCityId || mapsUrlRepairDone.current.has(selectedCityId)) return;
@@ -2192,16 +1986,13 @@ const FouFouApp = () => {
     const updates = [];
     const placeIdFixes = {};
     
-    // Clean up bad googlePlaceId values (Firebase keys mistakenly promoted)
     customLocations.forEach(loc => {
       if (loc.googlePlaceId && !isValidGPID(loc.googlePlaceId) && loc.firebaseId) {
         placeIdFixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = null;
       }
     });
     if (Object.keys(placeIdFixes).length > 0 && isFirebaseAvailable && database) {
-      console.log(`[REPAIR] Clearing ${Object.keys(placeIdFixes).length} bad googlePlaceId values`);
       database.ref().update(placeIdFixes).catch(e => console.error('[REPAIR] googlePlaceId cleanup failed:', e));
-      // Also fix in memory
       setCustomLocations(prev => prev.map(loc => 
         loc.googlePlaceId && !isValidGPID(loc.googlePlaceId) ? { ...loc, googlePlaceId: null } : loc
       ));
@@ -2212,13 +2003,11 @@ const FouFouApp = () => {
       const isCoordOnly = !hasValidPlaceId && !loc.address;
       const currentUrl = loc.mapsUrl || '';
       
-      // Coordinate-only places: CLEAR bad search URLs (they show global results)
       if (isCoordOnly && currentUrl && currentUrl.includes('query=') && !currentUrl.match(/query=\d+\.\d+,\d+\.\d+/)) {
         updates.push({ firebaseId: loc.firebaseId, name: loc.name, oldUrl: currentUrl, newUrl: '' });
         return;
       }
       
-      // Skip coordinate-only places — no Google identity to generate URL for
       if (isCoordOnly) return;
       
       const needsFix = !currentUrl || 
@@ -2236,8 +2025,6 @@ const FouFouApp = () => {
     
     if (updates.length === 0) return;
     
-    console.log(`[REPAIR] Fixing mapsUrl for ${updates.length} locations in ${selectedCityId}`);
-    
     if (isFirebaseAvailable && database) {
       const batch = {};
       updates.forEach(u => {
@@ -2246,7 +2033,6 @@ const FouFouApp = () => {
         }
       });
       database.ref().update(batch)
-        .then(() => console.log(`[REPAIR] Updated ${updates.length} mapsUrl entries`))
         .catch(e => console.error('[REPAIR] mapsUrl batch update failed:', e));
     } else {
       const updated = customLocations.map(loc => {
@@ -2257,7 +2043,6 @@ const FouFouApp = () => {
     }
   }, [customLocations, locationsLoading, selectedCityId]);
 
-  // One-time migration: fix stale outsideArea flags and wrong default areas
   const areaRepairDone = React.useRef(new Set());
   useEffect(() => {
     const repairKey = selectedCityId + '_v2'; // v2: closest area for outside places
@@ -2272,13 +2057,11 @@ const FouFouApp = () => {
       const currentAreas = loc.areas || (loc.area ? [loc.area] : []);
       
       if (detected.length > 0) {
-        // Auto-detect found areas — update if different
         const areasMatch = detected.length === currentAreas.length && detected.every(a => currentAreas.includes(a));
         if (!areasMatch || loc.outsideArea) {
           updates.push({ id: loc.id, firebaseId: loc.firebaseId, areas: detected, area: detected[0], outsideArea: false });
         }
       } else {
-        // Outside all areas — assign closest area and mark outsideArea
         const closest = window.BKK.getClosestArea(loc.lat, loc.lng);
         if (closest && (currentAreas[0] !== closest || !loc.outsideArea)) {
           updates.push({ id: loc.id, firebaseId: loc.firebaseId, areas: [closest], area: closest, outsideArea: true });
@@ -2287,7 +2070,6 @@ const FouFouApp = () => {
     }
     
     if (updates.length > 0) {
-      console.log(`[AREA-REPAIR] Fixing areas for ${updates.length} locations in ${selectedCityId}`);
       if (isFirebaseAvailable && database) {
         const batch = {};
         updates.forEach(u => {
@@ -2299,7 +2081,6 @@ const FouFouApp = () => {
         });
         if (Object.keys(batch).length > 0) {
           database.ref().update(batch).then(() => {
-            console.log(`[AREA-REPAIR] Fixed ${updates.length} locations in Firebase`);
           }).catch(e => console.error('[AREA-REPAIR] Firebase error:', e));
         }
       } else {
@@ -2325,7 +2106,6 @@ const FouFouApp = () => {
             firebaseId: key
           }));
           setSavedRoutes(routesArray);
-          console.log('[FIREBASE] Loaded', routesArray.length, 'saved routes for', selectedCityId);
         } else {
           setSavedRoutes([]);
         }
@@ -2339,13 +2119,11 @@ const FouFouApp = () => {
     }
   }, [selectedCityId]);
 
-  // Load custom locations from Firebase - PER CITY
   useEffect(() => {
     if (!selectedCityId) return;
     setLocationsLoading(true);
     
     if (isFirebaseAvailable && database) {
-      console.log('[DATA] Loading locations for city:', selectedCityId);
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
       const onValue = locationsRef.on('value', (snapshot) => {
@@ -2353,14 +2131,11 @@ const FouFouApp = () => {
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
             const loc = { ...data[key], firebaseId: key, cityId: selectedCityId };
-            // Sanitize: fix address if it's an object (import bug)
             if (loc.address && typeof loc.address === 'object') {
               if (loc.address.lat && !loc.lat) { loc.lat = loc.address.lat; loc.lng = loc.address.lng; }
               delete loc.address;
             }
-            // Sanitize: use placeId as googlePlaceId only if it looks like a real Google Place ID
             if (loc.placeId && !loc.googlePlaceId && /^(ChIJ|EiI|GhIJ)/.test(loc.placeId)) loc.googlePlaceId = loc.placeId;
-            // Only clear stale outsideArea if coords now match an area. Never set it here.
             if (loc.outsideArea && loc.lat && loc.lng && window.BKK.getAreasForCoordinates) {
               const detected = window.BKK.getAreasForCoordinates(loc.lat, loc.lng);
               if (detected.length > 0) loc.outsideArea = false;
@@ -2368,8 +2143,6 @@ const FouFouApp = () => {
             return loc;
           });
           setCustomLocations(locationsArray);
-          console.log('[FIREBASE] Loaded', locationsArray.length, 'locations for', selectedCityId);
-          // Load review averages for all custom locations
           const allNames = locationsArray.filter(l => l.status !== 'blacklist').map(l => l.name);
           if (allNames.length > 0) loadReviewAverages(allNames);
         } else {
@@ -2387,7 +2160,6 @@ const FouFouApp = () => {
     }
   }, [selectedCityId]);
 
-  // Load custom interests from Firebase
   const recentlyAddedRef = React.useRef(new Map()); // id → timestamp of recent local adds
   useEffect(() => {
     if (isFirebaseAvailable && database) {
@@ -2401,45 +2173,32 @@ const FouFouApp = () => {
             ...data[key],
             firebaseId: key
           }));
-          // Filter out built-in IDs that were accidentally saved as custom
           const duplicates = allEntries.filter(i => builtInIds.has(i.id));
           const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
-          // Auto-cleanup duplicates from Firebase
           if (duplicates.length > 0) {
-            console.log('[CLEANUP] Removing', duplicates.length, 'built-in duplicates from customInterests');
             duplicates.forEach(d => database.ref(`customInterests/${d.firebaseId}`).remove());
           }
           
-          // Merge: keep locally-added interests that Firebase doesn't know about yet (race condition protection)
           const firebaseIds = new Set(interestsArray.map(i => i.id));
           const now = Date.now();
-          // Clean up stale entries (older than 30 seconds)
           for (const [id, ts] of recentlyAddedRef.current) {
             if (now - ts > 30000) recentlyAddedRef.current.delete(id);
           }
           setCustomInterests(prev => {
-            // Detect disappearances
             const prevIds = new Set(prev.map(i => i.id));
             const disappeared = prev.filter(i => !firebaseIds.has(i.id) && !recentlyAddedRef.current.has(i.id));
             if (disappeared.length > 0 && prev.length > 0) {
-              console.warn('[FIREBASE] ⚠️ INTERESTS DISAPPEARED:', disappeared.map(i => `${i.id}:"${i.label}"`).join(', '));
-              console.warn('[FIREBASE] Previous count:', prev.length, '→ Firebase count:', interestsArray.length);
             }
-            // Find locally-added interests not yet in Firebase (added within last 30s)
             const pendingLocal = prev.filter(i => 
               !firebaseIds.has(i.id) && recentlyAddedRef.current.has(i.id)
             );
             if (pendingLocal.length > 0) {
-              console.log('[FIREBASE] Keeping', pendingLocal.length, 'pending local interests:', pendingLocal.map(i => i.label).join(', '));
             }
             return [...interestsArray, ...pendingLocal];
           });
-          console.log('[FIREBASE] Loaded', interestsArray.length, 'interests from Firebase');
         } else {
-          // Safety: don't wipe if we already have interests — Firebase might have returned null due to connection issue
           setCustomInterests(prev => {
             if (prev.length > 0) {
-              console.warn('[FIREBASE] customInterests returned null but we have', prev.length, 'locally — keeping them');
               return prev;
             }
             return [];
@@ -2454,9 +2213,7 @@ const FouFouApp = () => {
     }
   }, []);
 
-  // Load interest search configurations from Firebase
   useEffect(() => {
-    // Default configurations
     const defaultConfig = {
       temples: { types: ['hindu_temple', 'buddhist_temple', 'church', 'mosque'], blacklist: ['hotel', 'restaurant', 'school'] },
       food: { types: ['restaurant', 'meal_takeaway'], blacklist: ['bar', 'pub', 'club', 'hotel', 'hostel'] },
@@ -2471,7 +2228,6 @@ const FouFouApp = () => {
       parks: { types: ['park', 'national_park'], blacklist: ['hotel', 'parking', 'car park', 'garage', 'water park'] },
       rooftop: { types: ['bar', 'restaurant'], blacklist: ['parking', 'car park', 'garage'] },
       entertainment: { types: ['movie_theater', 'amusement_park', 'performing_arts_theater'], blacklist: ['hotel', 'mall'] },
-      // Uncovered interests (inactive by default)
       massage_spa: { types: ['spa', 'massage'], blacklist: ['cannabis', 'weed', 'kratom', 'hotel'] },
       fitness: { types: ['gym', 'fitness_center', 'sports_club'], blacklist: ['hotel', 'hostel', 'physiotherapy'] },
       shopping_special: { types: ['clothing_store', 'jewelry_store', 'shoe_store'], blacklist: ['market', 'wholesale', 'pawn'] },
@@ -2488,12 +2244,10 @@ const FouFouApp = () => {
       configRef.once('value').then((snapshot) => {
         const data = snapshot.val();
         if (data) {
-          // Deep merge: for each interest, use Firebase config but fall back to default blacklist if empty
           const merged = { ...defaultConfig };
           for (const [key, val] of Object.entries(data)) {
             if (merged[key]) {
               merged[key] = { ...merged[key], ...val };
-              // If Firebase has empty blacklist but default has values, keep default
               if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
                 merged[key].blacklist = defaultConfig[key].blacklist;
               }
@@ -2502,17 +2256,13 @@ const FouFouApp = () => {
             }
           }
           setInterestConfig(merged);
-          console.log('[FIREBASE] Loaded interest config (deep merge)');
         } else {
-          // Save defaults to Firebase
           configRef.set(defaultConfig);
           setInterestConfig(defaultConfig);
-          console.log('[FIREBASE] Saved default interest config');
         }
         markLoaded('config');
       });
       
-      // Listen for changes
       configRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -2536,7 +2286,6 @@ const FouFouApp = () => {
     }
   }, []);
 
-  // Load interest counters (for auto-naming: "Graffiti Chinatown #3")
   useEffect(() => {
     if (isFirebaseAvailable && database && selectedCityId) {
       const countersRef = database.ref(`cities/${selectedCityId}/interestCounters`);
@@ -2548,9 +2297,7 @@ const FouFouApp = () => {
     }
   }, [selectedCityId]);
 
-  // Load interest active/inactive status (per-user with admin defaults)
   useEffect(() => {
-    // Hard-coded defaults: built-in = active, uncovered = inactive
     const builtInIds = interestOptions.map(i => i.id);
     const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
     
@@ -2558,17 +2305,14 @@ const FouFouApp = () => {
     builtInIds.forEach(id => { hardDefaults[id] = true; });
     uncoveredIds.forEach(id => { hardDefaults[id] = false; });
     
-    // Helper: compute defaults from interestConfig defaultEnabled flags
     const computeDefaults = (icfg, legacyStatus) => {
       const defaults = { ...hardDefaults };
-      // If interestConfig has any defaultEnabled flags, use them
       const hasDefaultFlags = Object.values(icfg || {}).some(c => c?.defaultEnabled !== undefined);
       if (hasDefaultFlags) {
         Object.entries(icfg).forEach(([id, cfg]) => {
           if (cfg?.defaultEnabled !== undefined) defaults[id] = cfg.defaultEnabled;
         });
       } else if (legacyStatus) {
-        // Legacy fallback: use settings/interestStatus
         Object.assign(defaults, legacyStatus);
       }
       return defaults;
@@ -2580,7 +2324,6 @@ const FouFouApp = () => {
       const legacyStatusRef = database.ref('settings/interestStatus');
       const userStatusRef = database.ref(`users/${userId}/interestStatus`);
       
-      // Load config + legacy status + user overrides
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
@@ -2594,10 +2337,8 @@ const FouFouApp = () => {
         
         if (userData) {
           setInterestStatus({ ...defaults, ...userData });
-          console.log('[FIREBASE] Loaded user interest status with defaultEnabled flags');
         } else {
           setInterestStatus(defaults);
-          console.log('[FIREBASE] Using defaultEnabled defaults for new user');
         }
         markLoaded('status');
       }).catch(err => {
@@ -2606,12 +2347,10 @@ const FouFouApp = () => {
         markLoaded('status');
       });
       
-      // Listen for user's own changes
       const userStatusRef2 = database.ref(`users/${authUser?.uid || 'unknown'}/interestStatus`);
       userStatusRef2.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          // Merge: existing defaults + user overrides
           setInterestStatus(prev => ({ ...prev, ...data }));
         }
       });
@@ -2622,14 +2361,11 @@ const FouFouApp = () => {
   }, []);
 
   // ============================================================
-  // Refresh All Data - Manual reload from Firebase & localStorage
   // ============================================================
   const refreshAllData = async () => {
     setIsRefreshing(true);
-    console.log('[REFRESH] Starting full data refresh...');
     
     try {
-      // 1. Saved Routes
       if (isFirebaseAvailable && database) {
         try {
           const routeSnap = await database.ref(`cities/${selectedCityId}/routes`).once('value');
@@ -2640,7 +2376,6 @@ const FouFouApp = () => {
               firebaseId: key
             }));
             setSavedRoutes(routesArray);
-            console.log('[REFRESH] Loaded', routesArray.length, 'saved routes from Firebase');
           } else {
             setSavedRoutes([]);
           }
@@ -2652,7 +2387,6 @@ const FouFouApp = () => {
       }
       
       if (isFirebaseAvailable && database) {
-        // 2. Custom Locations
         try {
           const locSnap = await database.ref(`cities/${selectedCityId}/locations`).once('value');
           const locData = locSnap.val();
@@ -2663,7 +2397,6 @@ const FouFouApp = () => {
               cityId: selectedCityId
             }));
             setCustomLocations(locationsArray);
-            console.log('[REFRESH] Loaded', locationsArray.length, 'locations');
           } else {
             setCustomLocations([]);
           }
@@ -2671,7 +2404,6 @@ const FouFouApp = () => {
           console.error('[REFRESH] Error loading locations:', e);
         }
         
-        // 3. Custom Interests
         try {
           const intSnap = await database.ref('customInterests').once('value');
           const intData = intSnap.val();
@@ -2682,12 +2414,9 @@ const FouFouApp = () => {
               firebaseId: key
             })).filter(i => !builtInIds.has(i.id));
             setCustomInterests(interestsArray);
-            console.log('[REFRESH] Loaded', interestsArray.length, 'interests');
           } else {
-            // Don't wipe if we already have interests locally
             setCustomInterests(prev => {
               if (prev.length > 0) {
-                console.warn('[REFRESH] customInterests returned null but we have', prev.length, 'locally — keeping');
                 return prev;
               }
               return [];
@@ -2697,17 +2426,14 @@ const FouFouApp = () => {
           console.error('[REFRESH] Error loading interests:', e);
         }
         
-        // 4-7. All settings in single read
         try {
           const settingsSnap = await database.ref('settings').once('value');
           const s = settingsSnap.val() || {};
           
-          // Interest Config
           if (s.interestConfig) {
             setInterestConfig(prev => ({ ...prev, ...s.interestConfig }));
           }
           
-          // Interest Status — compute defaults from interestConfig.defaultEnabled flags
           {
             const builtInIds = interestOptions.map(i => i.id);
             const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
@@ -2719,25 +2445,20 @@ const FouFouApp = () => {
             uncoveredIds.forEach(id => { 
               defaultStatus[id] = icfg[id]?.defaultEnabled !== undefined ? icfg[id].defaultEnabled : false; 
             });
-            // Legacy fallback: if settings/interestStatus exists and no defaultEnabled flags, use it
             if (s.interestStatus && !Object.values(icfg).some(c => c?.defaultEnabled !== undefined)) {
               Object.assign(defaultStatus, s.interestStatus);
             }
-            // Merge: defaults as base, preserve user choices on top
             setInterestStatus(prev => {
               if (!prev || Object.keys(prev).length === 0) return defaultStatus;
               return { ...defaultStatus, ...prev };
             });
           }
           
-          // Legacy admin data (kept for reference, auth is now Firebase Auth)
           setAdminPassword(s.adminPassword || '');
           const usersData = s.adminUsers || {};
           const usersList = Object.entries(usersData).map(([oderId, data]) => ({ oderId, ...data }));
           setAdminUsers(usersList);
-          // Role is now determined by Firebase Auth → users/{uid}/role
           
-          // App settings
           if (s.googleMaxWaypoints != null) setGoogleMaxWaypoints(s.googleMaxWaypoints);
           const updates = {};
           if (s.maxStops != null) updates.maxStops = s.maxStops;
@@ -2745,7 +2466,6 @@ const FouFouApp = () => {
           if (s.defaultRadius != null) window.BKK._defaultRadius = s.defaultRadius;
           if (Object.keys(updates).length > 0) setFormData(prev => ({...prev, ...updates}));
           
-          // City overrides
           if (s.cityOverrides) {
             window.BKK._cityOverrides = s.cityOverrides;
             const cityId = window.BKK.selectedCityId;
@@ -2756,12 +2476,10 @@ const FouFouApp = () => {
             }
           }
           
-          // System params
           if (s.systemParams) {
             const merged = { ...window.BKK._defaultSystemParams, ...s.systemParams };
             window.BKK.systemParams = merged;
             setSystemParams(merged);
-            // systemParams overrides (higher priority)
             if (s.systemParams.maxStops != null) updates.maxStops = s.systemParams.maxStops;
             if (s.systemParams.fetchMoreCount != null) updates.fetchMoreCount = s.systemParams.fetchMoreCount;
             if (s.systemParams.googleMaxWaypoints != null) setGoogleMaxWaypoints(s.systemParams.googleMaxWaypoints);
@@ -2769,7 +2487,6 @@ const FouFouApp = () => {
             if (Object.keys(updates).length > 0) setFormData(prev => ({...prev, ...updates}));
           }
           
-          // Map visual config overrides
           if (s.mapConfig) {
             const mc = window.BKK.mapConfig;
             Object.keys(s.mapConfig).forEach(group => {
@@ -2780,7 +2497,6 @@ const FouFouApp = () => {
           }
           if (s.stopColorPalette) window.BKK.stopColorPalette = s.stopColorPalette;
           
-          console.log('[REFRESH] All settings loaded (single read)');
         } catch (e) {
           console.error('[REFRESH] Error loading settings:', e);
         }
@@ -2794,34 +2510,27 @@ const FouFouApp = () => {
       showToast(t('toast.refreshError'), 'error');
     } finally {
       setIsRefreshing(false);
-      console.log('[REFRESH] Complete');
     }
   };
 
-  // Save routeType to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('foufou_route_type', routeType);
   }, [routeType]);
 
-  // Access Log System - Track visits
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     
     const userId = authUser?.uid || 'anonymous';
     
-    // ── CONSOLIDATED settings listener (replaces 8 individual listeners + loadAdminControlledSettings) ──
     const hasSavedPrefs = !!localStorage.getItem('foufou_preferences');
     database.ref('settings').on('value', (snap) => {
       const s = snap.val() || {};
       
-      // Legacy admin data (auth is now via Firebase Auth)
       setAdminPassword(s.adminPassword || '');
       const usersData = s.adminUsers || {};
       const usersList = Object.entries(usersData).map(([oderId, data]) => ({ oderId, ...data }));
       setAdminUsers(usersList);
-      // Role is now determined by Firebase Auth → users/{uid}/role
       
-      // App settings — prefer systemParams, fallback to top-level keys for backward compatibility
       if (s.googleMaxWaypoints != null) setGoogleMaxWaypoints(s.googleMaxWaypoints);
       
       const formUpdates = {};
@@ -2832,12 +2541,10 @@ const FouFouApp = () => {
         if (!hasSavedPrefs) formUpdates.radiusMeters = s.defaultRadius;
       }
       
-      // System parameters (algorithm tuning + app settings overrides)
       if (s.systemParams) {
         const merged = { ...window.BKK._defaultSystemParams, ...s.systemParams };
         window.BKK.systemParams = merged;
         setSystemParams(merged);
-        // systemParams overrides for app settings (higher priority than top-level)
         if (s.systemParams.maxStops != null) formUpdates.maxStops = s.systemParams.maxStops;
         if (s.systemParams.fetchMoreCount != null) formUpdates.fetchMoreCount = s.systemParams.fetchMoreCount;
         if (s.systemParams.googleMaxWaypoints != null) setGoogleMaxWaypoints(s.systemParams.googleMaxWaypoints);
@@ -2865,10 +2572,8 @@ const FouFouApp = () => {
         }
       }
       
-      console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
     });
     
-    // Log access stats (aggregated weekly counters by country)
     if (!isAdmin) {
       const lastLogTime = parseInt(localStorage.getItem('foufou_last_log_time') || '0');
       const oneHour = 60 * 60 * 1000;
@@ -2876,25 +2581,20 @@ const FouFouApp = () => {
       if (Date.now() - lastLogTime >= oneHour) {
         localStorage.setItem('foufou_last_log_time', Date.now().toString());
         
-        // Get ISO week key (e.g. "2026-W08")
         const now = new Date();
         const jan1 = new Date(now.getFullYear(), 0, 1);
         const weekNum = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);
         const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
         
-        // Increment total counter
         database.ref('accessStats/total').transaction(val => (val || 0) + 1);
         
-        // Increment weekly unknown first, then update with country
         database.ref(`accessStats/weekly/${weekKey}/unknown`).transaction(val => (val || 0) + 1);
         
-        // Geo lookup to get country
         fetch('https://ipapi.co/json/')
           .then(r => r.json())
           .then(geo => {
             const cc = geo.country_code || 'unknown';
             if (cc !== 'unknown') {
-              // Move count from unknown to actual country
               database.ref(`accessStats/weekly/${weekKey}/unknown`).transaction(val => Math.max((val || 1) - 1, 0));
               database.ref(`accessStats/weekly/${weekKey}/${cc}`).transaction(val => (val || 0) + 1);
             }
@@ -2927,7 +2627,6 @@ const FouFouApp = () => {
 
     if (isFirebaseAvailable && database) {
       if (existingEntry && existingEntry.firebaseId) {
-        // Update existing feedback
         database.ref(`feedback/${existingEntry.firebaseId}`).update(feedbackEntry)
           .then(() => {
             showToast(t('toast.feedbackThanks'), 'success');
@@ -2940,7 +2639,6 @@ const FouFouApp = () => {
             showToast(`${t('toast.sendError')}: ${err.message || err}`, 'error');
           });
       } else {
-        // New feedback entry
         database.ref('feedback').push(feedbackEntry)
           .then((ref) => {
             showToast(t('toast.feedbackThanks'), 'success');
@@ -2959,7 +2657,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Load feedback list - all users see all feedback; non-admin can only delete their own
   const feedbackCountRef = useRef(null);
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
@@ -3025,7 +2722,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Config - loaded from config.js, re-read on city change via selectedCityId dependency
   const interestOptions = window.BKK.interestOptions || [];
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
@@ -3036,13 +2732,11 @@ const FouFouApp = () => {
 
   const areaCoordinates = window.BKK.areaCoordinates || {};
 
-  // Switch city function
   const switchCity = (cityId, stayOnView) => {
     if (cityId === selectedCityId) return;
     if (!window.BKK.cities[cityId]) return;
     
     window.BKK.selectCity(cityId);
-    // Apply Firebase overrides for day/night hours
     const overrides = window.BKK._cityOverrides?.[cityId];
     if (overrides) {
       if (overrides.dayStartHour != null) { window.BKK.dayStartHour = overrides.dayStartHour; window.BKK.selectedCity.dayStartHour = overrides.dayStartHour; }
@@ -3051,7 +2745,6 @@ const FouFouApp = () => {
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
     
-    // Reset form data for new city, but preserve user settings
     const firstArea = window.BKK.areaOptions[0]?.id || '';
     setFormData(prev => ({
       hours: 3, area: firstArea, interests: [], circular: true, startPoint: '',
@@ -3080,14 +2773,11 @@ const FouFouApp = () => {
     setCurrentLang(lang);
   };
   
-  // Utility functions - loaded from utils.js
   const checkLocationInArea = window.BKK.checkLocationInArea;
   const getButtonStyle = window.BKK.getButtonStyle;
 
-  // Text Search URL
   const GOOGLE_PLACES_TEXT_SEARCH_URL = window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL || 'https://places.googleapis.com/v1/places:searchText';
 
-  // Calculate distance between two coordinates in meters (Haversine)
   const calcDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371e3;
     const r1 = lat1 * Math.PI / 180;
@@ -3098,7 +2788,6 @@ const FouFouApp = () => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   };
 
-  // ── Duplicate Detection: find nearby Google Places + existing custom locations ──
   const [bulkDedupResults, setBulkDedupResults] = useState(null); // [{ loc, matches: [{...loc, _distance}] }]
   const [dedupConfirm, setDedupConfirm] = useState(null); // { type: 'google'|'custom', loc, match, closeAfter }
   
@@ -3107,21 +2796,17 @@ const FouFouApp = () => {
     const radius = sp.dedupRadiusMeters || 50;
     const results = { google: [], custom: [], lat, lng, interests };
     
-    // Expand interests with dedupRelated (ONE level only, bidirectional)
     const expandedInterests = new Set(interests);
     for (const opt of allInterestOptions) {
       const related = interestConfig[opt.id]?.dedupRelated || opt.dedupRelated || [];
-      // If this interest is in our ORIGINAL list, add its direct related
       if (interests.includes(opt.id)) {
         related.forEach(r => expandedInterests.add(r));
       }
-      // If this interest lists one of our ORIGINAL interests as related (reverse link)
       if (related.some(r => interests.includes(r))) {
         expandedInterests.add(opt.id);
       }
     }
     
-    // 1. Check existing custom locations (expanded interest + within radius)
     if (sp.dedupCustomEnabled) {
       for (const loc of customLocations) {
         if (!loc.lat || !loc.lng) continue;
@@ -3135,7 +2820,6 @@ const FouFouApp = () => {
       }
     }
     
-    // 2. Google Places Nearby Search (only if expanded interests have Google types)
     if (sp.dedupGoogleEnabled && GOOGLE_PLACES_API_KEY) {
       try {
         const interestToGP = window.BKK.interestToGooglePlaces || {};
@@ -3144,12 +2828,10 @@ const FouFouApp = () => {
         for (const interest of expandedInterests) {
           const types = interestToGP[interest];
           if (types) googleTypes.push(...types);
-          // Collect blacklist from config (Firebase overrides + defaults)
           const cfg = interestConfig[interest];
           if (cfg?.blacklist) {
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
-          // Also check custom interest's base category
           const ci = customInterests.find(c => c.id === interest);
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
@@ -3158,8 +2840,6 @@ const FouFouApp = () => {
         const uniqueTypes = [...new Set(googleTypes)].slice(0, 5);
         const uniqueBlacklist = [...new Set(blacklistWords)];
         
-        // Skip Google search if none of the expanded interests have Place Types
-        // (private-only interests → check only custom locations above)
         if (uniqueTypes.length > 0) {
           const body = {
             locationRestriction: {
@@ -3186,7 +2866,6 @@ const FouFouApp = () => {
             const data = await response.json();
             results.google = (data.places || [])
               .filter(p => {
-                // Apply blacklist: skip places whose name contains blacklisted words
                 if (uniqueBlacklist.length === 0) return true;
                 const name = (p.displayName?.text || '').toLowerCase();
                 return !uniqueBlacklist.some(word => name.includes(word));
@@ -3206,19 +2885,16 @@ const FouFouApp = () => {
           }
         }
       } catch (e) {
-        console.warn('[DEDUP] Google nearby search failed:', e.message);
       }
     }
     
     const total = results.google.length + results.custom.length;
     if (total > 0) {
-      console.log(`[DEDUP] Found ${results.google.length} Google + ${results.custom.length} custom within ${radius}m`);
       return results;
     }
     return null;
   };
 
-  // Detect which area a coordinate belongs to (returns areaId or null)
   const detectAreaFromCoords = (lat, lng) => {
     const coords = window.BKK.areaCoordinates;
     let closest = null;
@@ -3235,7 +2911,6 @@ const FouFouApp = () => {
   };
 
   const fetchGooglePlaces = async (area, interests, radiusOverride) => {
-    // radiusOverride: { lat, lng, radius } for radius mode
     let center, searchRadius;
     
     if (radiusOverride) {
@@ -3252,12 +2927,10 @@ const FouFouApp = () => {
       searchRadius = areaCenter.radius || 2000;
     }
 
-    // Filter out invalid interests (those without search config)
     const validInterests = interests.filter(id => isInterestValid(id));
     if (validInterests.length === 0) {
       const names = interests.map(id => allInterestOptions.find(o => o.id === id)).filter(Boolean).map(o => tLabel(o) || o?.id || id).join(', ');
       addDebugLog('API', `No valid config for: ${names}`);
-      console.warn('[DYNAMIC] No valid interests - all are missing search config:', names);
       return [];
     }
     
@@ -3265,14 +2938,11 @@ const FouFouApp = () => {
       const skipped = interests.filter(id => !isInterestValid(id));
       const skippedNames = skipped.map(id => allInterestOptions.find(o => o.id === id)).filter(Boolean).map(o => tLabel(o) || o?.id || id).join(', ');
       addDebugLog('API', `Skipped interests without config: ${skippedNames}`);
-      console.warn('[DYNAMIC] Skipped invalid interests:', skippedNames);
     }
 
     try {
-      // Get config for the first valid interest (primary)
       const primaryInterest = validInterests[0];
       
-      // Check if this interest has direct config or through baseCategory
       let config = interestConfig[primaryInterest];
       if (!config) {
         const customInterest = customInterests.find(ci => ci.id === primaryInterest);
@@ -3283,10 +2953,8 @@ const FouFouApp = () => {
         }
       }
       
-      // Check if this interest uses text search (Firebase config first, then city defaults)
       const textSearchQuery = config.textSearch || (window.BKK.textSearchInterests || {})[validInterests[0]] || '';
       
-      // Collect blacklist words from all valid interests
       const blacklistWords = validInterests
         .flatMap(interest => {
           const directConfig = interestConfig[interest];
@@ -3301,7 +2969,6 @@ const FouFouApp = () => {
       let placeTypes = [];
       
       if (textSearchQuery) {
-        // Use Text Search API for interests like "graffiti" -> "street art"
         const areaName = area ? (areaOptions.find(a => a.id === area)?.labelEn || area) : '';
         const cityName = window.BKK.cityNameForSearch || 'Bangkok';
         const searchQuery = `${textSearchQuery} ${areaName} ${cityName}`.trim();
@@ -3340,19 +3007,15 @@ const FouFouApp = () => {
           })
         });
       } else {
-        // Use Nearby Search API with types from interestConfig
         placeTypes = [...new Set(
           validInterests.flatMap(interest => {
-            // First check if this interest has direct config
             if (interestConfig[interest]?.types) {
               return interestConfig[interest].types;
             }
-            // Fallback to baseCategory if it's a custom interest
             const customInterest = customInterests.find(ci => ci.id === interest);
             if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
               return interestConfig[customInterest.baseCategory].types;
             }
-            // Fallback to interestToGooglePlaces
             return interestToGooglePlaces[interest] || interestToGooglePlaces[customInterest?.baseCategory] || ['point_of_interest'];
           })
         )];
@@ -3392,12 +3055,6 @@ const FouFouApp = () => {
         });
       }
 
-      console.log('[DYNAMIC] Google Places Response:', { 
-        status: response.status, 
-        ok: response.ok,
-        statusText: response.statusText
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[DYNAMIC] Error fetching Google Places:', {
@@ -3407,9 +3064,7 @@ const FouFouApp = () => {
           placeTypes
         });
         
-        // Handle 400 Unsupported types - retry without bad types
         if (response.status === 400 && errorText.includes('Unsupported types') && !isTextSearch && placeTypes.length > 1) {
-          console.warn('[DYNAMIC] Unsupported types detected, retrying one type at a time...');
           let allRetryPlaces = [];
           for (const singleType of placeTypes) {
             try {
@@ -3435,22 +3090,17 @@ const FouFouApp = () => {
                 const retryData = await retryResponse.json();
                 if (retryData.places) {
                   allRetryPlaces.push(...retryData.places);
-                  console.log(`[DYNAMIC] Retry success for type: ${singleType}, got ${retryData.places.length} places`);
                 }
               } else {
                 const interestNames = validInterests.map(id => allInterestOptions.find(o => o.id === id)).filter(Boolean).map(o => tLabel(o) || o?.id || id).join(', ');
                 addDebugLog('API', `Type "${singleType}" not supported by Google (${interestNames})`);
-                console.warn(`[DYNAMIC] Type "${singleType}" not supported, skipping`);
               }
             } catch (retryErr) {
-              console.warn(`[DYNAMIC] Retry failed for type: ${singleType}`, retryErr);
             }
           }
           if (allRetryPlaces.length > 0) {
-            // Process retry results - jump to processing section
             const data = { places: allRetryPlaces };
             response = { ok: true }; // Fake ok response
-            // Continue with processing below using data
             const isTextSearchRetry = false;
             const textSearchPhraseRetry = '';
             let typeFilteredCountRetry = 0;
@@ -3494,7 +3144,6 @@ const FouFouApp = () => {
           return []; // No results from any type
         }
         
-        // For transient server errors (503, 500, 429), throw a user-friendly message
         if (response.status === 503 || response.status === 500) {
           throw new Error(t('toast.googleApiUnavailable') || 'Google API זמנית לא זמין — נסה שוב בעוד כמה שניות');
         } else if (response.status === 429) {
@@ -3505,25 +3154,14 @@ const FouFouApp = () => {
 
       const data = await response.json();
       
-      console.log('[DYNAMIC] Google Places Response:', {
-        area,
-        interests,
-        placeTypes,
-        foundPlaces: data.places?.length || 0
-      });
-      
       if (!data.places) {
-        console.warn('[DYNAMIC] No places found in response');
         return [];
       }
 
-      // Check if this was a text search
       const isTextSearch = !!textSearchQuery;
       
-      // For text search: use the full query phrase for relevance filtering
       const textSearchPhrase = isTextSearch ? textSearchQuery.toLowerCase().trim() : '';
       
-      // Filter and transform Google Places data
       let typeFilteredCount = 0;
       let blacklistFilteredCount = 0;
       let relevanceFilteredCount = 0;
@@ -3541,7 +3179,6 @@ const FouFouApp = () => {
             primaryType: place.primaryType || '-'
           };
           
-          // Filter 1: Blacklist check - filter out places with blacklisted words in name OR types
           if (blacklistWords.length > 0) {
             const placeTypes = (place.types || []).concat(place.primaryType ? [place.primaryType] : []).map(t => t.toLowerCase().replace(/_/g, ' '));
             const matchedWord = blacklistWords.find(word =>
@@ -3557,8 +3194,6 @@ const FouFouApp = () => {
             }
           }
           
-          // Filter 2: For text search - relevance check
-          // Place name must contain the FULL search phrase (e.g. "street art")
           if (isTextSearch && textSearchPhrase) {
             const nameHasPhrase = placeName.includes(textSearchPhrase);
             
@@ -3571,7 +3206,6 @@ const FouFouApp = () => {
             }
           }
           
-          // Filter 3: Type validation - for category search only
           if (!isTextSearch && placeTypes.length > 0) {
             const placeTypesFromGoogle = place.types || [];
             const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
@@ -3590,12 +3224,10 @@ const FouFouApp = () => {
           return true;
         })
         .map((place, index) => {
-          // Extract today's opening hours
           const openingHours = place.currentOpeningHours;
           const todayIndex = new Date().getDay(); // 0=Sun, need to map to weekdayDescriptions (0=Mon in Google)
           const googleDayIndex = todayIndex === 0 ? 6 : todayIndex - 1; // Convert: Sun=6, Mon=0, Tue=1...
           const todayHours = openingHours?.weekdayDescriptions?.[googleDayIndex] || '';
-          // Remove day name prefix (e.g. "Monday: 9:00 AM – 5:00 PM" -> "9:00 AM – 5:00 PM")
           const hoursOnly = todayHours.includes(':') ? todayHours.substring(todayHours.indexOf(':') + 1).trim() : todayHours;
           
           return {
@@ -3633,15 +3265,6 @@ const FouFouApp = () => {
           };
         });
       
-      console.log('[DYNAMIC] Filtering summary:', {
-        received: data.places.length,
-        typeFiltered: typeFilteredCount,
-        blacklistFiltered: blacklistFilteredCount,
-        relevanceFiltered: relevanceFilteredCount,
-        beforeDistFilter: transformed.length
-      });
-      
-      // Log detailed debug results for in-app viewer
       const interestLabel = allInterestOptions.find(o => o.id === validInterests[0]);
       addDebugLog('API', `📊 RESULTS: ${tLabel(interestLabel) || validInterests[0]}`, {
         total: data.places.length,
@@ -3651,14 +3274,9 @@ const FouFouApp = () => {
         relevanceFiltered: relevanceFilteredCount,
         places: debugPlaceResults
       });
-      // Readable console log of all places with status
-      console.log(`[API] 📊 ${tLabel(interestLabel) || validInterests[0]} — ${data.places.length} from Google, ${transformed.length} kept:`);
       debugPlaceResults.forEach((p, i) => {
-        console.log(`  ${i+1}. ${p.status} ${p.name} — ⭐${p.rating} (${p.reviews}) [${p.primaryType}]${p.reason ? ' | ' + p.reason : ''}`);
       });
       
-      // Filter 4: Distance check - remove places too far from search center
-      // Use per-area distanceMultiplier, fallback to city default, fallback to 1.2
       const areaConfig = areaCoordinates[area] || {};
       const distMultiplier = areaConfig.distanceMultiplier || window.BKK.selectedCity?.distanceMultiplier || 1.2;
       const maxDistance = searchRadius * distMultiplier;
@@ -3672,7 +3290,6 @@ const FouFouApp = () => {
       });
       
       if (distanceFiltered.length < transformed.length) {
-        console.log(`[DYNAMIC] Distance filter removed ${transformed.length - distanceFiltered.length} far places`);
       }
       
       addDebugLog('API', `✅ FINAL: ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]} → ${distanceFiltered.length} places`, {
@@ -3682,10 +3299,7 @@ const FouFouApp = () => {
         removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length },
         finalPlaces: distanceFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})`)
       });
-      // Readable console log of final places
-      console.log(`[API] ✅ FINAL ${distanceFiltered.length} places for ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]}:`);
       distanceFiltered.forEach((p, i) => {
-        console.log(`  ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount}) ${p.address || ''}`);
       });
       
       return distanceFiltered;
@@ -3697,7 +3311,6 @@ const FouFouApp = () => {
         interests
       });
       
-      // Throw error to be handled by caller
       throw {
         type: 'GOOGLE_API_ERROR',
         message: error.message,
@@ -3706,7 +3319,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Function to fetch Google Place info for a location
   const fetchGooglePlaceInfo = async (location) => {
     if (!location || (!location.lat && !location.name)) {
       showToast(t('places.notEnoughInfo'), 'error');
@@ -3716,7 +3328,6 @@ const FouFouApp = () => {
     setLoadingGoogleInfo(true);
     
     try {
-      // Use Text Search to find the place
       const searchQuery = location.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
       
       const response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
@@ -3750,7 +3361,6 @@ const FouFouApp = () => {
         return null;
       }
       
-      // Find best match (closest to our coordinates if available)
       let bestMatch = data.places[0];
       
       if (location.lat && location.lng && data.places.length > 1) {
@@ -3784,7 +3394,6 @@ const FouFouApp = () => {
       
       setGooglePlaceInfo(placeInfo);
       
-      // Auto-apply googlePlaceId and rating to the location being edited
       if (placeInfo.googlePlaceId) {
         setNewLocation(prev => {
           const updated = {
@@ -3812,8 +3421,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Batch refresh Google ratings for all favorites with Google presence
-  // Bulk audit & fix URLs and googlePlaceId for all favorites
   const [urlAuditResult, setUrlAuditResult] = useState(null);
   const auditAndFixUrls = () => {
     const isValidGPID = (pid) => pid && typeof pid === 'string' && /^(ChIJ|EiI|GhIJ)/.test(pid);
@@ -3826,14 +3433,12 @@ const FouFouApp = () => {
       const problems = [];
       const locFixes = {};
       
-      // Bad googlePlaceId (Firebase key or garbage)
       if (loc.googlePlaceId && !isValidGPID(loc.googlePlaceId)) {
         problems.push('❌ googlePlaceId מזוהם: ' + loc.googlePlaceId.substring(0, 20));
         if (loc.firebaseId) fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = null;
         locFixes.googlePlaceId = null;
       }
       
-      // mapsUrl issues
       const url = loc.mapsUrl || '';
       if (url && !url.includes('google.com/maps') && url !== '#' && url.length > 0) {
         problems.push('❌ URL לא תקין: ' + url.substring(0, 40));
@@ -3841,7 +3446,6 @@ const FouFouApp = () => {
         problems.push('❌ URL עם placeId מזוהם');
       }
       
-      // Rebuild URL if there's a fix or bad URL
       if (problems.length > 0) {
         const cleanLoc = { ...loc, ...(locFixes.googlePlaceId === null ? { googlePlaceId: null } : {}) };
         const newUrl = window.BKK.getGoogleMapsUrl(cleanLoc);
@@ -3853,18 +3457,15 @@ const FouFouApp = () => {
         issues.push({ name: loc.name, problems, fixed: true });
       }
       
-      // No googlePlaceId at all (missed optimization)
       if (!loc.googlePlaceId && loc.fromGoogle && loc.name) {
         issues.push({ name: loc.name, problems: ['⚠️ אין googlePlaceId — רענון דירוג יהיה יקר'], fixed: false });
       }
     });
     
-    // Apply fixes to Firebase
     if (Object.keys(fixes).length > 0 && isFirebaseAvailable && database) {
       database.ref().update(fixes)
         .then(() => showToast(`🔧 תוקנו ${memoryFixes.length} מקומות`, 'success'))
         .catch(e => showToast('שגיאה: ' + e.message, 'error'));
-      // Fix in memory too
       setCustomLocations(prev => prev.map(loc => {
         const fix = memoryFixes.find(f => f.id === loc.id);
         return fix ? { ...loc, ...fix } : loc;
@@ -3880,12 +3481,10 @@ const FouFouApp = () => {
       return;
     }
     
-    // Find all favorites with coordinates (skip permanently disabled)
     const allPlaces = customLocations.filter(loc => 
       (loc.cityId || 'bangkok') === selectedCityId && loc.status !== 'blacklist' && loc.lat && loc.lng && loc.name
     );
     
-    // Skip recently updated (within 7 days)
     const REFRESH_INTERVAL = 7 * 24 * 3600 * 1000;
     const candidates = allPlaces.filter(loc => !loc.googleRatingUpdated || (Date.now() - loc.googleRatingUpdated) > REFRESH_INTERVAL);
     const skippedRecent = allPlaces.length - candidates.length;
@@ -3895,7 +3494,6 @@ const FouFouApp = () => {
       return;
     }
     
-    // Stats tracking
     const stats = { total: candidates.length, skippedRecent, apiCalls: 0, detailsCalls: 0, textSearchCalls: 0, updated: 0, unchanged: 0, noRating: 0, errors: 0, noFirebaseId: 0, saved: 0, newPlaceIds: 0 };
     const startTime = Date.now();
     
@@ -3909,7 +3507,6 @@ const FouFouApp = () => {
       try {
         let newRating = null, newCount = 0, foundPlaceId = null;
         
-        // OPTIMIZATION: Use Place Details (GET) if we have googlePlaceId — Basic fields = $0.005 vs Text Search $0.032
         if (loc.googlePlaceId) {
           const detailResp = await fetch(`https://places.googleapis.com/v1/places/${loc.googlePlaceId}`, {
             method: 'GET',
@@ -3927,7 +3524,6 @@ const FouFouApp = () => {
           }
         }
         
-        // Fallback: Text Search if no googlePlaceId or Details failed
         if (newRating === null) {
           const searchQuery = loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
           const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
@@ -3959,7 +3555,6 @@ const FouFouApp = () => {
               }
               newRating = best.rating || null;
               newCount = best.userRatingCount || 0;
-              // Save placeId for cheaper Place Details on next refresh
               if (best.id && !loc.googlePlaceId) { foundPlaceId = best.id; stats.newPlaceIds++; }
             }
           }
@@ -3971,11 +3566,9 @@ const FouFouApp = () => {
           continue;
         }
         
-        // Skip if unchanged
         if (loc.googleRating === newRating && loc.googleRatingCount === newCount) {
           console.info(`[RATING-REFRESH] ${i+1}/${candidates.length} ${loc.name} — unchanged ⭐${newRating} (${newCount})`);
           stats.unchanged++;
-          // Still update timestamp (and placeId if found) to avoid re-checking next time
           if (loc.firebaseId) {
             const tsUpdate = { googleRatingUpdated: Date.now() };
             if (foundPlaceId) tsUpdate.googlePlaceId = foundPlaceId;
@@ -3986,7 +3579,6 @@ const FouFouApp = () => {
         
         console.info(`[RATING-REFRESH] ${i+1}/${candidates.length} ${loc.name} — ⭐${loc.googleRating || 'none'}→${newRating} (${loc.googleRatingCount || 0}→${newCount})`);
         
-        // Save to Firebase
         if (loc.firebaseId) {
           try {
             await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update({
@@ -3995,7 +3587,6 @@ const FouFouApp = () => {
               googleRatingUpdated: Date.now(),
               ...(foundPlaceId ? { googlePlaceId: foundPlaceId } : {})
             });
-            // Verify write succeeded
             const verify = await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRating`).once('value');
             if (verify.val() === newRating) {
               console.info(`[RATING-REFRESH] ✅ ${loc.name} saved & verified ⭐${newRating}`);
@@ -4023,14 +3614,12 @@ const FouFouApp = () => {
         stats.errors++;
       }
       
-      // Rate limit: 200ms between requests
       if (i < candidates.length - 1) await new Promise(r => setTimeout(r, 200));
     }
     
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const estCost = (stats.detailsCalls * 0.005 + stats.textSearchCalls * 0.032).toFixed(3);
     
-    // Detailed summary
     console.info(`[RATING-REFRESH] ════════════════════════════════`);
     console.info(`[RATING-REFRESH] 📊 Summary:`);
     console.info(`[RATING-REFRESH]   Total favorites: ${allPlaces.length}`);
@@ -4054,13 +3643,9 @@ const FouFouApp = () => {
     setRatingsRefreshProgress(null);
   };
 
-  // Combine all interests: built-in + uncovered + custom (city-filtered)
-  // Filter custom interests by city scope (must be before allInterestOptions)
   const cityCustomInterests = useMemo(() => {
     return (customInterests || []).filter(i => {
-      // If interest has explicit cityId, scope it — regardless of scope field
       if (i.cityId) return i.cityId === selectedCityId;
-      // scope: 'local' without cityId — also city-specific (shouldn't happen but guard it)
       if (i.scope === 'local') return false;
       return true;
     });
@@ -4087,7 +3672,6 @@ const FouFouApp = () => {
     });
   }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
 
-  // Debug: log custom interests in allInterestOptions (only when debug mode is on)
   useEffect(() => {
     if (!debugMode) return;
     addDebugLog('INTEREST', `allInterestOptions.length=${allInterestOptions.length} cityCustomInterests.length=${(cityCustomInterests||[]).length} customInterests.length=${(customInterests||[]).length}`);
@@ -4102,14 +3686,11 @@ const FouFouApp = () => {
     }
   }, [customInterests, cityCustomInterests, allInterestOptions, debugMode]);
   useEffect(() => {
-    // Don't save if data hasn't loaded yet - prevents overwriting saved interests with empty state
     if (!isDataLoaded) return;
-    // Strip admin-controlled settings before saving — these come from Firebase, not localStorage
     const { maxStops, fetchMoreCount, _selectedMapArea, ...userPrefs } = formData;
     localStorage.setItem('foufou_preferences', JSON.stringify(userPrefs));
   }, [formData, isDataLoaded]);
 
-  // Version check - auto-check on load + manual check
   const checkForUpdates = async (silent = false) => {
     try {
       const response = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -4119,7 +3700,6 @@ const FouFouApp = () => {
       const localVersion = window.BKK.VERSION;
       
       if (serverVersion && serverVersion !== localVersion) {
-        console.log(`[UPDATE] New version available: ${serverVersion} (current: ${localVersion})`);
         setUpdateAvailable(true);
         if (!silent) {
           showToast(`${t("toast.newVersionAvailable")} ${serverVersion}`, 'success');
@@ -4130,14 +3710,12 @@ const FouFouApp = () => {
         return false;
       }
     } catch (e) {
-      console.log('[UPDATE] Check failed:', e);
       if (!silent) showToast(t('toast.cannotCheckUpdates'), 'error');
       return false;
     }
   };
 
   const applyUpdate = () => {
-    // Clear all caches and hard reload
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
@@ -4146,21 +3724,17 @@ const FouFouApp = () => {
     window.location.reload(true);
   };
 
-  // Auto-check for updates on load (silent)
   useEffect(() => {
     const timer = setTimeout(() => checkForUpdates(true), 5000);
     return () => clearTimeout(timer);
   }, []);
 
-  // Save column width
   useEffect(() => {
     localStorage.setItem('foufou_right_col_width', rightColWidth.toString());
   }, [rightColWidth]);
 
-  // Sync editingLocation to newLocation when edit dialog opens
   useEffect(() => {
     if (showEditLocationDialog && editingLocation) {
-      console.log('[useEffect] Syncing editingLocation to newLocation');
       setNewLocation({
         name: editingLocation.name || '',
         description: editingLocation.description || '',
@@ -4181,7 +3755,6 @@ const FouFouApp = () => {
 
   const areaOptions = window.BKK.areaOptions || [];
 
-  // Memoized lookup maps to avoid O(n) .find() calls in render loops
   const interestMap = useMemo(() => {
     try {
       const map = {};
@@ -4198,7 +3771,6 @@ const FouFouApp = () => {
     } catch(e) { console.error('[MEMO] areaMap error:', e); return {}; }
   }, [areaOptions]);
 
-  // City-filtered custom locations and saved routes
   const cityCustomLocations = useMemo(() => {
     return customLocations; // Already filtered per city by Firebase subscription
   }, [customLocations, selectedCityId]);
@@ -4207,8 +3779,6 @@ const FouFouApp = () => {
     return savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
   }, [savedRoutes, selectedCityId]);
 
-
-  // Memoize expensive places grouping/sorting
   const groupedPlaces = useMemo(() => {
     try {
       if (!cityCustomLocations || cityCustomLocations.length === 0) {
@@ -4218,10 +3788,8 @@ const FouFouApp = () => {
       const readyLocations = cityCustomLocations.filter(loc => loc.status !== 'blacklist' && loc.locked);
       const blacklistedLocations = cityCustomLocations.filter(loc => loc.status === 'blacklist');
       
-      // Choose which locations to group based on placesTab
       const tabLocations = placesTab === 'all' ? [...draftsLocations, ...readyLocations] : placesTab === 'drafts' ? draftsLocations : placesTab === 'ready' ? readyLocations : blacklistedLocations;
       
-      // Apply search filter
       const filteredTabLocations = searchQuery?.trim() 
         ? tabLocations.filter(loc => {
             const q = searchQuery.toLowerCase();
@@ -4288,12 +3856,10 @@ const FouFouApp = () => {
     }
   }, [cityCustomLocations, placesGroupBy, placesTab, interestMap, areaMap, searchQuery]);
 
-  // Flat navigation list for prev/next in edit dialog
   const flatNavList = useMemo(() => {
     return [...groupedPlaces.sortedKeys.flatMap(k => groupedPlaces.groups[k] || []), ...groupedPlaces.ungrouped];
   }, [groupedPlaces]);
 
-  // Image handling - loaded from utils.js
   const uploadImage = window.BKK.uploadImage;
   
   const handleImageUpload = async (event) => {
@@ -4325,7 +3891,6 @@ const FouFouApp = () => {
         ? prev.interests.filter(i => i !== id)
         : [...prev.interests, id]
     }));
-    // If adding a private-only interest, show informational toast
     if (!isCurrentlySelected) {
       const interestObj = allInterestOptions.find(o => o.id === id);
       if (interestObj?.privateOnly) {
@@ -4338,25 +3903,18 @@ const FouFouApp = () => {
     }
   };
 
-  // Auto-clean: remove selected interests that are no longer valid/visible
-  // IMPORTANT: Only runs after initial data is loaded to prevent race condition
-  // where saved interests get cleared before Firebase data arrives
   useEffect(() => {
     if (!isDataLoaded) return;
     if (formData.interests.length === 0) return;
-    // Build set of interests that are both valid AND enabled (visible to user)
     const visibleIds = allInterestOptions
       .filter(opt => {
         if (!opt || !opt.id || !isInterestValid(opt.id)) return false;
-        // Admin status: hidden=never, draft=admin only
         const aStatus = opt.adminStatus || 'active';
         if (aStatus === 'hidden') return false;
         if (aStatus === 'draft' && !isUnlocked) return false;
-        // Check interestStatus — same logic as wizard step 2 display
         const status = interestStatus[opt.id];
         if (opt.uncovered) return status === true;
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
-        // Custom interests (not built-in, not uncovered): undefined = OFF by default
         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
         return status !== false;
       })
@@ -4365,50 +3923,36 @@ const FouFouApp = () => {
     if (cleaned.length !== formData.interests.length) {
       const removed = formData.interests.filter(id => !visibleIds.includes(id));
       const removedNames = removed.map(id => allInterestOptions.find(o => o.id === id)).filter(Boolean).map(o => tLabel(o) || o?.id || id).join(', ');
-      console.log('[CLEANUP] Removed invalid/disabled interests from selection:', removedNames);
       setFormData(prev => ({ ...prev, interests: cleaned }));
     }
   }, [interestConfig, cityCustomInterests, isDataLoaded, interestStatus, selectedCityId, isUnlocked]);
 
-  // Button styles - loaded from utils.js
-
   const getStopsForInterests = () => {
-    // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
     const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
-    // Filter custom locations that match current city, area/radius and selected interests
     const matchingCustomLocations = customLocations.filter(loc => {
-      // Filter by current city (locations without cityId are treated as 'bangkok')
       if ((loc.cityId || 'bangkok') !== selectedCityId) return false;
       
-      // CRITICAL: Skip blacklisted locations!
       if (loc.status === 'blacklist') return false;
       
-      // Skip drafts if includeDrafts is off
       if (!window.BKK.systemParams?.includeDrafts && !loc.locked) return false;
       
-      // Skip invalid locations (missing required data)
       if (!isLocationValid(loc)) return false;
       
       if (isRadiusMode) {
-        // In radius mode: filter by distance from current position
         if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
         const dist = calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng);
         if (dist > formData.radiusMeters) return false;
       } else {
-        // In area mode: filter by area (supports multi-area)
         const locAreas = loc.areas || (loc.area ? [loc.area] : []);
         if (!locAreas.includes(formData.area)) return false;
       }
       
       if (!loc.interests || loc.interests.length === 0) return false;
       
-      // Check if location interests match selected interests
       return loc.interests.some(locInterest => {
-        // Direct match
         if (formData.interests.includes(locInterest)) return true;
         
-        // Check if selected interest is a custom one with baseCategory that matches
         for (const selectedInterest of formData.interests) {
           const customInterest = allInterestOptions.find(opt => 
             opt.id === selectedInterest && opt.custom && opt.baseCategory
@@ -4423,7 +3967,6 @@ const FouFouApp = () => {
       });
     });
     
-    // Remove duplicates
     const seen = new Set();
     return matchingCustomLocations.filter(stop => {
       const key = `${stop.lat},${stop.lng}`;
@@ -4434,11 +3977,9 @@ const FouFouApp = () => {
   };
 
   // ========== SMART STOP SELECTION (for Yalla and "Help me plan") ==========
-  // Returns { selected: [...], disabled: [...] } based on category/weight/minStops config
   const smartSelectStops = (stops, selectedInterests, maxTotal) => {
     maxTotal = maxTotal || formData.maxStops || 10;
     
-    // Build per-interest config
     const cfg = {};
     let totalWeight = 0;
     for (const interestId of selectedInterests) {
@@ -4452,7 +3993,6 @@ const FouFouApp = () => {
       totalWeight += cfg[interestId].weight;
     }
     
-    // Step 1: Guarantee minimums (capped by maxStops per interest)
     const limits = {};
     let allocated = 0;
     for (const id of selectedInterests) {
@@ -4461,12 +4001,9 @@ const FouFouApp = () => {
       allocated += min;
     }
     
-    // Step 2: Distribute remaining by weight, respecting maxStops cap
     let remaining = maxTotal - allocated;
     if (remaining > 0 && totalWeight > 0) {
-      // Multiple passes: allocate proportionally, redistribute overflow
       for (let pass = 0; pass < 3 && remaining > 0; pass++) {
-        // Recalculate weight of interests that haven't hit their cap
         let activeWeight = 0;
         for (const id of selectedInterests) {
           if (limits[id].max < cfg[id].maxStops) activeWeight += cfg[id].weight;
@@ -4484,7 +4021,6 @@ const FouFouApp = () => {
         }
       }
       
-      // Final: distribute any leftover 1-by-1 to highest weight (not at cap)
       remaining = maxTotal - allocated;
       const sorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
       for (const id of sorted) {
@@ -4494,14 +4030,10 @@ const FouFouApp = () => {
         remaining -= 1;
       }
       
-      // Backfill: if all interests hit their maxStops caps but total isn't filled,
-      // overflow beyond caps by weight. maxStops is a fair-share cap, not an absolute
-      // limit when there's room to fill. Distribute proportionally by weight.
       remaining = maxTotal - Object.values(limits).reduce((s, l) => s + l.max, 0);
       if (remaining > 0) {
         const bfWeight = selectedInterests.reduce((s, id) => s + cfg[id].weight, 0);
         if (bfWeight > 0) {
-          // Proportional allocation by weight
           const bfSorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
           const bfShare = {};
           let bfAllocated = 0;
@@ -4510,7 +4042,6 @@ const FouFouApp = () => {
             bfShare[id] = share;
             bfAllocated += share;
           }
-          // Distribute remainder 1-by-1 to highest weight
           let bfLeftover = remaining - bfAllocated;
           for (const id of bfSorted) {
             if (bfLeftover <= 0) break;
@@ -4524,16 +4055,12 @@ const FouFouApp = () => {
       }
     }
     
-    console.log('[SMART] Interest limits:', JSON.stringify(limits));
-    
-    // Group stops by their primary matching interest
     const buckets = {};
     const unmatched = [];
     for (const id of selectedInterests) buckets[id] = [];
     
     for (const stop of stops) {
       const stopInterests = stop.interests || [];
-      // Find first matching selected interest
       const matchingInterest = selectedInterests.find(id => stopInterests.includes(id));
       if (matchingInterest && buckets[matchingInterest]) {
         buckets[matchingInterest].push(stop);
@@ -4542,12 +4069,8 @@ const FouFouApp = () => {
       }
     }
     
-    // Sort each bucket: custom/pinned first, then by time match, then by rating
     const timeMode = getEffectiveTimeMode(); // 'day' or 'night'
     
-    // Get a stop's preferred time — uses shared getStopBestTime helper
-    
-    // Time score: matching=sp.timeScoreMatch, anytime=sp.timeScoreAnytime, conflicting=sp.timeScoreConflict
     const timeScore = (stop) => {
       const bt = getStopBestTime(stop);
       if (bt === 'anytime') return sp.timeScoreAnytime;
@@ -4556,12 +4079,10 @@ const FouFouApp = () => {
     
     const stopScore = (s) => {
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
-      // Boost favorites with FouFou user ratings
       if (s.source === 'custom' || s.custom) {
         const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
         const ra = reviewAverages[pk];
         if (ra && ra.count > 0) {
-          // FouFou rating (1-5) * weight factor — high-rated favorites get priority
           return googleScore + ra.avg * sp.foufouRatingBoost;
         }
       }
@@ -4569,26 +4090,19 @@ const FouFouApp = () => {
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
-        // Time conflict overrides everything — a conflicting stop goes below all non-conflicting stops
         const aTime = timeScore(a);
         const bTime = timeScore(b);
         const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
         const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
         if (aConflict !== bConflict) return aConflict - bConflict;
-        // Among non-conflicting: custom (user-added) locations get priority
         const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
         const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
         if (aCustom !== bCustom) return bCustom - aCustom;
-        // Time match (anytime vs match)
         if (aTime !== bTime) return bTime - aTime;
-        // Rating
         return stopScore(b) - stopScore(a);
       });
     }
     
-    console.log(`[SMART] Time mode: ${timeMode}, sorting buckets by time preference`);
-    
-    // Pick top N from each bucket
     const selected = [];
     const disabled = [];
     
@@ -4600,7 +4114,6 @@ const FouFouApp = () => {
     }
     disabled.push(...unmatched);
     
-    // If we have room, fill from best disabled stops (prefer time-matching)
     if (selected.length < maxTotal && disabled.length > 0) {
       disabled.sort((a, b) => {
         const aTime = timeScore(a);
@@ -4615,9 +4128,6 @@ const FouFouApp = () => {
       selected.push(...extra);
     }
     
-    // Smart ordering: category determines position in day
-    // Derived from slot config to keep a single source of truth.
-    // slot->category mapping: middle/bookend=meal, end/late=experience, early/any=attraction
     const slotToCategory = { middle: 'meal', bookend: 'meal', end: 'experience', late: 'experience', early: 'attraction', any: 'attraction' };
     const defaultSlotForCategory = {
       cafes: 'bookend', food: 'middle', restaurants: 'middle',
@@ -4630,31 +4140,25 @@ const FouFouApp = () => {
       const stopInterests = stop.interests || [];
       for (const id of selectedInterests) {
         if (!stopInterests.includes(id)) continue;
-        // 1. Explicit category on interest object
         const cat = limits[id]?.category;
         if (cat && cat !== 'attraction') return cat;
-        // 2. Derive from interestConfig routeSlot (Firebase-configurable)
         const cfgSlot = interestConfig[id]?.routeSlot;
         if (cfgSlot && slotToCategory[cfgSlot]) return slotToCategory[cfgSlot];
-        // 3. Derive from built-in slot defaults
         const builtinSlot = defaultSlotForCategory[id];
         if (builtinSlot) return slotToCategory[builtinSlot];
       }
       return 'attraction';
     };
     
-    // Separate by role
     const attractions = selected.filter(s => ['attraction', 'nature', 'shopping'].includes(getCategory(s)));
     const breaks = selected.filter(s => getCategory(s) === 'break');
     const meals = selected.filter(s => getCategory(s) === 'meal');
     const experiences = selected.filter(s => getCategory(s) === 'experience');
     
-    // Build ordered route: attractions with breaks/meals interspersed
     const ordered = [];
     let attractionIdx = 0;
     const totalAttractions = attractions.length;
     
-    // Insert break roughly 1/3 into attractions, meal at 2/3
     const breakAt = Math.max(1, Math.floor(totalAttractions / 3));
     const mealAt = Math.max(2, Math.floor(totalAttractions * 2 / 3));
     
@@ -4664,16 +4168,11 @@ const FouFouApp = () => {
       if (i === mealAt - 1 && meals.length > 0) ordered.push(...meals);
     }
     
-    // If no attractions but we have breaks/meals, add them
     if (totalAttractions === 0) {
       ordered.push(...breaks, ...meals);
     }
     
-    // Experiences at the end
     ordered.push(...experiences);
-    
-    console.log('[SMART] Selected:', ordered.length, '| Disabled:', disabled.length);
-    console.log('[SMART] Order:', ordered.map(s => `${s.name} [${getCategory(s)}]`).join(' → '));
     
     return { selected: ordered, disabled };
   };
@@ -4682,29 +4181,22 @@ const FouFouApp = () => {
   const optimizeStopOrder = (stops, startCoords, isCircular) => {
     if (stops.length <= 2) return stops;
     
-    // Filter stops with valid coordinates
     const withCoords = stops.filter(s => s.lat && s.lng);
     const noCoords = stops.filter(s => !s.lat || !s.lng);
     
     if (withCoords.length <= 1) return [...withCoords, ...noCoords];
     
-    // Distance matrix (using calcDistance which is Haversine)
     const dist = (a, b) => calcDistance(a.lat, a.lng, b.lat, b.lng);
     
-    // --- Step 1: Nearest Neighbor from start point ---
     const unvisited = [...withCoords];
     const ordered = [];
     
-    // Determine start: use startCoords if available, otherwise pick the stop closest to center
     let currentPos;
     if (startCoords?.lat && startCoords?.lng) {
       currentPos = startCoords;
     } else {
-      // Use centroid of all stops as reference, pick nearest to it
       const avgLat = withCoords.reduce((s, p) => s + p.lat, 0) / withCoords.length;
       const avgLng = withCoords.reduce((s, p) => s + p.lng, 0) / withCoords.length;
-      // For linear: start from the stop furthest from centroid (creates a more natural path)
-      // For circular: start from stop nearest to centroid
       if (!isCircular) {
         let maxDist = -1, startIdx = 0;
         unvisited.forEach((s, i) => {
@@ -4723,7 +4215,6 @@ const FouFouApp = () => {
       currentPos = ordered[0];
     }
     
-    // If we have startCoords (external start point), find nearest stop to it first
     if (startCoords?.lat && startCoords?.lng && unvisited.length > 0) {
       let minDist = Infinity, nearIdx = 0;
       unvisited.forEach((s, i) => {
@@ -4734,7 +4225,6 @@ const FouFouApp = () => {
       currentPos = ordered[ordered.length - 1];
     }
     
-    // Greedily pick nearest unvisited
     while (unvisited.length > 0) {
       let minDist = Infinity, nearIdx = 0;
       unvisited.forEach((s, i) => {
@@ -4745,17 +4235,14 @@ const FouFouApp = () => {
       currentPos = ordered[ordered.length - 1];
     }
     
-    // --- Step 2: 2-opt improvement (uncross paths) ---
     const totalDist = (route) => {
       let d = 0;
-      // If start coords exist, include distance from start to first stop
       if (startCoords?.lat && startCoords?.lng) {
         d += dist(startCoords, route[0]);
       }
       for (let i = 0; i < route.length - 1; i++) {
         d += dist(route[i], route[i + 1]);
       }
-      // Circular: add return to start
       if (isCircular) {
         const returnTo = startCoords?.lat ? startCoords : route[0];
         d += dist(route[route.length - 1], returnTo);
@@ -4772,8 +4259,6 @@ const FouFouApp = () => {
       passes++;
       for (let i = 0; i < ordered.length - 1; i++) {
         for (let j = i + 2; j < ordered.length; j++) {
-          // Check if reversing segment [i+1..j] reduces total distance
-          // Only need to compare the 2 edges being broken/reconnected
           const A = i === 0 && startCoords?.lat ? startCoords : ordered[i];
           const B = ordered[i + 1];
           const C = ordered[j];
@@ -4784,7 +4269,6 @@ const FouFouApp = () => {
           const newDist = dist(A, C) + (D ? dist(B, D) : 0);
           
           if (newDist < oldDist - 1) { // 1m threshold to avoid float noise
-            // Reverse segment in place
             const reversed = ordered.slice(i + 1, j + 1).reverse();
             ordered.splice(i + 1, j - i, ...reversed);
             improved = true;
@@ -4793,12 +4277,7 @@ const FouFouApp = () => {
       }
     }
     
-    console.log(`[OPTIMIZE] ${withCoords.length} stops, 2-opt: ${passes} passes, distance: ${Math.round(totalDist(ordered))}m (${isCircular ? 'circular' : 'linear'})`);
-    
-    // --- Step 3: Content-aware reordering ---
-    // Adjust order so route feels natural: cafes at start/end, food in middle, no same-category neighbors
     if (ordered.length >= 4) {
-      // Default slot config — overridden by interestConfig when available
       const defaultSlotConfig = {
         cafes:         { slot: 'bookend', minGap: 3, time: 'anytime' },
         food:          { slot: 'middle',  minGap: 3, time: 'anytime' },
@@ -4821,7 +4300,6 @@ const FouFouApp = () => {
         entertainment: { slot: 'late',    minGap: 2, time: 'night' },
       };
       
-      // Merge with interestConfig (user-defined values override defaults)
       const slotConfig = {};
       Object.keys(defaultSlotConfig).forEach(k => { slotConfig[k] = { ...defaultSlotConfig[k] }; });
       if (typeof interestConfig === 'object') {
@@ -4835,7 +4313,6 @@ const FouFouApp = () => {
         });
       }
       
-      // Time-of-day compatibility scoring (simplified: day vs night)
       const timeMode = getEffectiveTimeMode();
       const timeCompat = (stopTime) => {
         if (!stopTime || stopTime === 'anytime') return 0;
@@ -4849,13 +4326,11 @@ const FouFouApp = () => {
         return cats.find(c => slotConfig[c]) || cats[0] || 'other';
       };
       const getStopTime = (stop) => {
-        // Per-stop override (from bestTime field) takes priority
         if (stop.bestTime) return stop.bestTime;
         const cat = getCategory(stop);
         return slotConfig[cat]?.time || 'anytime';
       };
       
-      // Score how well a stop fits its position (lower = better)
       const slotScore = (cat, pos) => {
         const cfg = slotConfig[cat];
         if (!cfg) return 0;
@@ -4870,7 +4345,6 @@ const FouFouApp = () => {
         }
       };
       
-      // Penalty for same-category adjacency
       const gapPenalty = (arr) => {
         let penalty = 0;
         for (let i = 0; i < arr.length; i++) {
@@ -4886,7 +4360,6 @@ const FouFouApp = () => {
         return penalty;
       };
       
-      // Total content penalty (includes time-of-day)
       const contentPenalty = (arr) => {
         let p = 0;
         for (let i = 0; i < arr.length; i++) {
@@ -4897,14 +4370,11 @@ const FouFouApp = () => {
         return p;
       };
       
-      // Geographic distance of the order
       const geoDist = (arr) => totalDist(arr);
       const baseGeo = geoDist(ordered);
       const basePenalty = contentPenalty(ordered);
       
-      // Only apply if there are actual content issues AND feature is enabled
       if (basePenalty > 0.5 && sp.contentReorderEnabled !== false) {
-        // Try targeted swaps that improve content without too much geographic cost
         let contentImproved = true;
         let contentPasses = 0;
         const maxContentPasses = sp.maxContentPasses;
@@ -4916,18 +4386,14 @@ const FouFouApp = () => {
           for (let i = 0; i < ordered.length; i++) {
             for (let j = i + 1; j < ordered.length; j++) {
               const curPenalty = contentPenalty(ordered);
-              // Try swap
               [ordered[i], ordered[j]] = [ordered[j], ordered[i]];
               const newPenalty = contentPenalty(ordered);
               const newGeo = geoDist(ordered);
               const geoIncrease = (newGeo - baseGeo) / Math.max(baseGeo, 1);
               
-              // Accept if content improves AND geographic cost stays within threshold
               if (newPenalty < curPenalty - 0.3 && geoIncrease < maxGeoIncrease) {
                 contentImproved = true;
-                // Keep swap
               } else {
-                // Revert
                 [ordered[i], ordered[j]] = [ordered[j], ordered[i]];
               }
             }
@@ -4936,11 +4402,9 @@ const FouFouApp = () => {
         
         const finalPenalty = contentPenalty(ordered);
         const finalGeo = geoDist(ordered);
-        console.log(`[CONTENT-REORDER] mode=${timeMode}, ${contentPasses} passes, penalty ${basePenalty.toFixed(1)} → ${finalPenalty.toFixed(1)}, distance ${Math.round(baseGeo)}m → ${Math.round(finalGeo)}m (max ${Math.round(maxGeoIncrease*100)}% increase allowed)`);
       }
     }
     
-    // Append stops without coordinates at the end
     return [...ordered, ...noCoords];
   };
 
@@ -4948,11 +4412,9 @@ const FouFouApp = () => {
     searchRunIdRef.current = Date.now().toString();
     const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
-    // Clear old start point to avoid stale data
     setStartPointCoords(null);
     setFormData(prev => ({...prev, startPoint: ''}));
     
-    // For 'all' mode, auto-set city center and large radius
     if (formData.searchMode === 'all') {
       if (!formData.currentLat) {
         const cityCenter = window.BKK.selectedCity?.center || window.BKK.activeCityData?.center || { lat: 0, lng: 0 };
@@ -4986,15 +4448,12 @@ const FouFouApp = () => {
     setIsGenerating(true);
     
     try {
-      // SAFETY: Filter out disabled interests that may be stale in formData
       const activeInterests = formData.interests.filter(id => {
         const opt = allInterestOptions.find(o => o.id === id);
         if (!opt) return false;
-        // Admin status: hidden=never searchable, draft=admin only
         const aStatus = opt.adminStatus || 'active';
         if (aStatus === 'hidden') return false;
         if (aStatus === 'draft' && !isUnlocked) return false;
-        // Check city scope
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
         const status = interestStatus[id];
         if (opt.uncovered) return status === true;
@@ -5002,7 +4461,6 @@ const FouFouApp = () => {
       });
       if (activeInterests.length !== formData.interests.length) {
         const removed = formData.interests.filter(id => !activeInterests.includes(id));
-        console.warn('[ROUTE] ⚠️ Removed disabled interests from search:', removed);
         setFormData(prev => ({ ...prev, interests: activeInterests }));
         if (activeInterests.length === 0) {
           showToast(t('form.selectAtLeastOneInterest'), 'warning');
@@ -5010,7 +4468,6 @@ const FouFouApp = () => {
           return;
         }
       }
-      // Use activeInterests for the rest of this generation
       const searchInterests = activeInterests;
       
       addDebugLog('ROUTE', 'Starting route generation', { 
@@ -5020,19 +4477,12 @@ const FouFouApp = () => {
         interests: searchInterests, 
         maxStops: formData.maxStops 
       });
-      console.log('[ROUTE] Starting route generation', isRadiusMode ? 'RADIUS mode' : 'AREA mode');
-      console.log('[ROUTE] Selected interests:', JSON.stringify(searchInterests));
-      console.log('[ROUTE] Area:', formData.area, '| SearchMode:', formData.searchMode);
       
-      // Get custom locations (always included)
       const customStops = getStopsForInterests();
       addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
-      console.log('[ROUTE] Custom stops:', customStops.length, customStops.map(s => `${s.name} [${(s.interests||[]).join(',')}]`));
       
-      // Calculate stops needed per interest using category-based maxStops
       const maxStops = formData.maxStops || 10;
       
-      // Build per-interest stop limits using weight + min + max
       const interestLimits = {};
       let totalWeight = 0;
       const interestCfg = {};
@@ -5046,7 +4496,6 @@ const FouFouApp = () => {
         totalWeight += interestCfg[interest].weight;
       }
       
-      // Step 1: Guarantee minimums
       let allocated = 0;
       for (const interest of searchInterests) {
         const min = Math.min(interestCfg[interest].minStops, interestCfg[interest].maxStops, maxStops - allocated);
@@ -5054,7 +4503,6 @@ const FouFouApp = () => {
         allocated += min;
       }
       
-      // Step 2: Distribute remaining by weight, respecting maxStops cap (soft cap)
       let remaining = maxStops - allocated;
       if (remaining > 0 && totalWeight > 0) {
         for (let pass = 0; pass < 3 && remaining > 0; pass++) {
@@ -5075,7 +4523,6 @@ const FouFouApp = () => {
           }
         }
         
-        // Round-robin leftover (still within soft cap)
         remaining = maxStops - allocated;
         const sorted = [...searchInterests].sort((a, b) => interestCfg[b].weight - interestCfg[a].weight);
         for (const interest of sorted) {
@@ -5087,13 +4534,8 @@ const FouFouApp = () => {
         }
       }
       
-      // Step 3: If still short of maxStops (all interests hit their soft cap),
-      // distribute the remainder by weight IGNORING maxStops — soft cap becomes irrelevant
-      // when there's no other way to reach the requested total.
       remaining = maxStops - allocated;
       if (remaining > 0 && totalWeight > 0) {
-        console.log(`[ROUTE] Soft caps exhausted with ${allocated}/${maxStops} allocated — distributing ${remaining} overflow slots by weight`);
-        // Multi-pass by weight, no upper limit
         for (let pass = 0; pass < 3 && remaining > 0; pass++) {
           for (const interest of searchInterests) {
             if (remaining <= 0) break;
@@ -5104,7 +4546,6 @@ const FouFouApp = () => {
             remaining = maxStops - allocated;
           }
         }
-        // Final leftover round-robin by weight order
         remaining = maxStops - allocated;
         const sortedOverflow = [...searchInterests].sort((a, b) => interestCfg[b].weight - interestCfg[a].weight);
         for (const interest of sortedOverflow) {
@@ -5114,19 +4555,12 @@ const FouFouApp = () => {
         }
       }
       
-      console.log('[ROUTE] Interest limits:', JSON.stringify(interestLimits), '| total max:', maxStops);
-      
-      // Track results per interest for smart completion
       const interestResults = {};
       const allStops = []; // Build this respecting limits
       let fetchErrors = [];
       
-      // Clear Google cache for fresh route generation
       googleCacheRef.current = {};
       
-      // ROUND 1: Collect custom stops first, then fire all Google API calls in parallel
-
-      // Step A: collect custom stops per interest and add to allStops (Set-based dedup)
       const customPerInterest = {};
       const addedCustomNames = new Set();
       for (const interest of searchInterests) {
@@ -5151,16 +4585,13 @@ const FouFouApp = () => {
         }
       }
 
-      // Step B: fire all Google API calls in parallel
       const fetchResults = await Promise.all(searchInterests.map(async interest => {
         const interestObj = allInterestOptions.find(o => o.id === interest);
         if (interestObj?.privateOnly) {
-          console.log(`[ROUTE] Skipping API for private interest: ${interest}`);
           return { interest, places: [] };
         }
         try {
           const stopsForThisInterest = interestLimits[interest] || 2;
-          console.log(`[ROUTE] Fetching for interest: ${interest} (limit ${stopsForThisInterest}, have ${customPerInterest[interest].length} custom)`);
           const radiusOverride = isRadiusMode ? {
             lat: formData.currentLat,
             lng: formData.currentLng,
@@ -5175,20 +4606,16 @@ const FouFouApp = () => {
         }
       }));
 
-      // Step C: process each result and build allStops
       for (const { interest, places: rawPlaces } of fetchResults) {
         const stopsForThisInterest = interestLimits[interest] || 2;
         const customToUse = customPerInterest[interest];
 
         let fetchedPlaces = rawPlaces;
 
-        // Filter blacklisted places (status='blacklist') BEFORE sorting
         fetchedPlaces = filterBlacklist(fetchedPlaces);
 
-        // Filter out Google places that duplicate custom locations
         fetchedPlaces = filterDuplicatesOfCustom(fetchedPlaces);
 
-        // In radius mode: HARD filter by actual distance (API locationBias doesn't guarantee this)
         if (isRadiusMode) {
           const beforeFilter = fetchedPlaces.length;
           fetchedPlaces = fetchedPlaces.filter(p => {
@@ -5198,11 +4625,9 @@ const FouFouApp = () => {
           const removed = beforeFilter - fetchedPlaces.length;
           if (removed > 0) {
             addDebugLog('RADIUS', `Filtered ${removed} places beyond ${formData.radiusMeters}m radius`);
-            console.log(`[RADIUS] Filtered ${removed}/${beforeFilter} places beyond radius`);
           }
         }
 
-        // Sort
         let sortedAll;
         if (isRadiusMode) {
           sortedAll = fetchedPlaces
@@ -5213,24 +4638,18 @@ const FouFouApp = () => {
             .sort((a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1)));
         }
 
-        // Take only what's needed beyond custom stops already added
         const actualNeeded = Math.max(0, stopsForThisInterest - customToUse.length);
         const sortedPlaces = sortedAll.slice(0, actualNeeded);
         const cachedPlaces = sortedAll.slice(actualNeeded);
 
         if (actualNeeded === 0) {
-          console.log(`[ROUTE] ${interest}: have ${customToUse.length} custom, limit=${stopsForThisInterest} → skipping Google results (actualNeeded=0)`);
         }
 
-        // Store unused places in cache for "find more"
         googleCacheRef.current[interest] = cachedPlaces;
-        console.log(`[ROUTE] 📋 ${interest}: picked ${sortedPlaces.length}/${sortedAll.length}, cached ${cachedPlaces.length}`);
         sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
         if (cachedPlaces.length > 0) {
-          console.log(`  [cached: ${cachedPlaces.slice(0, 5).map(p => p.name).join(', ')}${cachedPlaces.length > 5 ? '...' : ''}]`);
         }
 
-        // Track results
         interestResults[interest] = {
           requested: stopsForThisInterest,
           custom: customToUse.length,
@@ -5239,18 +4658,14 @@ const FouFouApp = () => {
           allPlaces: sortedAll // Keep all for round 2 (already sorted)
         };
 
-        // Add to allStops
         allStops.push(...sortedPlaces);
       }
       
-      // Remove duplicates after round 1 - check ONLY exact name match
-      // Allow same coordinates with different names (same physical location, different interests)
       const seen = new Set();
       let uniqueStops = allStops.filter(stop => {
         const normalizedName = stop.name.toLowerCase().trim();
         
         if (seen.has(normalizedName)) {
-          console.log('[DEDUP] Removed duplicate by exact name:', stop.name);
           return false;
         }
         
@@ -5258,15 +4673,10 @@ const FouFouApp = () => {
         return true;
       });
       
-      // ROUND 2: If we didn't reach maxStops, try to add more from successful interests
-      // BUT respect per-interest maxStops caps
       const totalFound = uniqueStops.length;
       const missing = maxStops - totalFound;
       
-      console.log('[ROUTE] Round 1 complete:', { totalFound, maxStops, missing });
-      
       if (missing > 0) {
-        // Count how many stops we already have per interest
         const currentCountPerInterest = {};
         for (const interest of searchInterests) currentCountPerInterest[interest] = 0;
         for (const stop of uniqueStops) {
@@ -5285,24 +4695,19 @@ const FouFouApp = () => {
           const available = result.allPlaces.length;
           const canAddMore = available - alreadyUsed;
           
-          // Respect per-interest maxStops cap
           const interestMax = interestCfg[interest].maxStops;
           const currentCount = currentCountPerInterest[interest] || 0;
           const roomLeft = Math.max(0, interestMax - currentCount);
           
           if (canAddMore > 0 && roomLeft > 0) {
-            // allPlaces is already sorted from Round 1 — just slice the next batch
             const morePlaces = result.allPlaces
               .slice(alreadyUsed, alreadyUsed + Math.min(canAddMore, roomLeft));
             
             additionalPlaces.push(...morePlaces);
-            console.log(`[ROUTE R2] ${interest}: adding ${morePlaces.length} (current: ${currentCount}, max: ${interestMax})`);
           } else if (canAddMore > 0) {
-            console.log(`[ROUTE R2] ${interest}: skipped, already at max (${currentCount}/${interestMax})`);
           }
         }
         
-        // Add additional places up to the missing amount
         const ratingSort2 = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
         const distSort2 = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
         const sorted = additionalPlaces
@@ -5311,7 +4716,6 @@ const FouFouApp = () => {
         
         uniqueStops = [...uniqueStops, ...sorted];
         
-        // Remove duplicates again - check ONLY exact name match
         const seenNames = new Set();
         const finalStops = [];
         
@@ -5322,15 +4726,11 @@ const FouFouApp = () => {
             finalStops.push(stop);
             seenNames.add(normalizedName);
           } else {
-            console.log('[DEDUP Round 2] Removed duplicate:', stop.name);
           }
         }
         
         uniqueStops = finalStops;
         
-        console.log('[ROUTE] Round 2 complete:', { added: sorted.length, total: uniqueStops.length });
-        
-        // Update Google cache: remove places that Round 2 used
         const usedInRound2 = new Set(sorted.map(s => s.name.toLowerCase().trim()));
         for (const interest of searchInterests) {
           if (googleCacheRef.current[interest]?.length > 0) {
@@ -5340,7 +4740,6 @@ const FouFouApp = () => {
         }
       }
       
-      // Show errors if any occurred
       if (fetchErrors.length > 0) {
         const errorMsg = fetchErrors.map(e => `${e.interest}: ${e.error}`).join(', ');
         
@@ -5348,18 +4747,14 @@ const FouFouApp = () => {
         showToast(`${t("toast.errorsGettingPlaces")} ${errorMsg}`, 'warning');
       }
       
-      // In radius mode: detect area for each stop + filter out places outside known areas + add distance
       if (isRadiusMode) {
-        // In radius mode: keep all stops within distance — area membership is irrelevant
         uniqueStops = uniqueStops.map(stop => {
           const detectedArea = detectAreaFromCoords(stop.lat, stop.lng);
           const distFromCenter = Math.round(calcDistance(formData.currentLat, formData.currentLng, stop.lat, stop.lng));
-          // Use detected area or fall back to closest area — never discard based on area
           const closestArea = detectedArea || window.BKK.getClosestArea(stop.lat, stop.lng) || formData.area;
           return { ...stop, detectedArea: closestArea, distFromCenter };
         });
       } else {
-        // In area mode: set detectedArea = formData.area for all
         uniqueStops = uniqueStops.map(stop => ({ ...stop, detectedArea: formData.area }));
       }
       
@@ -5371,10 +4766,8 @@ const FouFouApp = () => {
         return;
       }
 
-      // Sort uniqueStops for display: slot position first, then time-conflict, then custom/rating.
       {
         const timeMode = getEffectiveTimeMode();
-        // Same slot mapping as optimizeStopOrder — single source of truth
         const slotOrder = { early: 1, any: 2, bookend: 2, middle: 3, late: 4, end: 4 };
         const defaultSlotForId = {
           cafes: 'bookend', food: 'middle', restaurants: 'middle',
@@ -5392,16 +4785,7 @@ const FouFouApp = () => {
           }
           return 2;
         };
-        // DEBUG: log slot for each stop
-        console.log('[SLOT DEBUG] searchInterests:', searchInterests);
-        uniqueStops.forEach(s => {
-          const slot = getSlotOrder(s);
-          const interests = (s.interests || []).join(',');
-          console.log(`[SLOT] ${s.name} → slot=${slot} interests=[${interests}]`);
-        });
-
         uniqueStops.sort((a, b) => {
-          // 1. Slot position (early before middle before end)
           const aSlot = getSlotOrder(a);
           const bSlot = getSlotOrder(b);
           if (aSlot !== bSlot) return aSlot - bSlot;          // 2. Time conflict (conflicting goes last within same slot)
@@ -5410,7 +4794,6 @@ const FouFouApp = () => {
           const aConflict = (aTime !== 'anytime' && aTime !== timeMode) ? 1 : 0;
           const bConflict = (bTime !== 'anytime' && bTime !== timeMode) ? 1 : 0;
           if (aConflict !== bConflict) return aConflict - bConflict;
-          // 3. Custom first, then rating
           const aCustom = (a.source === 'custom' || a.custom) ? 1 : 0;
           const bCustom = (b.source === 'custom' || b.custom) ? 1 : 0;
           if (aCustom !== bCustom) return bCustom - aCustom;
@@ -5418,7 +4801,6 @@ const FouFouApp = () => {
         });
       }
 
-      // Route name and area info
       let areaName, interestsText;
       if (isRadiusMode) {
         const allCityLabel = t('general.all') + ' ' + (tLabel(window.BKK.selectedCity) || t('general.city'));
@@ -5439,7 +4821,6 @@ const FouFouApp = () => {
         .filter(Boolean)
         .join(', ');
       
-      // Find highest sequential number for similar routes
       const baseName = `${areaName} - ${interestsText}`;
       const existingNumbers = savedRoutes
         .filter(r => r.name && r.name.startsWith(baseName))
@@ -5478,18 +4859,15 @@ const FouFouApp = () => {
             )
           };
         })(),
-        // Warning if didn't reach maxStops
         incomplete: uniqueStops.length < maxStops ? {
           requested: maxStops,
           found: uniqueStops.length,
           missing: maxStops - uniqueStops.length
         } : null,
-        // Errors if any
         errors: fetchErrors.length > 0 ? fetchErrors : null,
         optimized: false
       };
 
-      // Include manually added stops (if any)
       if (manualStops.length > 0) {
         const existingNames = new Set(uniqueStops.map(s => s.name.toLowerCase().trim()));
         const nonDuplicateManual = manualStops.filter(ms => !existingNames.has(ms.name.toLowerCase().trim()));
@@ -5500,19 +4878,10 @@ const FouFouApp = () => {
         }
       }
 
-      console.log('[ROUTE] Route created successfully:', {
-        stops: newRoute.stops.length,
-        stats: newRoute.stats,
-        incomplete: newRoute.incomplete,
-        errors: newRoute.errors
-      });
-
       setRoute(newRoute);
       userManualOrderRef.current = false; // new route resets manual order flag
 
-      // ── Friendly stats toast — interests ordered as they appear in route ──
       (() => {
-        // Build ordered list of interests as they appear in route (same order as results screen)
         const seenInterests = [];
         newRoute.stops.forEach(stop => {
           (stop.interests || []).forEach(id => {
@@ -5566,34 +4935,25 @@ const FouFouApp = () => {
         showToast(msg, 'info');
       })();
 
-      // Save debug session for field debugging
       saveDebugSession(newRoute);
       
-      // Load review averages for all custom places
       const customNames = newRoute.stops
         .filter(s => s.custom || customLocations.find(cl => cl.name === s.name))
         .map(s => s.name);
       if (customNames.length > 0) loadReviewAverages(customNames);
       
-      // Clean up disabled stops: keep only those that still exist in the new route
       if (disabledStops.length > 0) {
         const newStopNames = new Set(newRoute.stops.map(s => (s.name || '').toLowerCase().trim()));
         const stillRelevant = disabledStops.filter(name => newStopNames.has(name));
         if (stillRelevant.length !== disabledStops.length) {
-          console.log('[ROUTE] Cleaned disabled stops:', disabledStops.length, '->', stillRelevant.length);
           setDisabledStops(stillRelevant);
         }
       }
       
-      console.log('[ROUTE] Route set, staying in form view');
-      console.log('[ROUTE] Route object:', newRoute);
-      
-      // Scroll to top for Yalla button
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 100);
       
-      // Stay in form view to show compact list
     } catch (error) {
       console.error('[ROUTE] Fatal error generating route:', error);
       showToast(`${t('general.error')}: ${error.message || t('general.unknownError')}`, 'error');
@@ -5602,11 +4962,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Recompute route for map — returns data for immediate use (avoids React state timing issues)
-  // When skipSmartSelect=true, respects current disabledStops (for user manual changes)
-  // Thin wrapper for backward compatibility — delegates to runSmartPlan
-  // Uses routeTypeRef to avoid stale closures in useEffect/setTimeout
-  // Keep runSmartPlanRef updated so scheduleReoptimize always uses latest version
   runSmartPlanRef.current = runSmartPlan;
 
   const recomputeForMap = (overrideStart, overrideType, skipSmartSelect) => {
@@ -5614,8 +4969,6 @@ const FouFouApp = () => {
     return runSmartPlan({ overrideStart, overrideType: type, skipSmartSelect });
   };
 
-  // Fetch more places for a specific interest
-  // Priority: 1) unused custom locations  2) Google cache  3) new API call
   const fetchMoreForInterest = async (interest) => {
     if (!route) return;
     
@@ -5629,9 +4982,6 @@ const FouFouApp = () => {
       let placesToAdd = [];
       let source = '';
       
-      console.log(`[FETCH_MORE] Need ${fetchCount} more for ${interest}`);
-      
-      // LAYER 1: Unused custom locations for this interest
       const unusedCustom = customLocations.filter(loc => {
         if (loc.status === 'blacklist') return false;
         if (!isLocationValid(loc)) return false;
@@ -5640,7 +4990,6 @@ const FouFouApp = () => {
           const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
           return ci && li === ci.baseCategory;
         })) return false;
-        // Must be in area/radius
         if (isRadiusMode) {
           if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
           if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
@@ -5648,7 +4997,6 @@ const FouFouApp = () => {
           const locAreas = loc.areas || (loc.area ? [loc.area] : []);
           if (!locAreas.includes(formData.area)) return false;
         }
-        // Not already in route
         return !existingNames.includes(loc.name.toLowerCase().trim());
       });
       
@@ -5656,10 +5004,8 @@ const FouFouApp = () => {
         const toAdd = unusedCustom.slice(0, fetchCount);
         placesToAdd = toAdd.map(p => ({ ...p, addedLater: true }));
         source = t('general.fromMyPlaces');
-        console.log(`[FETCH_MORE] Found ${toAdd.length} from unused custom locations`);
       }
       
-      // LAYER 2: Google cache (unused results from initial route generation)
       if (placesToAdd.length < fetchCount) {
         const cached = googleCacheRef.current[interest] || [];
         const allUsedNames = [...existingNames, ...placesToAdd.map(p => p.name.toLowerCase().trim())];
@@ -5673,24 +5019,18 @@ const FouFouApp = () => {
             detectedArea: isRadiusMode ? detectAreaFromCoords(p.lat, p.lng) : formData.area
           }));
           placesToAdd.push(...fromCache);
-          // Update cache: remove used ones
           googleCacheRef.current[interest] = unusedCached.slice(needed);
           source = source ? `${source} + ${t('general.fromGoogleCache') || t('general.fromGoogle')}` : t('general.fromGoogle');
-          console.log(`[FETCH_MORE] Added ${fromCache.length} from Google cache (${googleCacheRef.current[interest].length} remaining)`);
         }
       }
       
-      // LAYER 3: New API call (only if still need more AND not private-only)
       if (placesToAdd.length < fetchCount) {
-        // Check privateOnly
         const interestObjFM = allInterestOptions.find(o => o.id === interest);
         const isPrivate = interestObjFM?.privateOnly || false;
         
         if (isPrivate) {
-          console.log(`[FETCH_MORE] Private interest ${interest} - skipping API call`);
         } else {
         const needed = fetchCount - placesToAdd.length;
-        console.log(`[FETCH_MORE] Cache exhausted, calling API for ${needed} more`);
         
         const radiusOverride = isRadiusMode ? { 
           lat: formData.currentLat, lng: formData.currentLng, radius: formData.radiusMeters 
@@ -5718,11 +5058,9 @@ const FouFouApp = () => {
         }
         
         const fromApi = newPlaces.slice(0, needed).map(p => ({ ...p, addedLater: true }));
-        // Cache remaining for future use
         googleCacheRef.current[interest] = newPlaces.slice(needed);
         placesToAdd.push(...fromApi);
         source = source ? `${source} + ${t("general.fromGoogle")}` : t('general.fromGoogle');
-        console.log(`[FETCH_MORE] Got ${fromApi.length} from API, cached ${googleCacheRef.current[interest].length}`);
         } // end if !isPrivate
       }
       
@@ -5748,7 +5086,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Fetch more places for all interests - delegates to fetchMoreForInterest per interest
   const fetchMoreAll = async () => {
     if (!route) return;
     
@@ -5760,8 +5097,6 @@ const FouFouApp = () => {
       const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
       const existingNames = route.stops.map(s => s.name.toLowerCase().trim());
       
-      console.log(`[FETCH_MORE_ALL] Need ${perInterest} per interest, total target: ${fetchCount}`);
-      
       const allNewPlaces = [];
       let fromCustom = 0;
       let fromCache = 0;
@@ -5771,7 +5106,6 @@ const FouFouApp = () => {
         const allUsedNames = [...existingNames, ...allNewPlaces.map(p => p.name.toLowerCase().trim())];
         let placesForInterest = [];
         
-        // LAYER 1: Unused custom locations
         const unusedCustom = customLocations.filter(loc => {
           if (loc.status === 'blacklist') return false;
           if (!isLocationValid(loc)) return false;
@@ -5796,7 +5130,6 @@ const FouFouApp = () => {
           fromCustom += toAdd.length;
         }
         
-        // LAYER 2: Google cache
         if (placesForInterest.length < perInterest) {
           const cached = googleCacheRef.current[interest] || [];
           const usedNames = [...allUsedNames, ...placesForInterest.map(p => p.name.toLowerCase().trim())];
@@ -5814,15 +5147,12 @@ const FouFouApp = () => {
           }
         }
         
-        // LAYER 3: API (only if still need more)
         if (placesForInterest.length < perInterest) {
-          // Check privateOnly
           const interestObjFA = allInterestOptions.find(o => o.id === interest);
           const isPrivateAll = interestObjFA?.privateOnly || false;
           
           if (!isPrivateAll) {
           const needed = perInterest - placesForInterest.length;
-          console.log(`[FETCH_MORE_ALL] API call for ${interest} (need ${needed} more)`);
           
           const radiusOverride = isRadiusMode ? { 
             lat: formData.currentLat, lng: formData.currentLng, radius: formData.radiusMeters 
@@ -5847,7 +5177,6 @@ const FouFouApp = () => {
           placesForInterest.push(...fromA);
           fromApi += fromA.length;
           } else {
-            console.log(`[FETCH_MORE_ALL] Private interest ${interest} - skipping API`);
           }
         }
         
@@ -5866,7 +5195,6 @@ const FouFouApp = () => {
       
       setRoute(updatedRoute);
       
-      // Build source message
       const sources = [];
       if (fromCustom > 0) sources.push(`${fromCustom} ${t("general.fromMyPlaces")}`);
       if (fromCache > 0) sources.push(`${fromCache} ${t('general.fromGoogleCache') || t('general.fromGoogle')}`);
@@ -5885,8 +5213,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Filter blacklisted places
-  // Filter out places that exist in custom locations with status='blacklist' (exact name match)
   const filterBlacklist = (places) => {
     const blacklistedNames = customLocations
       .filter(loc => loc.status === 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
@@ -5898,13 +5224,11 @@ const FouFouApp = () => {
       const placeName = place.name.toLowerCase().trim();
       const isBlacklisted = blacklistedNames.includes(placeName);
       if (isBlacklisted) {
-        console.log(`[BLACKLIST] Filtered out: ${place.name}`);
       }
       return !isBlacklisted;
     });
   };
   
-  // Filter out Google places that already exist in custom locations (exact name match)
   const filterDuplicatesOfCustom = (places) => {
     const customNames = customLocations
       .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
@@ -5916,27 +5240,22 @@ const FouFouApp = () => {
       const placeName = place.name.toLowerCase().trim();
       const isDuplicate = customNames.includes(placeName);
       if (isDuplicate) {
-        console.log(`[DEDUP] Filtered Google duplicate of custom location: ${place.name}`);
       }
       return !isDuplicate;
     });
   };
 
-  // Strip heavy data (base64 images) from route before save - keep Storage URLs
   const stripRouteForStorage = (r) => {
     const stripped = { ...r };
     if (stripped.stops) {
       stripped.stops = stripped.stops.map(s => {
         const clean = { ...s };
-        // Remove base64 images
         if (clean.uploadedImage && clean.uploadedImage.startsWith('data:')) {
           delete clean.uploadedImage;
         }
-        // Remove large Firebase Storage URLs from stops (they're in customLocations)
         if (clean.uploadedImage && clean.uploadedImage.length > 200) {
           delete clean.uploadedImage;
         }
-        // Remove imageUrls array from stops (they're in customLocations)
         delete clean.imageUrls;
         return clean;
       });
@@ -5945,7 +5264,6 @@ const FouFouApp = () => {
   };
 
   const saveRoutesToStorage = (_routes) => {
-    // Firebase handles persistence — no-op
   };
 
   const quickSaveRoute = () => {
@@ -5965,7 +5283,6 @@ const FouFouApp = () => {
       const stripped = stripRouteForStorage(routeToSave);
       database.ref(`cities/${selectedCityId}/routes`).push(stripped)
         .then((ref) => {
-          console.log('[FIREBASE] Route saved');
           const savedWithFbId = { ...routeToSave, firebaseId: ref.key };
           setRoute(savedWithFbId);
           setEditingRoute({...savedWithFbId});
@@ -5995,7 +5312,6 @@ const FouFouApp = () => {
       if (routeToDelete && routeToDelete.firebaseId) {
         database.ref(`cities/${selectedCityId}/routes/${routeToDelete.firebaseId}`).remove()
           .then(() => {
-            console.log('[FIREBASE] Route deleted');
             showToast(t('route.routeDeleted'), 'success');
           })
           .catch((error) => {
@@ -6017,7 +5333,6 @@ const FouFouApp = () => {
       if (routeToUpdate && routeToUpdate.firebaseId) {
         database.ref(`cities/${selectedCityId}/routes/${routeToUpdate.firebaseId}`).update(updates)
           .then(() => {
-            console.log('[FIREBASE] Route updated');
             showToast(t('route.routeUpdated'), 'success');
           })
           .catch((error) => {
@@ -6035,7 +5350,6 @@ const FouFouApp = () => {
 
   const loadSavedRoute = (savedRoute) => {
     setRoute(savedRoute);
-    // Restore startPoint: prefer startPointCoords.address (validated), then route.startPoint, then preferences
     const coords = savedRoute.startPointCoords || null;
     const validatedAddress = coords?.address || '';
     const startPointText = validatedAddress || 
@@ -6043,30 +5357,22 @@ const FouFouApp = () => {
       '';
     setFormData({...savedRoute.preferences, startPoint: startPointText });
     setStartPointCoords(coords);
-    // Restore route type (circular/linear)
     setRouteType(savedRoute.circular ? 'circular' : 'linear');
     setCurrentView('form');
     window.scrollTo(0, 0);
   };
 
-  // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)
-  // This allows direct configuration of search settings when creating an interest
-
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = customInterests.find(i => i.id === interestId);
     
-    // Check if any custom locations use this interest
     const locationsUsingInterest = customLocations.filter(loc => 
       loc.interests && loc.interests.includes(interestId)
     );
     
-    // Delete from Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
       if (interestToDelete && interestToDelete.firebaseId) {
         database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
           .then(() => {
-            console.log('[FIREBASE] Interest deleted from shared database');
             if (locationsUsingInterest.length > 0) {
               showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
             } else {
@@ -6079,7 +5385,6 @@ const FouFouApp = () => {
           });
       }
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = customInterests.filter(i => i.id !== interestId);
       setCustomInterests(updated);
       
@@ -6091,18 +5396,14 @@ const FouFouApp = () => {
     }
   };
 
-  // Toggle interest active/inactive status (per-user)
   const toggleInterestStatus = (interestId) => {
-    // Invalid interests cannot be activated
     if (!isInterestValid(interestId) && !interestStatus[interestId]) return;
     
     const newStatus = !interestStatus[interestId];
     const updatedStatus = { ...interestStatus, [interestId]: newStatus };
     setInterestStatus(updatedStatus);
     
-    // When disabling: immediately remove from selected interests to prevent stale selections
     if (!newStatus && formData.interests.includes(interestId)) {
-      console.log('[INTEREST] Removing disabled interest from selection:', interestId);
       setFormData(prev => ({ ...prev, interests: prev.interests.filter(id => id !== interestId) }));
     }
     
@@ -6110,28 +5411,22 @@ const FouFouApp = () => {
       const userId = authUser?.uid || 'unknown';
       database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
         .then(() => {
-          console.log('[FIREBASE] User interest status updated:', interestId, newStatus);
         })
         .catch(err => {
           console.error('Error updating interest status to Firebase, saving locally:', err);
-          // Fallback: save to localStorage so change persists for anonymous/restricted users
         });
     } else {
     }
   };
 
-  // Reset user interest preferences to admin defaults
-  // Compute default interest status from interestConfig flags
   const computeDefaultInterestStatus = () => {
     const defaults = {};
     const builtInIds = new Set(interestOptions.map(i => i.id));
-    // Unified logic for ALL interests — same as ⚪/🔵 toggle display
     const allInterests = [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])];
     for (const i of allInterests) {
       const id = i.id || i.name?.replace(/\s+/g, '_').toLowerCase();
       if (!id) continue;
       const cfg = interestConfig[id];
-      // If admin explicitly set defaultEnabled, use it. Otherwise: built-in=true, non-built-in=false
       defaults[id] = cfg?.defaultEnabled !== undefined ? cfg.defaultEnabled : builtInIds.has(id);
     }
     return defaults;
@@ -6140,7 +5435,6 @@ const FouFouApp = () => {
   const resetInterestStatusToDefault = async () => {
     const defaults = computeDefaultInterestStatus();
     
-    // Also clean formData.interests — remove any that will be disabled
     setFormData(prev => ({
       ...prev,
       interests: prev.interests.filter(id => defaults[id] !== false)
@@ -6149,13 +5443,11 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const userId = authUser?.uid || 'unknown';
       try {
-        // Write computed defaults explicitly (not just remove)
         await database.ref(`users/${userId}/interestStatus`).set(defaults);
         setInterestStatus(defaults);
         showToast(t('interests.interestsReset'), 'success');
       } catch (err) {
         console.error('Error resetting interest status to Firebase, falling back to localStorage:', err);
-        // Fallback: save locally so anonymous/restricted users can still reset
         setInterestStatus(defaults);
         showToast(t('interests.interestsReset'), 'success');
       }
@@ -6165,11 +5457,9 @@ const FouFouApp = () => {
     }
   };
 
-  // Admin: toggle the defaultEnabled flag for an interest
   const toggleDefaultEnabled = async (interestId) => {
     if (!isUnlocked) return;
     const currentConfig = interestConfig[interestId] || {};
-    // Determine current effective default
     const builtInIds = interestOptions.map(i => i.id);
     const hardDefault = builtInIds.includes(interestId) ? true : false;
     const currentDefault = currentConfig.defaultEnabled !== undefined ? currentConfig.defaultEnabled : hardDefault;
@@ -6181,14 +5471,12 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       try {
         await database.ref(`settings/interestConfig/${interestId}/defaultEnabled`).set(newDefault);
-        console.log(`[ADMIN] Set defaultEnabled=${newDefault} for ${interestId}`);
       } catch (err) {
         console.error('Error saving defaultEnabled:', err);
       }
     }
   };
 
-  // Admin: cycle adminStatus for an interest (active → draft → hidden → active)
   const cycleAdminStatus = async (interestId) => {
     if (!isUnlocked) return;
     const currentConfig = interestConfig[interestId] || {};
@@ -6201,7 +5489,6 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       try {
         await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(next);
-        console.log(`[ADMIN] Set adminStatus=${next} for ${interestId}`);
       } catch (err) {
         console.error('Error saving adminStatus:', err);
       }
@@ -6211,23 +5498,18 @@ const FouFouApp = () => {
     showToast(`${labels[next]} ${interestId} → ${next}`, 'info');
   };
 
-  // Check if interest has valid search config
   const isInterestValid = (interestId) => {
-    // 1. Manual (privateOnly) interests are ALWAYS valid - no search config needed
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly) return true;
     const rawCustom = customInterests.find(o => o.id === interestId);
     if (rawCustom?.privateOnly) return true;
     
-    // 2. Non-manual interests need search config (types or textSearch)
-    // Check custom interestConfig
     const config = interestConfig[interestId];
     if (config) {
       if (config.textSearch && config.textSearch.trim()) return true;
       if (config.types && Array.isArray(config.types) && config.types.length > 0) return true;
     }
     
-    // Check city's built-in search config
     const cityPlaces = window.BKK.interestToGooglePlaces || {};
     const cityTextSearch = window.BKK.textSearchInterests || {};
     if (cityPlaces[interestId] && cityPlaces[interestId].length > 0) return true;
@@ -6236,17 +5518,14 @@ const FouFouApp = () => {
     return false;
   };
 
-  // Sanitize mapsUrl before saving — never save a URL with an invalid query_place_id
   const sanitizeMapsUrl = (loc) => {
     const url = loc.mapsUrl || '';
     if (!url) return loc;
-    // If mapsUrl has query_place_id — validate it
     const m = url.match(/query_place_id=([^&]+)/);
     if (m) {
       const pid = decodeURIComponent(m[1]);
       const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
       if (!isValidPid) {
-        // Bad query_place_id — rebuild from canonical fields (without mapsUrl)
         const clean = { ...loc, mapsUrl: '' };
         return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
       }
@@ -6254,7 +5533,6 @@ const FouFouApp = () => {
     return loc;
   };
 
-  // Check if edit dialog has unsaved changes vs original
   const locationHasChanges = () => {
     if (!editingLocation) return false;
     const e = editingLocation;
@@ -6277,26 +5555,19 @@ const FouFouApp = () => {
     return false;
   };
 
-  // Check if location has all required data
   const isLocationValid = (loc) => {
     if (!loc) return false;
-    // Must have name
     if (!loc.name || !loc.name.trim()) return false;
-    // Note: interests and coordinates are optional - location is still valid without them
-    // (it just won't appear in route calculation, but will show in "my places")
     return true;
   };
 
   const deleteCustomLocation = (locationId) => {
     const locationToDelete = customLocations.find(loc => loc.id === locationId);
     
-    // Delete from Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
       if (locationToDelete && locationToDelete.firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${locationToDelete.firebaseId}`).remove()
           .then(() => {
-            console.log('[FIREBASE] Location deleted from shared database');
             showToast(t('places.placeDeleted'), 'success');
           })
           .catch((error) => {
@@ -6305,14 +5576,12 @@ const FouFouApp = () => {
           });
       }
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = customLocations.filter(loc => loc.id !== locationId);
       setCustomLocations(updated);
       showToast(t('places.placeDeleted'), 'success');
     }
   };
   
-  // Toggle location status with review state
   const toggleLocationStatus = (locationId) => {
     const location = customLocations.find(loc => loc.id === locationId);
     if (!location) return;
@@ -6327,9 +5596,7 @@ const FouFouApp = () => {
       newStatus = 'blacklist';
     }
     
-    // Update in Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
       if (location.firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${location.firebaseId}`).update({
           status: newStatus
@@ -6347,7 +5614,6 @@ const FouFouApp = () => {
           });
       }
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = customLocations.map(loc => {
         if (loc.id === locationId) {
           return { ...loc, status: newStatus };
@@ -6364,7 +5630,6 @@ const FouFouApp = () => {
     }
   };
   
-  // Handle edit location - populate form with existing data
   // === PLACE REVIEWS ===
   
   const loadReviewAverages = async (placeNames) => {
@@ -6382,11 +5647,9 @@ const FouFouApp = () => {
             if (ratings.length > 0) {
               avgs[placeKey] = { avg: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
             } else {
-              // No ratings left — clear from state
               setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
             }
           } else {
-            // Node deleted entirely — clear from state
             setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
           }
         } catch (e) { /* skip individual errors */ }
@@ -6404,7 +5667,6 @@ const FouFouApp = () => {
     const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
     const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
     
-    // Load existing reviews from Firebase
     let reviews = [];
     try {
       if (database) {
@@ -6424,7 +5686,6 @@ const FouFouApp = () => {
       console.error('[REVIEWS] Load error:', e);
     }
     
-    // Find my existing review
     const myReview = reviews.find(r => r.odvisitorId === visitorId);
     
     setReviewDialog({
@@ -6484,7 +5745,6 @@ const FouFouApp = () => {
     try {
       if (database) {
         await database.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
-        // Refresh reviews inside dialog
         const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([ruid, r]) => ({
@@ -6492,7 +5752,6 @@ const FouFouApp = () => {
           userName: r.userName || ruid.slice(0, 8), timestamp: r.timestamp || 0
         })).sort((a, b) => b.timestamp - a.timestamp) : [];
         setReviewDialog(prev => prev ? { ...prev, reviews: updated, myRating: 0, myText: '', hasChanges: false } : null);
-        // Refresh average in list (place name captured before dialog closes)
         loadReviewAverages([placeName]);
         showToast(t('reviews.deleted'), 'success');
       }
@@ -6555,10 +5814,8 @@ const FouFouApp = () => {
     setShowEditLocationDialog(true);
   };
   
-  // Add Google place to My Locations
   const addGooglePlaceToCustom = async (place, forceAdd = false) => {
     if (!forceAdd) {
-      // Check if already exists (by name, case-insensitive)
       const existsByName = customLocations.find(loc =>
         loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
       );
@@ -6568,7 +5825,6 @@ const FouFouApp = () => {
         return false;
       }
 
-      // Check for nearby duplicates by coordinates
       if (place.lat && place.lng) {
         const nearbyDup = customLocations.find(loc => {
           if (!loc.lat || !loc.lng) return false;
@@ -6586,7 +5842,6 @@ const FouFouApp = () => {
       }
     }
     
-    // Set adding state for dimmed button
     const placeId = place.id || place.name;
     setAddingPlaceIds(prev => [...prev, placeId]);
     
@@ -6621,11 +5876,9 @@ const FouFouApp = () => {
     locationToAdd.mapsUrl = window.BKK.getGoogleMapsUrl(locationToAdd);
     locationToAdd = sanitizeMapsUrl(locationToAdd);
     
-    // Save to Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
       try {
         const ref = await database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd);
-        // Verify server received it by reading back
         try {
           await Promise.race([
             ref.once('value'),
@@ -6634,11 +5887,9 @@ const FouFouApp = () => {
           addDebugLog('ADD', `Added "${place.name}" to Firebase (server verified)`);
           showToast(`✅ "${place.name}" ${t("places.addedToYourList")}`, 'success');
         } catch (e) {
-          // Firebase SDK has it cached, will auto-sync
           showToast(`💾 "${place.name}" — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
         }
         setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
-        // Auto-open edit dialog for the newly added place
         setTimeout(() => handleEditLocation(locationToAdd), 300);
         return true;
       } catch (error) {
@@ -6658,9 +5909,6 @@ const FouFouApp = () => {
     }
   };
   
-
-  
-  // Import function - add new only, skip existing
   const handleImportMerge = async () => {
     let addedInterests = 0;
     let skippedInterests = 0;
@@ -6671,22 +5919,17 @@ const FouFouApp = () => {
     let updatedConfigs = 0;
     let updatedStatuses = 0;
     
-    // Helper to check if interest exists by label (not id)
     const interestExistsByLabel = (label) => {
       return customInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
     };
     
-    // Helper to check if location exists by name (not id)
     const locationExistsByName = (name) => {
       return customLocations.find(l => l.name.toLowerCase() === name.toLowerCase());
     };
     
-    // Import to Firebase (or localStorage fallback)
     const currentImportBatch = new Date().toISOString().slice(0, 16).replace('T', '_');
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
       
-      // 1. Import custom interests
       for (const interest of (importedData.customInterests || [])) {
         const label = tLabel(interest) || interest.name;
         if (!label) continue;
@@ -6726,7 +5969,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 2. Import interest configurations (search settings)
       if (importedData.interestConfig) {
         for (const [interestId, config] of Object.entries(importedData.interestConfig)) {
           try {
@@ -6738,7 +5980,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 3. Import interest statuses (active/inactive)
       if (importedData.interestStatus) {
         for (const [interestId, status] of Object.entries(importedData.interestStatus)) {
           try {
@@ -6750,7 +5991,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 3b. Import interest counters (auto-naming)
       if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
         for (const [interestId, counter] of Object.entries(importedData.interestCounters)) {
           try {
@@ -6761,7 +6001,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 3c. Import system parameters (algorithm tuning)
       if (importedData.systemParams && typeof importedData.systemParams === 'object') {
         const merged = { ...window.BKK._defaultSystemParams, ...importedData.systemParams };
         window.BKK.systemParams = merged;
@@ -6771,7 +6010,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 4. Import locations
       for (const loc of (importedData.customLocations || [])) {
         if (!loc.name) continue;
         
@@ -6820,7 +6058,6 @@ const FouFouApp = () => {
         }
       }
       
-      // 5. Import saved routes (to Firebase)
       for (const route of (importedData.savedRoutes || [])) {
         if (!route.name) continue;
         
@@ -6844,13 +6081,11 @@ const FouFouApp = () => {
       }
       
     } else {
-      // STATIC MODE: localStorage (local)
       const newInterests = [...customInterests];
       const newLocations = [...customLocations];
       const newConfig = { ...interestConfig };
       const newStatus = { ...interestStatus };
       
-      // 1. Import custom interests
       (importedData.customInterests || []).forEach(interest => {
         const label = tLabel(interest) || interest.name;
         if (!label) return;
@@ -6884,7 +6119,6 @@ const FouFouApp = () => {
         addedInterests++;
       });
       
-      // 2. Import interest configurations
       if (importedData.interestConfig) {
         Object.entries(importedData.interestConfig).forEach(([id, config]) => {
           newConfig[id] = config;
@@ -6892,7 +6126,6 @@ const FouFouApp = () => {
         });
       }
       
-      // 3. Import interest statuses
       if (importedData.interestStatus) {
         Object.entries(importedData.interestStatus).forEach(([id, status]) => {
           newStatus[id] = status;
@@ -6900,19 +6133,16 @@ const FouFouApp = () => {
         });
       }
       
-      // 3b. Import interest counters (auto-naming)
       if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
         setInterestCounters(prev => ({ ...prev, ...importedData.interestCounters }));
       }
       
-      // 3c. Import system parameters
       if (importedData.systemParams && typeof importedData.systemParams === 'object') {
         const merged = { ...window.BKK._defaultSystemParams, ...importedData.systemParams };
         window.BKK.systemParams = merged;
         setSystemParams(merged);
       }
       
-      // 4. Import locations
       (importedData.customLocations || []).forEach(loc => {
         if (!loc.name) return;
         
@@ -6956,7 +6186,6 @@ const FouFouApp = () => {
         addedLocations++;
       });
       
-      // 5. Import saved routes
       const newRoutes = [...savedRoutes];
       (importedData.savedRoutes || []).forEach(route => {
         if (!route.name) return;
@@ -6987,7 +6216,6 @@ const FouFouApp = () => {
     setShowImportDialog(false);
     setImportedData(null);
     
-    // Build detailed report
     const report = [];
     if (addedInterests > 0 || skippedInterests > 0) {
       report.push(`${t("import.interests")} +${addedInterests}`);
@@ -7005,7 +6233,6 @@ const FouFouApp = () => {
     const totalAdded = addedInterests + addedLocations + addedRoutes + updatedConfigs;
     showToast(report.join(' | ') || t('toast.noImportItems'), totalAdded > 0 ? 'success' : 'warning');
     
-    // If locations were imported, switch to favorites > drafts view for review
     if (addedLocations > 0) {
       setLastImportBatch(currentImportBatch);
       setFilterImportBatch(true);
@@ -7037,7 +6264,6 @@ const FouFouApp = () => {
     localStorage.removeItem('foufou_active_trail');
   };
 
-  // ── Save with duplicate detection ──
   const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false) => {
     const loc = { ...newLocation };
     if (!loc.name?.trim() || !loc.interests?.length) {
@@ -7045,14 +6271,12 @@ const FouFouApp = () => {
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
-    // Skip dedup if no GPS or dedup disabled
     if (!loc.lat || !loc.lng || (!sp.dedupGoogleEnabled && !sp.dedupCustomEnabled)) {
       addCustomLocation(closeAfter);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
     
-    // Background dedup check
     try {
       const matches = await findNearbyDuplicates(loc.lat, loc.lng, loc.interests);
       
@@ -7068,10 +6292,8 @@ const FouFouApp = () => {
         return;
       }
     } catch (e) {
-      // Dedup check failed — save anyway, don't lose the place
     }
     
-    // No matches or check failed — save normally
     addCustomLocation(closeAfter);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
@@ -7079,18 +6301,15 @@ const FouFouApp = () => {
     }
   };
 
-  // Handle dedup confirmation actions
   const handleDedupConfirm = (action) => {
     if (!dedupConfirm) return;
     const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
 
-    // Always save photo to device
     if (loc?.uploadedImage) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
     }
 
     if (action === 'updateWithGoogle') {
-      // Update existing custom location with Google data (rating, address, placeId, name if different)
       const gp = dedupConfirm.pendingGooglePlace;
       if (gp && match) {
         const updates = {
@@ -7101,7 +6320,6 @@ const FouFouApp = () => {
           mapsUrl: gp.mapsUrl || match.mapsUrl || '',
           fromGoogle: true
         };
-        // Only update name if existing has none or they match loosely
         if (!match.name || match.name.toLowerCase().trim() !== gp.name.toLowerCase().trim()) {
           updates._googleName = gp.name; // store as hint, don't overwrite user's name
         }
@@ -7119,7 +6337,6 @@ const FouFouApp = () => {
     }
 
     if (action === 'accept') {
-      // From addGooglePlaceToCustom: open the existing location for editing
       if (dedupConfirm.pendingGooglePlace) {
         setDedupConfirm(null);
         setTimeout(() => handleEditLocation(match), 200);
@@ -7140,7 +6357,6 @@ const FouFouApp = () => {
         addCustomLocation(closeAfter, googleData);
         showToast(`📍 ${t('dedup.googleMatch')}: ${match.name}`, 'success');
       } else {
-        // Custom match — don't add, merge interests if needed
         const newInterests = loc.interests.filter(i => !match.interests?.includes(i));
         if (newInterests.length > 0) {
           const mergedInterests = [...(match.interests || []), ...newInterests];
@@ -7162,27 +6378,23 @@ const FouFouApp = () => {
       }
     } else if (action === 'addNew') {
       if (dedupConfirm.pendingGooglePlace) {
-        // Came from addGooglePlaceToCustom — force-add bypassing dedup check
         addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
       } else {
         addCustomLocation(closeAfter);
         showToast('✅ ' + t('trail.saved'), 'success');
       }
     }
-    // action === 'cancel' — do nothing (photo already saved above)
     
     if (closeQuickCapture) setShowQuickCapture(false);
     setDedupConfirm(null);
   };
 
-  // Bulk dedup scan — find all suspected duplicate pairs
   const scanAllDuplicates = (coordsOnly = false) => {
     const radius = sp.dedupRadiusMeters || 50;
     const locs = customLocations.filter(l => l.lat && l.lng);
     const clusters = [];
     const seen = new Set();
     
-    // Build related interest map (bidirectional) — only for interest-based mode
     const relatedMap = {};
     if (!coordsOnly) {
       for (const opt of allInterestOptions) {
@@ -7232,21 +6444,17 @@ const FouFouApp = () => {
     }
   };
 
-  // Merge: keep loc A, remove loc B
   const mergeDedupLocations = (keepId, removeId) => {
     const remove = customLocations.find(l => l.id === removeId);
     if (!remove) return;
     
-    // Remove from customLocations
     const updated = customLocations.filter(l => l.id !== removeId);
     setCustomLocations(updated);
     
-    // Remove from Firebase
     if (isFirebaseAvailable && database && remove.firebaseKey) {
       database.ref(`cities/${selectedCityId}/locations/${remove.firebaseKey}`).remove();
     }
     
-    // Update bulk results
     setBulkDedupResults(prev => {
       if (!prev) return null;
       return prev.map(c => ({
@@ -7264,7 +6472,6 @@ const FouFouApp = () => {
       return; // Just don't add if validation fails
     }
     
-    // Check for duplicate name (warn only, don't block — auto-generated names may collide)
     const exists = customLocations.find(loc => 
       loc.name.toLowerCase().trim() === locData.name.toLowerCase().trim()
     );
@@ -7272,20 +6479,17 @@ const FouFouApp = () => {
       showToast(`⚠️ "${locData.name}" ${t("places.alreadyInList")}`, 'warning');
     }
     
-    // Use provided coordinates (can be null)
     let lat = locData.lat;
     let lng = locData.lng;
     let outsideArea = false;
     let hasCoordinates = (lat !== null && lng !== null && lat !== 0 && lng !== 0);
     
-    // Auto-detect areas from coordinates at save time
     let finalAreas = locData.areas || (locData.area ? [locData.area] : []);
     if (hasCoordinates) {
       const detected = window.BKK.getAreasForCoordinates(lat, lng);
       if (detected.length > 0) {
         finalAreas = detected;
       } else if (finalAreas.length > 0) {
-        // No area detected - check if manually selected areas match
         const inAnyArea = finalAreas.some(aId => checkLocationInArea(lat, lng, aId).valid);
         if (!inAnyArea) {
           const areaNames = finalAreas.map(aId => areaOptions.find(a => a.id === aId)).filter(Boolean).map(a => tLabel(a)).join(', ');
@@ -7329,7 +6533,6 @@ const FouFouApp = () => {
     };
     locationToAdd = sanitizeMapsUrl(locationToAdd);
     
-    // Increment interest counters for auto-naming (if name matches "#N" pattern)
     const incrementCounters = () => {
       if (isFirebaseAvailable && database && locationToAdd.interests?.length > 0) {
         const nameMatch = locationToAdd.name.match(/#(\d+)$/);
@@ -7345,27 +6548,20 @@ const FouFouApp = () => {
       }
     };
     
-    // Save to Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared) — SDK handles offline caching automatically
       incrementCounters();
       database.ref(`cities/${selectedCityId}/locations`).push(locationToAdd)
         .then(async (ref) => {
-          // Firebase push succeeded (may be cached offline - SDK will sync when online)
           try {
             await Promise.race([
               ref.once('value'),
               new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
             ]);
-            console.log('[FIREBASE] Location VERIFIED on server:', ref.key);
             showToast(`✅ ${locationToAdd.name} — ${t('places.placeAddedShared')}`, 'success');
           } catch (verifyErr) {
-            // Server unreachable but Firebase SDK has the data cached - it WILL sync when online
-            console.warn('[FIREBASE] Saved to Firebase cache (will auto-sync):', verifyErr.message);
             showToast(`💾 ${locationToAdd.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
           }
           
-          // If staying open, switch to edit mode
           if (!closeAfter) {
             const addedWithFirebaseId = { ...locationToAdd, firebaseId: ref.key };
             setEditingLocation(addedWithFirebaseId);
@@ -7374,17 +6570,14 @@ const FouFouApp = () => {
           }
         })
         .catch((error) => {
-          // Firebase push itself failed — this shouldn't happen even offline, but save to pending as safety net
           console.error('[FIREBASE] Push failed completely, saving to pending:', error);
           saveToPending(locationToAdd);
         });
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = [...customLocations, locationToAdd];
       setCustomLocations(updated);
       showToast(t('places.placeAdded'), 'success');
       
-      // If staying open, switch to edit mode
       if (!closeAfter) {
         setEditingLocation(locationToAdd);
         setShowAddLocationDialog(false);
@@ -7392,7 +6585,6 @@ const FouFouApp = () => {
       }
     }
     
-    // Add to current route if exists (only if has coordinates)
     if (route && hasCoordinates) {
       const updatedRoute = {
         ...route,
@@ -7420,14 +6612,12 @@ const FouFouApp = () => {
     }
   };
   
-  // Update existing location
   const updateCustomLocation = (closeAfter = true) => {
     if (!newLocation.name?.trim()) {
       showToast(t('places.enterPlaceName'), 'warning');
       return;
     }
     
-    // Check for duplicate name (warn only, don't block)
     const exists = customLocations.find(loc => 
       loc.name.toLowerCase().trim() === newLocation.name.toLowerCase().trim() &&
       loc.id !== editingLocation.id
@@ -7436,7 +6626,6 @@ const FouFouApp = () => {
       showToast(`⚠️ "${newLocation.name}" ${t("places.alreadyInList")}`, 'warning');
     }
     
-    // Check if anything actually changed (normalize null/undefined)
     const hasChanges = locationHasChanges();
     
     if (!hasChanges) {
@@ -7447,12 +6636,10 @@ const FouFouApp = () => {
       return; // No toast, no save
     }
     
-    // Use provided coordinates (can be null)
     let hasCoordinates = (newLocation.lat !== null && newLocation.lng !== null && 
                           newLocation.lat !== 0 && newLocation.lng !== 0);
     let outsideArea = false;
     
-    // Auto-detect areas from coordinates at save time
     let finalAreas = newLocation.areas || (newLocation.area ? [newLocation.area] : editingLocation.areas || []);
     if (hasCoordinates) {
       const detected = window.BKK.getAreasForCoordinates(newLocation.lat, newLocation.lng);
@@ -7482,21 +6669,17 @@ const FouFouApp = () => {
       missingCoordinates: !hasCoordinates // Flag for missing coordinates
     });
     
-    // Update in Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
       const { firebaseId, ...locationData } = updatedLocation;
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
           .then(async () => {
-            // Verify server received it by reading back
             try {
               await Promise.race([
                 database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).once('value'),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
               ]);
-              console.log('[FIREBASE] Location update VERIFIED on server');
               showToast(`✅ ${updatedLocation.name} — ${t('places.placeUpdated')}`, 'success');
             } catch (e) {
               showToast(`💾 ${updatedLocation.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
@@ -7511,13 +6694,11 @@ const FouFouApp = () => {
           });
       }
     } else {
-      // STATIC MODE: localStorage (local)
       const updated = customLocations.map(loc => 
         loc.id === editingLocation.id ? updatedLocation : loc
       );
       setCustomLocations(updated);
       showToast(t('places.placeUpdated'), 'success');
-      // Update editingLocation with latest data
       if (!closeAfter) {
         setEditingLocation(updatedLocation);
       }
@@ -7543,7 +6724,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Get current location from GPS
   const getCurrentLocation = () => {
     showToast(t('form.searchingLocation'), 'info');
     
@@ -7571,7 +6751,6 @@ const FouFouApp = () => {
             setNewLocation(prev => ({ ...prev, address: address }));
           }
         } catch (err) {
-          console.log('[GPS] Reverse geocode failed (ok):', err);
         }
       },
       (reason) => {
@@ -7581,8 +6760,6 @@ const FouFouApp = () => {
     );
   };
 
-  // Parse Google Maps URL to extract coordinates
-  // Search address using Google Places API (instead of Geocoding)
   const geocodeAddress = async (address) => {
     if (!address || !address.trim()) {
       showToast(t('form.enterAddress'), 'warning');
@@ -7592,14 +6769,12 @@ const FouFouApp = () => {
     try {
       showToast(t('places.searchingAddress'), 'info');
       
-      // Add city name if not already included
       const cityName = window.BKK.cityNameForSearch || 'Bangkok';
       const countryName = window.BKK.selectedCity?.country || '';
       const searchQuery = address.toLowerCase().includes(cityName.toLowerCase()) 
         ? address 
         : `${address}, ${cityName}${countryName ? ', ' + countryName : ''}`;
       
-      // Use Google Places API Text Search
       const response = await fetch(
         `https://places.googleapis.com/v1/places:searchText`,
         {
@@ -7623,7 +6798,6 @@ const FouFouApp = () => {
         const location = place.location;
         const formattedAddress = place.formattedAddress || place.displayName?.text || searchQuery;
         
-        // Auto-detect areas from coordinates
         const detected = window.BKK.getAreasForCoordinates(location.latitude, location.longitude);
         const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
         
@@ -7648,7 +6822,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Search places by name - returns multiple results for picking
   const searchPlacesByName = async (query) => {
     if (!query || !query.trim()) return;
     try {
@@ -7687,7 +6860,6 @@ const FouFouApp = () => {
     }
   };
 
-  // Reverse geocode: get address from coordinates
   const reverseGeocode = async (lat, lng) => {
     try {
       const response = await fetch(
@@ -7720,11 +6892,6 @@ const FouFouApp = () => {
 
 
 
-
-
-
-
-  // Unified wizard step header — optionally pass hintId to embed hint button in title row
   const renderStepHeader = (icon, title, subtitle, hintId) => {
     const isRTL = window.BKK.i18n.isRTL();
     const lang = window.BKK.i18n.currentLang || 'he';
@@ -7778,7 +6945,6 @@ const FouFouApp = () => {
       : icon;
   };
 
-  // Shared import file parser — used from settings and favorites screen
   const parseImportFile = (file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -8011,7 +7177,6 @@ const FouFouApp = () => {
                 key={item.view}
                 onClick={() => {
                   if (item.view === 'settings' && !isAdmin) {
-                    // Only admin can access settings
                     showToast(t('auth.needAdmin'), 'warning');
                     setShowHeaderMenu(false);
                     return;
@@ -8195,7 +7360,6 @@ const FouFouApp = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   {(() => {
-                    // Build sequential letter map: only active stops get letters
                     const trailLetterMap = {};
                     let tLetterIdx = 0;
                     activeTrail.stops.forEach((_, idx) => {
@@ -8312,7 +7476,6 @@ const FouFouApp = () => {
                         setShowMapModal(true);
                       },
                       () => {
-                        // Even without GPS, show the stops on map
                         setMapUserLocation(null);
                         setMapStops(activeTrail.stops);
                         setMapSkippedStops(new Set(skippedTrailStops));
@@ -8339,7 +7502,6 @@ const FouFouApp = () => {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={() => {
-                  // Reopen Google Maps with active (non-skipped) stops — always in new tab to avoid "Exit navigation?" prompt
                   const activeStops = activeTrail.stops?.filter((_, i) => !skippedTrailStops.has(i));
                   if (activeStops?.length >= 2) {
                     const coords = activeStops.map(s => `${s.lat},${s.lng}`).join('/');
@@ -8637,7 +7799,6 @@ const FouFouApp = () => {
                       if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
                       return status !== false;
                     });
-                    // Sort by group, preserving order within groups
                     const groupOrder = [];
                     filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });
                     groupOrder.push('_none'); // ungrouped at end
@@ -8646,7 +7807,6 @@ const FouFouApp = () => {
                       const gb = groupOrder.indexOf(b.group || '_none');
                       return ga - gb;
                     });
-                    // Render with separator lines between groups
                     let lastGroup = null;
                     const elements = [];
                     sorted.forEach((option, idx) => {
@@ -8819,8 +7979,6 @@ const FouFouApp = () => {
           );
         })()}
 
-
-
         {/* Back to route — visible on non-form tabs */}
         {!activeTrail && currentView !== 'form' && (
           <div style={{ textAlign: 'center', marginTop: '-6px', marginBottom: '4px' }}>
@@ -8879,7 +8037,6 @@ const FouFouApp = () => {
         {/* ROUTE CHOICE SCREEN — shown in wizard step 3 after route is loaded, before any action */}
         {/* Intermediate screen removed — auto-jump to manual mode on load */}
         {wizardStep === 3 && !isGenerating && route && route.stops?.length > 0 && !activeTrail && !route.optimized && routeChoiceMade === null && currentView === 'form' && (() => {
-          // Auto-enter manual mode immediately
           setTimeout(() => { setRouteChoiceMade('manual'); window.scrollTo(0, 0); }, 0);
           return null;
         })()}
@@ -8912,7 +8069,6 @@ const FouFouApp = () => {
                 {/* Normal stop list grouped by interest */}
                 <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
                   {(() => {
-                    // Build sequential letter map: only active stops get letters
                     const activeLetterMap = {};
                     let letterIdx = 0;
                     route.stops.forEach((stop, i) => {
@@ -8922,7 +8078,6 @@ const FouFouApp = () => {
                       }
                     });
                     
-                    // Group stops by interest
                     const groupedStops = {};
                     let stopCounter = 0;
                     
@@ -8941,7 +8096,6 @@ const FouFouApp = () => {
                       .filter(([interest]) => {
                         if (interest === '_manual') return true;
                         if (!formData.interests.includes(interest)) return false;
-                        // Safety: don't show groups for hidden/draft/disabled/wrong-city interests
                         const opt = allInterestOptions.find(o => o.id === interest);
                         if (!opt) return false;
                         const aStatus = opt.adminStatus || 'active';
@@ -8953,12 +8107,28 @@ const FouFouApp = () => {
                         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
                         return status !== false;
                       })
+                      .sort(([interestA], [interestB]) => {
+                        const slotOrder = { early: 1, any: 2, bookend: 2, middle: 3, late: 4, end: 4 };
+                        const defaultSlotForId = {
+                          cafes: 'bookend', food: 'middle', restaurants: 'middle',
+                          markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+                          architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+                          artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+                          nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+                        };
+                        const getOrder = (id) => {
+                          if (id === '_manual') return 2;
+                          const cfgSlot = interestConfig[id]?.routeSlot;
+                          const slot = cfgSlot || defaultSlotForId[id] || 'any';
+                          return slotOrder[slot] ?? 2;
+                        };
+                        return getOrder(interestA) - getOrder(interestB);
+                      })
                       .map(([interest, stops]) => {
                       const isManualGroup = interest === '_manual';
                       const interestObj = isManualGroup ? { id: '_manual', label: t('general.addedManually'), icon: '📍' } : interestMap[interest];
                       if (!interestObj) return null;
                       
-                      // For manual group, filter out stops that now have real interests
                       const filteredStops = isManualGroup 
                         ? stops.filter(s => !s.interests || s.interests.length === 0 || (s.interests.length === 1 && s.interests[0] === '_manual'))
                         : stops;
@@ -8975,7 +8145,6 @@ const FouFouApp = () => {
                             {!isManualGroup && (
                             <button
                               onClick={async () => {
-                                // Fetch more for this specific interest
                                 await fetchMoreForInterest(interest);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
@@ -9017,7 +8186,6 @@ const FouFouApp = () => {
                                         showToast(t('places.editNoCoordsHint'), 'warning');
                                         return;
                                       }
-                                      // Custom place with only coordinates → show favorite card
                                       if (isCustom && !stop.mapsUrl && !stop.address && !stop.googlePlaceId && !stop.placeId) {
                                         e.preventDefault();
                                         const cl = customLocations.find(loc => loc.name === stop.name);
@@ -9203,7 +8371,6 @@ const FouFouApp = () => {
                     onClick={() => {
                       const openMap = (gpsStart) => {
                         const result = recomputeForMap(gpsStart || null, undefined, true);
-                        // Always show ALL stops on map — disabled ones rendered dimmed
                         const allStops = route.stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
                         if (allStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
                         setMapStops(allStops);
@@ -9356,7 +8523,6 @@ const FouFouApp = () => {
                     const origin = hasStartPoint
                       ? `${startPointCoords.lat},${startPointCoords.lng}`
                       : activeStops.length > 0 ? `${activeStops[0].lat},${activeStops[0].lng}` : '';
-                    // Exclude any stop that overlaps with startPointCoords to avoid duplicates in URL
                     const isOverlapStart = (s) => hasStartPoint
                       && Math.abs(s.lat - startPointCoords.lat) < 0.0001
                       && Math.abs(s.lng - startPointCoords.lng) < 0.0001;
@@ -9435,7 +8601,6 @@ const FouFouApp = () => {
             )}
           </div>
         )}
-
 
         {/* Saved Routes View */}
         {/* Search View */}
@@ -9622,7 +8787,6 @@ const FouFouApp = () => {
                     const showGroupHeader = routesSortBy === 'area' && groupKey !== lastGroup;
                     if (showGroupHeader) lastGroup = groupKey;
                     
-                    // Collect interest icons from route stops
                     const routeInterestIds = [...new Set((savedRoute.stops || []).flatMap(s => s.interests || []))];
                     
                     return (
@@ -10039,7 +9203,6 @@ const FouFouApp = () => {
             
             {/* Unified Interest List */}
             {(() => {
-              // Helper to open interest dialog for editing
               const openInterestDialog = (interest) => {
                 const config = interestConfig[interest.id] || {};
                 const isFromCustom = customInterests.some(ci => ci.id === interest.id);
@@ -10071,8 +9234,6 @@ const FouFouApp = () => {
                 setShowAddInterestDialog(true);
               };
               
-              // Render a single interest row with toggle button
-              // Pre-compute favorites count per interest
               const favCountByInterest = {};
               customLocations.forEach(loc => {
                 if (loc.status === 'blacklist' || !loc.lat || !loc.lng) return;
@@ -10168,7 +9329,6 @@ const FouFouApp = () => {
                 );
               };
               
-              // Collect active and inactive - apply config overrides to built-in
               const overriddenBuiltIn = interestOptions.map(i => {
                 const cfg = interestConfig[i.id];
                 if (!cfg) return i;
@@ -10203,7 +9363,6 @@ const FouFouApp = () => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] === false);
               });
-              // Admin-only: draft and hidden interests
               const allForAdmin = [...overriddenBuiltIn, ...overriddenUncovered, ...cityCustomInterests];
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
@@ -10562,7 +9721,6 @@ const FouFouApp = () => {
                         circle.setLatLng(pos);
                       });
                       marker.on('click', () => {
-                        // Select this area for radius editing
                         window._selectedMapMarker = marker;
                         setFormData(prev => ({...prev, _selectedMapArea: area.id}));
                       });
@@ -10714,7 +9872,6 @@ const FouFouApp = () => {
                                 onClick={() => {
                                   try { if (window._editMap) { window._editMap.off(); window._editMap.remove(); } } catch(e) {}
                                   window._editMap = null; window._editCircle = null; window._editMarker = null;
-                                  // Store original values for cancel
                                   window._editOriginal = { lat: area.lat, lng: area.lng, radius: area.radius, safety: area.safety, distanceMultiplier: area.distanceMultiplier, label: area.label, labelEn: area.labelEn, desc: area.desc, descEn: area.descEn };
                                   setEditingArea(area);
                                   setTimeout(() => {
@@ -10836,7 +9993,6 @@ const FouFouApp = () => {
                                     setEditingArea(null);
                                     setCityModified(true); setCityEditCounter(c => c + 1);
                                     setMapVersion(v => v + 1);
-                                    // Refresh settings all-areas map if open
                                     if (showSettingsMap) {
                                       setTimeout(() => window._initSettingsMap?.(), 300);
                                     }
@@ -10846,7 +10002,6 @@ const FouFouApp = () => {
                                 >✓ {t('general.save')}</button>
                                 <button
                                   onClick={() => {
-                                    // Restore original values
                                     const orig = window._editOriginal;
                                     if (orig) {
                                       area.lat = orig.lat; area.lng = orig.lng; area.radius = orig.radius; area.safety = orig.safety; area.distanceMultiplier = orig.distanceMultiplier;
@@ -10871,7 +10026,6 @@ const FouFouApp = () => {
                 </div>
               </div>
             </div>
-
 
             {/* Interest Groups Overview */}
             {isUnlocked && (
@@ -10923,7 +10077,6 @@ const FouFouApp = () => {
               })()}
             </div>
             )}
-
 
             </div>)}
 
@@ -11002,7 +10155,6 @@ const FouFouApp = () => {
               </div>
             </div>
 
-            
             {/* Refresh Data Button */}
             <div className="mb-3">
               <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border-2 border-cyan-400 rounded-xl p-3">
@@ -11063,7 +10215,6 @@ const FouFouApp = () => {
               </div>
             </div>
             
-
             )}
             {/* Bulk Approve Drafts */}
             {isUnlocked && (
@@ -11128,8 +10279,6 @@ const FouFouApp = () => {
             </div>
             )}
 
-
-            
             {/* Debug Mode Toggle */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
@@ -11313,25 +10462,16 @@ const FouFouApp = () => {
                   <button
                     onClick={() => {
                       try {
-                        // Count active interests
                         const activeCount = Object.values(interestStatus).filter(Boolean).length;
                         
                         const data = {
-                          // Custom interests created by user
                           customInterests: customInterests,
-                          // Custom locations
                           customLocations: customLocations,
-                          // Saved routes
                           savedRoutes: savedRoutes,
-                          // Interest search configurations (types, textSearch, blacklist)
                           interestConfig: interestConfig,
-                          // Interest active/inactive status
                           interestStatus: interestStatus,
-                          // Interest auto-naming counters
                           interestCounters: interestCounters,
-                          // System parameters (algorithm tuning)
                           systemParams: systemParams,
-                          // Metadata
                           exportDate: new Date().toISOString(),
                           version: window.BKK.VERSION || '3.5'
                         };
@@ -11535,8 +10675,6 @@ const FouFouApp = () => {
                           <button
                             onClick={() => {
                               const isValidPid = (pid) => pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
-                              // Firebase Realtime DB push keys always start with '-' (e.g. -Mxyz123abc)
-                              // Other corrupt patterns: or_xyz (seen in West Eden case)
                               const looksLikeFirebaseKey = (val) => val && (
                                 /^-[a-zA-Z0-9_-]{10,}$/.test(val) ||   // standard push key: -Mxyz...
                                 /^or_[a-zA-Z0-9_-]{5,}$/.test(val)     // or_ prefix pattern
@@ -11545,7 +10683,6 @@ const FouFouApp = () => {
                               customLocations.forEach(loc => {
                                 const url = loc.mapsUrl || '';
                                 if (!url) return; // No URL — not a problem, skip
-                                // Check query_place_id param
                                 const mPid = url.match(/query_place_id=([^&]+)/);
                                 if (mPid) {
                                   const pid = decodeURIComponent(mPid[1]);
@@ -11554,7 +10691,6 @@ const FouFouApp = () => {
                                     return;
                                   }
                                 }
-                                // Check query param — if it looks like a Firebase key, it's corrupt
                                 const mQuery = url.match(/[?&]query=([^&]+)/);
                                 if (mQuery) {
                                   const q = decodeURIComponent(mQuery[1]);
@@ -11573,15 +10709,12 @@ const FouFouApp = () => {
                                 return;
                               }
 
-                              // Show results as a toast + console
                               const lines = results.map(r => `• ${r.loc.name} (${r.reason})`).join('\n');
-                              console.warn('[URL-CHECK] Bad mapsUrls found:\n' + lines);
                               showToast(
                                 `⚠️ ${results.length} bad URL${results.length > 1 ? 's' : ''} found — see console for details`,
                                 'warning', 'sticky'
                               );
 
-                              // Open edit dialog for first bad location
                               const first = results[0].loc;
                               setEditingLocation(first);
                               setNewLocation({
@@ -11663,7 +10796,6 @@ const FouFouApp = () => {
                 if (isFirebaseAvailable && database) {
                   database.ref(`settings/systemParams/${key}`).set(parsed);
                 }
-                // Live-apply app settings
                 if (key === 'maxStops') setFormData(prev => ({...prev, maxStops: parsed}));
                 if (key === 'fetchMoreCount') setFormData(prev => ({...prev, fetchMoreCount: parsed}));
                 if (key === 'googleMaxWaypoints') setGoogleMaxWaypoints(parsed);
@@ -11822,7 +10954,6 @@ const FouFouApp = () => {
         </div>
         )}
 
-
       {/* Leaflet Map Modal */}
       {showMapModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: (mapMode === 'stops' || mapMode === 'favorites') ? '0' : '12px' }}>
@@ -11914,14 +11045,11 @@ const FouFouApp = () => {
                   if (aStatus === 'hidden') return false;
                   if (aStatus === 'draft' && !isUnlocked) return false;
                   if (!usedInterests.has(i.id)) return false;
-                  // Only show interests that are enabled for this user
                   if (interestStatus[i.id] === false) return false;
-                  // Uncovered interests only shown if explicitly enabled
                   if (i.uncovered && !interestStatus[i.id]) return false;
                   return true;
                 });
                 const areas = window.BKK.areaOptions || [];
-                // Count per area
                 const areaCounts = {};
                 customLocations.forEach(loc => {
                   if (!loc.lat || !loc.lng || loc.status === 'blacklist') return;
@@ -12091,7 +11219,6 @@ const FouFouApp = () => {
                 <button
                   onClick={() => {
                     if (mapUserLocation) {
-                      // Already have location — just center map on it
                       if (leafletMapRef?.current) {
                         leafletMapRef.current.setView([mapUserLocation.lat, mapUserLocation.lng], 15, { animate: true });
                       }
@@ -12102,7 +11229,6 @@ const FouFouApp = () => {
                         pos => {
                           const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
                           setMapUserLocation(loc);
-                          // Center map on new location
                           if (leafletMapRef?.current) {
                             leafletMapRef.current.setView([loc.lat, loc.lng], 15, { animate: true });
                           }
@@ -12566,7 +11692,6 @@ const FouFouApp = () => {
                 </div>
                 <button
                   onClick={() => {
-                    // Warn if edit dialog has unsaved changes
                     if (showEditLocationDialog && locationHasChanges()) {
                       showConfirm(
                         t('places.unsavedChangesWarning') || 'יש שינויים שלא נשמרו. לצאת בלי לשמור?',
@@ -12607,7 +11732,6 @@ const FouFouApp = () => {
                     <input
                       type="text"
                       value={newLocation.name}
-                      
                       
                       onChange={(e) => {
                         setNewLocation({...newLocation, name: e.target.value});
@@ -12669,7 +11793,6 @@ const FouFouApp = () => {
                           <button
                             key={idx}
                             onClick={() => {
-                              // Auto-detect areas from coordinates
                               const detected = window.BKK.getAreasForCoordinates(result.lat, result.lng);
                               const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
                               const updatedLoc = {
@@ -12770,9 +11893,7 @@ const FouFouApp = () => {
                   <label className="block text-xs font-bold mb-1">{t("general.interestsHeader")}</label>
                   <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-36 overflow-y-auto">
                     {allInterestOptions.filter(option => {
-                      // Already tagged — always show
                       if ((newLocation.interests || []).includes(option.id)) return true;
-                      // Filter by city scope only (location tagging shouldn't depend on enabled/adminStatus)
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
                     }).map(option => (
@@ -12787,9 +11908,7 @@ const FouFouApp = () => {
                           
                           const updates = { ...newLocation, interests: updatedInterests };
                           
-                          // Auto-generate name when first interest selected and name is empty
                           if (isAdding && !newLocation.name.trim()) {
-                            // Use lat/lng from current state (may have been set by camera/GPS)
                             const lat = newLocation.lat;
                             const lng = newLocation.lng;
                             const result = window.BKK.generateLocationName(
@@ -12798,7 +11917,6 @@ const FouFouApp = () => {
                             );
                             if (result.name) {
                               updates.name = result.name;
-                              // Auto-detect areas too if not already set
                               if (lat && lng && (!newLocation.areas || newLocation.areas.length === 0 || (newLocation.areas.length === 1 && newLocation.areas[0] === formData.area))) {
                                 const detected = window.BKK.getAreasForCoordinates(lat, lng);
                                 if (detected.length > 0) {
@@ -12968,7 +12086,6 @@ const FouFouApp = () => {
                     const pk = (newLocation.name || '').replace(/[.#$/\[\]]/g, '_');
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
-                    // Always show — at minimum shows "rate" link
                     return (
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '4px 0', flexWrap: 'wrap' }}>
                         {gR && (
@@ -13536,7 +12653,6 @@ const FouFouApp = () => {
                   </div>
                 </div>
 
-
                 {/* Route planning config — spacious layout */}
                 <div style={{ background: '#faf5ff', border: '2px solid #e9d5ff', borderRadius: '12px', padding: '12px' }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#7c3aed', marginBottom: '10px' }}>{'🗺️ ' + t('interests.routePlanning')}</label>
@@ -13677,7 +12793,6 @@ const FouFouApp = () => {
                   const statusLabels = { active: '🟢 Active', draft: '🟡 Draft', hidden: '🔴 Hidden' };
                   const statusColors = { active: '#dcfce7', draft: '#fef3c7', hidden: '#fee2e2' };
                   const statusBorders = { active: '#86efac', draft: '#fcd34d', hidden: '#fca5a5' };
-                  // Count places tagged with this interest
                   const cityLocs = (customLocations || []).filter(l => (l.cityId || 'bangkok') === selectedCityId && l.status !== 'blacklist');
                   const tagged = cityLocs.filter(l => (l.interests || []).includes(interestId));
                   const locked = tagged.filter(l => l.locked);
@@ -13821,7 +12936,6 @@ const FouFouApp = () => {
                     <button
                       onClick={async () => {
                         if (!newInterest.label.trim()) return;
-                        // Prevent double-click
                         if (window._savingInterest) return;
                         window._savingInterest = true;
                         
@@ -13836,11 +12950,9 @@ const FouFouApp = () => {
                         }
                         
                         if (editingCustomInterest) {
-                          // EDIT MODE
                           const interestId = editingCustomInterest.id;
                           
                           if (newInterest.builtIn) {
-                            // Built-in interest - save search config + admin overrides to interestConfig
                             const existingConfig = interestConfig[interestId] || {};
                             const configData = { ...searchConfig };
                             configData.scope = newInterest.scope || 'global';
@@ -13854,7 +12966,6 @@ const FouFouApp = () => {
                             configData.bestTime = newInterest.bestTime || 'anytime';
                             configData.dedupRelated = newInterest.dedupRelated || [];
                             configData.group = newInterest.group || '';
-                            // Preserve admin flags that are set separately
                             if (existingConfig.defaultEnabled !== undefined) configData.defaultEnabled = existingConfig.defaultEnabled;
                             if (existingConfig.adminStatus) configData.adminStatus = existingConfig.adminStatus;
                             if (isUnlocked) {
@@ -13870,7 +12981,6 @@ const FouFouApp = () => {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
                             }
                           } else {
-                            // Custom interest - update in customInterests
                             const updatedInterest = {
                               ...editingCustomInterest,
                               label: newInterest.label.trim(),
@@ -13896,7 +13006,6 @@ const FouFouApp = () => {
                             if (isFirebaseAvailable && database) {
                               database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
                               if (Object.keys(searchConfig).length > 0) {
-                                // Merge with existing config to preserve adminStatus, defaultEnabled, etc.
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
                                 database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
@@ -13914,7 +13023,6 @@ const FouFouApp = () => {
                           window._savingInterest = false;
                           return;
                         } else {
-                          // ADD MODE - check for duplicate name
                           const dupCheck = customInterests.find(i => 
                             i.label?.toLowerCase().trim() === newInterest.label.toLowerCase().trim() ||
                             i.name?.toLowerCase().trim() === newInterest.label.toLowerCase().trim()
@@ -13947,36 +13055,28 @@ const FouFouApp = () => {
                               ...(newInterest.color ? { color: newInterest.color } : {})
                           };
                           
-                          // Close dialog immediately
                           setShowAddInterestDialog(false);
                           setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
                           setEditingCustomInterest(null);
                           
-                          // Add to local state immediately so it shows in UI
-                          // Mark as recently added to protect from Firebase listener race condition
                           recentlyAddedRef.current.set(interestId, Date.now());
                           setCustomInterests(prev => {
                             if (prev.some(i => i.id === interestId)) return prev;
                             return [...prev, newInterestData];
                           });
                           
-                          // Enable the new interest in interestStatus
                           setInterestStatus(prev => ({ ...prev, [interestId]: true }));
                           
-                          // Save in background
                           if (isFirebaseAvailable && database) {
                             database.ref(`customInterests/${interestId}`).set(newInterestData)
                               .then(() => {
-                                console.log(`[INTEREST-SAVE] Saved to Firebase: ${interestId}`);
                                 recentlyAddedRef.current.delete(interestId);
                                 showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
-                                // Verify: read back to confirm server actually persisted it
                                 database.ref(`customInterests/${interestId}`).once('value').then(snap => {
                                   if (!snap.val()) {
                                     console.error(`[INTEREST-SAVE] ⚠️ VERIFICATION FAILED — saved but read-back is null! Server may have rejected the write.`);
                                     showToast(`⚠️ "${newInterestData.label}" may not have been saved to server`, 'warning', 'sticky');
                                   } else {
-                                    console.log(`[INTEREST-SAVE] ✅ Verified on server: ${interestId}`);
                                   }
                                 });
                               })
@@ -13985,14 +13085,11 @@ const FouFouApp = () => {
                                 showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
                                 saveToPendingInterest(newInterestData, searchConfig);
                               });
-                            // Enable interest status in Firebase
                             const userId = authUser?.uid || 'unknown';
                             database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
-                            // Also save admin-level status
                             database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
                             if (Object.keys(searchConfig).length > 0) {
                               database.ref(`settings/interestConfig/${interestId}`).set(searchConfig)
-                                .then(() => console.log(`[INTEREST-SAVE] Config saved: ${interestId}`))
                                 .catch(e => console.error(`[INTEREST-SAVE] Config FAILED: ${interestId}`, e));
                             }
                           } else {
@@ -14247,17 +13344,14 @@ const FouFouApp = () => {
                   ratingCount: 0
                 };
                 
-                // Check duplicates against current route
                 const isDup = route?.stops?.some(s => s.name.toLowerCase().trim() === newStop.name.toLowerCase().trim());
                 if (isDup) {
                   showToast(`"${display}" ${t("places.alreadyInRoute")}`, 'warning');
                   return;
                 }
                 
-                // Add to manualStops (session state)
                 setManualStops(prev => [...prev, newStop]);
                 
-                // Add to current route if exists
                 if (route) {
                   setRoute(prev => prev ? {
                     ...prev,
@@ -14269,7 +13363,6 @@ const FouFouApp = () => {
                 
                 showToast(`➕ ${display} ${t("interests.added")} — ${t('general.addedManually') || 'נוסף לתחתית הרשימה'}`, 'success');
                 
-                // Clear input for next add
                 const inp = document.getElementById('manual-stop-input');
                 if (inp) inp.value = '';
                 resultsDiv.innerHTML = '<p style="text-align:center;color:#16a34a;font-size:12px;padding:8px">✅ Added! You can add more or close</p>';
@@ -15105,7 +14198,6 @@ const FouFouApp = () => {
         </div>
       )}
 
-
             {/* Emoji Picker Dialog */}
             {iconPickerConfig && (
               <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -15246,7 +14338,6 @@ const FouFouApp = () => {
           </div>
         </div>
       </>)}
-
 
       {/* === PLACE REVIEW DIALOG === */}
       {reviewDialog && (() => {
@@ -15453,12 +14544,10 @@ const FouFouApp = () => {
                     <button
                       onClick={() => {
                         if (isRecording) {
-                          // Stop recording
                           if (stopRecordingRef.current) stopRecordingRef.current();
                           stopRecordingRef.current = null;
                           setIsRecording(false);
                         } else {
-                          // Start recording
                           setIsRecording(true);
                           const stop = window.BKK.startSpeechToText({
                             maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
@@ -15516,7 +14605,6 @@ const FouFouApp = () => {
                           );
                           if (result.name) updates.name = result.name;
                           setNewLocation(updates);
-                          // Remember last interest for next quick capture
                           if (activeTrail) {
                             const updatedTrail = { ...activeTrail, lastInterest: option.id };
                             setActiveTrail(updatedTrail);
@@ -15561,12 +14649,10 @@ const FouFouApp = () => {
                         showToast('📸 ' + t('trail.photoRequired'), 'warning');
                         return;
                       }
-                      // Default interest if none selected
                       if (!newLocation.interests || newLocation.interests.length === 0) {
                         const defaultInterest = activeTrail?.interests?.[0] || 'spotted';
                         newLocation.interests = [defaultInterest];
                       }
-                      // Generate name if empty
                       if (!newLocation.name.trim()) {
                         const result = window.BKK.generateLocationName(
                           newLocation.interests[0], newLocation.lat, newLocation.lng,
@@ -15661,7 +14747,6 @@ const FouFouApp = () => {
               <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => {
-                    // Check if order changed
                     const orig = reorderOriginalStopsRef.current;
                     const curr = route.stops;
                     const changed = orig && curr && (orig.length !== curr.length || orig.some((s, i) => s.name !== curr[i]?.name));

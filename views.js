@@ -1229,6 +1229,24 @@
                         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
                         return status !== false;
                       })
+                      .sort(([interestA], [interestB]) => {
+                        // Sort sections by slot order — same source of truth as sort in generateRoute
+                        const slotOrder = { early: 1, any: 2, bookend: 2, middle: 3, late: 4, end: 4 };
+                        const defaultSlotForId = {
+                          cafes: 'bookend', food: 'middle', restaurants: 'middle',
+                          markets: 'early', shopping: 'early', temples: 'any', galleries: 'any',
+                          architecture: 'any', parks: 'early', beaches: 'early', graffiti: 'any',
+                          artisans: 'any', canals: 'any', culture: 'any', history: 'any',
+                          nightlife: 'end', rooftop: 'end', bars: 'end', entertainment: 'late',
+                        };
+                        const getOrder = (id) => {
+                          if (id === '_manual') return 2;
+                          const cfgSlot = interestConfig[id]?.routeSlot;
+                          const slot = cfgSlot || defaultSlotForId[id] || 'any';
+                          return slotOrder[slot] ?? 2;
+                        };
+                        return getOrder(interestA) - getOrder(interestB);
+                      })
                       .map(([interest, stops]) => {
                       const isManualGroup = interest === '_manual';
                       const interestObj = isManualGroup ? { id: '_manual', label: t('general.addedManually'), icon: '📍' } : interestMap[interest];

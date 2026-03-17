@@ -5347,14 +5347,6 @@
           }
           return 2;
         };
-        // DEBUG: log slot for each stop
-        console.log('[SLOT DEBUG] searchInterests:', searchInterests);
-        uniqueStops.forEach(s => {
-          const slot = getSlotOrder(s);
-          const interests = (s.interests || []).join(',');
-          console.log(`[SLOT] ${s.name} → slot=${slot} interests=[${interests}]`);
-        });
-
         uniqueStops.sort((a, b) => {
           // 1. Slot position (early before middle before end)
           const aSlot = getSlotOrder(a);
