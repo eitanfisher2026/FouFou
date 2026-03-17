@@ -1,244 +1,1031 @@
-# FouFou — City Trail Generator - Claude Development Context
+# FouFou — City Trail Generator · Claude Development Context
 
-**Tagline:** Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭
-
-## Version: 3.8.67 (Mar 14, 2026)
-
-## Live: https://eitanfisher2026.github.io/FouFou/
-
----
-
-## ⚡ MOST RECENT SESSION SUMMARY (Mar 7–14, 2026) — v3.8.13 → v3.8.54
-
-### Architecture & Packaging
-- **ZIP name**: `github-upload-vX_Y_ZZ.zip` (single zip, includes both GitHub files and CLAUDE_CONTEXT.md)
-- **Build baseline balance**: `app-code.js: () +0  {} -3  [] -2` — verify after every change
-- **Working dir**: `/tmp/project/` (extract zip here)
-
-### localStorage Cleanup (v3.8.27)
-- All `bangkok_*` keys renamed to `foufou_*`: `foufou_preferences`, `foufou_route_type`, `foufou_right_col_width`, `foufou_debug_*`, `foufou_last_log_time`, `foufou_last_seen_feedback`, `foufou_visitor_id/name`
-- Dead localStorage removed: `bangkok_custom_locations`, `bangkok_custom_interests`, `bangkok_interest_status`, `bangkok_is_admin`, `bangkok_user_id`
-- All localStorage fallback `else { ... }` blocks removed from: locations load, interests load, interest status load, saved routes load, refreshAllData
-- `saveRoutesToStorage` simplified to no-op (Firebase handles everything)
-- `pendingLocations`/`pendingInterests` still in-memory state (offline queue) but no longer persisted to localStorage
-- `bangkok_user_id` replaced everywhere with `authUser?.uid`
-- `bangkok_is_admin` removed — use `isAdmin` state directly
-
-### System Routes (v3.8.28–3.8.29)
-- 4 system routes added to `city-bangkok.js` as `window.BKK.cityData.bangkok.systemRoutes`
-- `seedSystemRoutes(database)` function seeds them to Firebase `cities/bangkok/routes` once (idempotent, checks by `id` field, flag `foufou_sys_routes_seeded_bangkok`)
-- System routes have `system: true, locked: true` — shown with ⭐ amber background, no delete button
-- Called from migration useEffect alongside `migrateLocationsToPerCity`
-
-### Bug Fixes (v3.8.30)
-- `addGooglePlaceToCustom`: `const locationToAdd` → `let locationToAdd` (was causing TypeError on `sanitizeMapsUrl` reassignment)
-- Custom interests with `cityId` now filtered correctly in `cityCustomInterests` (respects cityId regardless of scope field)
-- Custom interests default to OFF for new users (undefined status = disabled for `custom_*` IDs)
-
-### Hint/Documentation System Fixes (v3.8.31–3.8.33)
-- `renderStepHeader` redesigned: compact (13px, padding 6px), buttons removed — hint buttons moved to `renderContextHint`
-- `renderContextHint` must be called separately after `renderStepHeader` for each screen
-- `renderContextHint` calls needed: `hint_area` (step 2), `hint_interests` (step 1), `hint_choice` (step 3), `hint_manual` (manual mode header), `hint_route_menu` (near hamburger)
-- `saveAndTranslateHint` fixed: now uses current language as source (not hardcoded `he`), translates to other language
-- `window.BKK.i18n.t()` does not exist — correct function is `window.t()`
-
-### UX / Wizard Changes (v3.8.34)
-- **Intermediate screen removed**: After "מצא מקומות" → auto-jump directly to manual mode (`routeChoiceMade = 'manual'` via setTimeout 0)
-- **Friendly stats toast** after route generation: shows interest breakdown in same order as results screen, custom/google count from actual `route.stops`, sticky (click anywhere to dismiss)
-- **Doc buttons (📷 camera+gallery)** added in manual mode header and next to hamburger — LATER REPLACED with ℹ hint buttons
-
-### UI Polish (v3.8.38–3.8.52)
-- **ℹ hint buttons**: dark gray (`#374151`, border `#d1d5db`, bg `#f9fafb`) everywhere — not blue
-- **Skip/Unskip buttons**: orange pill (`#ea580c`, bg `#fff7ed`, border `#fed7aa`) → restored on unskip to green. Uses `t('trail.skip')`/`t('trail.unskip')` for i18n
-- **⭐ Add to favorites**: teal/emerald pill (`#059669`, bg `#f0fdf4`, border `#6ee7b7`) — was purple
-- **"הוסף למועדפים"**: compact inline pill, not full-width button
-- **Toast UI**: backdrop overlay closes on click anywhere, ✕ in top-left corner (RTL), each line styled separately (header bold, last line gray)
-- **Hamburger menu**: ✕ close button at top
-- **"עזור לי לתכנן"**: admin-only in hamburger menu (always uses `skipSmartSelect: true`)
-
-### Auto-Reoptimize (v3.8.53)
-- `scheduleReoptimize()`: debounced 600ms, always `skipSmartSelect: true` (never cuts stops)
-- Triggers: startPointCoords change, fetchMoreForInterest, disabledStops change (skip/unskip), manual stop added
-- Spinner overlay on stops list during reoptimize (`isReoptimizing` state)
-- `scheduleReoptimize` defined BEFORE `findSmartStart` (avoids TDZ issues with useEffects that call it)
-
-### hint_route_menu
-- New hint ID `hint_route_menu` for the ℹ button next to hamburger
-- Separate from `hint_manual` (which explains the manual mode screen)
-- `renderContextHint('hint_route_menu')` placed near `renderContextHint('hint_manual')`
-
-### Active Trail Hints (v3.8.54)
-- `hint_trail` hint ID added to active trail header
-- `renderContextHint('hint_trail')` added after trail description text
+> **לקלוד — חובה לקרוא לפני כל שינוי:**
+>
+> 1. קרא את כל הקובץ הזה לפני שאתה עושה כל שינוי.
+> 2. **עדכן את הקובץ הזה לפני כל zip** — הוסף לסעיף "שינויים מרכזיים" את מה שעשית בסשן הנוכחי.
+>    הגרסה והתאריך מתעדכנים אוטומטית ע"י `build.py` — אבל תיאור השינויים חייב להיכתב ידנית.
+> 3. ה-zip חייב לכלול את `CLAUDE_CONTEXT.md` המעודכן.
+> 4. אל תסמוך על אינטואיציה — המידע כאן הוא הבסיס.
 
 ---
 
-## ⚠️ CRITICAL RULES (accumulated over all sessions)
+## 📍 מצב נוכחי
 
-### Syntax Safety
-- **Single quotes in JSX attributes** cause Babel parse errors — use double quotes or avoid apostrophes
-- **Literal `\n` in template literals** — use `"\\n"` not actual newline character
-- **`const` → `let`** when reassigning (e.g. `locationToAdd = sanitizeMapsUrl(...)`)
-- **`window.BKK.i18n.t()` does NOT exist** — use `window.t()` or the React `t` function from scope
-- Always run build + balance check after changes
+- **גרסה:** `3.9.15` (Mar 17, 2026)
+- **Live:** https://eitanfisher2026.github.io/FouFou/
+- **Working dir:** `/home/claude/project/` (extract zip here)
+- **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
 
-### Google Place ID / mapsUrl (RECURRING BUG — BROKEN 3+ TIMES)
-1. NEVER assign to `googlePlaceId` without validating `/^(ChIJ|EiI|GhIJ)/`
-2. NEVER use `loc.placeId` directly — may be a Firebase key
-3. `getGoogleMapsUrl()` in utils.js = SINGLE source of truth for Google URLs
-4. `sanitizeMapsUrl()` must run before every Firebase save
+---
 
-### Hooks
-- Hooks MUST be at component level — never inside IIFE or nested functions in JSX
-- `scheduleReoptimize` must be defined before any `useEffect` that calls it
+## 🗂️ קבצי המקור
+
+```
+config.js               <- Firebase config, mapConfig, cityRegistry, city loading, visitor tracking
+utils.js                <- Pure functions: GPS, distance, colors, image compression, emoji engine, EXIF, speech
+app-logic.js            <- React state, Firebase sync, route generation (smart select + optimize), all handlers
+views.js                <- JSX views: wizard, route results, active trail, settings, maps
+dialogs.js              <- JSX dialogs: addLocation, toast, confirm, reviews, QuickCapture
+quick-add-component.js  <- QuickAddPlaceDialog — standalone React component (hooks outside IIFE)
+i18n.js                 <- Translations he/en — sections: general, nav, wizard, route, places,
+                           trail, toast, settings, sysParams, dedup, import, reviews, auth, map
+city-bangkok.js         <- Bangkok city data, interests, areas, system routes
+
+Generated (DO NOT EDIT):
+  app-data.js           <- i18n + city data + config + utils (~200KB)
+  app-code.js           <- Full JSX app (~838KB)
+  index.html            <- Splash shell (~11KB)
+```
+
+---
+
+## Build & Verify — MANDATORY AFTER EVERY CHANGE
+
+```bash
+cd /home/claude/project
+
+# 1. Build
+python3 build.py
+
+# 2. Balance check — MUST match baseline exactly
+python3 -c "
+with open('app-code.js') as f: c = f.read()
+p=c.count('(')-c.count(')'); b=c.count('{')-c.count('}'); k=c.count('[')-c.count(']')
+print(f'Balance: () {p:+d}  {{}} {b:+d}  [] {k:+d}')
+assert p==0 and b==-3 and k==-2, 'FAIL'
+print('OK')
+"
+# BASELINE: () +0  {} -3  [] -2
+
+# 3. Per-file expected values:
+# app-logic.js:           () -3  {} +0  [] +0
+# views.js:               () +1  {} -3  [] -2
+# dialogs.js:             () +0  {} +0  [] +0
+# quick-add-component.js: () +0  {} +0  [] +0
+# utils.js / config.js / i18n.js / city-bangkok.js: all () +0 {} +0 [] +0
+
+# 4. Parse check
+node -e "const window={BKK:{}}; const localStorage={getItem:()=>null}; eval(require('fs').readFileSync('app-data.js','utf8')); console.log('OK')" 2>&1 | grep -v CONFIG | grep -v I18N
+```
+
+---
+
+## Version Bump + Package — MANDATORY FOR EVERY ZIP
+
+> **VERSIONING RULES — read before every zip:**
+> 1. Every zip gets a new version number. No exceptions, even for "small" changes.
+> 2. Version format is always `X.Y.Z` — three numbers, no letters, no suffixes (not "b", not "fix", not "v2").
+>    WRONG: 3.9.14b, 3.9.14-fix, 3.9.14v2
+>    CORRECT: 3.9.15
+> 3. Before packaging, check if CLAUDE_CONTEXT.md needs updating:
+>    - Did you add a new function? -> add it to the shared functions table
+>    - Did you fix a regression? -> add it to the Known Regressions section
+>    - Did you change a key algorithm? -> update the relevant section
+>    - Did you add new i18n keys? -> note it in the session changes
+> 4. The zip filename must match the version: `github-upload-v3_9_15.zip`
+
+## Version Bump + Package — MANDATORY FOR EVERY ZIP
+
+```bash
+# 1. Bump patch in config.js  (e.g. 3.9.14 -> 3.9.15)
+sed -i "s/VERSION = '3\.9\.14'/VERSION = '3.9.15'/" config.js
+
+# 2. Sync version.json
+python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1); open('version.json','w').write('{\"version\": \"'+v+'\"}')"
+
+# 3. Build
+python3 build.py
+
+# 4. Package
+zip github-upload-v3_9_15.zip \
+  index.html app-data.js app-code.js \
+  i18n.js config.js utils.js app-logic.js views.js dialogs.js \
+  quick-add-component.js \
+  city-bangkok.js city-gushdan.js city-singapore.js city-malaga.js \
+  _source-template.html _app-code-template.js build.py README.md .nojekyll \
+  CLAUDE_CONTEXT.md manifest.json favicon.ico version.json \
+  icon-16x16.png icon-32x32.png icon-180x180.png icon-192x192.png icon-512x512.png \
+  firebase-rules.json
+```
+
+---
+
+## CRITICAL RULES — Never Break
+
+### Syntax
+- **Single quotes in JSX** = Babel error. Always use double quotes.
+- **const -> let** when reassigning (e.g. `locationToAdd = sanitizeMapsUrl(...)`)
+- **`window.BKK.i18n.t()` does not exist** — use `t('key')` from scope, or `window.t('key')`
+- **Hooks** — must be at component level. Never inside IIFE, never inside conditionals.
+  - That is why `QuickAddPlaceDialog` lives in `quick-add-component.js`
+  - Inserted into template BEFORE `const FouFouApp` via `// __INSERT_QUICK_ADD_COMPONENT__`
+
+### Emoji in code
+- **Raw emoji directly** — like any other character: `📸`, `🎤`, `💾`
+- **NOT** `\uD83D\uDCF8` — no escape sequences, no `String.fromCodePoint`
+- Writing files with `create_file` (not `cat <<`) guarantees correct UTF-8
+
+### Firebase
+- `firebaseId` (not `firebaseKey`) is the key after push
+- After saving to Firebase — **also update** `setCustomLocations` local state (don't wait for sync)
+- `sanitizeMapsUrl()` before every Firebase save
+- `googlePlaceId` validation: `/^(ChIJ|EiI|GhIJ)/`
 
 ---
 
 ## Architecture
 
-Single-page React app (in-browser Babel). Files split for dev, combined by `build.py`.
-
+### Build Pipeline
 ```
-Source files:
-  config.js              ← Firebase config, city loading, visitor tracking
-  utils.js               ← Pure functions: distance, sorting, dedup, scoring
-  app-logic.js           ← React state, Firebase sync, route generation, handlers
-  views.js               ← JSX views: wizard steps, route results, map
-  dialogs.js             ← JSX dialogs: location edit, route dialog, toast, confirm
-  i18n.js                ← Translations (Hebrew/English)
-  app-data.js            ← Generated: i18n + city data + config + utils (~194KB)
-  app-code.js            ← Generated: JSX app (~800KB)
-  index.html             ← Tiny splash shell (~11KB)
+_app-code-template.js
+  + quick-add-component.js  -> // __INSERT_QUICK_ADD_COMPONENT__
+  + app-logic.js            -> // __INSERT_APP_LOGIC__
+  + views.js                -> // __INSERT_VIEWS__
+  + dialogs.js              -> // __INSERT_DIALOGS__
+  = app-code.js
 
-City data:
-  city-bangkok.js        ← Areas, interests, system routes, seedSystemRoutes()
-  city-gushdan.js
-  city-singapore.js
-  city-malaga.js
+_source-template.html
+  + i18n.js + city-*.js + config.js + utils.js
+  = app-data.js
 ```
 
-## ⚠️ Version Bump — MANDATORY
-**כל זיפ שנוצר חייב להעלות את מספר הגרסה (patch).** לפני כל `zip`, יש לבצע:
-```bash
-# 1. העלאת גרסה ב-config.js (למשל 3.8.67 → 3.8.68)
-sed -i "s/VERSION = '3\.8\.\([0-9]*\)'/VERSION = '3.8.$(($(grep -o "3\.8\.[0-9]*" config.js | cut -d. -f3) + 1))'/g" config.js
-
-# 2. עדכון version.json בהתאם
-python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1); open('version.json','w').write('{\"version\": \"'+v+'\"}')"
-```
-אסור לדלג על זה — כל שינוי = bump, גם bugfix קטן.
-
-## Packaging
-```bash
-VERSION=$(python3 -c "import re; s=open('config.js').read(); print(re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1).replace('.','_'))")
-zip github-upload-v${VERSION}.zip \
-  index.html app-data.js app-code.js \
-  i18n.js config.js utils.js app-logic.js views.js dialogs.js \
-  city-bangkok.js city-gushdan.js city-singapore.js city-malaga.js \
-  _source-template.html _app-code-template.js build.py README.md .nojekyll \
-  CLAUDE_CONTEXT.md manifest.json favicon.ico version.json \
-  icon-16x16.png icon-32x32.png icon-180x180.png icon-192x192.png icon-512x512.png
+### `build.py` — injection order matters
+```python
+quick_add_component = read_file('quick-add-component.js')
+app_code = code_template
+app_code = app_code.replace('// __INSERT_QUICK_ADD_COMPONENT__', quick_add_component)
+app_code = app_code.replace('// __INSERT_APP_LOGIC__', app_logic)
+app_code = app_code.replace('// __INSERT_VIEWS__', views)
+app_code = app_code.replace('// __INSERT_DIALOGS__', dialogs)
 ```
 
-## Build & Verify
-```bash
-python3 build.py
-python3 -c "
-with open('app-code.js') as f: c = f.read()
-p=c.count('(')-c.count(')'); b=c.count('{')-c.count('}'); k=c.count('[')-c.count(']')
-print(f'Balance: () {p:+d}  {{}} {b:+d}  [] {k:+d}')
-# Baseline: () +0  {} -3  [] -2
-"
+---
+
+## i18n System — Hebrew and English
+
+### Correct usage
+```js
+// Inside component: get t from scope (passed as prop or built from window.BKK.i18n)
+t('section.key')          // correct
+window.BKK.i18n.t(...)   // DOES NOT EXIST — never use
+window.t(...)             // exists (global wrapper)
 ```
 
-## Firebase Structure
-```
-cities/{cityId}/locations/{id}    ← shared locations
-cities/{cityId}/routes/{id}       ← saved routes (+ system routes: system:true, locked:true)
-cities/{cityId}/interestCounters/ ← auto-naming
-customInterests/{id}              ← custom interest objects
-settings/interestConfig/{id}      ← search config + overrides per interest
-settings/interestStatus/{id}      ← admin default enabled/disabled
-settings/adminUsers/              ← legacy admin list
-users/{uid}/interestStatus/{id}   ← per-user overrides
-users/{uid}/role                  ← 0=regular, 1=editor, 2=admin
-helpContent/{sectionId}/{lang}    ← hint/documentation text (he/en)
-accessLog/{id}                    ← visitor logs
-feedback/{id}                     ← user feedback
-```
+### Available sections
+`general, nav, wizard, route, places, trail, toast, settings, sysParams, dedup, import, reviews, auth, map, help`
 
-## Key State (app-logic.js)
-| State | Purpose |
-|-------|---------|
-| `route` | Current generated route (stops, optimized, startPointCoords) |
-| `formData` | area, interests, searchMode, maxStops, startPoint... |
-| `routeType` | 'circular' \| 'linear' → saved to `foufou_route_type` |
-| `routeChoiceMade` | null \| 'manual' — null triggers auto-jump to manual |
-| `disabledStops` | lowercase stop names that are skipped |
-| `isReoptimizing` | true during debounced auto-reoptimize |
-| `startPointCoords` | { lat, lng, address } — change triggers auto-reoptimize |
+### RTL/LTR
+- Hebrew (`he`) -> `dir="rtl"`, `text-align: right`
+- English (`en`) -> `dir="ltr"`, `text-align: left`
+- In every dialog/view: use `isRtl = lang === 'he'` for layout decisions
+- **Rule:** never hard-code direction — always derive from `lang`
+
+### Adding new keys
+Add to both languages simultaneously. A missing key in `en` -> silent empty string bug.
+
+---
+
+## Central State (app-logic.js)
+
+| State | Description |
+|-------|-------------|
+| `route` | current route — `stops[]`, `optimized`, `startPointCoords` |
+| `formData` | area, interests, searchMode, maxStops, startPoint, currentLat/Lng, radiusMeters |
+| `routeType` | `'circular'` / `'linear'` |
+| `routeChoiceMade` | `null` / `'manual'` |
+| `activeTrail` | active trail during walk |
+| `skippedTrailStops` | Set of skipped stop indices |
+| `customLocations` | all favorites (includes cityId, firebaseId) |
+| `systemParams` | admin params — loaded from Firebase `settings/systemParams` |
+| `showQuickAddDialog` | `true` when QuickAddPlaceDialog is open |
+| `quickAddPlace` | the google place passed to QuickAddPlaceDialog |
 | `authUser` | Firebase auth user |
 | `isAdmin` / `isEditor` | role >= 2 / >= 1 |
-| `openHintPopup` | currently open hint popup ID |
-| `hintEditId` | hint being edited (admin) |
-| `helpOverrides` | Firebase helpContent keyed by sectionId → { he, en } |
+| `isUnlocked` | admin or editor |
+| `pendingLocations` | offline save queue -> localStorage |
+| `reviewAverages` | `{ [namePK]: { avg, count } }` — FouFou ratings cache |
 
-## Hint/Documentation System
-- `renderStepHeader(icon, title, subtitle, hintId)` — compact header, ✏️ + ℹ + 🔈 buttons inline
-- `renderContextHint(hintId)` — renders popup + edit textarea (must be called separately!)
-- Hint IDs used: `hint_interests`, `hint_area`, `hint_choice`, `hint_manual`, `hint_route_menu`, `hint_trail`
-- `getHelpSection(sectionId)` — reads from `helpOverrides[id][currentLang]` or base i18n
-- `saveAndTranslateHint(id, text)` — saves to current lang, translates to other lang
+---
+
+## systemParams — All Parameters
+
+Defined in `window.BKK._defaultSystemParams` in `app-logic.js`.
+Loaded from Firebase `settings/systemParams` on startup.
+Tunable via admin UI under Settings -> sysParams.
+
+```js
+// App
+maxStops: 10, fetchMoreCount: 3, googleMaxWaypoints: 12,
+defaultRadius: 500, toastDuration: 4000, includeDrafts: true,
+
+// Dedup
+dedupRadiusMeters: 50, dedupGoogleEnabled: 1, dedupCustomEnabled: 1,
+
+// Trail
+trailTimeoutHours: 8, defaultInterestWeight: 3,
+maxContentPasses: 3, contentReorderEnabled: true,
+maxContentGeoIncrease: 0.05, twoOptMaxPasses: 20,
+
+// Time scoring
+timeScoreMatch: 2, timeScoreAnytime: 1, timeScoreConflict: 0,
+timeConflictPenalty: 3,
+
+// Slot positioning
+slotEarlyThreshold: 0.4, slotLateThreshold: 0.6,
+slotEndThreshold: 0.7, slotPenaltyMultiplier: 3,
+slotEndPenaltyMultiplier: 4, gapPenaltyMultiplier: 2,
+
+// Speech
+speechMaxSeconds: 15, speechRate: 1.0,
+
+// Favorite scoring
+favoriteBaseScore: 20,
+favoriteBonusPerStar: 5,
+favoriteLowRatingThreshold: 2.5,
+favoriteLowRatingPenalty: 60,
+```
+
+---
+
+## Stop Scoring (stopScore) — Full Logic
+
+### Principle
+**Favorites always get priority over Google — unless they received a poor user rating.**
+
+### Formula
+```js
+const googleScore = rating x log10(ratingCount + 1)
+// Example: 4.5 stars, 1000 reviews:  4.5 x log10(1001) ~= 13.5
+// Example: 4.9 stars, 10 reviews:    4.9 x log10(11)   ~=  4.9 (weak)
+
+// Favorite, no FouFou rating:      googleScore + 20        (base priority)
+// Favorite, FouFou rating >= 2.5:  googleScore + 20 + avg*5 (bonus per star)
+// Favorite, FouFou rating < 2.5:   googleScore + 20 - 60    (may lose to Google)
+// Google-only place:               googleScore
+// Place without Google (graffiti): googleScore=0 -> score=20 only
+```
+
+### Why log10?
+The difference between 10 reviews and 100 matters a lot. Between 10,000 and 100,000 — almost not. Log normalizes this.
+
+### reviewAverages cache
+```js
+// key: name.replace(/[.#$/[\]]/g, '_')  <- namePK
+// value: { avg: 4.2, count: 3 }
+// source: Firebase cities/{cityId}/reviews/{namePK}/{uid}
+// NEVER fetch from Firebase inside stopScore — use cache only
+```
+
+---
+
+## Optimal Route Algorithm — Step by Step
+
+### Phase 0: smartSelectStops — smart selection
+```
+allStops (custom + google) ->
+  buckets[interestId][] ->
+  sort each bucket by stopScore + timeScore ->
+  pick top N from each bucket ->
+  category ordering: attractions -> breaks -> meals -> experiences
+```
+
+### Phase 1: Nearest Neighbor (O(n squared))
+```
+start: startCoords if available, otherwise:
+  linear  -> stop furthest from centroid (acts as natural endpoint)
+  circular -> stop nearest to centroid (acts as center hub)
+greedy: always pick the closest unvisited stop
+```
+
+### Phase 2: 2-opt improvement (O(n squared) x maxPasses)
+```
+For every edge pair (i,j): check if reversing segment [i+1..j] shortens route
+Threshold: 1m (avoids floating point noise)
+maxPasses: systemParams.twoOptMaxPasses (default: 20)
+n<=15 -> very fast in practice
+```
+
+### Phase 3: Content-aware reorder
+```
+slotConfig (from defaultSlotConfig, merged with interestConfig from Firebase):
+  cafes     -> bookend (start/end of route)
+  food/rest -> middle
+  markets   -> early
+  nightlife -> end
+  rooftop   -> end
+
+penalty system: stop in wrong slot -> score penalty
+```
+
+### Phase 4: Auto-reoptimize triggers
+```
+scheduleReoptimize() <- debounce 600ms
+triggered by: startPointCoords change, fetchMore, skip/unskip
+skipSmartSelect: true -> only reorders, does not re-select
+```
+
+### RULE: User manual order takes priority
+```js
+// If user manually reordered + startPoint changed -> toast "order kept", no recalculation
+userManualOrderRef.current = true  // marks that user changed order
+```
+
+---
+
+## Google Places API — Optimal Usage
+
+### FieldMask — Critical Rule for Cost Savings
+**Always request only necessary fields.** Each extra field costs money.
+```js
+// For search:
+'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+
+// For place details only (Place Details GET):
+'X-Goog-FieldMask': 'rating,userRatingCount'
+// <- This is Basic Data = $0.005 per call
+
+// For minimal text search:
+'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount,places.location'
+```
+
+### Two Search Types
+| Mode | API | When |
+|------|-----|------|
+| Nearby Search | `places:searchNearby` | interestConfig has `types` |
+| Text Search | `places:searchText` | interestConfig has `textSearch` (graffiti, street art) |
+
+### Rating Refresh Optimization
+```
+If googlePlaceId exists -> Place Details GET (Basic) = $0.005
+If no googlePlaceId    -> Text Search = $0.032 -> save the found placeId for next time
+Skip: googleRatingUpdated within last 7 days
+```
+
+### "Unsupported types" error (400)
+```js
+// System handles automatically: retry each type separately
+// NEVER remove a type from config — let the retry mechanism work
+```
+
+### Google Maps URLs
+```js
+window.BKK.getGoogleMapsUrl(place)  // <- always use this, never build manually
+// Priority: googlePlaceId > name+coords > address > coords
+// NEVER put a Firebase key in query_place_id
+```
+
+---
+
+## Images & Compression — Critical Rules
+
+### KNOWN REGRESSION: Never duplicate compressImage
+
+There is **one and only one** definition of `window.BKK.compressImage` in `utils.js`.
+If you find another — that is a regression. Delete the duplicate immediately.
+
+### Correct definition
+```js
+window.BKK.compressImage = (input, maxSizeKB = 120) => {
+  // accepts File object OR dataUrl string
+  // max dimension: 900px
+  // quality loop: 0.82 -> 0.72 -> ... -> 0.2 until under 120KB
+  // ALWAYS call before saving to Firebase
+}
+```
+
+### Image save flow
+```
+File/dataUrl ->
+  compressImage(input, 120) ->   ALWAYS compress before Firebase
+  uploadImage() ->               tries Firebase Storage URL
+  fallback: base64 in Firebase   if Storage not available
+```
+
+### RULE: Never save large image to Firebase
+```js
+// WRONG:
+database.ref(...).set({ uploadedImage: rawFile })
+
+// CORRECT:
+const compressed = await window.BKK.compressImage(file);
+database.ref(...).set({ uploadedImage: compressed })
+```
+
+### Icon compression (different from photos)
+```js
+window.BKK.compressIcon(input, 64)  // PNG/WebP, 64x64 max, preserves transparency
+// Do NOT use compressImage for icons
+```
+
+---
+
+## Firebase Structure
+
+```
+cities/{cityId}/locations/{id}         <- favorites
+cities/{cityId}/routes/{id}            <- saved routes
+cities/{cityId}/reviews/{namePK}/{uid} <- ratings (deleted with location!)
+cities/{cityId}/interestCounters/      <- auto-naming counters
+customInterests/{id}                   <- custom interests
+settings/interestConfig/{id}           <- search config + routeSlot + overrides
+settings/interestStatus/{id}           <- default enabled/disabled
+settings/systemParams                  <- admin system params
+users/{uid}/interestStatus/{id}        <- per-user overrides
+users/{uid}/role                       <- 0=regular, 1=editor, 2=admin
+helpContent/{sectionId}/{lang}         <- hint/documentation
+accessLog/{id}, feedback/{id}
+```
+
+### Critical Firebase Rules
+```js
+// 1. push -> returns ref with .key -> save as firebaseId
+const ref = await database.ref('cities/...').push(data);
+const saved = { ...data, firebaseId: ref.key };
+
+// 2. Deleting location -> also delete reviews
+database.ref(`cities/${cityId}/locations/${firebaseId}`).remove();
+database.ref(`cities/${cityId}/reviews/${namePK}`).remove();  // REQUIRED
+
+// 3. After save -> update state immediately (don't wait for sync)
+setCustomLocations(prev => [...prev, saved]);
+
+// 4. Batch updates — multiple fields in one object
+database.ref().update({ 'path/a': val1, 'path/b': val2 });  // better than separate updates
+```
+
+---
+
+## QuickAddPlaceDialog
+
+Opened when user taps `+Favorite` on a Google place (in active trail or results list).
+
+**Flow:**
+1. `addGooglePlaceToCustom(place)` -> builds `locationToAdd` -> `setQuickAddPlace(locationToAdd)` + `setShowQuickAddDialog(true)`
+2. `QuickAddPlaceDialog` shown -> user fills name/image/description/notes/interests/rating
+3. Save pressed -> `saveQuickAddPlace(enriched, rating)`:
+   - **Compresses image** before saving (120KB max)
+   - Saves to Firebase `cities/{cityId}/locations`
+   - **Immediately** updates `setCustomLocations(prev => [...prev, saved])` — without waiting for sync
+   - Saves rating to `cities/{cityId}/reviews/{namePK}/{uid}` if provided
+   - Toast success
+
+**Props:**
+```js
+{ place, allInterestOptions, interestStatus, selectedCityId,
+  isUnlocked, tLabel, t, onSave, onCancel }
+```
+
+---
 
 ## Auto-Reoptimize Flow
+
 ```
-scheduleReoptimize()  ←  triggers: startPointCoords change, fetchMore, skip/unskip, manual add
-    ↓ debounce 600ms
+scheduleReoptimize()   <- triggers: startPointCoords change, fetchMore, skip/unskip
+    debounce 600ms
 runSmartPlan({ skipSmartSelect: true })
-    ↓ never cuts stops, just reorders
+    never cuts stops, just reorders
 optimizeStopOrder(selected, autoStart, isCircular)
-    ↓ nearest neighbor + 2-opt + content-aware
-setRoute(newRoute with optimized: true)
+    nearest neighbor + 2-opt + content-aware + slot positioning
+setRoute(newRoute)
 ```
 
-## UI Color System
-| Element | Color |
-|---------|-------|
-| ℹ hint button | `#374151` gray, border `#d1d5db` |
-| ⏸ skip | `#ea580c` orange, bg `#fff7ed` |
-| ▶ unskip | `#059669` green, bg `#f0fdf4` |
-| ⭐ add to favorites | `#059669` teal, bg `#f0fdf4` |
-| 🗺️ map button | `#6d28d9` purple, bg `faf5ff→ede9fe` |
-| 🚀 yalla button | `#15803d` green, bg `f0fdf4→dcfce7` |
-| system routes | amber bg `#fef3c7`, border `#fde68a` |
+`userManualOrderRef` — if user reordered manually and startPoint changed: toast "order kept", no recalculation.
 
-## localStorage Keys (current — all foufou_*)
+---
+
+## Debug and Error System
+
+### Debug log
+```js
+addDebugLog(category, message, data?)
+// categories: 'API', 'ADD', 'MIGRATION', 'OPTIMIZE', 'RATING-REFRESH', 'GPS'
+// stored in state debugLog[] — visible to admins only
+```
+
+### Console prefix conventions
+```
+[CONFIG]         <- config.js operations
+[UTILS]          <- utils.js operations
+[GPS]            <- geolocation
+[DYNAMIC]        <- Google Places API calls
+[SMART]          <- smart select algorithm
+[OPTIMIZE]       <- route optimization
+[FIREBASE]       <- database operations
+[AUTH]           <- authentication
+[RATING-REFRESH] <- batch rating updates
+[STORAGE]        <- image upload
+[EXIF]           <- GPS from photo
+[SYNC]           <- offline -> online pending sync
+[MIGRATION]      <- one-time data migrations
+[MAP]            <- Leaflet map
+[CLEANUP]        <- Firebase cleanup utilities
+```
+
+### Error handling patterns
+```js
+// Firebase operation — always try/catch + fallback
+try {
+  await database.ref(...).set(data);
+  setCustomLocations(prev => [...prev, saved]);  // optimistic update
+} catch (error) {
+  saveToPending(data);        // offline queue
+  showToast(t('toast.savedWillSync'), 'warning', 'sticky');
+}
+
+// Google API error -> visible toast, not silent
+try {
+  const resp = await fetch(GOOGLE_PLACES_API_URL, ...);
+  if (!resp.ok) {
+    const err = await resp.text();
+    console.error('[DYNAMIC] Google error:', resp.status, err);
+    showToast(t('toast.googleError'), 'error');
+    return [];
+  }
+} catch(e) {
+  console.error('[DYNAMIC]', e.message);
+  return [];
+}
+```
+
+### Pending queue (offline support)
+```js
+// Auto-saved to localStorage when changed
+// Synced when isFirebaseAvailable becomes true
+// NEVER remove this mechanism — users on spotty wifi depend on it
+```
+
+---
+
+## Colors and Design — Single Source of Truth
+
+### Rule: Never hard-code colors in views/dialogs
+Every color used in more than one place must be defined in `config.js` (mapConfig) or as a CSS class.
+
+| Element | Value |
+|---------|-------|
+| Header dialogs | `bg-gradient-to-r from-purple-500 to-pink-500` |
+| Save button gradient | `linear-gradient(to right, #a855f7, #ec4899)` |
+| Add to favorites pill | color `#059669`, bg `#f0fdf4` |
+| Skip button | color `#ea580c`, bg `#fff7ed` |
+| Info (hint) button | color `#374151`, border `#d1d5db` |
+| Map button | `#6d28d9` purple |
+| Yalla button | `#15803d` green |
+| Stop colors palette | `window.BKK.stopColorPalette[index % 16]` |
+
+### Map visual config
+Everything defined in `window.BKK.mapConfig` in `config.js`:
+- `mapConfig.route` — route lines (3-layer: glow + base + flow animation)
+- `mapConfig.marker` — stop circles
+- `mapConfig.area` — area overlays on map
+- `mapConfig.radiusSearch` — radius search circle
+- NEVER change map colors in views.js — only in config.js
+
+---
+
+## localStorage Keys
+
 | Key | Purpose |
 |-----|---------|
-| `foufou_preferences` | form defaults (hours, area, interests) |
-| `foufou_route_type` | 'circular' \| 'linear' |
-| `foufou_right_col_width` | desktop split view width |
-| `foufou_debug_mode/categories/sessions/flagged` | admin debug |
-| `foufou_last_log_time/last_seen_feedback` | rate limiting |
+| `foufou_preferences` | form defaults |
+| `foufou_route_type` | circular/linear |
+| `foufou_right_col_width` | desktop split |
 | `foufou_active_trail` | active trail session |
 | `foufou_fab_pos` | FAB position |
-| `foufou_hint_*` | hint visit counts |
-| `foufou_tts_voice` | TTS voice selection |
 | `foufou_visitor_id/name` | analytics |
-| `foufou_sys_routes_seeded_{cityId}` | one-time seed flag |
 | `city_explorer_lang` | UI language |
-| `city_explorer_city` | last selected city |
-| `city_active_states` | city enabled/disabled |
+| `city_explorer_city` | last city |
+| `locations_migrated_v2` | migration flag |
+| `cleanup_inprogress_done` | cleanup flag |
+| `city_active_states` | active/inactive cities |
 | `custom_cities` | user-added cities |
-| `locations_migrated_v2` | one-time migration flag |
-| `cleanup_inprogress_done` | one-time cleanup flag |
 
-## System Routes (Bangkok)
-Defined in `city-bangkok.js` as `window.BKK.cityData.bangkok.systemRoutes[]`:
-1. `sys_bkk_chinatown_loop` — Chinatown loop (circular, 4h)
-2. `sys_bkk_four_communities` — 4 communities by river (linear, 5h)
-3. `sys_bkk_nang_loeng` — Nang Loeng old Bangkok (circular, 2h)
-4. `sys_bkk_bang_krachao` — Bang Krachao green lung (circular, 4h)
+---
 
-Seeded by `window.BKK.seedSystemRoutes(database)` — idempotent, checks existing by `id` field.
+## Performance — Optimization Rules
 
+### Fast initial load
+1. `app-data.js` loads first (i18n + city data + config + utils) — critical for render
+2. `app-code.js` loads after — React app
+3. City files loaded **dynamically** when selected (not all upfront)
+4. Firebase starts after render — no blocking
+
+### Performance rules
+```js
+// React.memo on heavy components
+// useCallback on handlers passed as props
+// useMemo on heavy calculations (stopScore if called frequently)
+// useRef for runSmartPlan (prevents stale closure)
+// NEVER calculate stopScore in renderer — only in smartSelectStops
+// NEVER send Google API call from useEffect without debounce
+```
+
+### FieldMask = cost savings
+**Never** add fields to FieldMask without a reason. Every field costs money.
+```
+places.photos      <- expensive — never request automatically
+places.website     <- not used
+places.priceLevel  <- only if displaying it
+```
+
+---
+
+## Coherence Principles — "Written By One Developer"
+
+### Shared functions — always use existing ones
+
+| Need | Function | File |
+|------|----------|------|
+| Distance between points | `calcDistance(lat1, lng1, lat2, lng2)` | app-logic.js (local) |
+| GPS area validation | `window.BKK.checkLocationInArea(lat, lng, areaId)` | utils.js |
+| GPS + city validation | `window.BKK.getValidatedGps(onSuccess, onError)` | utils.js |
+| Areas for coordinates | `window.BKK.getAreasForCoordinates(lat, lng)` | utils.js |
+| Closest area | `window.BKK.getClosestArea(lat, lng)` | utils.js |
+| Areas from location | `window.BKK.getLocationAreas(loc)` | utils.js |
+| Google Maps URL | `window.BKK.getGoogleMapsUrl(place)` | utils.js |
+| Google Maps directions | `window.BKK.buildGoogleMapsUrls(stops, origin, circ, max)` | utils.js |
+| Compress image | `window.BKK.compressImage(input, maxSizeKB)` | utils.js |
+| Compress icon | `window.BKK.compressIcon(input, maxSize)` | utils.js |
+| Upload image | `window.BKK.uploadImage(file, cityId, locationId)` | utils.js |
+| Interest color | `window.BKK.getInterestColor(id, allInterests)` | utils.js |
+| Emoji suggestions | `window.BKK.suggestEmojis(description)` | utils.js |
+| Stop label | `window.BKK.stopLabel(index)` | config.js |
+| GPS from EXIF | `window.BKK.extractGpsFromImage(file)` | utils.js |
+| Speech-to-text | `window.BKK.startSpeechToText(options)` | utils.js |
+| Reverse geocode | `window.BKK.reverseGeocode(lat, lng)` | utils.js |
+| Sanitize URL | `sanitizeMapsUrl(loc)` | app-logic.js (local) |
+
+### Before writing a new function — check first
+Before writing any new function, check if something similar exists in the table above.
+Duplicate functions = future regressions.
+
+---
+
+## Known Regressions — Must Never Return
+
+### 1. Duplicate compressImage
+**What happened:** Two definitions of `window.BKK.compressImage` — one in utils.js, one in dialogs.js.
+**Symptom:** Images not compressed, saved over 1MB to Firebase.
+**Fix:** One definition only in utils.js. All calls via `window.BKK.compressImage`.
+**If you see two definitions -> delete the duplicate immediately.**
+
+### 2. window.BKK.i18n.t() does not exist
+**What happened:** Using `window.BKK.i18n.t('key')` which does not exist.
+**Symptom:** `TypeError: window.BKK.i18n.t is not a function` in console.
+**Fix:** `t('key')` from scope, or `window.t('key')` if global needed.
+
+### 3. Hooks inside IIFE
+**What happened:** QuickAddPlaceDialog written inside the main IIFE of app-code.js.
+**Symptom:** "Invalid hook call" — hooks must be at component level.
+**Fix:** `quick-add-component.js` — separate file, inserted before FouFouApp.
+**NEVER return a component with hooks into the IIFE.**
+
+### 4. Firebase key in query_place_id
+**What happened:** `googlePlaceId` containing a Firebase key (not a Google Place ID) entered mapsUrl.
+**Symptom:** Broken Google links with query_place_id=-MxGt...
+**Fix:** `sanitizeMapsUrl(loc)` before every save. Validation: `/^(ChIJ|EiI|GhIJ)/`.
+
+### 5. Reviews not deleted with location
+**What happened:** Deleting a favorite did not delete its ratings.
+**Symptom:** Ratings of deleted places remain in Firebase, pollute reviewAverages.
+**Fix:** `deleteCustomLocation` -> also deletes `reviews/{namePK}`.
+
+### 6. const on reassigned variable
+**What happened:** `const locationToAdd = ...` then `locationToAdd = sanitizeMapsUrl(...)`.
+**Symptom:** `TypeError: Assignment to constant variable`.
+**Fix:** `let locationToAdd = ...`
+
+### 7. Single quotes in JSX attributes
+**What happened:** `<div className='foo'>` instead of `<div className="foo">`.
+**Symptom:** Babel parse error — everything breaks.
+**Fix:** Always double quotes in JSX attributes.
+
+---
+
+## Google Places — Finding and Filtering Places by Interest
+
+### The Quality Problem
+Google Places returns results ranked by **promotion and popularity**, not by relevance to our interest.
+A search for "cafes" returns hotels with cafes, restaurant chains, and 7-Eleven stores.
+FouFou applies 5 filter layers to ensure only genuinely relevant, quality results reach the user.
+
+---
+
+### Layer 0: Interest Validity Check (before any API call)
+```js
+isInterestValid(interestId)
+// Returns false if the interest has no search config -> no API call made
+// An interest is valid if it has: types[] OR textSearch string OR is privateOnly
+// privateOnly (manual interests) -> ALWAYS valid, never calls Google at all
+```
+
+### Layer 1: API Search Type Selection
+Each interest uses one of two search modes, configured in `interestConfig`:
+
+| Mode | API Endpoint | Config field | Example interest |
+|------|-------------|--------------|-----------------|
+| Category Search | `places:searchNearby` | `types: ['cafe', 'coffee_shop']` | cafes, temples, parks |
+| Text Search | `places:searchText` | `textSearch: 'street art'` | graffiti, artisans |
+
+**Why two modes?**
+- Category search is precise but limited to Google's ~100 supported types
+- Text search handles concepts Google has no type for (street art, graffiti, canals)
+- Text search has a stricter relevance filter (see Layer 3)
+
+**Config source priority:**
+```
+1. Firebase: settings/interestConfig/{id}   <- admin can override
+2. Default config hardcoded in app-logic.js <- fallback (~line 2427)
+3. city's interestToGooglePlaces            <- legacy fallback
+```
+
+**Default config (hardcoded in app-logic.js):**
+```js
+temples:   { types: ['hindu_temple','buddhist_temple','church','mosque'], blacklist: ['hotel','restaurant','school'] },
+food:      { types: ['restaurant','meal_takeaway'],     blacklist: ['bar','pub','club','hotel','hostel'] },
+graffiti:  { textSearch: 'street art',                   blacklist: ['tattoo','ink','piercing','salon'] },
+cafes:     { types: ['cafe','coffee_shop'],             blacklist: ['cannabis','weed','kratom','hookah'] },
+markets:   { types: ['market','shopping_mall'],         blacklist: ['hotel','supermarket','7-eleven','convenience','tesco','big c'] },
+parks:     { types: ['park','national_park'],           blacklist: ['hotel','parking','car park','garage'] },
+nightlife: { types: ['bar','night_club'],               blacklist: ['restaurant','hotel','hostel','cafe'] },
+artisans:  { types: ['store','art_gallery'],            blacklist: ['cannabis','weed','kratom','massage','7-eleven'] },
+```
+
+**RULE: Never remove blacklist words from defaultConfig.**
+If Firebase has an empty blacklist for an interest, the system keeps the default blacklist:
+```js
+// Deep merge in app-logic.js:
+if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
+  merged[key].blacklist = defaultConfig[key].blacklist;  // always keep default
+}
+```
+
+---
+
+### Layer 2: Blacklist Word Filter (in fetchGooglePlaces)
+Applied to every Google result before any other processing.
+
+```js
+// Checks BOTH the place name AND Google's type list
+const matchedWord = blacklistWords.find(word =>
+  placeName.includes(word) ||
+  placeTypes.some(type => type.includes(word))  // e.g. type "convenience_store" matches "convenience"
+);
+if (matchedWord) -> FILTERED OUT, logged as "BLACKLIST"
+```
+
+**Why check types too?**
+A hotel named "Cafe de Paris" passes a name-only check for cafes.
+But Google types it as `['lodging', 'hotel']` — the word "hotel" matches the cafe blacklist.
+
+**Blacklist words are collected from ALL valid interests in the current search:**
+```js
+const blacklistWords = validInterests.flatMap(interest =>
+  interestConfig[interest]?.blacklist || []
+).map(w => w.toLowerCase());
+const uniqueBlacklist = [...new Set(blacklistWords)];
+```
+
+---
+
+### Layer 3: Relevance Filter (Text Search only)
+For textSearch interests, the place **name must contain the exact search phrase**.
+
+```js
+// textSearchPhrase = e.g. "street art"
+if (isTextSearch && !placeName.includes(textSearchPhrase)) -> FILTERED OUT
+```
+
+**Why:** Text Search API returns anything vaguely related to the query.
+"street art Bangkok Chinatown" returns tattoo studios, art supply stores, galleries.
+Only places with the phrase literally in the name pass.
+
+**Tradeoff:** Strict by design. A place named "Mural Gallery" won't pass a "street art" search.
+If too strict for a city, the admin can switch the interest to category search with appropriate types.
+
+---
+
+### Layer 4: Type Validation (Category Search only)
+The place must have at least one of the requested Google types.
+
+```js
+const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
+if (!hasValidType) -> FILTERED OUT, logged as "TYPE MISMATCH"
+```
+
+**Why:** Google Nearby Search with `includedTypes` is not always precise.
+It returns loosely-related places. This enforces strict type matching.
+
+**The "Unsupported types" retry:**
+If Google returns 400 for a multi-type request, the system retries each type separately.
+Results are merged and deduped. This handles Google's unpredictable type support across regions.
+
+---
+
+### Layer 5: Distance Filter
+Removes places returned by Google that are physically too far from the search center.
+
+```js
+const maxDistance = searchRadius * distMultiplier;
+// distMultiplier: per-area config -> city default -> 1.2
+// Example: 500m radius * 1.2 = 600m max
+// Radius mode: hard filter at exact radiusMeters (no multiplier)
+```
+
+**Why:** Google's `locationRestriction` is not exact for type searches.
+Places 800m away can appear in a 500m search. The 1.2 multiplier adds a small tolerance.
+In radius mode the user drew the boundary — we respect it exactly.
+
+---
+
+### Layer 6: User Blacklist ("Skip Forever")
+After fetching, Google results are filtered against the user's personal skip-forever list.
+
+```js
+// filterBlacklist() — called in runSmartPlan Step C, after Google fetch
+const blacklistedNames = customLocations
+  .filter(loc => loc.status === 'blacklist' && loc.cityId === selectedCityId)
+  .map(loc => loc.name.toLowerCase().trim());
+
+return places.filter(place => !blacklistedNames.includes(place.name.toLowerCase().trim()));
+```
+
+**The status lifecycle:**
+```
+active -> (user marks "skip forever") -> blacklist -> (toggle) -> review -> (toggle) -> active
+```
+
+**Where status='blacklist' is enforced across the entire system:**
+- `filterBlacklist()` — removes from Google results in route generation
+- Custom stops collection in `runSmartPlan` — `if (loc.status === 'blacklist') return false`
+- `refreshAllGoogleRatings` — skips blacklisted locations
+- Favorites list display — shown only in a separate "blacklisted" section (admin only)
+- `fetchMore` — blacklisted places never appear in fetch-more results
+
+**RULE: Never show status='blacklist' locations to regular users.**
+The user explicitly asked to never see this place again. Honor it everywhere, every time.
+
+---
+
+### Layer 7: Dedup Against Custom Locations
+Prevents showing a Google result when we already have it as a saved favorite.
+**The favorite version replaces the Google version in the candidate pool — but winning in the final route still depends on stopScore.**
+
+```js
+// filterDuplicatesOfCustom()
+const customNames = customLocations
+  .filter(loc => loc.status !== 'blacklist' && loc.cityId === selectedCityId)
+  .map(loc => loc.name.toLowerCase().trim());
+
+// Google result with same name as a favorite -> removed from Google results pool
+// The custom version enters via the custom stops path instead
+// Whether it appears in the route depends on stopScore (see Stop Scoring section)
+```
+
+**Important: this is NOT "favorites always win".**
+The favorite enters the pool, but stopScore determines its rank against other places:
+- Favorite with no FouFou rating: googleScore + 20 (baseline priority — usually wins)
+- Favorite with good FouFou rating (>= 2.5 avg): googleScore + 20 + avg*5 (wins clearly)
+- Favorite with poor FouFou rating (< 2.5 avg): googleScore + 20 - 60 (may lose to a strong Google place)
+
+Example: a favorite with 1-star FouFou rating vs a Google place with 4.8 stars and 2000 reviews:
+  Favorite score: 0 + 20 - 60 = -40
+  Google score:   4.8 * log10(2001) ~= 16.2
+  -> Google place wins, favorite is deprioritized. This is intentional.
+
+---
+
+### Complete Filtering Pipeline
+```
+Google API returns up to 20 results
+    |
+    v  [Layer 2] Blacklist words (name + Google types)
+    |
+    v  [Layer 3] Relevance (text search only: name must contain exact phrase)
+    |
+    v  [Layer 4] Type validation (category search only: types must match)
+    |
+    v  [Layer 5] Distance (radius x distanceMultiplier)
+    |
+    v  [Layer 6] User blacklist (status='blacklist' in customLocations)
+    |
+    v  [Layer 7] Dedup vs custom locations (same name already in favorites)
+    |
+    v  ~5-12 quality results per interest
+    |
+    v  smartSelectStops: rank by stopScore, pick top N per bucket
+    |
+    v  optimizeStopOrder: nearest neighbor + 2-opt + slot ordering
+    |
+    v  Route displayed to user
+```
+
+---
+
+### Debug: Seeing Every Filtering Decision
+The system logs every result with its fate. In DevTools console:
+```
+[API] cafes - 20 from Google, 8 kept:
+  1. KEPT        Cafe 9 — 4.5 (340) [cafe]
+  2. BLACKLIST   Hotel Cafe — 3.8 (120) | name or type contains "hotel"
+  3. TYPE MISMATCH  The Lobby — 4.2 (89) | google types [lodging,hotel] don't match [cafe]
+  4. NO MATCH    Art Studio — 4.1 (45) | name doesn't contain "street art"
+[API] FINAL 6 places for cafes
+```
+
+In-app debug viewer (admin only): Settings -> Debug -> API tab shows the same in a UI panel.
+
+---
+
+### Adding or Modifying Interest Search Config
+Changes go to Firebase: `settings/interestConfig/{interestId}`
+
+Full config schema:
+```js
+{
+  types: ['cafe', 'coffee_shop'],    // Google place types for Nearby Search
+  textSearch: 'street art',           // OR: text query for Text Search (use one, not both)
+  blacklist: ['cannabis', 'hotel'],  // words to exclude from name OR Google types
+  routeSlot: 'bookend',              // slot in route (any/early/middle/bookend/end/late)
+  minGap: 2,                          // min stops between same-interest stops in route
+  bestTime: 'morning',               // time preference (morning/afternoon/evening/night/anytime)
+  dedupRelated: ['restaurants'],     // related interest IDs for proximity dedup check
+  privateOnly: false                  // true = skip Google entirely, show favorites only
+}
+```
+
+**RULE: Test blacklist changes in debug mode first.**
+A too-broad blacklist word silently removes valid results.
+Example: adding "bar" to cafes blacklist eliminates "Bar Italia Cafe".
+Always check the debug console after a config change.
+
+---
+
+## How to Identify and Report a Bug
+
+### Get full console output
+```
+1. Open DevTools (F12) -> Console
+2. Refresh the page
+3. Reproduce the bug
+4. Copy the full console output (including stack trace)
+```
+
+### What to look for
+```
+[DYNAMIC] Google error: 400  <- Google API config issue
+[FIREBASE] Error: ...        <- Firebase permissions/structure
+TypeError: ... is not a function  <- regression — function moved/deleted
+Invalid hook call             <- hook inside IIFE
+Assignment to constant        <- const instead of let
+```
+
+### Bug report template for new chat
+```
+Version: 3.9.x
+Error: [short description]
+Console output:
+[paste here]
+What I did before:
+[action that triggered the bug]
+```
+
+---
+
+## Major Changes This Session (v3.8.83 -> v3.9.14)
+
+### i18n & UX
+- Toast system: pushed to params, stats toast in correct order
+- `sysParams` section renamed from `systemParams`
+- 30+ new i18n keys
+- `ratePlace` shortened to `'דרג'`
+
+### Active Trail
+- Star buttons replaced with pill buttons: `+Favorite` / `Rate` / `4.3 (100)`
+- Skipped stops — only name grayed out, rest of row active (can still rate/add)
+- Info button (hint) — fixed key from `hint_trail` to `activeTrail`
+
+### QuickAddPlaceDialog
+- New dialog for adding a Google place to favorites
+- Separate component in `quick-add-component.js` (hooks must be outside IIFE)
+- Inserted before `FouFouApp` via `// __INSERT_QUICK_ADD_COMPONENT__` in template
+- Immediately updates local state after Firebase save
+- **Images compressed to 120KB before saving** (regression fixed)
+
+### Favorite Scoring
+- Weighted score instead of binary custom/google
+- 4 parameters in sysParams: `favoriteBaseScore`, `favoriteBonusPerStar`, `favoriteLowRatingThreshold`, `favoriteLowRatingPenalty`
+
+### Images
+- Duplicate `compressImage` deleted — one definition with quality loop, 120KB max, 900px
+- Accepts both File and dataUrl
+
+### Rating deletion
+- `deleteCustomLocation` -> also deletes `reviews/{namePK}` in Firebase
+
+### Mic in notes
+- Added microphone button to notes field in addLocation dialog
+
+---
+
+*Last updated: 17/03/2026 — v3.9.14*

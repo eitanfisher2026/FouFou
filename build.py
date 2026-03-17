@@ -6,7 +6,7 @@ Produces 3 files: index.html (tiny shell), app-data.js (data), app-code.js (JSX)
 Usage: python3 build.py          # production build (stripped)
        python3 build.py --debug   # debug build (keeps console.log)
 """
-import re, json, sys, glob
+import re, json, sys, glob, os
 
 def read_file(filename):
     with open(filename, 'r', encoding='utf-8') as f:
@@ -93,6 +93,17 @@ def build():
     with open('version.json', 'w') as f:
         json.dump({"version": ver}, f)
     print(f"📋 Version: {ver}")
+
+    # Auto-update version + date in CLAUDE_CONTEXT.md
+    import datetime
+    if os.path.exists('CLAUDE_CONTEXT.md'):
+        ctx = open('CLAUDE_CONTEXT.md', encoding='utf-8').read()
+        # Update version line
+        ctx = re.sub(r'- \*\*גרסה:\*\* `[\d.]+`.*', f'- **גרסה:** `{ver}` ({datetime.date.today().strftime("%b %d, %Y")})', ctx)
+        # Update footer date line
+        ctx = re.sub(r'\*עדכון אחרון:.*\*', f'*עדכון אחרון: {datetime.date.today().strftime("%d/%m/%Y")} — v{ver}*', ctx)
+        open('CLAUDE_CONTEXT.md', 'w', encoding='utf-8').write(ctx)
+        print(f"📝 CLAUDE_CONTEXT.md updated → v{ver}")
 
     # === BUILD FILE 1: app-data.js (i18n + cities + config + utils) ===
     app_data = f"// FouFou app-data.js v{ver}\n"
