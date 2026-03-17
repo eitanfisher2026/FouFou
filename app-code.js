@@ -229,7 +229,7 @@ const FouFouApp = () => {
     try {
       await database.ref(`users/${uid}/role`).set(newRole);
       if (showUserManagement) authLoadAllUsers();
-      showToast(`✅ Role updated to ${['Regular','Editor','Admin'][newRole]}`, 'success');
+      showToast(`✅ ${t('toast.roleUpdated') || 'Role updated'}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
       console.error('[AUTH] Update role error:', err);
       showToast('❌ ' + err.message, 'error');
@@ -584,6 +584,7 @@ const FouFouApp = () => {
       foufouRatingBoost: 2,
       speechMaxSeconds: 15,
       speechRate: 1.0,
+      toastDuration: 3000,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -1793,7 +1794,7 @@ const FouFouApp = () => {
   const showToast = (message, type = 'success', customDuration = null) => {
     setToastMessage({ message, type, sticky: customDuration === 'sticky' });
     if (customDuration !== 'sticky') {
-      const duration = customDuration || Math.min(6000, Math.max(2500, message.length * 70));
+      const duration = customDuration || (window.BKK.systemParams?.toastDuration ?? 3000);
       setTimeout(() => setToastMessage(null), duration);
     }
   };
@@ -3878,12 +3879,23 @@ const FouFouApp = () => {
   };
 
   const toggleInterest = (id) => {
+    const isCurrentlySelected = formData.interests.includes(id);
     setFormData(prev => ({
       ...prev,
-      interests: prev.interests.includes(id)
+      interests: isCurrentlySelected
         ? prev.interests.filter(i => i !== id)
         : [...prev.interests, id]
     }));
+    if (!isCurrentlySelected) {
+      const interestObj = allInterestOptions.find(o => o.id === id);
+      if (interestObj?.privateOnly) {
+        const label = tLabel(interestObj) || id;
+        showToast(
+          `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+          'info'
+        );
+      }
+    }
   };
 
   useEffect(() => {
@@ -4866,19 +4878,19 @@ const FouFouApp = () => {
         const googleInRoute = newRoute.stops.filter(s => !s.custom).length;
         let sourceLine = '';
         if (customInRoute > 0 && googleInRoute > 0)
-          sourceLine = `${customInRoute} מקומות נבחרו מרשימת המועדפים של פופו ו-${googleInRoute} נוספו מגוגל`;
+          sourceLine = t('toast.statsSourceMixed').replace('{custom}', customInRoute).replace('{google}', googleInRoute);
         else if (customInRoute > 0)
-          sourceLine = `כל המקומות נבחרו מתוך רשימת המקומות המועדפים של פופו`;
+          sourceLine = t('toast.statsSourceCustomOnly');
         else if (googleInRoute > 0)
-          sourceLine = `כל המקומות הובאו מגוגל`;
+          sourceLine = t('toast.statsSourceGoogleOnly');
 
         const msg = [
-          `המסלול המומלץ מורכב מהתחומים הבאים:`,
+          t('toast.statsTitle'),
+          t('toast.statsInterestsHeader'),
           interestLines,
           sourceLine,
-          `ניתן לראות את מיקום המקומות במפה ותכנון, לשנות סדר, להוסיף נקודות משלך ולשנות נקודת התחלה.`,
-          `מידע נוסף דרך כפתור התיעוד`
-        ].filter(Boolean).join("\n");
+          t('toast.statsHint'),
+        ].filter(Boolean).join('\n');
         showToast(msg, 'info', 'sticky');
       })();
 

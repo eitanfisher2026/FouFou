@@ -211,7 +211,7 @@
       await database.ref(`users/${uid}/role`).set(newRole);
       // Refresh allUsers if open
       if (showUserManagement) authLoadAllUsers();
-      showToast(`✅ Role updated to ${['Regular','Editor','Admin'][newRole]}`, 'success');
+      showToast(`✅ ${t('toast.roleUpdated') || 'Role updated'}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
       console.error('[AUTH] Update role error:', err);
       showToast('❌ ' + err.message, 'error');
@@ -615,6 +615,8 @@
       // Speech recording
       speechMaxSeconds: 15,
       speechRate: 1.0,
+      // Toast display duration (ms)
+      toastDuration: 3000,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -1921,7 +1923,7 @@
   const showToast = (message, type = 'success', customDuration = null) => {
     setToastMessage({ message, type, sticky: customDuration === 'sticky' });
     if (customDuration !== 'sticky') {
-      const duration = customDuration || Math.min(6000, Math.max(2500, message.length * 70));
+      const duration = customDuration || (window.BKK.systemParams?.toastDuration ?? 3000);
       setTimeout(() => setToastMessage(null), duration);
     }
   };
@@ -4266,12 +4268,24 @@
   };
 
   const toggleInterest = (id) => {
+    const isCurrentlySelected = formData.interests.includes(id);
     setFormData(prev => ({
       ...prev,
-      interests: prev.interests.includes(id)
+      interests: isCurrentlySelected
         ? prev.interests.filter(i => i !== id)
         : [...prev.interests, id]
     }));
+    // If adding a private-only interest, show informational toast
+    if (!isCurrentlySelected) {
+      const interestObj = allInterestOptions.find(o => o.id === id);
+      if (interestObj?.privateOnly) {
+        const label = tLabel(interestObj) || id;
+        showToast(
+          `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+          'info'
+        );
+      }
+    }
   };
 
   // Auto-clean: remove selected interests that are no longer valid/visible
@@ -5401,7 +5415,6 @@
 
       // ── Friendly stats toast — uses exact same groups/order/icons as results screen ──
       (() => {
-        // Build groupedStops exactly like the results screen does
         const groupedStops = {};
         newRoute.stops.forEach(stop => {
           (stop.interests || []).forEach(id => {
@@ -5414,14 +5427,12 @@
           }
         });
 
-        // Filter to only the interests the user selected (same filter as results screen)
         const selectedIds = newRoute.preferences?.interests || formData.interests || [];
         const interestLines = Object.keys(groupedStops)
           .filter(id => id !== '_manual' && selectedIds.includes(id))
           .map(id => {
             const opt = allInterestOptions.find(o => o.id === id);
             if (!opt) return null;
-            // For data:/http icons (user-uploaded), fall back to base emoji from interestOptions
             const iconRaw = opt.icon || '';
             const isImageIcon = iconRaw.startsWith('data:') || iconRaw.startsWith('http');
             const baseOpt = isImageIcon ? window.BKK.interestOptions?.find(o => o.id === id) : null;
@@ -5435,24 +5446,23 @@
           .filter(Boolean)
           .join('\n');
 
-        // Source line — count from actual stops in the route (not raw fetch stats)
         const customInRoute = newRoute.stops.filter(s => s.custom).length;
         const googleInRoute = newRoute.stops.filter(s => !s.custom).length;
         let sourceLine = '';
         if (customInRoute > 0 && googleInRoute > 0)
-          sourceLine = `${customInRoute} מקומות נבחרו מרשימת המועדפים של פופו ו-${googleInRoute} נוספו מגוגל`;
+          sourceLine = t('toast.statsSourceMixed').replace('{custom}', customInRoute).replace('{google}', googleInRoute);
         else if (customInRoute > 0)
-          sourceLine = `כל המקומות נבחרו מתוך רשימת המקומות המועדפים של פופו`;
+          sourceLine = t('toast.statsSourceCustomOnly');
         else if (googleInRoute > 0)
-          sourceLine = `כל המקומות הובאו מגוגל`;
+          sourceLine = t('toast.statsSourceGoogleOnly');
 
         const msg = [
-          `המסלול המומלץ מורכב מהתחומים הבאים:`,
+          t('toast.statsTitle'),
+          t('toast.statsInterestsHeader'),
           interestLines,
           sourceLine,
-          `ניתן לראות את מיקום המקומות במפה ותכנון, לשנות סדר, להוסיף נקודות משלך ולשנות נקודת התחלה.`,
-          `מידע נוסף דרך כפתור התיעוד`
-        ].filter(Boolean).join("\n");
+          t('toast.statsHint'),
+        ].filter(Boolean).join('\n');
         showToast(msg, 'info', 'sticky');
       })();
 
