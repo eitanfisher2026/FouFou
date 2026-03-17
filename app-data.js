@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.11
+// FouFou app-data.js v3.9.12
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -1096,6 +1096,15 @@ help: {
     speechDuration: 'הקלטה (שניות)',
     speechDurationDesc: 'משך הקלטה מרבי לתיאור קולי',
     toastDurationDesc: 'כמה זמן מוצגת הודעה על המסך (אלפיות שנייה)',
+    favoriteBaseScore: 'עדיפות בסיסית למועדף',
+    favoriteBaseScoreDesc: 'ציון בסיסי שנוסף למקום מועדף ללא דירוג — מעל ממוצע גוגל טיפוסי (ברירת מחדל: 20)',
+    favoriteBonusPerStar: 'בונוס לכוכב (מועדף מדורג)',
+    favoriteBonusPerStarDesc: 'ציון שנוסף לכל כוכב כשהדירוג טוב — מועדף 5⭐ יקבל בונוס גדול (ברירת מחדל: 5)',
+    favoriteLowRatingThreshold: 'סף דירוג גרוע',
+    favoriteLowRatingThresholdDesc: 'ממוצע דירוג מתחת לערך זה ייחשב גרוע וייקבל עונש (ברירת מחדל: 2.5)',
+    favoriteLowRatingPenalty: 'עונש על דירוג גרוע',
+    favoriteLowRatingPenaltyDesc: 'מחסיר מציון המועדף כשהדירוג גרוע — מאפשר לגוגל חזק לנצח אותו (ברירת מחדל: 60)',
+    sectionFavorites: '⭐ ניקוד מועדפים',
   },
   dedup: {
     title: 'מקום דומה נמצא בקרבת מקום!',
@@ -2124,6 +2133,15 @@ help: {
     speechDuration: 'Recording (seconds)',
     speechDurationDesc: 'Max recording duration for voice input',
     toastDurationDesc: 'How long a message stays on screen (milliseconds)',
+    favoriteBaseScore: 'Favorite base priority score',
+    favoriteBaseScoreDesc: 'Base score added to any favorite with no rating — above a typical Google result (default: 20)',
+    favoriteBonusPerStar: 'Bonus per star (rated favorite)',
+    favoriteBonusPerStarDesc: 'Score added per star when rating is good — a 5⭐ favorite gets a large bonus (default: 5)',
+    favoriteLowRatingThreshold: 'Poor rating threshold',
+    favoriteLowRatingThresholdDesc: 'Average rating below this value is considered poor and receives a penalty (default: 2.5)',
+    favoriteLowRatingPenalty: 'Poor rating penalty',
+    favoriteLowRatingPenaltyDesc: 'Subtracted from favorite score when rating is poor — allows strong Google results to win (default: 60)',
+    sectionFavorites: '⭐ Favorite Scoring',
   },
   dedup: {
     title: 'Similar place found nearby!',
@@ -3564,7 +3582,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.11';
+window.BKK.VERSION = '3.9.12';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

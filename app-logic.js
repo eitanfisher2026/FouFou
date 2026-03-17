@@ -620,6 +620,15 @@
       speechRate: 1.0,
       // Toast display duration (ms)
       toastDuration: 4000,
+      // Favorite scoring — weighted priority vs Google results
+      // favoriteBaseScore: base score added to any favorite (no rating yet)
+      // favoriteBonusPerStar: added per ⭐ when rated above threshold
+      // favoriteLowRatingThreshold: avg below this = penalty instead of bonus
+      // favoriteLowRatingPenalty: subtracted from base when rating is poor
+      favoriteBaseScore: 20,
+      favoriteBonusPerStar: 5,
+      favoriteLowRatingThreshold: 2.5,
+      favoriteLowRatingPenalty: 60,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -4512,34 +4521,36 @@
     };
     
     const stopScore = (s) => {
+      // Google score: rating × log10(ratingCount+1) — reflects both quality and confidence
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
-      // Boost favorites with FouFou user ratings
-      if (s.source === 'custom' || s.custom) {
-        const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
-        const ra = reviewAverages[pk];
-        if (ra && ra.count > 0) {
-          // FouFou rating (1-5) * weight factor — high-rated favorites get priority
-          return googleScore + ra.avg * sp.foufouRatingBoost;
-        }
+      const isCustom = s.source === 'custom' || s.custom;
+      if (!isCustom) return googleScore;
+      // Favorite base priority (unrated favorites get this by default)
+      const base = sp.favoriteBaseScore ?? 20;
+      const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
+      const ra = reviewAverages[pk];
+      if (!ra || ra.count === 0) return googleScore + base; // no rating yet — default priority
+      const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
+      if (ra.avg < threshold) {
+        // Poor rating — penalize: may fall below strong Google results
+        return googleScore + base - (sp.favoriteLowRatingPenalty ?? 60);
       }
-      return googleScore;
+      // Good rating — bonus per star (e.g. 4.5⭐ × 5 = +22.5 on top of base)
+      return googleScore + base + ra.avg * (sp.favoriteBonusPerStar ?? 5);
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
-        // Time conflict overrides everything — a conflicting stop goes below all non-conflicting stops
+        // Time conflict overrides everything — conflicting stop goes last
         const aTime = timeScore(a);
         const bTime = timeScore(b);
         const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
         const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
         if (aConflict !== bConflict) return aConflict - bConflict;
-        // Among non-conflicting: custom (user-added) locations get priority
-        const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
-        const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
-        if (aCustom !== bCustom) return bCustom - aCustom;
-        // Time match (anytime vs match)
-        if (aTime !== bTime) return bTime - aTime;
-        // Rating
-        return stopScore(b) - stopScore(a);
+        // Unified weighted score: favorites get base priority, adjusted by FouFou rating
+        const scoreDiff = stopScore(b) - stopScore(a);
+        if (Math.abs(scoreDiff) > 0.5) return scoreDiff;
+        // Time match as tiebreaker
+        return bTime - aTime;
       });
     }
     

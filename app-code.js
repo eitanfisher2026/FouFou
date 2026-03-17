@@ -813,6 +813,10 @@ const FouFouApp = () => {
       speechMaxSeconds: 15,
       speechRate: 1.0,
       toastDuration: 4000,
+      favoriteBaseScore: 20,
+      favoriteBonusPerStar: 5,
+      favoriteLowRatingThreshold: 2.5,
+      favoriteLowRatingPenalty: 60,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -4306,14 +4310,17 @@ const FouFouApp = () => {
     
     const stopScore = (s) => {
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
-      if (s.source === 'custom' || s.custom) {
-        const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
-        const ra = reviewAverages[pk];
-        if (ra && ra.count > 0) {
-          return googleScore + ra.avg * sp.foufouRatingBoost;
-        }
+      const isCustom = s.source === 'custom' || s.custom;
+      if (!isCustom) return googleScore;
+      const base = sp.favoriteBaseScore ?? 20;
+      const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
+      const ra = reviewAverages[pk];
+      if (!ra || ra.count === 0) return googleScore + base; // no rating yet — default priority
+      const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
+      if (ra.avg < threshold) {
+        return googleScore + base - (sp.favoriteLowRatingPenalty ?? 60);
       }
-      return googleScore;
+      return googleScore + base + ra.avg * (sp.favoriteBonusPerStar ?? 5);
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
@@ -4322,11 +4329,9 @@ const FouFouApp = () => {
         const aConflict = aTime === sp.timeScoreConflict ? 1 : 0;
         const bConflict = bTime === sp.timeScoreConflict ? 1 : 0;
         if (aConflict !== bConflict) return aConflict - bConflict;
-        const aCustom = a.source === 'custom' || a.custom ? 1 : 0;
-        const bCustom = b.source === 'custom' || b.custom ? 1 : 0;
-        if (aCustom !== bCustom) return bCustom - aCustom;
-        if (aTime !== bTime) return bTime - aTime;
-        return stopScore(b) - stopScore(a);
+        const scoreDiff = stopScore(b) - stopScore(a);
+        if (Math.abs(scoreDiff) > 0.5) return scoreDiff;
+        return bTime - aTime;
       });
     }
     
@@ -11026,6 +11031,12 @@ const FouFouApp = () => {
                   { key: 'slotPenaltyMultiplier', label: t('sysParams.slotPenalty'), desc: t('sysParams.slotPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
                   { key: 'slotEndPenaltyMultiplier', label: t('sysParams.endPenalty'), desc: t('sysParams.endPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
                   { key: 'gapPenaltyMultiplier', label: t('sysParams.gapPenalty'), desc: t('sysParams.gapPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
+                ]},
+                { title: t('sysParams.sectionFavorites') || '⭐ מועדפים', icon: '⭐', color: '#f59e0b', params: [
+                  { key: 'favoriteBaseScore', label: t('sysParams.favoriteBaseScore'), desc: t('sysParams.favoriteBaseScoreDesc'), min: 0, max: 100, step: 5, type: 'int' },
+                  { key: 'favoriteBonusPerStar', label: t('sysParams.favoriteBonusPerStar'), desc: t('sysParams.favoriteBonusPerStarDesc'), min: 0, max: 30, step: 1, type: 'int' },
+                  { key: 'favoriteLowRatingThreshold', label: t('sysParams.favoriteLowRatingThreshold'), desc: t('sysParams.favoriteLowRatingThresholdDesc'), min: 1, max: 4, step: 0.5, type: 'float' },
+                  { key: 'favoriteLowRatingPenalty', label: t('sysParams.favoriteLowRatingPenalty'), desc: t('sysParams.favoriteLowRatingPenaltyDesc'), min: 0, max: 200, step: 10, type: 'int' },
                 ]},
               ];
               const updateParam = (key, val, type) => {
