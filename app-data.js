@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.8.94
+// FouFou app-data.js v3.8.95
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3507,12 +3507,16 @@ window.BKK.cityData.singapore = {
 };
 
 // ============================================================================
+// FouFou — City Trail Generator - Configuration & Constants
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
 // ============================================================================
 
 window.BKK = window.BKK || {};
 window.BKK.stopColorPalette = ['#4a90d9', '#e8a838', '#d95555', '#3bba7e', '#d97eb5', '#7c7ce0', '#9b7ed9', '#2eb8c9', '#e08540', '#b36dd9', '#38b3a0', '#c93d5a', '#7fb832', '#2e9ed9', '#c25ee0', '#d95070'];
 
+// Map visual configuration — all defaults, overridable via Firebase settings.mapConfig
 window.BKK.mapConfig = {
+  // Route line styles (3-layer system: glow + base + animated flow)
   route: {
     glowColor: '#818cf8', glowWeight: 6, glowOpacity: 0.15,
     baseColor: '#6366f1', baseWeight: 2.5, baseOpacity: 0.5,
@@ -3520,27 +3524,32 @@ window.BKK.mapConfig = {
     flowDash: '4,12', flowSpeed: '0.8s', flowOffset: -20,
     infoColor: '#4f46e5'
   },
+  // Stop markers on route map
   marker: {
     radius: 15, weight: 2.5, fillOpacity: 0.8, disabledFillOpacity: 0.2, disabledOpacity: 0.3,
     labelSize: 28, labelFontSize: '13px',
     startRingRadius: 20, startRingWeight: 3, startRingColor: '#22c55e', startRingDash: '6,4',
     startIconSize: 28, startIconFontSize: '14px'
   },
+  // Area labels / circles on favorites map
   area: {
     fillOpacity: 0.15, weight: 2,
     labelFontSize: '10px', labelBg: 'rgba(255,255,255,0.88)',
     ghostFillOpacity: 0.04, ghostWeight: 1, ghostColor: '#94a3b8',
     labelsPaneZ: 450, markersPaneZ: 650
   },
+  // Radius search display
   radiusSearch: {
     color: '#e11d48', fillOpacity: 0.12, weight: 3, dash: '8,6',
     centerRadius: 8
   },
+  // GPS / location marker
   gps: {
     color: '#3b82f6', radius: 7, weight: 2
   }
 };
 
+// Generate or restore persistent visitor ID
 (function() {
   let vid = null;
   try { vid = localStorage.getItem('foufou_visitor_id'); } catch(e) {}
@@ -3549,23 +3558,29 @@ window.BKK.mapConfig = {
     try { localStorage.setItem('foufou_visitor_id', vid); } catch(e) {}
   }
   window.BKK.visitorId = vid;
+  // Try to get a display name
   let vname = null;
   try { vname = localStorage.getItem('foufou_visitor_name'); } catch(e) {}
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.8.94';
+// App Version
+window.BKK.VERSION = '3.8.95';
+// Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
 };
 
+// Tile URL - English labels for all cities (Carto Voyager)
 window.BKK.getTileUrl = function() {
   return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
 };
 
+// App Name
 window.BKK.APP_NAME = 'FouFou';
 
+// Firebase Configuration
 window.BKK.firebaseConfig = {
   apiKey: "AIzaSyCAH_2fk_plk6Dg5dlCCfaRWKL3Nmc6V6g",
   authDomain: "bangkok-explorer.firebaseapp.com",
@@ -3577,11 +3592,13 @@ window.BKK.firebaseConfig = {
   measurementId: "G-QVGD0RKEHP"
 };
 
+// Google Places API Configuration
 window.BKK.GOOGLE_PLACES_API_KEY = 'AIzaSyD0F0TYKuWXVqibhj-sH-DaElDtLL8hMwM';
 window.BKK.GOOGLE_PLACES_API_URL = 'https://places.googleapis.com/v1/places:searchNearby';
 window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
 
 // ============================================================================
+// CITIES REGISTRY (lightweight metadata only - full data loaded dynamically)
 // ============================================================================
 
 window.BKK.cityRegistry = {
@@ -3591,10 +3608,12 @@ window.BKK.cityRegistry = {
   malaga: { id: 'malaga', name: 'מלגה', nameEn: 'Malaga', country: 'Spain', icon: '☀️', secondaryIcon: '☀️', file: 'city-malaga.js' }
 };
 
+// Active cities (loaded from localStorage or defaults)
 window.BKK.cities = {};
 window.BKK.cityData = window.BKK.cityData || {};
 
 // ============================================================================
+// CITY LOADING & SELECTION
 // ============================================================================
 
 /**
@@ -3606,17 +3625,20 @@ window.BKK.loadCity = function(cityId) {
     var reg = window.BKK.cityRegistry[cityId];
     if (!reg) { reject('Unknown city: ' + cityId); return; }
     
+    // Already loaded?
     if (window.BKK.cityData[cityId]) {
       window.BKK.cities[cityId] = window.BKK.cityData[cityId];
       resolve(window.BKK.cities[cityId]);
       return;
     }
     
+    // Load the script
     var script = document.createElement('script');
     script.src = reg.file + '?v=' + window.BKK.VERSION;
     script.onload = function() {
       if (window.BKK.cityData[cityId]) {
         window.BKK.cities[cityId] = window.BKK.cityData[cityId];
+        console.log('[CONFIG] Loaded city file: ' + reg.nameEn);
         resolve(window.BKK.cities[cityId]);
       } else {
         reject('City data not found after loading: ' + cityId);
@@ -3634,11 +3656,13 @@ window.BKK.unloadCity = function(cityId) {
   delete window.BKK.cities[cityId];
   delete window.BKK.cityData[cityId];
   delete window.BKK.cityRegistry[cityId];
+  // Remove from custom cities localStorage
   try {
     var customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
     delete customCities[cityId];
     localStorage.setItem('custom_cities', JSON.stringify(customCities));
   } catch(e) {}
+  console.log('[CONFIG] Unloaded city: ' + cityId);
 };
 
 /**
@@ -3661,6 +3685,7 @@ window.BKK.exportCityFile = function(city) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  console.log('[CONFIG] Exported city file: city-' + cityId + '.js');
 };
 
 /**
@@ -3689,14 +3714,17 @@ window.BKK.migrateLocationsToPerCity = function(database) {
     if (!data) return Promise.resolve();
     var keys = Object.keys(data);
     locCount = keys.length;
+    // Write one location at a time (sequential to avoid overwhelming Firebase)
     return keys.reduce(function(chain, key) {
       return chain.then(function() {
         var loc = data[key];
+        // Strip base64 images during migration to reduce size
         if (loc.uploadedImage && typeof loc.uploadedImage === 'string' && loc.uploadedImage.startsWith('data:')) {
           delete loc.uploadedImage;
         }
         var cityId = loc.cityId || 'bangkok';
         return database.ref('cities/' + cityId + '/locations/' + key).set(loc).catch(function(e) {
+          console.warn('[MIGRATION] Failed to migrate location ' + key + ':', e.message);
           errors++;
         });
       });
@@ -3708,9 +3736,11 @@ window.BKK.migrateLocationsToPerCity = function(database) {
     if (!data) return Promise.resolve();
     var keys = Object.keys(data);
     routeCount = keys.length;
+    // Write one route at a time
     return keys.reduce(function(chain, key) {
       return chain.then(function() {
         var route = data[key];
+        // Strip base64 images from route stops
         if (route.stops && Array.isArray(route.stops)) {
           route.stops = route.stops.map(function(s) {
             if (s.uploadedImage && typeof s.uploadedImage === 'string' && s.uploadedImage.startsWith('data:')) {
@@ -3723,6 +3753,7 @@ window.BKK.migrateLocationsToPerCity = function(database) {
         }
         var cityId = route.cityId || 'bangkok';
         return database.ref('cities/' + cityId + '/routes/' + key).set(route).catch(function(e) {
+          console.warn('[MIGRATION] Failed to migrate route ' + key + ':', e.message);
           errors++;
         });
       });
@@ -3730,16 +3761,20 @@ window.BKK.migrateLocationsToPerCity = function(database) {
   }).then(function() {
     if (locCount === 0 && routeCount === 0) {
       localStorage.setItem('locations_migrated_v2', 'true');
+      console.log('[MIGRATION] No old data to migrate');
       return;
     }
     if (errors > 0) {
+      console.warn('[MIGRATION] Completed with ' + errors + ' errors — will retry next load');
       return;
     }
+    // Only remove old data and mark done if ALL writes succeeded
     var removals = [];
     if (locCount > 0) removals.push(database.ref('customLocations').remove());
     if (routeCount > 0) removals.push(database.ref('savedRoutes').remove());
     return Promise.all(removals).then(function() {
       localStorage.setItem('locations_migrated_v2', 'true');
+      console.log('[MIGRATION] Migrated ' + locCount + ' locations + ' + routeCount + ' routes to per-city structure');
     });
   }).catch(function(err) {
     console.error('[MIGRATION] Error:', err);
@@ -3779,6 +3814,7 @@ window.BKK.cleanupInProgress = function(database) {
     var count = Object.keys(updates).length;
     if (count > 0) {
       return database.ref().update(updates).then(function() {
+        console.log('[CLEANUP] Removed inProgress from ' + count + ' records');
       });
     }
   }).then(function() {
@@ -3807,27 +3843,33 @@ window.BKK.cleanupFirebase = function(database) {
   return database.ref('_verify').once('value').then(function(snap) {
     var data = snap.val();
     if (!data) {
+      console.log('[CLEANUP] No stale _verify nodes found');
       return;
     }
     cleaned = Object.keys(data).length;
+    console.log('[CLEANUP] Removing ' + cleaned + ' stale _verify nodes...');
     return database.ref('_verify').remove();
   }).then(function() {
     if (cleaned > 0) console.log('[CLEANUP] Removed ' + cleaned + ' _verify nodes');
+    // Check sizes of major nodes
     return Promise.all([
       database.ref('accessLog').once('value').then(function(s) {
         var d = s.val();
         var count = d ? Object.keys(d).length : 0;
         var size = d ? JSON.stringify(d).length : 0;
+        console.log('[CLEANUP] accessLog: ' + count + ' entries, ~' + Math.round(size/1024) + 'KB');
         return { node: 'accessLog', count: count, sizeKB: Math.round(size/1024) };
       }),
       database.ref('feedback').once('value').then(function(s) {
         var d = s.val();
         var count = d ? Object.keys(d).length : 0;
         var size = d ? JSON.stringify(d).length : 0;
+        console.log('[CLEANUP] feedback: ' + count + ' entries, ~' + Math.round(size/1024) + 'KB');
         return { node: 'feedback', count: count, sizeKB: Math.round(size/1024) };
       })
     ]);
   }).then(function(results) {
+    console.log('[CLEANUP] Done. Results:', results);
     return { verifyRemoved: cleaned, nodes: results };
   }).catch(function(err) {
     console.error('[CLEANUP] Error:', err);
@@ -3848,6 +3890,7 @@ window.BKK.selectCity = function(cityId) {
   window.BKK.selectedCityId = cityId;
   window.BKK.activeCityData = city; // For GPS city-bounds validation
 
+  // Populate legacy area variables
   window.BKK.areaOptions = city.areas.map(function(a) {
     return { id: a.id, label: a.label, labelEn: a.labelEn, desc: a.desc, descEn: a.descEn };
   });
@@ -3863,26 +3906,33 @@ window.BKK.selectCity = function(cityId) {
     };
   });
 
+  // Populate legacy interest variables
   window.BKK.interestOptions = city.interests;
   window.BKK.interestToGooglePlaces = city.interestToGooglePlaces;
   window.BKK.textSearchInterests = city.textSearchInterests || {};
   window.BKK.uncoveredInterests = city.uncoveredInterests || [];
   window.BKK.interestTooltips = city.interestTooltips || {};
 
+  // City name for search queries
   window.BKK.cityNameForSearch = city.nameEn;
 
+  // Time-of-day boundaries for this city
   window.BKK.dayStartHour = city.dayStartHour != null ? city.dayStartHour : 6;
   window.BKK.nightStartHour = city.nightStartHour != null ? city.nightStartHour : 17;
 
+  console.log('[CONFIG] City selected: ' + city.nameEn + ' (' + city.areas.length + ' areas, ' + city.interests.length + ' interests)');
   return true;
 };
 
+// Default: load saved city (synchronous for initial page load - city files are in HTML)
 (function() {
 
+  // On initial load, city data files are embedded in HTML (via build.py)
   Object.keys(window.BKK.cityData).forEach(function(cityId) {
     window.BKK.cities[cityId] = window.BKK.cityData[cityId];
   });
   
+  // Load custom cities from localStorage
   try {
     var customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
     Object.keys(customCities).forEach(function(cityId) {
@@ -3894,9 +3944,11 @@ window.BKK.selectCity = function(cityId) {
           country: customCities[cityId].country, icon: customCities[cityId].icon, file: null
         };
       }
+      console.log('[CONFIG] Loaded custom city: ' + cityId);
     });
   } catch(e) { console.error('[CONFIG] Error loading custom cities:', e); }
   
+  // Apply saved active/inactive states from localStorage
   try {
     var states = JSON.parse(localStorage.getItem('city_active_states') || '{}');
     Object.keys(states).forEach(function(cityId) {
@@ -3908,6 +3960,7 @@ window.BKK.selectCity = function(cityId) {
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
+  // If saved city doesn't exist or is not active, pick first active city
   if (!window.BKK.cities[savedCity] || window.BKK.cities[savedCity].active === false) {
     var activeCities = Object.keys(window.BKK.cities).filter(function(id) { return window.BKK.cities[id].active !== false; });
     savedCity = activeCities[0] || Object.keys(window.BKK.cities)[0] || 'bangkok';
@@ -3916,8 +3969,11 @@ window.BKK.selectCity = function(cityId) {
 })();
 
 // ============================================================================
+// HELP CONTENT (shared across cities)
 // ============================================================================
 
+// Help content now served from i18n.js translations
+// This getter dynamically returns help in the current language
 Object.defineProperty(window.BKK, 'helpContent', {
   get() {
     return window.BKK.i18n.strings?.[window.BKK.i18n.currentLang]?.help || window.BKK.i18n.strings?.he?.help || {};
@@ -3927,11 +3983,15 @@ Object.defineProperty(window.BKK, 'helpContent', {
 console.info('[CONFIG] Loaded successfully — FouFou v' + window.BKK.VERSION);
 
 // ============================================================================
+// FouFou — City Trail Generator - Utility Functions
+// Copyright © 2026 Eitan Fisher. All Rights Reserved.
+// Pure functions - no React state dependency
 // ============================================================================
 
 window.BKK = window.BKK || {};
 
 // ============================================================================
+// GEOLOCATION & COORDINATES
 // ============================================================================
 
 /**
@@ -3997,6 +4057,7 @@ window.BKK.getValidatedGps = (onSuccess, onError) => {
       if (check.withinCity) {
         if (onSuccess) onSuccess(pos);
       } else {
+        console.log('[GPS] Outside city bounds:', check.distance, 'm from center');
         if (onError) onError('outside_city');
       }
     },
@@ -4058,6 +4119,7 @@ window.BKK.normalizeLocationAreas = (loc) => {
  * @returns {string} hex color
  */
 window.BKK.generateInterestColor = (index, total) => {
+  // Golden angle in degrees — ensures maximum separation
   const hue = (index * 137.508) % 360;
   const saturation = 65 + (index % 3) * 10; // 65-85%
   const lightness = 45 + (index % 2) * 8;   // 45-53%
@@ -4093,6 +4155,7 @@ window.BKK.getInterestColor = (interestId, allInterests) => {
 };
 
 // ============================================================================
+// Get all areas for a location (handles both .areas array and .area string)
 // ============================================================================
 window.BKK.getLocationAreas = (loc) => {
   if (loc.areas && Array.isArray(loc.areas) && loc.areas.length > 0) {
@@ -4114,23 +4177,28 @@ window.BKK.extractCoordsFromUrl = (url) => {
   let lat = null, lng = null;
   let match;
   
+  // Format 1: ?q=13.7465,100.4927
   match = url.match(/[?&]q=([-\d.]+),([-\d.]+)/);
   if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
   
+  // Format 2: @13.7465,100.4927,17z
   if (!lat) {
     match = url.match(/@([-\d.]+),([-\d.]+)/);
     if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
   }
   
+  // Format 3: &ll=13.7465,100.4927
   if (!lat) {
     match = url.match(/[?&]ll=([-\d.]+),([-\d.]+)/);
     if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
   }
   
+  // Format 4: Shortened URLs (goo.gl)
   if (!lat && (url.includes('goo.gl') || url.includes('maps.app'))) {
     return { lat: null, lng: null, shortened: true };
   }
   
+  // Format 5: Raw coordinates: 13.7465,100.4927
   if (!lat) {
     match = url.match(/^([-\d.]+)\s*,\s*([-\d.]+)$/);
     if (match) { lat = parseFloat(match[1]); lng = parseFloat(match[2]); }
@@ -4217,6 +4285,7 @@ window.BKK.reverseGeocode = async (lat, lng) => {
 };
 
 // ============================================================================
+// IMAGE HANDLING
 // ============================================================================
 
 /**
@@ -4257,6 +4326,12 @@ window.BKK.compressImage = (file, maxSizeKB = 150) => {
           compressed = canvas.toDataURL('image/jpeg', quality);
         }
         
+        console.log('[IMAGE] Compressed:', {
+          original: file.size,
+          compressed: Math.round(compressed.length / 1024),
+          quality
+        });
+        
         resolve(compressed);
       };
       img.src = e.target.result;
@@ -4272,20 +4347,24 @@ window.BKK.compressImage = (file, maxSizeKB = 150) => {
  * Falls back to base64 if Storage is not available.
  */
 window.BKK.uploadImage = async (file, cityId, locationId) => {
+  // Compress first
   const compressed = await window.BKK.compressImage(file);
   
+  // Try Firebase Storage
   if (typeof firebase !== 'undefined' && firebase.storage) {
     try {
       const storageRef = firebase.storage().ref();
       const path = `cities/${cityId}/images/${locationId}_${Date.now()}.jpg`;
       const imageRef = storageRef.child(path);
       
+      // Convert base64 to blob for upload
       const response = await fetch(compressed);
       const blob = await response.blob();
       
       const snapshot = await imageRef.put(blob, { contentType: 'image/jpeg' });
       const downloadURL = await snapshot.ref.getDownloadURL();
       
+      console.log('[STORAGE] Uploaded image:', path, 'URL:', downloadURL.substring(0, 60) + '...');
       return downloadURL;
     } catch (err) {
       console.error('[STORAGE] Upload failed, falling back to base64:', err);
@@ -4293,10 +4372,13 @@ window.BKK.uploadImage = async (file, cityId, locationId) => {
     }
   }
   
+  // Fallback: return base64
+  console.log('[STORAGE] Not available, using base64 fallback');
   return compressed;
 };
 
 // ============================================================================
+// UI HELPERS
 // ============================================================================
 
 /**
@@ -4344,6 +4426,7 @@ window.BKK.buildMapsUrl = (stops, circular = false) => {
   const validStops = stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
   if (validStops.length === 0) return '';
   
+  // Path-based format: opens in overview mode with Start button
   const points = [''];  // Empty = "Your location"
   validStops.forEach(s => points.push(`${s.lat},${s.lng}`));
   if (circular && validStops.length > 1) {
@@ -4395,6 +4478,7 @@ window.BKK.getGoogleMapsUrl = (place) => {
   const hasCoords = place.lat && place.lng;
   const addressStr = (typeof place.address === 'string') ? place.address.trim() : '';
   
+  // Validate Google Place ID — must look like a real one (starts with ChIJ, EiI, etc.)
   const isValidGooglePlaceId = (pid) => {
     if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
     if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
@@ -4402,6 +4486,7 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return false;
   };
   
+  // Top priority: stored mapsUrl — but only if valid (no Firebase key in query_place_id)
   if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)) {
     const m = place.mapsUrl.match(/query_place_id=([^&]+)/);
     const hasInvalidPid = m && !isValidGooglePlaceId(decodeURIComponent(m[1]));
@@ -4410,23 +4495,28 @@ window.BKK.getGoogleMapsUrl = (place) => {
   
   if (!hasCoords && !addressStr) return '#';
   
+  // Best: valid Google Place ID
   const pid = place.googlePlaceId || place.placeId;
   if (pid && isValidGooglePlaceId(pid)) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
   }
   
+  // Google-origin place with name + coords
   if ((place.fromGoogle || place.googlePlace) && place.name && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.lat + ',' + place.lng)}`;
   }
   
+  // Fallback: address
   if (addressStr) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
   }
   
+  // Custom place with name + coords
   if (place.name?.trim() && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
   }
   
+  // Coordinate-only custom place: just pin on map
   if (hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
   }
@@ -4434,18 +4524,33 @@ window.BKK.getGoogleMapsUrl = (place) => {
   return '#';
 };
 
+console.log('[UTILS] Loaded successfully');
+
+// Build Google Maps direction URLs, splitting into multiple if exceeding maxPoints limit
+// maxPoints = total points including origin + destination (default 12 = 10 waypoints + origin + dest)
+// Returns array of { url, fromIndex, toIndex, label } objects
 window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   maxPoints = maxPoints || 12;
   
   if (stops.length === 0) return [];
   
+  // Path-based URL format opens Google Maps in route OVERVIEW mode (not navigation)
+  // Format: google.com/maps/dir/point1/point2/.../pointN/data=!4m2!4m1!3e2
+  // data=!4m2!4m1!3e2 = walking mode (3e0=driving, 3e1=biking, 3e2=walking)
+  // Empty first segment = "Your location"
+  
   const walkingData = 'data=!4m2!4m1!3e2';
   
+  // Build ordered list of all points: origin → stops → (origin if circular)
   const buildPointsList = (stopsSlice, originCoord, circular) => {
     const points = [];
+    // Empty string = "Your location" as starting point
     points.push('');
+    // Add origin as first waypoint if it exists
     if (originCoord) points.push(originCoord);
+    // Add all stops
     stopsSlice.forEach(s => points.push(`${s.lat},${s.lng}`));
+    // For circular: return to origin
     if (circular && originCoord) points.push(originCoord);
     return points;
   };
@@ -4454,6 +4559,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     return `https://www.google.com/maps/dir/${points.join('/')}/${walkingData}`;
   };
   
+  // Check if fits in one URL (max ~10 waypoints in path format)
   const maxPathPoints = maxPoints;
   const allPoints = buildPointsList(stops, origin, isCircular);
   
@@ -4461,6 +4567,7 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     return [{ url: buildUrl(allPoints), fromIndex: 0, toIndex: stops.length - 1, part: 1, total: 1 }];
   }
   
+  // Need to split into multiple URLs
   const urls = [];
   let currentIndex = 0;
   let currentOrigin = origin;
@@ -4504,7 +4611,9 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   return urls;
 };
 
+
 // ============================================================================
+// EMOJI SUGGESTION ENGINE
 // ============================================================================
 
 /**
@@ -4516,10 +4625,13 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
 window.BKK.suggestEmojis = async function(description) {
   if (!description || !description.trim()) return ['📍', '⭐', '🏷️', '🔖', '📌', '🗂️'];
   
+  // Track previous suggestions to avoid duplicates on "more"
   const prevKey = '_lastEmojiSuggestions';
   const prev = window[prevKey] || [];
   
+  // Local keyword mapping with shuffle to get variety on "more"
   const all = window.BKK._suggestEmojisLocal(description, true);
+  // Filter out previously shown
   const fresh = all.filter(e => !prev.includes(e));
   const result = fresh.length >= 6 ? fresh.slice(0, 6) : all.sort(() => Math.random() - 0.5).slice(0, 6);
   window[prevKey] = result;
@@ -4533,6 +4645,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
   const desc = description.toLowerCase();
   
   const mapping = [
+    // Food & Drink
     { keys: ['street food','אוכל רחוב','דוכן','stand','stall','hawker','vendor'], emojis: ['🍢','🍡','🥟','🍲','🍜','🥘'] },
     { keys: ['אוכל','food','restaurant','מסעד','dining','eat','snack'], emojis: ['🍜','🍲','🥘','🍛','🍔','🍕'] },
     { keys: ['קפה','coffee','cafe','קפית'], emojis: ['☕','🫖','🍵','☕'] },
@@ -4540,25 +4653,30 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['wine','יין'], emojis: ['🍷','🥂','🍇'] },
     { keys: ['ice cream','גלידה','dessert','קינוח'], emojis: ['🍦','🧁','🍰'] },
     { keys: ['bakery','מאפ','bread','לחם'], emojis: ['🥐','🍞','🧁'] },
+    // Nature & Outdoors
     { keys: ['חוף','beach','sea','ים','ocean'], emojis: ['🏖️','🌊','🐚','☀️'] },
     { keys: ['פארק','park','garden','גן','טבע','nature'], emojis: ['🌳','🌿','🏞️','🌲'] },
     { keys: ['הר','mountain','hill','טיול','hike'], emojis: ['⛰️','🏔️','🥾'] },
     { keys: ['river','נהר','lake','אגם'], emojis: ['🏞️','💧','🚣'] },
     { keys: ['flower','פרח','botanical'], emojis: ['🌸','🌺','🌻'] },
     { keys: ['animal','חיות','zoo','גן חיות'], emojis: ['🦁','🐘','🦒'] },
+    // Culture & History
     { keys: ['מוזיאון','museum','exhibit','תערוכה'], emojis: ['🏛️','🖼️','🎨'] },
     { keys: ['היסטורי','history','historic','עתיק','ancient'], emojis: ['🏛️','📜','⏳','🏰'] },
     { keys: ['תרבות','culture','cultural'], emojis: ['🎭','🏛️','🎪'] },
     { keys: ['temple','מקדש','church','כנסי','mosque','מסגד','synagogue','בית כנסת','religion','דת','shrine','מקום קדוש'], emojis: ['⛩️','🕌','⛪','🕍','🛕','🙏'] },
     { keys: ['buddha','בודה','buddhist','buddhism','wat','pagoda','monk','נזיר'], emojis: ['🛕','🙏','☸️','🪷','📿','🧘'] },
     { keys: ['ארכיטקטורה','architecture','building','בניין'], emojis: ['🏗️','🏢','🏰'] },
+    // Arts & Entertainment
     { keys: ['אומנות','art','גלריה','gallery','street art','גרפיטי','graffiti'], emojis: ['🎨','🖼️','🖌️'] },
     { keys: ['מוזיקה','music','concert','הופעה'], emojis: ['🎵','🎶','🎸','🎤'] },
     { keys: ['תאטרון','theater','theatre','הצגה','show','performance'], emojis: ['🎭','🎪','🎬'] },
     { keys: ['cinema','סרט','movie','film'], emojis: ['🎬','🎞️','🍿'] },
     { keys: ['nightlife','לילה','club','מועדון'], emojis: ['🌃','🪩','💃','🎉'] },
+    // Shopping & Markets
     { keys: ['קניות','shopping','mall','קניון'], emojis: ['🛍️','🏬','💳'] },
     { keys: ['שוק','market','bazaar','שוק פשפשים'], emojis: ['🏪','🧺','🏬'] },
+    // Services & Public
     { keys: ['שירות','שרות','service','ציבורי','public','municipal','עירי','ממשל','government','עירייה','רשות'], emojis: ['🏛️','🏥','📋','🏢','🔧','⚖️'] },
     { keys: ['בית חולים','hospital','health','בריאות','medical','רפואי'], emojis: ['🏥','⚕️','💊'] },
     { keys: ['police','משטרה','emergency','חירום'], emojis: ['🚔','🚨','👮'] },
@@ -4566,14 +4684,17 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['transport','תחבורה','bus','אוטובוס','train','רכבת','metro'], emojis: ['🚌','🚆','🚇','🚊'] },
     { keys: ['parking','חני','חנייה'], emojis: ['🅿️','🚗','🏎️'] },
     { keys: ['toilet','שירותים','שרותים','שרותיים','wc','restroom','bathroom','נוחיות'], emojis: ['🚻','🚽','🧻','🚾'] },
+    // Sports & Activities
     { keys: ['sport','ספורט','gym','חדר כושר','fitness'], emojis: ['⚽','🏋️','🤸'] },
     { keys: ['yoga','יוגה','meditation','מדיטציה','wellness','spa'], emojis: ['🧘','💆','🧖'] },
     { keys: ['swim','שחי','pool','בריכה'], emojis: ['🏊','🤽','💦'] },
     { keys: ['bike','אופני','cycling','רכיבה'], emojis: ['🚲','🚴','🛴'] },
+    // Travel & Places
     { keys: ['hotel','מלון','hostel','אכסני','accommodation','לינה'], emojis: ['🏨','🛏️','🏩'] },
     { keys: ['airport','שדה תעופה','flight','טיסה'], emojis: ['✈️','🛫','🛬'] },
     { keys: ['viewpoint','תצפית','panorama','view','נוף'], emojis: ['🔭','👀','🏔️','📸'] },
     { keys: ['photo','צילום','camera','instagram'], emojis: ['📸','📷','🤳'] },
+    // Countries & Regions
     { keys: ['spain','ספרד','spanish'], emojis: ['🇪🇸','☀️','💃','🥘'] },
     { keys: ['thailand','תאילנד','thai'], emojis: ['🇹🇭','🛺','🍜','🐘'] },
     { keys: ['israel','ישראל'], emojis: ['🇮🇱','✡️','🕍'] },
@@ -4583,6 +4704,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['usa','america','אמריקה'], emojis: ['🇺🇸','🗽','🦅'] },
     { keys: ['uk','england','אנגלי','british','london','לונדון'], emojis: ['🇬🇧','👑','🎡'] },
     { keys: ['singapore','סינגפור'], emojis: ['🇸🇬','🦁','🌿'] },
+    // Misc
     { keys: ['massage','עיסוי','spa','ספא','thai massage'], emojis: ['💆','🧖','🙏','💆‍♂️'] },
     { keys: ['rooftop','גג','גגות','skybar'], emojis: ['🌆','🏙️','🍸','🌃'] },
     { keys: ['canal','תעלה','תעלות','boat','סירה','שייט'], emojis: ['🚤','⛵','🛶','🌊'] },
@@ -4605,12 +4727,15 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     { keys: ['celebration','חגיגה','party','מסיבה','birthday','יום הולדת'], emojis: ['🎉','🎊','🥳'] },
   ];
   
+  // Score each mapping entry - use prefix matching for Hebrew morphology
   const scored = mapping.map(entry => {
     let score = 0;
     entry.keys.forEach(key => {
+      // Exact substring match
       if (desc.includes(key)) {
         score += key.length * 2;
       } else if (key.length >= 3) {
+        // Prefix match: "ציבורי" matches "ציבוריים", "שירות" matches "שירותים"
         const keyRoot = key.substring(0, Math.max(3, Math.ceil(key.length * 0.7)));
         const descWords = desc.split(/[\s,;.]+/);
         for (const word of descWords) {
@@ -4624,6 +4749,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     return { ...entry, score };
   }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
   
+  // Collect unique emojis from top matches
   const result = [];
   const seen = new Set();
   for (const entry of scored) {
@@ -4636,6 +4762,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
     }
   }
   
+  // If not enough matches, pad with generic emojis
   const generic = ['📍','⭐','🏷️','📌','🔖','🎯'];
   for (const g of generic) {
     if (!seen.has(g)) {
@@ -4648,6 +4775,7 @@ window.BKK._suggestEmojisLocal = function(description, returnAll) {
 };
 
 // ============================================================================
+// EXIF GPS Extraction — reads GPS coordinates from photo EXIF data
 // ============================================================================
 window.BKK.extractGpsFromImage = (file) => {
   return new Promise((resolve) => {
@@ -4659,28 +4787,37 @@ window.BKK.extractGpsFromImage = (file) => {
       try {
         const buf = e.target.result;
         const view = new DataView(buf);
+        console.log('[EXIF] File size:', buf.byteLength, 'bytes');
         
+        // Check JPEG SOI marker
         if (view.getUint16(0) !== 0xFFD8) {
+          console.log('[EXIF] Not a JPEG (no SOI marker)');
           return resolve(null);
         }
         
+        // Scan for APP1 (EXIF) marker
         let offset = 2;
         let found = false;
         while (offset < view.byteLength - 4) {
           const marker = view.getUint16(offset);
           
+          // Must be a valid JPEG marker (0xFFxx)
           if ((marker & 0xFF00) !== 0xFF00) {
+            console.log('[EXIF] Invalid marker at offset', offset, ':', marker.toString(16));
             break;
           }
           
           const segLen = view.getUint16(offset + 2);
+          console.log('[EXIF] Marker:', marker.toString(16), 'at offset', offset, 'len', segLen);
           
           if (marker === 0xFFE1) { // APP1 (EXIF)
             found = true;
             const result = parseExifGps(view, offset + 4, buf.byteLength);
+            console.log('[EXIF] Parse result:', result);
             return resolve(result);
           }
           
+          // SOS marker — stop scanning
           if (marker === 0xFFDA) break;
           
           offset += 2 + segLen;
@@ -4689,6 +4826,7 @@ window.BKK.extractGpsFromImage = (file) => {
         if (!found) console.log('[EXIF] No APP1/EXIF marker found');
         resolve(null);
       } catch (err) {
+        console.warn('[EXIF] Parse error:', err.message, err.stack);
         resolve(null);
       }
     };
@@ -4698,9 +4836,11 @@ window.BKK.extractGpsFromImage = (file) => {
 };
 
 function parseExifGps(view, segStart, totalLen) {
+  // Check "Exif\0\0" header
   const e0 = view.getUint8(segStart), e1 = view.getUint8(segStart+1), e2 = view.getUint8(segStart+2), e3 = view.getUint8(segStart+3);
   const hdr = String.fromCharCode(e0, e1, e2, e3);
   if (hdr !== 'Exif') {
+    console.log('[EXIF] No Exif header, got:', hdr, `(${e0},${e1},${e2},${e3})`);
     return null;
   }
   
@@ -4709,18 +4849,23 @@ function parseExifGps(view, segStart, totalLen) {
   
   const byteOrder = view.getUint16(tiffStart);
   const littleEndian = byteOrder === 0x4949; // 'II' = Intel = little endian
+  console.log('[EXIF] Byte order:', littleEndian ? 'Little Endian (II)' : 'Big Endian (MM)');
   
   const get16 = (o) => o + 2 <= totalLen ? view.getUint16(o, littleEndian) : 0;
   const get32 = (o) => o + 4 <= totalLen ? view.getUint32(o, littleEndian) : 0;
   
+  // Verify TIFF magic 0x002A
   if (get16(tiffStart + 2) !== 0x002A) {
+    console.log('[EXIF] Bad TIFF magic:', get16(tiffStart + 2).toString(16));
     return null;
   }
   
+  // IFD0 offset
   const ifd0Offset = tiffStart + get32(tiffStart + 4);
   if (ifd0Offset + 2 > totalLen) return null;
   
   const entryCount = get16(ifd0Offset);
+  console.log('[EXIF] IFD0 entries:', entryCount, 'at offset', ifd0Offset);
   
   let gpsIfdPointer = null;
   
@@ -4731,11 +4876,13 @@ function parseExifGps(view, segStart, totalLen) {
     
     if (tag === 0x8825) { // GPSInfo IFD pointer
       gpsIfdPointer = get32(entryOff + 8);
+      console.log('[EXIF] Found GPS IFD pointer:', gpsIfdPointer);
       break;
     }
   }
   
   if (gpsIfdPointer === null) {
+    console.log('[EXIF] No GPS IFD pointer (0x8825) found in IFD0');
     return null;
   }
   
@@ -4743,6 +4890,7 @@ function parseExifGps(view, segStart, totalLen) {
   if (gpsIfdOffset + 2 > totalLen) return null;
   
   const gpsEntries = get16(gpsIfdOffset);
+  console.log('[EXIF] GPS IFD entries:', gpsEntries, 'at offset', gpsIfdOffset);
   
   const gps = {};
   
@@ -4761,9 +4909,13 @@ function parseExifGps(view, segStart, totalLen) {
     const type = get16(entryOff + 2);
     const count = get32(entryOff + 4);
     
+    // For RATIONAL (type 5) and SRATIONAL (type 10), data is always at an offset
+    // For small types (BYTE=1, ASCII=2, SHORT=3), data may be inline
     const dataOffset = (type === 5 || type === 10) 
       ? tiffStart + get32(entryOff + 8) 
       : entryOff + 8;
+    
+    console.log(`[EXIF] GPS tag: 0x${tag.toString(16)} type:${type} count:${count}`);
     
     if (tag === 1) { // GPSLatitudeRef (N/S) — type can be ASCII(2) or BYTE(1)
       gps.latRef = String.fromCharCode(view.getUint8(entryOff + 8));
@@ -4776,19 +4928,26 @@ function parseExifGps(view, segStart, totalLen) {
     }
   }
   
+  console.log('[EXIF] Parsed GPS:', JSON.stringify(gps));
+  
   if (gps.lat != null && gps.lng != null) {
     if (gps.latRef === 'S') gps.lat = -gps.lat;
     if (gps.lngRef === 'W') gps.lng = -gps.lng;
+    // Sanity check
     if (Math.abs(gps.lat) <= 90 && Math.abs(gps.lng) <= 180 && (gps.lat !== 0 || gps.lng !== 0)) {
       const result = { lat: Math.round(gps.lat * 1000000) / 1000000, lng: Math.round(gps.lng * 1000000) / 1000000 };
+      console.log('[EXIF] ✅ GPS:', result.lat, result.lng);
       return result;
     }
+    console.log('[EXIF] GPS values out of range');
   } else {
+    console.log('[EXIF] Missing lat or lng in GPS data');
   }
   return null;
 }
 
 // ============================================================================
+// Camera capture — opens camera, returns { file, dataUrl }
 // ============================================================================
 window.BKK.openCamera = () => {
   return new Promise((resolve) => {
@@ -4809,6 +4968,9 @@ window.BKK.openCamera = () => {
 };
 
 // ============================================================================
+// Compress image — resize + JPEG quality reduction via Canvas
+// Input: dataUrl (string) or File/Blob
+// Output: Promise<string> compressed dataUrl
 // ============================================================================
 window.BKK.compressImage = (input, maxWidth = 1200, quality = 0.7) => {
   return new Promise((resolve) => {
@@ -4816,6 +4978,7 @@ window.BKK.compressImage = (input, maxWidth = 1200, quality = 0.7) => {
     img.onload = () => {
       let w = img.width;
       let h = img.height;
+      // Only downscale, never upscale
       if (w > maxWidth) {
         h = Math.round(h * (maxWidth / w));
         w = maxWidth;
@@ -4829,6 +4992,7 @@ window.BKK.compressImage = (input, maxWidth = 1200, quality = 0.7) => {
       resolve(compressed);
     };
     img.onerror = () => resolve(typeof input === 'string' ? input : null);
+    // Handle both dataUrl strings and File/Blob objects
     if (typeof input === 'string') {
       img.src = input;
     } else {
@@ -4839,12 +5003,14 @@ window.BKK.compressImage = (input, maxWidth = 1200, quality = 0.7) => {
   });
 };
 
+// Compress icon to small PNG (64x64 max, preserves transparency)
 window.BKK.compressIcon = (input, maxSize = 64) => {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       let w = img.width;
       let h = img.height;
+      // Scale to fit in maxSize box
       if (w > maxSize || h > maxSize) {
         const scale = maxSize / Math.max(w, h);
         w = Math.round(w * scale);
@@ -4856,8 +5022,10 @@ window.BKK.compressIcon = (input, maxSize = 64) => {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, w, h); // transparent background
       ctx.drawImage(img, 0, 0, w, h);
+      // Try WebP first (smaller), fall back to PNG (transparency)
       let result = canvas.toDataURL('image/webp', 0.85);
       if (!result || result.length < 10 || result.startsWith('data:image/png')) {
+        // Browser doesn't support WebP, use PNG
         result = canvas.toDataURL('image/png');
       }
       resolve(result);
@@ -4874,6 +5042,7 @@ window.BKK.compressIcon = (input, maxSize = 64) => {
 };
 
 // ============================================================================
+// Save image to device — triggers download of a data URL
 // ============================================================================
 window.BKK.saveImageToDevice = (dataUrl, filename) => {
   try {
@@ -4885,27 +5054,34 @@ window.BKK.saveImageToDevice = (dataUrl, filename) => {
     document.body.removeChild(a);
     return true;
   } catch (err) {
+    console.warn('Save image error:', err);
     return false;
   }
 };
 
 // ============================================================================
+// Auto-name generation — "Graffiti Chinatown #3"
 // ============================================================================
 window.BKK.generateLocationName = (interestId, lat, lng, counters, allInterests, areaOptions) => {
+  // Get interest English label
   const interest = allInterests.find(i => i.id === interestId);
   const interestName = interest?.labelEn || interest?.label || interestId;
   
+  // Get area from coordinates
   let areaName = '';
   if (lat && lng) {
     const detectedAreas = window.BKK.getAreasForCoordinates(lat, lng);
     if (detectedAreas.length > 0) {
       const area = areaOptions.find(a => a.id === detectedAreas[0]);
       if (area) {
+        // Use English label, shorten if too long
         let aName = area.labelEn || area.label || '';
+        // Take first part before "&" or "and" if too long
         if (aName.length > 18) {
           const parts = aName.split(/\s*[&]\s*|\s+and\s+/i);
           aName = parts[0].trim();
         }
+        // Still too long? Take first 2 words
         if (aName.length > 18) {
           aName = aName.split(/\s+/).slice(0, 2).join(' ');
         }
@@ -4914,9 +5090,11 @@ window.BKK.generateLocationName = (interestId, lat, lng, counters, allInterests,
     }
   }
   
+  // Get next counter
   const currentCount = counters[interestId] || 0;
   const nextNum = currentCount + 1;
   
+  // Build name: "Graffiti Chinatown #3" or "Graffiti #4" (no area)
   const name = areaName 
     ? `${interestName} ${areaName} #${nextNum}`
     : `${interestName} #${nextNum}`;
@@ -4925,6 +5103,7 @@ window.BKK.generateLocationName = (interestId, lat, lng, counters, allInterests,
 };
 
 // ============================================================================
+// Speech-to-Text — uses Web Speech API (built-in, no libraries needed)
 // ============================================================================
 window.BKK.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -4971,10 +5150,12 @@ window.BKK.startSpeechToText = (options = {}) => {
   
   recognition.start();
   
+  // Auto-stop after max duration
   timeoutId = setTimeout(function() {
     try { recognition.stop(); } catch(e) {}
   }, maxDuration);
   
+  // Return stop function
   return function() {
     clearTimeout(timeoutId);
     try { recognition.stop(); } catch(e) {}

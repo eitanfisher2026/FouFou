@@ -5348,10 +5348,11 @@
           return 2;
         };
         // DEBUG: log slot for each stop
+        console.log('[SLOT DEBUG] searchInterests:', searchInterests);
         uniqueStops.forEach(s => {
           const slot = getSlotOrder(s);
           const interests = (s.interests || []).join(',');
-          addDebugLog('SLOT', `${s.name} → slot=${slot} interests=[${interests}] custom=${!!(s.custom||s.source==='custom')}`);
+          console.log(`[SLOT] ${s.name} → slot=${slot} interests=[${interests}]`);
         });
 
         uniqueStops.sort((a, b) => {
