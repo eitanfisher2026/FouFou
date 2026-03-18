@@ -7570,7 +7570,7 @@ const FouFouApp = () => {
               <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous'))) : (t('auth.signIn') || 'התחבר')}</span>
               {authUser && <span style={{ fontSize: '9px', marginRight: 'auto', marginLeft: '4px', padding: '1px 5px', borderRadius: '4px', background: isAdmin ? '#fef2f2' : isEditor ? '#f3e8ff' : '#f3f4f6', color: isAdmin ? '#dc2626' : isEditor ? '#7c3aed' : '#9ca3af' }}>{isAdmin ? 'Admin' : isEditor ? 'Editor' : ''}{roleOverride !== null ? ' 🎭' : ''}</span>}
             </button>
-            {isRealAdmin && (
+            {isAdmin && (
               <button
                 onClick={() => { setShowUserManagement(true); authLoadAllUsers(); setShowHeaderMenu(false); }}
                 style={{
