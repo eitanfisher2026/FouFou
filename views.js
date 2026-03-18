@@ -3954,6 +3954,10 @@
                   { key: 'favoriteLowRatingThreshold', label: t('sysParams.favoriteLowRatingThreshold'), desc: t('sysParams.favoriteLowRatingThresholdDesc'), min: 1, max: 4, step: 0.5, type: 'float' },
                   { key: 'favoriteLowRatingPenalty', label: t('sysParams.favoriteLowRatingPenalty'), desc: t('sysParams.favoriteLowRatingPenaltyDesc'), min: 0, max: 200, step: 10, type: 'int' },
                 ]},
+                { title: t('sysParams.sectionGoogleFilter') || '🔍 סינון גוגל', icon: '🔍', color: '#6366f1', params: [
+                  { key: 'googleMinRatingCount', label: t('sysParams.googleMinRatingCount') || 'מינימום דירוגים (דלג לצמיתות)', desc: t('sysParams.googleMinRatingCountDesc') || 'מקומות גוגל עם פחות מכך דירוגים — לא יובאו לעולם', min: 0, max: 200, step: 5, type: 'int' },
+                  { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
+                ]},
               ];
               const updateParam = (key, val, type) => {
                 const parsed = type === 'bool' ? !!val : type === 'float' ? parseFloat(val) : parseInt(val);

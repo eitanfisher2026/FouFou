@@ -637,6 +637,12 @@
       favoriteBonusPerStar: 5,
       favoriteLowRatingThreshold: 2.5,
       favoriteLowRatingPenalty: 60,
+
+      // Google Places rating count filters (applies only to Google results, never to saved favorites)
+      // googleMinRatingCount: places with fewer ratings than this are NEVER shown (filtered like blacklist)
+      // googleLowRatingCount: places below this get a near-zero score — included only if no better option
+      googleMinRatingCount: 20,
+      googleLowRatingCount: 60,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -3649,20 +3655,40 @@
         console.log(`[DYNAMIC] Distance filter removed ${transformed.length - distanceFiltered.length} far places`);
       }
       
-      addDebugLog('API', `✅ FINAL: ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]} → ${distanceFiltered.length} places`, {
+      // Layer 6: Rating count filter — applies only to Google results, never to saved favorites
+      // googleMinRatingCount: below this → always filtered out (too unknown)
+      // googleLowRatingCount: below this → mark as lowRatingCount=true for deprioritization in stopScore
+      const minCount = sp.googleMinRatingCount ?? 20;
+      const lowCount = sp.googleLowRatingCount ?? 60;
+      let ratingCountFiltered = 0;
+      const ratingFiltered = distanceFiltered.filter(place => {
+        const count = place.ratingCount || 0;
+        if (count < minCount) {
+          ratingCountFiltered++;
+          addDebugLog('API', `❌ TOO FEW RATINGS: ${place.name} (${count} < ${minCount})`);
+          return false;
+        }
+        // Mark low-rating-count places for deprioritization in stopScore
+        if (count < lowCount) {
+          place.lowRatingCount = true;
+        }
+        return true;
+      });
+
+      if (ratingCountFiltered > 0) {
+        addDebugLog('API', `❌ Filtered ${ratingCountFiltered} places with < ${minCount} ratings`);
+      }
+
+      addDebugLog('API', `✅ FINAL: ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]} → ${ratingFiltered.length} places`, {
         fromGoogle: data.places.length,
         afterFilters: transformed.length,
         afterDistance: distanceFiltered.length,
-        removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length },
-        finalPlaces: distanceFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})`)
-      });
-      // Readable console log of final places
-      console.log(`[API] ✅ FINAL ${distanceFiltered.length} places for ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]}:`);
-      distanceFiltered.forEach((p, i) => {
-        console.log(`  ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount}) ${p.address || ''}`);
+        afterRatingCount: ratingFiltered.length,
+        removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length, lowRatingCount: ratingCountFiltered },
+        finalPlaces: ratingFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})${p.lowRatingCount ? ' ⚠️low' : ''}`)
       });
       
-      return distanceFiltered;
+      return ratingFiltered;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
         error: error.message,
@@ -4544,7 +4570,12 @@
       // Google score: rating × log10(ratingCount+1) — reflects both quality and confidence
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
       const isCustom = s.source === 'custom' || s.custom;
-      if (!isCustom) return googleScore;
+      if (!isCustom) {
+        // Google place with low rating count → near-zero score (deprioritized, last resort)
+        // Only included if nothing better available in same interest bucket
+        if (s.lowRatingCount) return 0.01;
+        return googleScore;
+      }
       // Favorite base priority (unrated favorites get this by default)
       const base = sp.favoriteBaseScore ?? 20;
       const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');

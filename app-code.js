@@ -952,6 +952,9 @@ const FouFouApp = () => {
       favoriteBonusPerStar: 5,
       favoriteLowRatingThreshold: 2.5,
       favoriteLowRatingPenalty: 60,
+
+      googleMinRatingCount: 20,
+      googleLowRatingCount: 60,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -3661,17 +3664,36 @@ const FouFouApp = () => {
       if (distanceFiltered.length < transformed.length) {
       }
       
-      addDebugLog('API', `✅ FINAL: ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]} → ${distanceFiltered.length} places`, {
+      const minCount = sp.googleMinRatingCount ?? 20;
+      const lowCount = sp.googleLowRatingCount ?? 60;
+      let ratingCountFiltered = 0;
+      const ratingFiltered = distanceFiltered.filter(place => {
+        const count = place.ratingCount || 0;
+        if (count < minCount) {
+          ratingCountFiltered++;
+          addDebugLog('API', `❌ TOO FEW RATINGS: ${place.name} (${count} < ${minCount})`);
+          return false;
+        }
+        if (count < lowCount) {
+          place.lowRatingCount = true;
+        }
+        return true;
+      });
+
+      if (ratingCountFiltered > 0) {
+        addDebugLog('API', `❌ Filtered ${ratingCountFiltered} places with < ${minCount} ratings`);
+      }
+
+      addDebugLog('API', `✅ FINAL: ${tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0]} → ${ratingFiltered.length} places`, {
         fromGoogle: data.places.length,
         afterFilters: transformed.length,
         afterDistance: distanceFiltered.length,
-        removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length },
-        finalPlaces: distanceFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})`)
-      });
-      distanceFiltered.forEach((p, i) => {
+        afterRatingCount: ratingFiltered.length,
+        removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length, lowRatingCount: ratingCountFiltered },
+        finalPlaces: ratingFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})${p.lowRatingCount ? ' ⚠️low' : ''}`)
       });
       
-      return distanceFiltered;
+      return ratingFiltered;
     } catch (error) {
       console.error('[DYNAMIC] Error fetching Google Places:', {
         error: error.message,
@@ -4433,7 +4455,10 @@ const FouFouApp = () => {
     const stopScore = (s) => {
       const googleScore = (s.rating || 0) * Math.log10((s.ratingCount || 0) + 1);
       const isCustom = s.source === 'custom' || s.custom;
-      if (!isCustom) return googleScore;
+      if (!isCustom) {
+        if (s.lowRatingCount) return 0.01;
+        return googleScore;
+      }
       const base = sp.favoriteBaseScore ?? 20;
       const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
       const ra = reviewAverages[pk];
@@ -11150,6 +11175,10 @@ const FouFouApp = () => {
                   { key: 'favoriteLowRatingThreshold', label: t('sysParams.favoriteLowRatingThreshold'), desc: t('sysParams.favoriteLowRatingThresholdDesc'), min: 1, max: 4, step: 0.5, type: 'float' },
                   { key: 'favoriteLowRatingPenalty', label: t('sysParams.favoriteLowRatingPenalty'), desc: t('sysParams.favoriteLowRatingPenaltyDesc'), min: 0, max: 200, step: 10, type: 'int' },
                 ]},
+                { title: t('sysParams.sectionGoogleFilter') || '🔍 סינון גוגל', icon: '🔍', color: '#6366f1', params: [
+                  { key: 'googleMinRatingCount', label: t('sysParams.googleMinRatingCount') || 'מינימום דירוגים (דלג לצמיתות)', desc: t('sysParams.googleMinRatingCountDesc') || 'מקומות גוגל עם פחות מכך דירוגים — לא יובאו לעולם', min: 0, max: 200, step: 5, type: 'int' },
+                  { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
+                ]},
               ];
               const updateParam = (key, val, type) => {
                 const parsed = type === 'bool' ? !!val : type === 'float' ? parseFloat(val) : parseInt(val);
@@ -12671,7 +12700,7 @@ const FouFouApp = () => {
                   {/* Row 2: Skip + Delete (edit mode only) — editor/admin only */}
                   {showEditLocationDialog && editingLocation && (isAdmin || isEditor) && (
                     <div className="flex gap-1.5 pt-1 border-t border-gray-200">
-                      {editingLocation.status === 'blacklist' && (
+                      {editingLocation.status === 'blacklist' ? (
                         <button
                           onClick={() => {
                             toggleLocationStatus(editingLocation.id);
@@ -12681,6 +12710,17 @@ const FouFouApp = () => {
                           style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
                         >
                           ✅ {t("general.restoreActive")}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          }}
+                          style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c' }}
+                        >
+                          🚫 {t("route.skipPermanently")}
                         </button>
                       )}
                       <button

@@ -759,7 +759,7 @@
                   {/* Row 2: Skip + Delete (edit mode only) — editor/admin only */}
                   {showEditLocationDialog && editingLocation && (isAdmin || isEditor) && (
                     <div className="flex gap-1.5 pt-1 border-t border-gray-200">
-                      {editingLocation.status === 'blacklist' && (
+                      {editingLocation.status === 'blacklist' ? (
                         <button
                           onClick={() => {
                             toggleLocationStatus(editingLocation.id);
@@ -769,6 +769,17 @@
                           style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
                         >
                           ✅ {t("general.restoreActive")}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            toggleLocationStatus(editingLocation.id);
+                            setShowEditLocationDialog(false);
+                            setEditingLocation(null);
+                          }}
+                          style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c' }}
+                        >
+                          🚫 {t("route.skipPermanently")}
                         </button>
                       )}
                       <button
