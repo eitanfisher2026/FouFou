@@ -75,8 +75,15 @@
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setAuthUser(user);
       if (user) {
-        console.log('[AUTH] Signed in:', user.email || user.uid.slice(0,8) + '(anonymous)');
-        // Load or create user profile from Firebase
+        // Anonymous users: no Firebase profile. State lives in localStorage only.
+        // This prevents accumulation of empty user records in Firebase.
+        if (user.isAnonymous) {
+          setUserProfile(null);
+          setUserRole(0);
+          setAuthLoading(false);
+          return;
+        }
+        // Signed-in users: load or create Firebase profile
         try {
           const snap = await database.ref(`users/${user.uid}`).once('value');
           let profile = snap.val();
@@ -88,7 +95,6 @@
               const allUsersSnap = await database.ref('users').once('value');
               if (!allUsersSnap.val() || Object.keys(allUsersSnap.val()).length === 0) {
                 initialRole = 2; // First user ever = admin
-                console.log('[AUTH] 🎉 First user — granting admin role');
               }
             } catch (e) { /* ignore */ }
             profile = {
@@ -101,7 +107,6 @@
               lastLogin: new Date().toISOString()
             };
             await database.ref(`users/${user.uid}`).set(profile);
-            console.log('[AUTH] Created new user profile, role:', initialRole);
           } else {
             // Update last login
             database.ref(`users/${user.uid}/lastLogin`).set(new Date().toISOString());
@@ -2544,29 +2549,28 @@
     };
     
     if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
-      const userStatusRef = database.ref(`users/${userId}/interestStatus`);
+
+      // Anonymous users: load global config/defaults only — no personal Firebase data
+      const isAnon = authUser?.isAnonymous || !authUser?.uid;
+      const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
       
-      // Load config + legacy status + user overrides
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
-        userStatusRef.once('value')
+        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null)
       ]).then(([configSnap, legacySnap, userSnap]) => {
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
-        const userData = userSnap.val();
+        const userData = userSnap?.val();
         
         const defaults = computeDefaults(icfg, legacyStatus);
         
         if (userData) {
           setInterestStatus({ ...defaults, ...userData });
-          console.log('[FIREBASE] Loaded user interest status with defaultEnabled flags');
         } else {
           setInterestStatus(defaults);
-          console.log('[FIREBASE] Using defaultEnabled defaults for new user');
         }
         markLoaded('status');
       }).catch(err => {
@@ -2575,15 +2579,16 @@
         markLoaded('status');
       });
       
-      // Listen for user's own changes
-      const userStatusRef2 = database.ref(`users/${authUser?.uid || 'unknown'}/interestStatus`);
-      userStatusRef2.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          // Merge: existing defaults + user overrides
-          setInterestStatus(prev => ({ ...prev, ...data }));
-        }
-      });
+      // Listen for user's own changes — skip for anonymous
+      if (!isAnon) {
+        const userStatusRef2 = database.ref(`users/${authUser.uid}/interestStatus`);
+        userStatusRef2.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            setInterestStatus(prev => ({ ...prev, ...data }));
+          }
+        });
+      }
     } else {
       setInterestStatus(hardDefaults);
       markLoaded('status');
@@ -5990,11 +5995,10 @@
     if (isFirebaseAvailable && database) {
       const routeToUpdate = savedRoutes.find(r => r.id === routeId);
       if (routeToUpdate && routeToUpdate.firebaseId) {
+        // Update local state immediately
+        setSavedRoutes(prev => prev.map(r => r.id === routeId ? { ...r, ...updates } : r));
+        showToast(t('route.routeUpdated'), 'success');
         database.ref(`cities/${selectedCityId}/routes/${routeToUpdate.firebaseId}`).update(updates)
-          .then(() => {
-            console.log('[FIREBASE] Route updated');
-            showToast(t('route.routeUpdated'), 'success');
-          })
           .catch((error) => {
             console.error('[FIREBASE] Error updating route:', error);
             showToast(t('toast.updateError'), 'error');
@@ -6081,17 +6085,13 @@
       setFormData(prev => ({ ...prev, interests: prev.interests.filter(id => id !== interestId) }));
     }
     
-    if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
+    // Anonymous users: skip Firebase write — state is local-only
+    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
+      const userId = authUser.uid;
       database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
-        .then(() => {
-          console.log('[FIREBASE] User interest status updated:', interestId, newStatus);
-        })
         .catch(err => {
-          console.error('Error updating interest status to Firebase, saving locally:', err);
-          // Fallback: save to localStorage so change persists for anonymous/restricted users
+          console.error('Error updating interest status:', err);
         });
-    } else {
     }
   };
 
@@ -6121,22 +6121,12 @@
       interests: prev.interests.filter(id => defaults[id] !== false)
     }));
     
-    if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
-      try {
-        // Write computed defaults explicitly (not just remove)
-        await database.ref(`users/${userId}/interestStatus`).set(defaults);
-        setInterestStatus(defaults);
-        showToast(t('interests.interestsReset'), 'success');
-      } catch (err) {
-        console.error('Error resetting interest status to Firebase, falling back to localStorage:', err);
-        // Fallback: save locally so anonymous/restricted users can still reset
-        setInterestStatus(defaults);
-        showToast(t('interests.interestsReset'), 'success');
-      }
-    } else {
-      setInterestStatus(defaults);
-      showToast(t('interests.interestsReset'), 'success');
+    setInterestStatus(defaults);
+    showToast(t('interests.interestsReset'), 'success');
+    // Persist to Firebase only for authenticated (non-anonymous) users
+    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
+      database.ref(`users/${authUser.uid}/interestStatus`).set(defaults)
+        .catch(err => console.error('Error resetting interest status:', err));
     }
   };
 
@@ -6312,20 +6302,21 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (location.firebaseId) {
+        // Update local state immediately — don't wait for Firebase listener
+        setCustomLocations(prev => prev.map(l => l.id === locationId ? { ...l, status: newStatus } : l));
+        const statusText =
+          newStatus === 'blacklist' ? t('route.skipPermanently') :
+          newStatus === 'review' ? t('general.underReview') :
+          t('general.included');
+        showToast(`${location.name}: ${statusText}`, 'success');
         database.ref(`cities/${selectedCityId}/locations/${location.firebaseId}`).update({
           status: newStatus
-        })
-          .then(() => {
-            const statusText = 
-              newStatus === 'blacklist' ? t('route.skipPermanently') : 
-              newStatus === 'review' ? t('general.underReview') : 
-              t('general.included');
-            showToast(`${location.name}: ${statusText}`, 'success');
-          })
-          .catch((error) => {
-            console.error('[FIREBASE] Error updating status:', error);
-            showToast(t('toast.updateError'), 'error');
-          });
+        }).catch((error) => {
+          console.error('[FIREBASE] Error updating status:', error);
+          // Revert local state on error
+          setCustomLocations(prev => prev.map(l => l.id === locationId ? { ...l, status: location.status } : l));
+          showToast(t('toast.updateError'), 'error');
+        });
       }
     } else {
       // STATIC MODE: localStorage (local)

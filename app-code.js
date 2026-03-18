@@ -458,6 +458,12 @@ const FouFouApp = () => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setAuthUser(user);
       if (user) {
+        if (user.isAnonymous) {
+          setUserProfile(null);
+          setUserRole(0);
+          setAuthLoading(false);
+          return;
+        }
         try {
           const snap = await database.ref(`users/${user.uid}`).once('value');
           let profile = snap.val();
@@ -2679,19 +2685,20 @@ const FouFouApp = () => {
     };
     
     if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
-      const userStatusRef = database.ref(`users/${userId}/interestStatus`);
+
+      const isAnon = authUser?.isAnonymous || !authUser?.uid;
+      const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
       
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
-        userStatusRef.once('value')
+        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null)
       ]).then(([configSnap, legacySnap, userSnap]) => {
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
-        const userData = userSnap.val();
+        const userData = userSnap?.val();
         
         const defaults = computeDefaults(icfg, legacyStatus);
         
@@ -2707,13 +2714,15 @@ const FouFouApp = () => {
         markLoaded('status');
       });
       
-      const userStatusRef2 = database.ref(`users/${authUser?.uid || 'unknown'}/interestStatus`);
-      userStatusRef2.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setInterestStatus(prev => ({ ...prev, ...data }));
-        }
-      });
+      if (!isAnon) {
+        const userStatusRef2 = database.ref(`users/${authUser.uid}/interestStatus`);
+        userStatusRef2.on('value', (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            setInterestStatus(prev => ({ ...prev, ...data }));
+          }
+        });
+      }
     } else {
       setInterestStatus(hardDefaults);
       markLoaded('status');
@@ -5676,10 +5685,9 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const routeToUpdate = savedRoutes.find(r => r.id === routeId);
       if (routeToUpdate && routeToUpdate.firebaseId) {
+        setSavedRoutes(prev => prev.map(r => r.id === routeId ? { ...r, ...updates } : r));
+        showToast(t('route.routeUpdated'), 'success');
         database.ref(`cities/${selectedCityId}/routes/${routeToUpdate.firebaseId}`).update(updates)
-          .then(() => {
-            showToast(t('route.routeUpdated'), 'success');
-          })
           .catch((error) => {
             console.error('[FIREBASE] Error updating route:', error);
             showToast(t('toast.updateError'), 'error');
@@ -5752,15 +5760,12 @@ const FouFouApp = () => {
       setFormData(prev => ({ ...prev, interests: prev.interests.filter(id => id !== interestId) }));
     }
     
-    if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
+    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
+      const userId = authUser.uid;
       database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
-        .then(() => {
-        })
         .catch(err => {
-          console.error('Error updating interest status to Firebase, saving locally:', err);
+          console.error('Error updating interest status:', err);
         });
-    } else {
     }
   };
 
@@ -5785,20 +5790,11 @@ const FouFouApp = () => {
       interests: prev.interests.filter(id => defaults[id] !== false)
     }));
     
-    if (isFirebaseAvailable && database) {
-      const userId = authUser?.uid || 'unknown';
-      try {
-        await database.ref(`users/${userId}/interestStatus`).set(defaults);
-        setInterestStatus(defaults);
-        showToast(t('interests.interestsReset'), 'success');
-      } catch (err) {
-        console.error('Error resetting interest status to Firebase, falling back to localStorage:', err);
-        setInterestStatus(defaults);
-        showToast(t('interests.interestsReset'), 'success');
-      }
-    } else {
-      setInterestStatus(defaults);
-      showToast(t('interests.interestsReset'), 'success');
+    setInterestStatus(defaults);
+    showToast(t('interests.interestsReset'), 'success');
+    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
+      database.ref(`users/${authUser.uid}/interestStatus`).set(defaults)
+        .catch(err => console.error('Error resetting interest status:', err));
     }
   };
 
@@ -5948,20 +5944,19 @@ const FouFouApp = () => {
     
     if (isFirebaseAvailable && database) {
       if (location.firebaseId) {
+        setCustomLocations(prev => prev.map(l => l.id === locationId ? { ...l, status: newStatus } : l));
+        const statusText =
+          newStatus === 'blacklist' ? t('route.skipPermanently') :
+          newStatus === 'review' ? t('general.underReview') :
+          t('general.included');
+        showToast(`${location.name}: ${statusText}`, 'success');
         database.ref(`cities/${selectedCityId}/locations/${location.firebaseId}`).update({
           status: newStatus
-        })
-          .then(() => {
-            const statusText = 
-              newStatus === 'blacklist' ? t('route.skipPermanently') : 
-              newStatus === 'review' ? t('general.underReview') : 
-              t('general.included');
-            showToast(`${location.name}: ${statusText}`, 'success');
-          })
-          .catch((error) => {
-            console.error('[FIREBASE] Error updating status:', error);
-            showToast(t('toast.updateError'), 'error');
-          });
+        }).catch((error) => {
+          console.error('[FIREBASE] Error updating status:', error);
+          setCustomLocations(prev => prev.map(l => l.id === locationId ? { ...l, status: location.status } : l));
+          showToast(t('toast.updateError'), 'error');
+        });
       }
     } else {
       const updated = customLocations.map(loc => {
@@ -7538,16 +7533,11 @@ const FouFouApp = () => {
                 if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
                 return status !== false;
               }).length },
-              { icon: '⚙️', label: t('settings.title'), view: 'settings' },
+              ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
             ].map(item => (
               <button
                 key={item.view}
                 onClick={() => {
-                  if (item.view === 'settings' && !isAdmin) {
-                    showToast(t('auth.needAdmin'), 'warning');
-                    setShowHeaderMenu(false);
-                    return;
-                  }
                   setCurrentView(item.view);
                   setShowHeaderMenu(false);
                   window.scrollTo(0, 0);
@@ -13384,6 +13374,7 @@ const FouFouApp = () => {
                               if (newInterest.color) configData.color = newInterest.color;
                             }
                             if (isFirebaseAvailable && database) {
+                              setInterestConfig(prev => ({...prev, [interestId]: configData}));
                               database.ref(`settings/interestConfig/${interestId}`).set(configData);
                             } else {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
@@ -13412,10 +13403,12 @@ const FouFouApp = () => {
                             delete updatedInterest.builtIn;
                             
                             if (isFirebaseAvailable && database) {
+                              setCustomInterests(prev => prev.map(ci => ci.id === interestId ? updatedInterest : ci));
                               database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
                               if (Object.keys(searchConfig).length > 0) {
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
+                                setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
                                 database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
                               }
                             } else {
@@ -15257,8 +15250,22 @@ const FouFouApp = () => {
       {/* USER MANAGEMENT DIALOG (Admin Only) */}
       {/* ═══════════════════════════════════════════════════════════ */}
       {showUserManagement && isRealAdmin && (() => {
-        const roleLabels = ['👤 Regular', '✏️ Editor', '👑 Admin'];
         const roleColors = ['#6b7280', '#7c3aed', '#dc2626'];
+        const isAnon = (u) => !u.email && !u.name;
+        const deleteUser = async (uid, displayName) => {
+          if (!window.confirm(`מחק משתמש "${displayName}"?
+פעולה זו אינה ניתנת לביטול.`)) return;
+          try {
+            await database.ref(`users/${uid}`).remove();
+            showToast(`🗑️ "${displayName}" נמחק`, 'success');
+            authLoadAllUsers();
+          } catch (e) {
+            showToast('❌ ' + e.message, 'error');
+          }
+        };
+        const named = allUsers.filter(u => !isAnon(u));
+        const anons = allUsers.filter(u => isAnon(u));
+        const allSorted = [...named, ...anons];
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '12px' }}>
             <div className="bg-white rounded-2xl shadow-2xl w-full" style={{ maxWidth: '500px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', direction: 'ltr' }}>
@@ -15272,27 +15279,47 @@ const FouFouApp = () => {
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
                 {allUsers.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>Loading...</div>
-                ) : allUsers.filter(user => user.email || (user.name && !user.name.startsWith('user_'))).map(user => (
-                  <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderBottom: '1px solid #f3f4f6' }}>
-                    {user.photo && <img src={user.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
-                    {!user.photo && <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>👤</div>}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name || user.email || user.uid.slice(0,12)}</div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af' }}>{user.email || 'anonymous'} · {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '?'}</div>
+                ) : allSorted.map(user => {
+                  const anon = isAnon(user);
+                  const displayName = user.name || user.email || (anon ? `אנונימי · ${user.uid.slice(0,10)}` : user.uid.slice(0,12));
+                  const isSelf = user.uid === authUser?.uid;
+                  return (
+                    <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderBottom: '1px solid #f3f4f6', opacity: anon ? 0.75 : 1, background: anon ? '#fafafa' : 'white' }}>
+                      {user.photo
+                        ? <img src={user.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0 }} />
+                        : <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: anon ? '#f3f4f6' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>{anon ? '👻' : '👤'}</div>
+                      }
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: anon ? '#9ca3af' : '#111827' }}>{displayName}</div>
+                        <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                          {anon ? 'אנונימי' : (user.email || '')}
+                          {user.lastLogin ? ` · ${new Date(user.lastLogin).toLocaleDateString()}` : ''}
+                        </div>
+                      </div>
+                      {!anon && (
+                        <select value={user.role || 0}
+                          onChange={e => authUpdateUserRole(user.uid, parseInt(e.target.value))}
+                          disabled={isSelf}
+                          style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', fontWeight: 'bold', color: roleColors[user.role || 0], cursor: isSelf ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>
+                          <option value={0}>👤 Regular</option>
+                          <option value={1}>✏️ Editor</option>
+                          <option value={2}>👑 Admin</option>
+                        </select>
+                      )}
+                      {anon && <span style={{ fontSize: '10px', color: '#d1d5db', padding: '0 4px' }}>—</span>}
+                      {!isSelf && (
+                        <button
+                          onClick={() => deleteUser(user.uid, displayName)}
+                          style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}
+                          title="מחק משתמש"
+                        >🗑️</button>
+                      )}
                     </div>
-                    <select value={user.role || 0}
-                      onChange={e => authUpdateUserRole(user.uid, parseInt(e.target.value))}
-                      disabled={user.uid === authUser?.uid}
-                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', fontWeight: 'bold', color: roleColors[user.role || 0], cursor: user.uid === authUser?.uid ? 'not-allowed' : 'pointer', opacity: user.uid === authUser?.uid ? 0.5 : 1 }}>
-                      <option value={0}>👤 Regular</option>
-                      <option value={1}>✏️ Editor</option>
-                      <option value={2}>👑 Admin</option>
-                    </select>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
-                {allUsers.filter(u => u.email || (u.name && !u.name.startsWith('user_'))).length} users · You cannot change your own role
+                {named.length} רשומים · {anons.length} אנונימיים · לא ניתן לשנות תפקיד עצמי
               </div>
             </div>
           </div>

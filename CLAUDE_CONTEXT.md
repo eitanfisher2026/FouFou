@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.27` (Mar 18, 2026)
+- **גרסה:** `3.9.32` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -672,6 +672,48 @@ places.photos      <- expensive — never request automatically
 places.website     <- not used
 places.priceLevel  <- only if displaying it
 ```
+
+---
+
+## Firebase Write → Local State — Critical Rule
+
+> **This pattern causes silent UI bugs. Check it before every Firebase write.**
+
+### The Problem
+Firebase listeners (`on('value', ...)`) are async — they may take 100-500ms to reflect a write back to local state. If a user sees no immediate change after an action, they assume it failed.
+
+### The Rule
+**Every Firebase write that modifies displayed state MUST also update local React state immediately.**
+
+```js
+// WRONG — user sees no change until Firebase listener fires
+database.ref(`cities/${cityId}/locations/${id}`).update({ status: 'blacklist' });
+
+// CORRECT — optimistic update + Firebase write
+setCustomLocations(prev => prev.map(l => l.id === id ? { ...l, status: 'blacklist' } : l));
+database.ref(`cities/${cityId}/locations/${id}`).update({ status: 'blacklist' })
+  .catch(() => {
+    // Revert on error if needed
+    setCustomLocations(prev => prev.map(l => l.id === id ? { ...l, status: oldStatus } : l));
+  });
+```
+
+### State → Firebase mapping
+| State | Firebase path | Pattern |
+|-------|-------------|---------|
+| `customLocations` | `cities/{cityId}/locations/{id}` | update field → setCustomLocations map |
+| `savedRoutes` | `cities/{cityId}/routes/{id}` | update field → setSavedRoutes map |
+| `interestCounters` | `cities/{cityId}/interestCounters/{id}` | set value → setInterestCounters spread |
+| `interestConfig` | `settings/interestConfig/{id}` | set config → setInterestConfig spread |
+| `customInterests` | `customInterests/{id}` | update → setCustomInterests map |
+| `interestStatus` | `users/{uid}/interestStatus/{id}` | ✅ already updates setInterestStatus first |
+
+### Already fixed (don't regress)
+- `toggleLocationStatus` — now updates `setCustomLocations` before Firebase write
+- `updateRoute` — now updates `setSavedRoutes` before Firebase write
+- `interestCounters` (admin UI + `incrementCounters`) — now updates `setInterestCounters`
+- Custom interest edit — now updates `setCustomInterests` + `setInterestConfig`
+- Built-in interest config edit — now updates `setInterestConfig`
 
 ---
 

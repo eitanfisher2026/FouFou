@@ -281,17 +281,12 @@
                 if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
                 return status !== false;
               }).length },
-              { icon: '⚙️', label: t('settings.title'), view: 'settings' },
+              // Settings — admin only (hidden from regular users, not just blocked)
+              ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
             ].map(item => (
               <button
                 key={item.view}
                 onClick={() => {
-                  if (item.view === 'settings' && !isAdmin) {
-                    // Only admin can access settings
-                    showToast(t('auth.needAdmin'), 'warning');
-                    setShowHeaderMenu(false);
-                    return;
-                  }
                   setCurrentView(item.view);
                   setShowHeaderMenu(false);
                   window.scrollTo(0, 0);

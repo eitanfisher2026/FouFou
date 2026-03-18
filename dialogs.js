@@ -1463,6 +1463,8 @@
                               if (newInterest.color) configData.color = newInterest.color;
                             }
                             if (isFirebaseAvailable && database) {
+                              // Update local state immediately — Firebase listener may lag
+                              setInterestConfig(prev => ({...prev, [interestId]: configData}));
                               database.ref(`settings/interestConfig/${interestId}`).set(configData);
                             } else {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
@@ -1492,11 +1494,13 @@
                             delete updatedInterest.builtIn;
                             
                             if (isFirebaseAvailable && database) {
+                              // Update local state immediately — Firebase listener may lag
+                              setCustomInterests(prev => prev.map(ci => ci.id === interestId ? updatedInterest : ci));
                               database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
                               if (Object.keys(searchConfig).length > 0) {
-                                // Merge with existing config to preserve adminStatus, defaultEnabled, etc.
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
+                                setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
                                 database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
                               }
                             } else {
@@ -3363,8 +3367,22 @@
       {/* USER MANAGEMENT DIALOG (Admin Only) */}
       {/* ═══════════════════════════════════════════════════════════ */}
       {showUserManagement && isRealAdmin && (() => {
-        const roleLabels = ['👤 Regular', '✏️ Editor', '👑 Admin'];
         const roleColors = ['#6b7280', '#7c3aed', '#dc2626'];
+        const isAnon = (u) => !u.email && !u.name;
+        const deleteUser = async (uid, displayName) => {
+          if (!window.confirm(`מחק משתמש "${displayName}"?
+פעולה זו אינה ניתנת לביטול.`)) return;
+          try {
+            await database.ref(`users/${uid}`).remove();
+            showToast(`🗑️ "${displayName}" נמחק`, 'success');
+            authLoadAllUsers();
+          } catch (e) {
+            showToast('❌ ' + e.message, 'error');
+          }
+        };
+        const named = allUsers.filter(u => !isAnon(u));
+        const anons = allUsers.filter(u => isAnon(u));
+        const allSorted = [...named, ...anons];
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '12px' }}>
             <div className="bg-white rounded-2xl shadow-2xl w-full" style={{ maxWidth: '500px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', direction: 'ltr' }}>
@@ -3378,27 +3396,47 @@
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
                 {allUsers.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>Loading...</div>
-                ) : allUsers.filter(user => user.email || (user.name && !user.name.startsWith('user_'))).map(user => (
-                  <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderBottom: '1px solid #f3f4f6' }}>
-                    {user.photo && <img src={user.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
-                    {!user.photo && <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>👤</div>}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name || user.email || user.uid.slice(0,12)}</div>
-                      <div style={{ fontSize: '10px', color: '#9ca3af' }}>{user.email || 'anonymous'} · {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '?'}</div>
+                ) : allSorted.map(user => {
+                  const anon = isAnon(user);
+                  const displayName = user.name || user.email || (anon ? `אנונימי · ${user.uid.slice(0,10)}` : user.uid.slice(0,12));
+                  const isSelf = user.uid === authUser?.uid;
+                  return (
+                    <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', borderBottom: '1px solid #f3f4f6', opacity: anon ? 0.75 : 1, background: anon ? '#fafafa' : 'white' }}>
+                      {user.photo
+                        ? <img src={user.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0 }} />
+                        : <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: anon ? '#f3f4f6' : '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>{anon ? '👻' : '👤'}</div>
+                      }
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: anon ? '#9ca3af' : '#111827' }}>{displayName}</div>
+                        <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                          {anon ? 'אנונימי' : (user.email || '')}
+                          {user.lastLogin ? ` · ${new Date(user.lastLogin).toLocaleDateString()}` : ''}
+                        </div>
+                      </div>
+                      {!anon && (
+                        <select value={user.role || 0}
+                          onChange={e => authUpdateUserRole(user.uid, parseInt(e.target.value))}
+                          disabled={isSelf}
+                          style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', fontWeight: 'bold', color: roleColors[user.role || 0], cursor: isSelf ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>
+                          <option value={0}>👤 Regular</option>
+                          <option value={1}>✏️ Editor</option>
+                          <option value={2}>👑 Admin</option>
+                        </select>
+                      )}
+                      {anon && <span style={{ fontSize: '10px', color: '#d1d5db', padding: '0 4px' }}>—</span>}
+                      {!isSelf && (
+                        <button
+                          onClick={() => deleteUser(user.uid, displayName)}
+                          style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}
+                          title="מחק משתמש"
+                        >🗑️</button>
+                      )}
                     </div>
-                    <select value={user.role || 0}
-                      onChange={e => authUpdateUserRole(user.uid, parseInt(e.target.value))}
-                      disabled={user.uid === authUser?.uid}
-                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', fontWeight: 'bold', color: roleColors[user.role || 0], cursor: user.uid === authUser?.uid ? 'not-allowed' : 'pointer', opacity: user.uid === authUser?.uid ? 0.5 : 1 }}>
-                      <option value={0}>👤 Regular</option>
-                      <option value={1}>✏️ Editor</option>
-                      <option value={2}>👑 Admin</option>
-                    </select>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
-                {allUsers.filter(u => u.email || (u.name && !u.name.startsWith('user_'))).length} users · You cannot change your own role
+                {named.length} רשומים · {anons.length} אנונימיים · לא ניתן לשנות תפקיד עצמי
               </div>
             </div>
           </div>
