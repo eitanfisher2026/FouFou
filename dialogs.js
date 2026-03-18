@@ -5,7 +5,7 @@
           const icon = interest?.icon?.startsWith?.('data:') ? '📍' : (interest?.icon || '📍');
           const isFromGoogle = !!pendingGooglePlace; // came from addGooglePlaceToCustom
           return (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4" style={{ zIndex: 10200 }}>
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4" style={{ zIndex: 10400 }}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '400px', width: '100%', padding: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
               {/* Header */}
               <div style={{ textAlign: 'center', marginBottom: '16px' }}>

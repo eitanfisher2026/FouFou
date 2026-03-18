@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.24` (Mar 18, 2026)
+- **גרסה:** `3.9.25` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,15 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.25 — Dedup dialog hidden + capture interests logic
+- `dialogs.js`: dedup confirm dialog zIndex raised from 10200 → 10400 (was hidden behind QuickCapture at 10300)
+- `views.js`: capture interest priority logic (both FAB and active trail button):
+  1. `lastCaptureInterestsRef` — user's manual selection this session (highest priority)
+  2. `activeTrail.interests` — current trail interests (if in trail)
+  3. `formData.interests` — wizard selections (fallback)
+  Empty on session start only when none of the above exist
+- `app-logic.js`: `startActiveTrail` resets `lastCaptureInterestsRef` → next capture after new trail starts fresh from trail interests
 
 ### v3.9.24 — QuickCapture: auto-name not generated + counter duplicate fix
 **Bug 1:** Opening capture dialog second time with pre-selected interest (from lastCaptureInterestsRef) — no name generated because handleInterestToggle never fires.

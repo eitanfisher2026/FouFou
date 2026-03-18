@@ -7020,6 +7020,8 @@
       circular: routeType === 'circular',
       startedAt: Date.now()
     };
+    // Reset capture interests on new trail — next capture starts from trail interests, not previous session
+    lastCaptureInterestsRef.current = [];
     setActiveTrail(trail);
     localStorage.setItem('foufou_active_trail', JSON.stringify(trail));
   };

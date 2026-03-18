@@ -391,11 +391,17 @@
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
+                // Interest priority: user's manual selection this session > trail interests > wizard selection
+                const defaultInterestsTrail = lastCaptureInterestsRef.current.length > 0
+                  ? lastCaptureInterestsRef.current
+                  : activeTrail.interests?.length > 0
+                    ? activeTrail.interests.slice(0, 2)
+                    : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
                 const initLocation = {
                   name: '', description: '', notes: '',
                   area: activeTrail.area || formData.area,
                   areas: activeTrail.area ? [activeTrail.area] : [formData.area],
-                  interests: lastCaptureInterestsRef.current,
+                  interests: defaultInterestsTrail,
                   lat: null, lng: null, mapsUrl: '', address: '',
                   uploadedImage: null, imageUrls: [],
                   nearestStop: null, gpsLoading: true
@@ -1045,11 +1051,17 @@
           };
           const openCapture = () => {
             if (fabDragRef.current.moved) return;
+            // Interest priority: user's manual selection this session > trail interests > wizard selection
+            const defaultInterests = lastCaptureInterestsRef.current.length > 0
+              ? lastCaptureInterestsRef.current
+              : activeTrail?.interests?.length > 0
+                ? activeTrail.interests.slice(0, 2)
+                : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
             const initLocation = {
               name: '', description: '', notes: '',
               area: formData.area || 'chinatown',
               areas: formData.areas?.length > 0 ? formData.areas : [formData.area || 'chinatown'],
-              interests: lastCaptureInterestsRef.current,
+              interests: defaultInterests,
               lat: null, lng: null, mapsUrl: '', address: '',
               uploadedImage: null, imageUrls: [], gpsLoading: true
             };
