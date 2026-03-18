@@ -3303,7 +3303,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours,places.businessStatus'
           },
           body: JSON.stringify({
             textQuery: searchQuery,
@@ -3353,7 +3353,7 @@
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours,places.businessStatus'
           },
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
@@ -3398,7 +3398,7 @@
                 headers: {
                   'Content-Type': 'application/json',
                   'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-                  'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours'
+                  'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours,places.businessStatus'
                 },
                 body: JSON.stringify({
                   includedTypes: [singleType],
@@ -3459,6 +3459,7 @@
                 googlePlaceId: place.id || null,
                 openNow: openingHours?.openNow ?? null,
                 todayHours: hoursOnly || '',
+                businessStatus: place.businessStatus || 'OPERATIONAL',
                 custom: false
               };
             }).filter(place => place.lat !== 0 && place.lng !== 0);
@@ -3521,6 +3522,15 @@
             primaryType: place.primaryType || '-'
           };
           
+          // Filter 0: Business status — filter out permanently or temporarily closed places
+          const bStatus = place.businessStatus;
+          if (bStatus === 'CLOSED_PERMANENTLY' || bStatus === 'CLOSED_TEMPORARILY') {
+            debugEntry.status = '❌ CLOSED';
+            debugEntry.reason = bStatus;
+            debugPlaceResults.push(debugEntry);
+            return false;
+          }
+
           // Filter 1: Blacklist check - filter out places with blacklisted words in name OR types
           if (blacklistWords.length > 0) {
             const placeTypes = (place.types || []).concat(place.primaryType ? [place.primaryType] : []).map(t => t.toLowerCase().replace(/_/g, ' '));
@@ -3592,6 +3602,7 @@
             address: place.formattedAddress || '',
             openNow: openingHours?.openNow ?? null,
             todayHours: hoursOnly || '',
+            businessStatus: place.businessStatus || 'OPERATIONAL',
             interests: interests,
             _debug: {
               source: 'google',
