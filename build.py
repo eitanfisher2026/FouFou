@@ -143,5 +143,44 @@ def build():
     total_kb = data_kb + code_kb + html_kb
     print(f"✅ Total: {total_kb:.0f}KB (index.html {html_kb:.1f}KB + app-data.js {data_kb:.0f}KB + app-code.js {code_kb:.0f}KB)")
 
+def test_maps_url_sanitize():
+    import re
+    broken_patterns = ['maps.app.goo.gl/', 'goo.gl/', 'app.goo.gl']
+    def is_broken(url):
+        if not url: return False
+        for p in broken_patterns:
+            if p in url: return True
+        if 'google.com/maps' not in url: return True
+        m = re.search(r'query_place_id=([^&]+)', url)
+        if m:
+            pid = m.group(1)
+            if pid and not re.match(r'^(ChIJ|EiI|GhIJ)', pid): return True
+        return False
+
+    must_break = [
+        'https://maps.app.goo.gl/7uy33NJtWPWEDnVT7',
+        'https://goo.gl/maps/abc123',
+        'https://app.goo.gl/xyz',
+        'https://www.google.com/maps/search/?api=1&query=test&query_place_id=BADKEY123',
+        'https://someothersite.com/maps',
+    ]
+    must_pass = [
+        'https://www.google.com/maps/search/?api=1&query=test&query_place_id=ChIJabc123',
+        'https://www.google.com/maps/search/?api=1&query=Bangkok&query_place_id=EiIabc',
+        'https://www.google.com/maps/@13.73,100.52,15z',
+    ]
+    errors = []
+    for url in must_break:
+        if not is_broken(url): errors.append(f'MISSED broken URL: {url}')
+    for url in must_pass:
+        if is_broken(url): errors.append(f'FALSE positive on valid URL: {url}')
+    if errors:
+        print('\n❌ test_maps_url_sanitize FAILED:')
+        for e in errors: print(f'  {e}')
+        raise SystemExit(1)
+    print('✅ test_maps_url_sanitize passed')
+
+
 if __name__ == '__main__':
+    test_maps_url_sanitize()
     build()

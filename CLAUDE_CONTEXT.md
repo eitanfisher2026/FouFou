@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.40` (Mar 18, 2026)
+- **גרסה:** `3.9.41` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -672,6 +672,45 @@ places.photos      <- expensive — never request automatically
 places.website     <- not used
 places.priceLevel  <- only if displaying it
 ```
+
+---
+
+## mapsUrl — Critical Rule: Never Save Broken URLs
+
+> **This bug has appeared twice. The fix is permanent — do not regress it.**
+
+### Broken URL types (NEVER save these to Firebase)
+- `maps.app.goo.gl/*` — short/redirect URL, CORS-blocked, breaks on mobile
+- `goo.gl/*` — short URL, same problem
+- Any URL that does NOT contain `google.com/maps`
+- `google.com/maps/...?query_place_id=XYZ` where XYZ does NOT start with `ChIJ`, `EiI`, or `GhIJ`
+
+### The three protection layers (all must stay in sync)
+
+**Layer 1: `isBrokenMapsUrl(url)` in `app-logic.js`**
+Shared helper used by `sanitizeMapsUrl`. Detects all broken types above.
+
+**Layer 2: `sanitizeMapsUrl(loc)` in `app-logic.js`**
+Called before EVERY Firebase write of a location. If `isBrokenMapsUrl` → clears mapsUrl and rebuilds via `getGoogleMapsUrl`.
+
+**Layer 3: `getGoogleMapsUrl(place)` in `utils.js`**
+Has its own `isBrokenUrl` check. If stored `mapsUrl` is broken → ignores it and builds from `googlePlaceId` / `name+coords` / `coords`.
+
+**Layer 4: Repair useEffect in `app-logic.js`**
+Runs on load. Finds broken URLs in existing Firebase data and queues them for repair.
+- coord-only places with broken URL → cleared to ''
+- places with name/placeId → rebuilt from canonical fields
+
+### What NOT to do
+- Do NOT save `loc.mapsUrl` to Firebase directly — always call `sanitizeMapsUrl(loc)` first
+- Do NOT return `place.mapsUrl` in `getGoogleMapsUrl` without checking `isBrokenUrl`
+- Do NOT skip repair for places just because they are "coord-only" — they may still have a broken URL stored
+
+### Places with no URL (coord-only favorites like graffiti/food stalls)
+These are valid. `getGoogleMapsUrl` returns `?q=lat,lng` for them. Never "fix" them by adding a search URL.
+
+### build.py validation
+`build.py` runs `test_maps_url_sanitize()` on every build. If it fails, the zip is not created.
 
 ---
 

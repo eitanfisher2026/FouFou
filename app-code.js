@@ -2372,17 +2372,24 @@ const FouFouApp = () => {
       const isCoordOnly = !hasValidPlaceId && !loc.address;
       const currentUrl = loc.mapsUrl || '';
       
-      if (isCoordOnly && currentUrl && currentUrl.includes('query=') && !currentUrl.match(/query=\d+\.\d+,\d+\.\d+/)) {
-        updates.push({ firebaseId: loc.firebaseId, name: loc.name, oldUrl: currentUrl, newUrl: '' });
-        return;
+      const isBroken = currentUrl && (
+        currentUrl.includes('maps.app.goo.gl') ||
+        currentUrl.includes('goo.gl/') ||
+        currentUrl.includes('app.goo.gl') ||
+        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0 && currentUrl !== '#')
+      );
+
+      if (isCoordOnly) {
+        if (isBroken || (currentUrl && currentUrl.includes('query=') && !currentUrl.match(/query=\d+\.\d+,\d+\.\d+/))) {
+          updates.push({ firebaseId: loc.firebaseId, name: loc.name, oldUrl: currentUrl, newUrl: '' });
+        }
+        return; // coord-only: no further processing
       }
-      
-      if (isCoordOnly) return;
-      
-      const needsFix = !currentUrl || 
-        currentUrl === '#' || 
+
+      const needsFix = !currentUrl ||
+        currentUrl === '#' ||
         coordsOnlyPattern.test(currentUrl) ||
-        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0);
+        isBroken;
       
       if (!needsFix) return;
       
@@ -5894,19 +5901,23 @@ const FouFouApp = () => {
     return false;
   };
 
-  const sanitizeMapsUrl = (loc) => {
-    const url = loc.mapsUrl || '';
-    if (!url) return loc;
+  const isBrokenMapsUrl = (url) => {
+    if (!url) return false;
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/') || url.includes('app.goo.gl')) return true;
+    if (!url.includes('google.com/maps')) return true;
     const m = url.match(/query_place_id=([^&]+)/);
     if (m) {
       const pid = decodeURIComponent(m[1]);
-      const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
-      if (!isValidPid) {
-        const clean = { ...loc, mapsUrl: '' };
-        return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
-      }
+      if (pid && !/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
     }
-    return loc;
+    return false;
+  };
+
+  const sanitizeMapsUrl = (loc) => {
+    const url = loc.mapsUrl || '';
+    if (!isBrokenMapsUrl(url)) return loc;
+    const clean = { ...loc, mapsUrl: '' };
+    return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
   };
 
   const locationHasChanges = () => {

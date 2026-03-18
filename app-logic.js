@@ -2192,19 +2192,26 @@
       const isCoordOnly = !hasValidPlaceId && !loc.address;
       const currentUrl = loc.mapsUrl || '';
       
-      // Coordinate-only places: CLEAR bad search URLs (they show global results)
-      if (isCoordOnly && currentUrl && currentUrl.includes('query=') && !currentUrl.match(/query=\d+\.\d+,\d+\.\d+/)) {
-        updates.push({ firebaseId: loc.firebaseId, name: loc.name, oldUrl: currentUrl, newUrl: '' });
-        return;
+      // For ALL places: if URL is broken/shortened → always fix (or clear for coord-only)
+      const isBroken = currentUrl && (
+        currentUrl.includes('maps.app.goo.gl') ||
+        currentUrl.includes('goo.gl/') ||
+        currentUrl.includes('app.goo.gl') ||
+        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0 && currentUrl !== '#')
+      );
+
+      if (isCoordOnly) {
+        // Coord-only places: clear broken URLs (can't build better), keep coord-only URLs
+        if (isBroken || (currentUrl && currentUrl.includes('query=') && !currentUrl.match(/query=\d+\.\d+,\d+\.\d+/))) {
+          updates.push({ firebaseId: loc.firebaseId, name: loc.name, oldUrl: currentUrl, newUrl: '' });
+        }
+        return; // coord-only: no further processing
       }
-      
-      // Skip coordinate-only places — no Google identity to generate URL for
-      if (isCoordOnly) return;
-      
-      const needsFix = !currentUrl || 
-        currentUrl === '#' || 
+
+      const needsFix = !currentUrl ||
+        currentUrl === '#' ||
         coordsOnlyPattern.test(currentUrl) ||
-        (!currentUrl.includes('google.com/maps') && currentUrl.length > 0);
+        isBroken;
       
       if (!needsFix) return;
       
@@ -6243,22 +6250,31 @@
     return false;
   };
 
-  // Sanitize mapsUrl before saving — never save a URL with an invalid query_place_id
-  const sanitizeMapsUrl = (loc) => {
-    const url = loc.mapsUrl || '';
-    if (!url) return loc;
-    // If mapsUrl has query_place_id — validate it
+  // Sanitize mapsUrl before saving.
+  // RULE: Never save shortened URLs (maps.app.goo.gl, goo.gl) — they break on mobile.
+  // Never save non-google.com/maps URLs. Always rebuild from canonical fields.
+  // This function is the SINGLE gate for all mapsUrl writes.
+  const isBrokenMapsUrl = (url) => {
+    if (!url) return false;
+    // Short / redirect URLs — can't be resolved client-side due to CORS
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/') || url.includes('app.goo.gl')) return true;
+    // Not a real google.com/maps URL
+    if (!url.includes('google.com/maps')) return true;
+    // Bad query_place_id
     const m = url.match(/query_place_id=([^&]+)/);
     if (m) {
       const pid = decodeURIComponent(m[1]);
-      const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
-      if (!isValidPid) {
-        // Bad query_place_id — rebuild from canonical fields (without mapsUrl)
-        const clean = { ...loc, mapsUrl: '' };
-        return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
-      }
+      if (pid && !/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
     }
-    return loc;
+    return false;
+  };
+
+  const sanitizeMapsUrl = (loc) => {
+    const url = loc.mapsUrl || '';
+    if (!isBrokenMapsUrl(url)) return loc;
+    // Rebuild from canonical fields — clear mapsUrl first so getGoogleMapsUrl uses placeId/name/coords
+    const clean = { ...loc, mapsUrl: '' };
+    return { ...loc, mapsUrl: window.BKK.getGoogleMapsUrl(clean) };
   };
 
   // Check if edit dialog has unsaved changes vs original

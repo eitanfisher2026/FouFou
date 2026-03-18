@@ -487,11 +487,19 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return false;
   };
   
-  // Top priority: stored mapsUrl — but only if valid (no Firebase key in query_place_id)
-  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)) {
-    const m = place.mapsUrl.match(/query_place_id=([^&]+)/);
-    const hasInvalidPid = m && !isValidGooglePlaceId(decodeURIComponent(m[1]));
-    if (!hasInvalidPid) return place.mapsUrl;
+  // Helper: detect broken/shortened URLs that should never be used
+  const isBrokenUrl = (url) => {
+    if (!url) return false;
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/') || url.includes('app.goo.gl')) return true;
+    if (!url.includes('google.com/maps')) return true;
+    const m = url.match(/query_place_id=([^&]+)/);
+    if (m && !isValidGooglePlaceId(decodeURIComponent(m[1]))) return true;
+    return false;
+  };
+
+  // Top priority: stored mapsUrl — but only if it's a valid, stable google.com/maps URL
+  if (place.mapsUrl && !isBrokenUrl(place.mapsUrl) && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)) {
+    return place.mapsUrl;
   }
   
   if (!hasCoords && !addressStr) return '#';
