@@ -7697,7 +7697,6 @@ const FouFouApp = () => {
                 const hasAudio = !!hintAudioUrls['hint_trail_' + lang];
                 const s = getHelpSection('activeTrail');
                 const txt = (s && s.content && s.content.trim()) || '';
-                if (!txt && !isAdmin) return null;
                 return (
                   <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flexShrink: 0 }}>
                     {isAdmin && (
@@ -7901,9 +7900,11 @@ const FouFouApp = () => {
                 window.scrollTo(0, 0);
               }}
               style={{
-                width: '100%', marginTop: '8px', padding: '10px',
-                background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '12px',
-                fontSize: '12px', fontWeight: 'bold', color: '#0284c7', cursor: 'pointer'
+                width: '100%', marginTop: '8px', padding: '12px',
+                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white',
+                border: 'none', borderRadius: '12px',
+                fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(2,132,199,0.3)'
               }}
             >
               {`🔄 ${t('trail.newTrail')}`}
@@ -8951,14 +8952,7 @@ const FouFouApp = () => {
                     );
                   })()}
 
-                  {/* Time-of-day: auto-detected, no UI toggle needed */}
-
-                  {/* Hint text */}
-                  {route?.optimized && (
-                    <p style={{ fontSize: '10px', color: '#6b7280', textAlign: 'center', marginTop: '4px', marginBottom: '2px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
-                      {t("route.routeActionsHint")}
-                    </p>
-                  )}
+                  {/* routeActionsHint removed — redundant, clutters UI */}
 
                   </div>
                 </div>
@@ -11305,7 +11299,7 @@ const FouFouApp = () => {
                 if (navigator.share) { navigator.share(shareData).catch(() => {}); }
                 else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
               }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}
+              style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', padding: '4px 10px' }}
             >{`📤 ${t("general.share")}`}</button>
             <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
             <span 
