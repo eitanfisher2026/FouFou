@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.25` (Mar 18, 2026)
+- **גרסה:** `3.9.27` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,12 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.26 — Image lost when dedup dialog appears in QuickCapture
+**Bug:** Gallery image not saved when dedup dialog appeared after capture.
+**Root cause:** `handleDedupConfirm` action 'addNew' called `addCustomLocation(closeAfter)` without overrideData — fell back to stale `newLocation` which had no image.
+**Fix:** `setDedupConfirm` now includes `overrideData` field. `handleDedupConfirm` addNew branch uses `dedupConfirm.overrideData` when available.
+**RULE:** Any path that calls `addCustomLocation` after a dedup check must carry `overrideData` through — never assume `newLocation` is current.
 
 ### v3.9.25 — Dedup dialog hidden + capture interests logic
 - `dialogs.js`: dedup confirm dialog zIndex raised from 10200 → 10400 (was hidden behind QuickCapture at 10300)

@@ -1335,6 +1335,8 @@
                     const val = (interestCounters[editingCustomInterest.id] || 0) + 1;
                     const update = (v) => {
                       const newCounter = Math.max(0, v - 1);
+                      // Update local state immediately so UI responds — Firebase listener may lag
+                      setInterestCounters(prev => ({ ...prev, [editingCustomInterest.id]: newCounter }));
                       if (isFirebaseAvailable && database) {
                         database.ref(`cities/${selectedCityId}/interestCounters/${editingCustomInterest.id}`).set(newCounter);
                       }

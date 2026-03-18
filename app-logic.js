@@ -7055,13 +7055,13 @@
       
       if (matches && matches.custom.length > 0) {
         const dup = matches.custom[0];
-        setDedupConfirm({ type: 'custom', loc, match: dup, closeAfter, closeQuickCapture });
+        setDedupConfirm({ type: 'custom', loc, match: dup, closeAfter, closeQuickCapture, overrideData });
         return;
       }
       
       if (matches && matches.google.length > 0) {
         const best = matches.google.sort((a, b) => a._distance - b._distance || (b.rating - a.rating))[0];
-        setDedupConfirm({ type: 'google', loc, match: best, closeAfter, closeQuickCapture });
+        setDedupConfirm({ type: 'google', loc, match: best, closeAfter, closeQuickCapture, overrideData });
         return;
       }
     } catch (e) {
@@ -7162,7 +7162,8 @@
         // Came from addGooglePlaceToCustom — force-add bypassing dedup check
         addGooglePlaceToCustom(dedupConfirm.pendingGooglePlace, true);
       } else {
-        addCustomLocation(closeAfter);
+        // Use overrideData if available (e.g. from QuickCapture where state may be stale)
+        addCustomLocation(closeAfter, dedupConfirm.overrideData || null);
         showToast('✅ ' + t('trail.saved'), 'success');
       }
     }
