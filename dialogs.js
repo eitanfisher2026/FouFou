@@ -456,19 +456,10 @@
                             if (!file) return;
                             const reader = new FileReader();
                             reader.onload = async () => {
+                              // Gallery upload: DO NOT extract EXIF GPS.
+                              // Android/iOS strip GPS from images when saved to gallery — always returns 0,0.
                               const compressed = await window.BKK.compressImage(reader.result);
                               setNewLocation(prev => ({...prev, uploadedImage: compressed}));
-                              const gps = await window.BKK.extractGpsFromImage(file);
-                              if (gps && (!newLocation.lat || !newLocation.lng)) {
-                                const updates = { uploadedImage: compressed, lat: gps.lat, lng: gps.lng };
-                                const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
-                                if (detected.length > 0) {
-                                  updates.areas = detected;
-                                  updates.area = detected[0];
-                                }
-                                setNewLocation(prev => ({...prev, ...updates}));
-                                showToast('📍 ' + t('general.gpsExtracted'), 'success');
-                              }
                             };
                             reader.readAsDataURL(file);
                           }}
@@ -2987,233 +2978,79 @@
           />
         )}
 
-        {/* ===== QUICK CAPTURE DIALOG (Light) ===== */}
+        {/* ===== CAPTURE NOW DIALOG — uses QuickAddPlaceDialog in captureMode ===== */}
         {showQuickCapture && (
-          <div className="fixed inset-0 bg-white z-50 flex flex-col" style={{ overflow: 'auto' }}>
-              {/* Header */}
-              <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ color: 'white', fontWeight: 'bold', fontSize: '16px' }}>📸 {t('trail.capturePlace')}</span>
-                <button onClick={() => setShowQuickCapture(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
-              </div>
-
-              <div style={{ padding: '12px 16px', flex: 1 }}>
-                {/* Nearest stop indicator */}
-                {newLocation.gpsLoading && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>
-                    📍 {t('trail.detectingLocation')}...
-                  </div>
-                )}
-                {newLocation.nearestStop && !newLocation.gpsLoading && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {String.fromCharCode(65 + newLocation.nearestStop.idx)}
-                    </span>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t('trail.nearStop')} <b>{newLocation.nearestStop.name}</b>
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>
-                      {newLocation.nearestStop.dist < 1000 ? `${newLocation.nearestStop.dist}m` : `${(newLocation.nearestStop.dist/1000).toFixed(1)}km`}
-                    </span>
-                  </div>
-                )}
-                {!newLocation.nearestStop && !newLocation.gpsLoading && newLocation.lat && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#16a34a', textAlign: 'center' }}>
-                    📍 GPS ✓
-                  </div>
-                )}
-                {newLocation.gpsBlocked && (
-                  <div style={{ padding: '6px 10px', background: '#fef3c7', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#92400e', textAlign: 'center' }}>
-                    📍 {t('trail.gpsBlocked')}
-                  </div>
-                )}
-                {newLocation.uploadedImage ? (
-                  <div style={{ position: 'relative', marginBottom: '10px' }}>
-                    <img src={newLocation.uploadedImage} alt="" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '12px' }} />
-                    <button
-                      onClick={() => setNewLocation(prev => ({...prev, uploadedImage: null, lat: null, lng: null}))}
-                      style={{ position: 'absolute', top: '6px', right: '6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer' }}
-                    >✕</button>
-                    {newLocation.lat && newLocation.lng && (
-                      <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.7)', color: '#22c55e', padding: '2px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }}>
-                        📍 GPS ✓
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      const result = await window.BKK.openCamera();
-                      if (!result) return;
-                      const compressed = await window.BKK.compressImage(result.dataUrl);
-                      const updates = { uploadedImage: compressed };
-                      const gps = await window.BKK.extractGpsFromImage(result.file);
-                      if (gps && gps.lat !== 0 && gps.lng !== 0) {
-                        updates.lat = gps.lat;
-                        updates.lng = gps.lng;
-                        const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
-                        if (detected.length > 0) { updates.areas = detected; updates.area = detected[0]; }
-                      }
-                      setNewLocation(prev => ({...prev, ...updates}));
-                      window.BKK.saveImageToDevice(result.dataUrl, `foufou_quick_${Date.now()}.jpg`);
-                    }}
-                    style={{ width: '100%', padding: '24px', border: '2px dashed #22c55e', borderRadius: '12px', background: '#f0fdf4', cursor: 'pointer', textAlign: 'center', marginBottom: '10px' }}
-                  >
-                    <span style={{ fontSize: '40px', display: 'block' }}>📸</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#16a34a' }}>{t('general.takePhoto')}</span>
-                  </button>
-                )}
-
-                {/* Optional description — right after photo */}
-                <div style={{ marginBottom: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={newLocation.description || ''}
-                    onChange={(e) => setNewLocation(prev => ({...prev, description: e.target.value}))}
-                    placeholder={`📝 ${t("places.description")} (${t("general.optional")})`}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '16px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                  />
-                  {window.BKK.speechSupported && (
-                    <button
-                      onClick={() => {
-                        if (isRecording) {
-                          // Stop recording
-                          if (stopRecordingRef.current) stopRecordingRef.current();
-                          stopRecordingRef.current = null;
-                          setIsRecording(false);
-                        } else {
-                          // Start recording
-                          setIsRecording(true);
-                          const stop = window.BKK.startSpeechToText({
-                            maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                            onResult: (text, isFinal) => {
-                              setNewLocation(prev => ({...prev, description: text}));
-                            },
-                            onEnd: (finalText) => {
-                              setIsRecording(false);
-                              stopRecordingRef.current = null;
-                            },
-                            onError: (error) => {
-                              setIsRecording(false);
-                              stopRecordingRef.current = null;
-                              if (error === 'not-allowed') {
-                                showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
-                              }
-                            }
-                          });
-                          stopRecordingRef.current = stop;
-                        }
-                      }}
-                      style={{
-                        width: '40px', height: '40px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                        background: isRecording ? '#ef4444' : '#f3f4f6',
-                        color: isRecording ? 'white' : '#6b7280',
-                        fontSize: '18px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
-                        boxShadow: isRecording ? '0 0 0 4px rgba(239,68,68,0.3)' : 'none'
-                      }}
-                      title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
-                    >
-                      {isRecording ? '⏹️' : '🎤'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Interest Selection — pick one */}
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>{t('trail.whatDidYouSee')}</div>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {allInterestOptions.filter(option => {
-                      if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
-                      const aStatus = option.adminStatus || (interestConfig[option.id]?.adminStatus) || 'active';
-                      if (aStatus === 'hidden') return false;
-                      if (aStatus === 'draft' && !isUnlocked) return false;
-                      return interestStatus[option.id] !== false;
-                    }).map(option => (
-                      <button
-                        key={option.id}
-                        onClick={() => {
-                          const updates = { ...newLocation, interests: [option.id] };
-                          const result = window.BKK.generateLocationName(
-                            option.id, newLocation.lat, newLocation.lng,
-                            interestCounters, allInterestOptions, areaOptions
-                          );
-                          if (result.name) updates.name = result.name;
-                          setNewLocation(updates);
-                          // Remember last interest for next quick capture
-                          if (activeTrail) {
-                            const updatedTrail = { ...activeTrail, lastInterest: option.id };
-                            setActiveTrail(updatedTrail);
-                            localStorage.setItem('foufou_active_trail', JSON.stringify(updatedTrail));
-                          }
-                        }}
-                        className={`p-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                          (newLocation.interests || []).includes(option.id)
-                            ? 'bg-green-500 text-white shadow-md'
-                            : 'bg-white border border-gray-300'
-                        }`}
-                      >
-                        <span className="text-lg block">{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-5 h-5 object-contain mx-auto" /> : option.icon}</span>
-                        <span className="text-[7px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Auto-generated name (info only) */}
-                {newLocation.name && (
-                  <div style={{ padding: '6px 10px', background: '#f3f4f6', borderRadius: '8px', marginBottom: '10px', fontSize: '12px', color: '#6b7280' }}>
-                    📝 {newLocation.name}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setShowQuickCapture(false)}
-                    style={{
-                      padding: '14px 20px', border: 'none', borderRadius: '12px',
-                      fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
-                      background: '#fee2e2', color: '#dc2626'
-                    }}
-                  >
-                    {t('general.cancel')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!newLocation.uploadedImage) {
-                        showToast('📸 ' + t('trail.photoRequired'), 'warning');
-                        return;
-                      }
-                      // Default interest if none selected
-                      if (!newLocation.interests || newLocation.interests.length === 0) {
-                        const defaultInterest = activeTrail?.interests?.[0] || 'spotted';
-                        newLocation.interests = [defaultInterest];
-                      }
-                      // Generate name if empty
-                      if (!newLocation.name.trim()) {
-                        const result = window.BKK.generateLocationName(
-                          newLocation.interests[0], newLocation.lat, newLocation.lng,
-                          interestCounters, allInterestOptions, areaOptions
-                        );
-                        newLocation.name = result?.name || ('Spotted #' + Date.now().toString().slice(-4));
-                      }
-                      saveWithDedupCheck(true, true);
-                    }}
-                    disabled={!newLocation.uploadedImage}
-                    style={{
-                      flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
-                      fontSize: '16px', fontWeight: 'bold',
-                      cursor: newLocation.uploadedImage ? 'pointer' : 'not-allowed',
-                      background: newLocation.uploadedImage ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e5e7eb',
-                      color: newLocation.uploadedImage ? 'white' : '#9ca3af',
-                      boxShadow: newLocation.uploadedImage ? '0 4px 15px rgba(34,197,94,0.4)' : 'none'
-                    }}
-                  >
-                    {`✅ ${t('trail.saveAndContinue')}`}
-                  </button>
-                </div>
-              </div>
-          </div>
+          <QuickAddPlaceDialog
+            captureMode={true}
+            place={{
+              ...newLocation,
+              id: newLocation.id || Date.now(),
+              custom: true,
+              status: "active",
+              cityId: selectedCityId,
+              addedAt: new Date().toISOString(),
+              _onGpsFromExif: (gps) => {
+                const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
+                setNewLocation(prev => ({
+                  ...prev, lat: gps.lat, lng: gps.lng,
+                  ...(detected.length > 0 ? { areas: detected, area: detected[0] } : {})
+                }));
+              }
+            }}
+            gpsStatus={{
+              loading: newLocation.gpsLoading,
+              lat: newLocation.lat,
+              lng: newLocation.lng,
+              nearestStop: newLocation.nearestStop,
+              blocked: newLocation.gpsBlocked
+            }}
+            onAutoName={(interestId) => {
+              const result = window.BKK.generateLocationName(
+                interestId, newLocation.lat, newLocation.lng,
+                interestCounters, allInterestOptions, areaOptions
+              );
+              // Update newLocation.interests and name too
+              setNewLocation(prev => ({ ...prev, interests: [interestId], name: result?.name || prev.name }));
+              // Remember last interest for trail
+              if (activeTrail) {
+                const updatedTrail = { ...activeTrail, lastInterest: interestId };
+                setActiveTrail(updatedTrail);
+                localStorage.setItem("foufou_active_trail", JSON.stringify(updatedTrail));
+              }
+              return result?.name || "";
+            }}
+            allInterestOptions={allInterestOptions}
+            interestStatus={interestStatus}
+            selectedCityId={selectedCityId}
+            isUnlocked={isUnlocked}
+            tLabel={tLabel}
+            t={t}
+            onSave={(enriched, rating) => {
+              // Merge enriched data back into newLocation then save
+              const defaultInterest = activeTrail?.interests?.[0] || "spotted";
+              const finalInterests = enriched.interests?.length > 0 ? enriched.interests : [defaultInterest];
+              const finalName = enriched.name?.trim() || (() => {
+                const r = window.BKK.generateLocationName(
+                  finalInterests[0], enriched.lat, enriched.lng,
+                  interestCounters, allInterestOptions, areaOptions
+                );
+                return r?.name || ("Spotted #" + Date.now().toString().slice(-4));
+              })();
+              setNewLocation(prev => ({
+                ...prev,
+                ...enriched,
+                name: finalName,
+                interests: finalInterests,
+                uploadedImage: enriched.uploadedImage
+              }));
+              // rating from capture is saved alongside via saveQuickAddPlace flow
+              if (rating && rating.score > 0) {
+                window._pendingCaptureRating = rating;
+              }
+              saveWithDedupCheck(true, true);
+            }}
+            onCancel={() => setShowQuickCapture(false)}
+          />
         )}
 
         {/* Reorder Stops Dialog */}

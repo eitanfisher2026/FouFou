@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.19` (Mar 17, 2026)
+- **גרסה:** `3.9.20` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -108,6 +108,33 @@ zip github-upload-v3_9_15.zip \
   icon-16x16.png icon-32x32.png icon-180x180.png icon-192x192.png icon-512x512.png \
   firebase-rules.json
 ```
+
+---
+
+## SECURITY — API Key Protection
+
+> **This rule must be checked before every ZIP.**
+
+FouFou is a static site on GitHub Pages — all source code is public. API keys in `config.js` are always visible to anyone. The ONLY protection is restricting the key in Google Cloud Console.
+
+**GOOGLE_PLACES_API_KEY:**
+- Current key: `AIzaSyCE598tSisniM66ApqRvOyOq4svTf6pLHc`
+- Restriction: HTTP referrers → `https://eitanfisher2026.github.io/*` only
+- API restriction: Places API (New) only
+- If a new key is ever created: immediately set the same restrictions before putting it in config.js
+
+**Before every ZIP — verify:**
+1. The key in `config.js` matches the restricted key in Google Cloud Console
+2. The key is NOT a new unrestricted key
+3. If you created a new key during the session: confirm restrictions were set
+
+**Firebase config** (also in config.js) — lower risk:
+- Firebase is protected by Security Rules, not by key secrecy
+- No financial risk from exposed Firebase config as long as Security Rules are correct
+- Do NOT change Firebase config without understanding the Security Rules impact
+
+**Billing alert:**
+The project owner should have a Google Cloud billing alert set at $10 to catch any unexpected API usage.
 
 ---
 
@@ -411,6 +438,24 @@ database.ref(...).set({ uploadedImage: rawFile })
 const compressed = await window.BKK.compressImage(file);
 database.ref(...).set({ uploadedImage: compressed })
 ```
+
+### EXIF GPS — camera only, NEVER gallery
+
+```js
+// CORRECT: camera capture only
+const result = await window.BKK.openCamera();
+const gps = await window.BKK.extractGpsFromImage(result.file); // OK
+
+// WRONG: gallery file input — GPS is always stripped by Android/iOS
+input.onChange = async (e) => {
+  const file = e.target.files[0];
+  const gps = await window.BKK.extractGpsFromImage(file); // NEVER DO THIS — always returns null/0,0
+}
+```
+
+Android and iOS remove GPS data from images when they are saved to the device gallery.
+EXIF GPS extraction only works reliably from a **fresh camera capture** (`openCamera()`).
+Gallery uploads: compress image only, ignore any GPS.
 
 ### Icon compression (different from photos)
 ```js
@@ -993,6 +1038,20 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.20 — EXIF GPS removed from gallery upload
+- `dialogs.js`: gallery file input no longer attempts EXIF GPS extraction (Android/iOS strip GPS from gallery images)
+- `quick-add-component.js`: added protective comment on gallery input — EXIF only valid from openCamera()
+- CLAUDE_CONTEXT: added EXIF GPS rule to Images section
+
+### v3.9.19 — QuickCapture merged into QuickAddPlaceDialog
+- `quick-add-component.js`: unified dialog for both modes via `captureMode` prop
+  - `captureMode=false` (default): purple header, pill interests, name field — for adding Google places
+  - `captureMode=true`: green header, grid interests, GPS indicator, auto-name, photo required — for FAB capture
+  - Both modes: gallery + camera, description + notes + mic, star rating
+- `dialogs.js`: removed old QuickCapture dialog (~200 lines), replaced with `<QuickAddPlaceDialog captureMode={true} />`
+- EXIF GPS from camera photo bubbles up via `place._onGpsFromExif` callback
+- Gallery kept in both modes — coordinates come from device GPS (captured when FAB opened), not from photo
 
 ### v3.9.17 — Double confirmation on reload fixed
 - `applyUpdate()`: replaced `window.location.reload(true)` with `window.location.replace(pathname + '?_r=timestamp')`

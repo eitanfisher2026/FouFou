@@ -42,29 +42,60 @@ const GOOGLE_PLACES_API_KEY = window.BKK.GOOGLE_PLACES_API_KEY;
 const GOOGLE_PLACES_API_URL = window.BKK.GOOGLE_PLACES_API_URL;
 
 // ===== QUICK ADD PLACE DIALOG — standalone React component =====
-const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, selectedCityId, isUnlocked, tLabel, t, onSave, onCancel }) => {
-  const [qaName, setQaName] = React.useState(place.name || '');
-  const [qaDescription, setQaDescription] = React.useState('');
-  const [qaNotes, setQaNotes] = React.useState('');
+// Used in two modes:
+//   captureMode=false (default): adding a Google place to favorites
+//   captureMode=true: "Capture Now" FAB — photo + GPS, full save form
+//
+// Props:
+//   place           — initial place object
+//   captureMode     — boolean: green header, GPS indicator, auto-name, photo required
+//   gpsStatus       — { loading, lat, lng, nearestStop, blocked } (captureMode only)
+//   onAutoName      — (interestId) => string  (captureMode only)
+//   allInterestOptions, interestStatus, selectedCityId, isUnlocked, tLabel, t
+//   onSave(enriched, rating)
+//   onCancel()
+
+const QuickAddPlaceDialog = ({
+  place, captureMode, gpsStatus,
+  onAutoName, allInterestOptions, interestStatus,
+  selectedCityId, isUnlocked, tLabel, t,
+  onSave, onCancel
+}) => {
+  const [qaName, setQaName] = React.useState(place.name || "");
+  const [qaDescription, setQaDescription] = React.useState("");
+  const [qaNotes, setQaNotes] = React.useState("");
   const [qaInterests, setQaInterests] = React.useState(place.interests || []);
   const [qaRatingScore, setQaRatingScore] = React.useState(0);
-  const [qaRatingText, setQaRatingText] = React.useState('');
-  const [qaImage, setQaImage] = React.useState(null);
+  const [qaRatingText, setQaRatingText] = React.useState("");
+  const [qaImage, setQaImage] = React.useState(place.uploadedImage || null);
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
   const qaStopRecRef = React.useRef(null);
+
+  const handleInterestToggle = (optId) => {
+    const newInterests = qaInterests.includes(optId)
+      ? qaInterests.filter(i => i !== optId)
+      : [...qaInterests, optId];
+    setQaInterests(newInterests);
+    if (captureMode && onAutoName && newInterests.length > 0) {
+      const generated = onAutoName(newInterests[0]);
+      if (generated) setQaName(generated);
+    }
+  };
 
   const startRec = (field) => {
     if (qaRecordingField) {
       if (qaStopRecRef.current) qaStopRecRef.current();
-      qaStopRecRef.current = null; setQaRecordingField(null); return;
+      qaStopRecRef.current = null;
+      setQaRecordingField(null);
+      return;
     }
     setQaRecordingField(field);
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
       onResult: (text) => {
-        if (field === 'description') setQaDescription(prev => (prev ? prev + ' ' : '') + text);
-        if (field === 'notes') setQaNotes(prev => (prev ? prev + ' ' : '') + text);
-        if (field === 'rating') setQaRatingText(prev => (prev ? prev + ' ' : '') + text);
+        if (field === "description") setQaDescription(prev => (prev ? prev + " " : "") + text);
+        if (field === "notes") setQaNotes(prev => (prev ? prev + " " : "") + text);
+        if (field === "rating") setQaRatingText(prev => (prev ? prev + " " : "") + text);
       },
       onEnd: () => { setQaRecordingField(null); qaStopRecRef.current = null; },
       onError: () => { setQaRecordingField(null); qaStopRecRef.current = null; }
@@ -73,84 +104,136 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
   };
 
   const handleSave = () => {
-    onSave(
-      { ...place, name: qaName.trim() || place.name, description: qaDescription.trim(), notes: qaNotes.trim(), interests: qaInterests.length > 0 ? qaInterests : place.interests, uploadedImage: qaImage || null },
-      qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null
-    );
+    const enriched = {
+      ...place,
+      name: qaName.trim() || place.name,
+      description: qaDescription.trim(),
+      notes: qaNotes.trim(),
+      interests: qaInterests.length > 0 ? qaInterests : place.interests,
+      uploadedImage: qaImage || null
+    };
+    onSave(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
   };
 
-  // Exact same filter as wizard interest selector
   const activeInterests = allInterestOptions.filter(option => {
-    const aStatus = option.adminStatus || 'active';
-    if (aStatus === 'hidden') return false;
-    if (aStatus === 'draft' && !isUnlocked) return false;
+    const aStatus = option.adminStatus || "active";
+    if (aStatus === "hidden") return false;
+    if (aStatus === "draft" && !isUnlocked) return false;
     const status = interestStatus[option.id];
     if (option.uncovered) return status === true;
-    if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
-    if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
+    if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
+    if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
   });
 
   const isRTL = window.BKK.i18n.isRTL();
-  const labelCls = 'block text-xs font-bold mb-1';
-  const textareaStyle = { direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', minHeight: '55px', resize: 'vertical', lineHeight: '1.4' };
+  const labelCls = "block text-xs font-bold mb-1";
+  const textareaStyle = { direction: isRTL ? "rtl" : "ltr", fontSize: "14px", minHeight: "55px", resize: "vertical", lineHeight: "1.4" };
   const micStyle = (active) => ({
-    width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
-    background: active ? '#ef4444' : '#f3f4f6', color: active ? 'white' : '#6b7280',
-    fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    animation: active ? 'pulse 1s ease-in-out infinite' : 'none',
-    boxShadow: active ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+    width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0,
+    background: active ? "#ef4444" : "#f3f4f6", color: active ? "white" : "#6b7280",
+    fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center",
+    animation: active ? "pulse 1s ease-in-out infinite" : "none",
+    boxShadow: active ? "0 0 0 3px rgba(239,68,68,0.3)" : "none"
   });
+
+  const headerBg = captureMode
+    ? "linear-gradient(135deg, #22c55e, #16a34a)"
+    : "linear-gradient(to right, #a855f7, #ec4899)";
+  const headerTitle = captureMode
+    ? `📸 ${t("trail.capturePlace")}`
+    : `⭐ ${t("trail.addToFavorites")}`;
+  const saveDisabled = captureMode && !qaImage;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2" style={{ zIndex: 10300 }}>
       <div className="bg-white rounded-xl w-full max-w-2xl max-h-[95vh] flex flex-col shadow-2xl">
 
-        {/* Header — identical to addLocation dialog */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between" style={{ flexShrink: 0 }}>
-          <h3 className="text-base font-bold">⭐ {t('trail.addToFavorites')}</h3>
-          <button onClick={onCancel} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        {/* Header */}
+        <div className="text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between"
+          style={{ background: headerBg, flexShrink: 0 }}>
+          <h3 className="text-base font-bold">{headerTitle}</h3>
+          <button onClick={onCancel} style={{ background: "rgba(255,255,255,0.25)", border: "none", color: "white", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="overflow-y-auto p-3 space-y-3" style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+        <div className="overflow-y-auto p-3 space-y-3" style={{ direction: isRTL ? "rtl" : "ltr" }}>
 
-          {/* Name */}
-          <div>
-            <label className={labelCls}>{t('places.placeName')}</label>
-            <input value={qaName} onChange={e => setQaName(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-              style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '16px' }} />
-          </div>
+          {/* GPS indicator — captureMode only */}
+          {captureMode && gpsStatus && (() => {
+            if (gpsStatus.loading) return (
+              <div style={{ padding: "6px 10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "11px", color: "#6b7280", textAlign: "center" }}>
+                📍 {t("trail.detectingLocation")}...
+              </div>
+            );
+            if (gpsStatus.blocked) return (
+              <div style={{ padding: "6px 10px", background: "#fef3c7", borderRadius: "8px", fontSize: "11px", color: "#92400e", textAlign: "center" }}>
+                📍 {t("trail.gpsBlocked")}
+              </div>
+            );
+            if (gpsStatus.nearestStop) return (
+              <div style={{ padding: "6px 10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "12px", color: "#16a34a", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "20px", height: "20px", borderRadius: "50%", background: "#22c55e", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: "bold", flexShrink: 0 }}>
+                  {String.fromCharCode(65 + gpsStatus.nearestStop.idx)}
+                </span>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {t("trail.nearStop")} <b>{gpsStatus.nearestStop.name}</b>
+                </span>
+                <span style={{ fontSize: "10px", color: "#9ca3af", flexShrink: 0 }}>
+                  {gpsStatus.nearestStop.dist < 1000 ? `${gpsStatus.nearestStop.dist}m` : `${(gpsStatus.nearestStop.dist/1000).toFixed(1)}km`}
+                </span>
+              </div>
+            );
+            if (gpsStatus.lat && gpsStatus.lng) return (
+              <div style={{ padding: "6px 10px", background: "#f0fdf4", borderRadius: "8px", fontSize: "11px", color: "#16a34a", textAlign: "center" }}>
+                📍 GPS ✓
+              </div>
+            );
+            return null;
+          })()}
 
-          {/* Image — same two-button pattern as addLocation dialog */}
+          {/* Image */}
           <div>
-            <label className={labelCls}>{`📷 ${t('general.image')}`}</label>
+            <label className={labelCls}>{`📷 ${t("general.image")}`}</label>
             {qaImage ? (
               <div className="relative">
-                <img src={qaImage} alt="Preview" className="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90" />
+                <img src={qaImage} alt="Preview" className="w-full h-48 object-cover rounded-lg border-2 cursor-pointer hover:opacity-90"
+                  style={{ borderColor: captureMode ? "#22c55e" : "#c084fc" }} />
                 <button onClick={() => setQaImage(null)}
                   className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold hover:bg-red-600">✕</button>
+                {captureMode && gpsStatus?.lat && gpsStatus?.lng && (
+                  <div style={{ position: "absolute", bottom: "6px", left: "6px", background: "rgba(0,0,0,0.7)", color: "#22c55e", padding: "2px 8px", borderRadius: "8px", fontSize: "10px", fontWeight: "bold" }}>
+                    📍 GPS ✓
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex gap-2">
-                <button type="button" className="flex-1 p-3 border-2 border-dashed border-green-400 rounded-lg text-center cursor-pointer hover:bg-green-50"
+                <button type="button"
+                  className="flex-1 p-3 border-2 border-dashed rounded-lg text-center cursor-pointer hover:bg-green-50"
+                  style={{ borderColor: "#22c55e" }}
                   onClick={async () => {
                     const result = await window.BKK.openCamera();
                     if (!result) return;
                     const compressed = await window.BKK.compressImage(result.dataUrl);
                     setQaImage(compressed);
+                    // Extract GPS from EXIF and bubble up to parent
+                    if (captureMode && place._onGpsFromExif) {
+                      const gps = await window.BKK.extractGpsFromImage(result.file);
+                      if (gps && gps.lat !== 0) place._onGpsFromExif(gps);
+                    }
+                    if (captureMode) window.BKK.saveImageToDevice(result.dataUrl, `foufou_quick_${Date.now()}.jpg`);
                   }}>
                   <span className="text-2xl">📸</span>
-                  <div className="text-xs text-green-700 mt-1 font-bold">{t('general.takePhoto')}</div>
+                  <div className="text-xs text-green-700 mt-1 font-bold">{t("general.takePhoto")}</div>
                 </button>
                 <label className="flex-1 p-3 border-2 border-dashed border-purple-300 rounded-lg text-center cursor-pointer hover:bg-purple-50 block">
                   <span className="text-2xl">🖼️</span>
-                  <div className="text-xs text-gray-600 mt-1">{t('general.clickToUpload')}</div>
+                  <div className="text-xs text-gray-600 mt-1">{t("general.clickToUpload")}</div>
                   <input type="file" accept="image/*" className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
+                      // DO NOT extract EXIF GPS from gallery — Android/iOS strip it when saving to gallery
                       const reader = new FileReader();
                       reader.onload = async () => { setQaImage(await window.BKK.compressImage(reader.result)); };
                       reader.readAsDataURL(file);
@@ -160,18 +243,73 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
             )}
           </div>
 
+          {/* Interests */}
+          <div>
+            <label className={labelCls}>{captureMode ? t("trail.whatDidYouSee") : t("general.interests")}</label>
+            {captureMode ? (
+              <div className="grid grid-cols-6 gap-1.5">
+                {activeInterests.map(option => {
+                  const sel = qaInterests.includes(option.id);
+                  return (
+                    <button key={option.id} type="button"
+                      onClick={() => handleInterestToggle(option.id)}
+                      className={`p-1.5 rounded-lg text-[10px] font-bold transition-all ${sel ? "bg-green-500 text-white shadow-md" : "bg-white border border-gray-300"}`}>
+                      <span className="text-lg block">
+                        {option.icon?.startsWith?.("data:") ? <img src={option.icon} alt="" className="w-5 h-5 object-contain mx-auto" /> : option.icon}
+                      </span>
+                      <span className="text-[7px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {activeInterests.map(opt => {
+                  const sel = qaInterests.includes(opt.id);
+                  const iconRaw = opt.icon || "";
+                  const isImg = iconRaw.startsWith("data:") || iconRaw.startsWith("http");
+                  return (
+                    <button key={opt.id} type="button"
+                      onClick={() => handleInterestToggle(opt.id)}
+                      style={{ padding: "4px 10px", borderRadius: "20px", cursor: "pointer", border: `2px solid ${sel ? "#a855f7" : "#e5e7eb"}`, background: sel ? "#faf5ff" : "white", color: sel ? "#7c3aed" : "#6b7280", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
+                      {isImg ? <img src={iconRaw} alt="" style={{ width: "14px", height: "14px" }} /> : <span>{iconRaw}</span>}
+                      {tLabel(opt) || opt.labelEn}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Auto-name display — captureMode only */}
+          {captureMode && qaName && (
+            <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
+              📝 {qaName}
+            </div>
+          )}
+
+          {/* Name field — QuickAdd mode only */}
+          {!captureMode && (
+            <div>
+              <label className={labelCls}>{t("places.placeName")}</label>
+              <input value={qaName} onChange={e => setQaName(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+                style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "16px" }} />
+            </div>
+          )}
+
           {/* Description + mic */}
           <div>
-            <label className={labelCls}>{`📝 ${t('places.description')}`}</label>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+            <label className={labelCls}>{`📝 ${t("places.description")}`}</label>
+            <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
               <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
-                placeholder={t('places.description')}
+                placeholder={t("places.description")}
                 className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
               {window.BKK.speechSupported && (
-                <button type="button" onClick={() => startRec('description')} style={micStyle(qaRecordingField === 'description')}
-                  title={qaRecordingField === 'description' ? t('speech.stopRecording') : t('speech.startRecording')}>
-                  {qaRecordingField === 'description' ? '⏹️' : '🎤'}
+                <button type="button" onClick={() => startRec("description")} style={micStyle(qaRecordingField === "description")}
+                  title={qaRecordingField === "description" ? t("speech.stopRecording") : t("speech.startRecording")}>
+                  {qaRecordingField === "description" ? "⏹️" : "🎤"}
                 </button>
               )}
             </div>
@@ -179,79 +317,65 @@ const QuickAddPlaceDialog = ({ place, allInterestOptions, interestStatus, select
 
           {/* Notes + mic */}
           <div>
-            <label className={labelCls}>{`💭 ${t('places.notes')}`}</label>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+            <label className={labelCls}>{`💭 ${t("places.notes")}`}</label>
+            <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
               <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
-                placeholder={t('places.notes')}
+                placeholder={t("places.notes")}
                 className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
               {window.BKK.speechSupported && (
-                <button type="button" onClick={() => startRec('notes')} style={micStyle(qaRecordingField === 'notes')}
-                  title={qaRecordingField === 'notes' ? t('speech.stopRecording') : t('speech.startRecording')}>
-                  {qaRecordingField === 'notes' ? '⏹️' : '🎤'}
+                <button type="button" onClick={() => startRec("notes")} style={micStyle(qaRecordingField === "notes")}
+                  title={qaRecordingField === "notes" ? t("speech.stopRecording") : t("speech.startRecording")}>
+                  {qaRecordingField === "notes" ? "⏹️" : "🎤"}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Interests */}
-          <div>
-            <label className={labelCls}>{t('general.interests')}</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {activeInterests.map(opt => {
-                const sel = qaInterests.includes(opt.id);
-                const iconRaw = opt.icon || '';
-                const isImg = iconRaw.startsWith('data:') || iconRaw.startsWith('http');
-                return (
-                  <button key={opt.id} type="button"
-                    onClick={() => setQaInterests(prev => sel ? prev.filter(i => i !== opt.id) : [...prev, opt.id])}
-                    style={{ padding: '4px 10px', borderRadius: '20px', cursor: 'pointer', border: `2px solid ${sel ? '#a855f7' : '#e5e7eb'}`, background: sel ? '#faf5ff' : 'white', color: sel ? '#7c3aed' : '#6b7280', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {isImg ? <img src={iconRaw} alt="" style={{ width: '14px', height: '14px' }} /> : <span>{iconRaw}</span>}
-                    {tLabel(opt) || opt.labelEn}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Rating */}
-          <div style={{ background: '#fefce8', borderRadius: '12px', padding: '12px', border: '1px solid #fde68a' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#92400e', marginBottom: '8px', textAlign: isRTL ? 'right' : 'left' }}>
-              {`⭐ ${t('reviews.rate')} (${t('general.optional')})`}
+          <div style={{ background: "#fefce8", borderRadius: "12px", padding: "12px", border: "1px solid #fde68a" }}>
+            <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#92400e", marginBottom: "8px", textAlign: isRTL ? "right" : "left" }}>
+              {`⭐ ${t("reviews.rate")} (${t("general.optional")})`}
             </label>
-            <div style={{ display: 'flex', gap: '4px', marginBottom: qaRatingScore > 0 ? '8px' : '0' }}>
+            <div style={{ display: "flex", gap: "4px", marginBottom: qaRatingScore > 0 ? "8px" : "0" }}>
               {[1,2,3,4,5].map(n => (
                 <button key={n} type="button" onClick={() => setQaRatingScore(qaRatingScore === n ? 0 : n)}
-                  style={{ fontSize: '26px', background: 'none', border: 'none', cursor: 'pointer', opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: '0 2px' }}>⭐</button>
+                  style={{ fontSize: "26px", background: "none", border: "none", cursor: "pointer", opacity: n <= qaRatingScore ? 1 : 0.25, lineHeight: 1, padding: "0 2px" }}>⭐</button>
               ))}
             </div>
             {qaRatingScore > 0 && (
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+              <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
                 <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
-                  placeholder={t('reviews.writeReview')}
+                  placeholder={t("reviews.writeReview")}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
-                  style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', resize: 'vertical' }} />
+                  style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical" }} />
                 {window.BKK.speechSupported && (
-                  <button type="button" onClick={() => startRec('rating')} style={micStyle(qaRecordingField === 'rating')}>
-                    {qaRecordingField === 'rating' ? '⏹️' : '🎤'}
+                  <button type="button" onClick={() => startRec("rating")} style={micStyle(qaRecordingField === "rating")}>
+                    {qaRecordingField === "rating" ? "⏹️" : "🎤"}
                   </button>
                 )}
               </div>
             )}
           </div>
+
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', gap: '8px', padding: '10px 16px', borderTop: '1px solid #f3f4f6', flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: "8px", padding: "10px 16px", borderTop: "1px solid #f3f4f6", flexShrink: 0 }}>
           <button onClick={handleSave}
+            disabled={saveDisabled}
             className="flex-1 py-2.5 font-bold text-white rounded-xl text-base"
-            style={{ background: 'linear-gradient(to right, #a855f7, #ec4899)', border: 'none', cursor: 'pointer', flex: 2 }}>
-            💾 {t('general.save')}
+            style={{
+              background: saveDisabled ? "#e5e7eb" : (captureMode ? "linear-gradient(135deg, #22c55e, #16a34a)" : "linear-gradient(to right, #a855f7, #ec4899)"),
+              border: "none", cursor: saveDisabled ? "not-allowed" : "pointer",
+              color: saveDisabled ? "#9ca3af" : "white", flex: 2
+            }}>
+            {captureMode ? `✅ ${t("trail.saveAndContinue")}` : `💾 ${t("general.save")}`}
           </button>
           <button onClick={onCancel}
             className="py-2.5 font-bold rounded-xl text-base"
-            style={{ background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', flex: 1 }}>
-            {t('general.cancel')}
+            style={{ background: "#f3f4f6", color: "#6b7280", border: "none", cursor: "pointer", flex: 1 }}>
+            {t("general.cancel")}
           </button>
         </div>
       </div>
@@ -12263,17 +12387,6 @@ const FouFouApp = () => {
                             reader.onload = async () => {
                               const compressed = await window.BKK.compressImage(reader.result);
                               setNewLocation(prev => ({...prev, uploadedImage: compressed}));
-                              const gps = await window.BKK.extractGpsFromImage(file);
-                              if (gps && (!newLocation.lat || !newLocation.lng)) {
-                                const updates = { uploadedImage: compressed, lat: gps.lat, lng: gps.lng };
-                                const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
-                                if (detected.length > 0) {
-                                  updates.areas = detected;
-                                  updates.area = detected[0];
-                                }
-                                setNewLocation(prev => ({...prev, ...updates}));
-                                showToast('📍 ' + t('general.gpsExtracted'), 'success');
-                              }
                             };
                             reader.readAsDataURL(file);
                           }}
@@ -14765,228 +14878,75 @@ const FouFouApp = () => {
           />
         )}
 
-        {/* ===== QUICK CAPTURE DIALOG (Light) ===== */}
+        {/* ===== CAPTURE NOW DIALOG — uses QuickAddPlaceDialog in captureMode ===== */}
         {showQuickCapture && (
-          <div className="fixed inset-0 bg-white z-50 flex flex-col" style={{ overflow: 'auto' }}>
-              {/* Header */}
-              <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ color: 'white', fontWeight: 'bold', fontSize: '16px' }}>📸 {t('trail.capturePlace')}</span>
-                <button onClick={() => setShowQuickCapture(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
-              </div>
-
-              <div style={{ padding: '12px 16px', flex: 1 }}>
-                {/* Nearest stop indicator */}
-                {newLocation.gpsLoading && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>
-                    📍 {t('trail.detectingLocation')}...
-                  </div>
-                )}
-                {newLocation.nearestStop && !newLocation.gpsLoading && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '12px', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', flexShrink: 0 }}>
-                      {String.fromCharCode(65 + newLocation.nearestStop.idx)}
-                    </span>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t('trail.nearStop')} <b>{newLocation.nearestStop.name}</b>
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>
-                      {newLocation.nearestStop.dist < 1000 ? `${newLocation.nearestStop.dist}m` : `${(newLocation.nearestStop.dist/1000).toFixed(1)}km`}
-                    </span>
-                  </div>
-                )}
-                {!newLocation.nearestStop && !newLocation.gpsLoading && newLocation.lat && (
-                  <div style={{ padding: '6px 10px', background: '#f0fdf4', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#16a34a', textAlign: 'center' }}>
-                    📍 GPS ✓
-                  </div>
-                )}
-                {newLocation.gpsBlocked && (
-                  <div style={{ padding: '6px 10px', background: '#fef3c7', borderRadius: '8px', marginBottom: '8px', fontSize: '11px', color: '#92400e', textAlign: 'center' }}>
-                    📍 {t('trail.gpsBlocked')}
-                  </div>
-                )}
-                {newLocation.uploadedImage ? (
-                  <div style={{ position: 'relative', marginBottom: '10px' }}>
-                    <img src={newLocation.uploadedImage} alt="" style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: '12px' }} />
-                    <button
-                      onClick={() => setNewLocation(prev => ({...prev, uploadedImage: null, lat: null, lng: null}))}
-                      style={{ position: 'absolute', top: '6px', right: '6px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer' }}
-                    >✕</button>
-                    {newLocation.lat && newLocation.lng && (
-                      <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.7)', color: '#22c55e', padding: '2px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }}>
-                        📍 GPS ✓
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      const result = await window.BKK.openCamera();
-                      if (!result) return;
-                      const compressed = await window.BKK.compressImage(result.dataUrl);
-                      const updates = { uploadedImage: compressed };
-                      const gps = await window.BKK.extractGpsFromImage(result.file);
-                      if (gps && gps.lat !== 0 && gps.lng !== 0) {
-                        updates.lat = gps.lat;
-                        updates.lng = gps.lng;
-                        const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
-                        if (detected.length > 0) { updates.areas = detected; updates.area = detected[0]; }
-                      }
-                      setNewLocation(prev => ({...prev, ...updates}));
-                      window.BKK.saveImageToDevice(result.dataUrl, `foufou_quick_${Date.now()}.jpg`);
-                    }}
-                    style={{ width: '100%', padding: '24px', border: '2px dashed #22c55e', borderRadius: '12px', background: '#f0fdf4', cursor: 'pointer', textAlign: 'center', marginBottom: '10px' }}
-                  >
-                    <span style={{ fontSize: '40px', display: 'block' }}>📸</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#16a34a' }}>{t('general.takePhoto')}</span>
-                  </button>
-                )}
-
-                {/* Optional description — right after photo */}
-                <div style={{ marginBottom: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    value={newLocation.description || ''}
-                    onChange={(e) => setNewLocation(prev => ({...prev, description: e.target.value}))}
-                    placeholder={`📝 ${t("places.description")} (${t("general.optional")})`}
-                    style={{ flex: 1, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '16px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                  />
-                  {window.BKK.speechSupported && (
-                    <button
-                      onClick={() => {
-                        if (isRecording) {
-                          if (stopRecordingRef.current) stopRecordingRef.current();
-                          stopRecordingRef.current = null;
-                          setIsRecording(false);
-                        } else {
-                          setIsRecording(true);
-                          const stop = window.BKK.startSpeechToText({
-                            maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                            onResult: (text, isFinal) => {
-                              setNewLocation(prev => ({...prev, description: text}));
-                            },
-                            onEnd: (finalText) => {
-                              setIsRecording(false);
-                              stopRecordingRef.current = null;
-                            },
-                            onError: (error) => {
-                              setIsRecording(false);
-                              stopRecordingRef.current = null;
-                              if (error === 'not-allowed') {
-                                showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
-                              }
-                            }
-                          });
-                          stopRecordingRef.current = stop;
-                        }
-                      }}
-                      style={{
-                        width: '40px', height: '40px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                        background: isRecording ? '#ef4444' : '#f3f4f6',
-                        color: isRecording ? 'white' : '#6b7280',
-                        fontSize: '18px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
-                        boxShadow: isRecording ? '0 0 0 4px rgba(239,68,68,0.3)' : 'none'
-                      }}
-                      title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
-                    >
-                      {isRecording ? '⏹️' : '🎤'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Interest Selection — pick one */}
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>{t('trail.whatDidYouSee')}</div>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {allInterestOptions.filter(option => {
-                      if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
-                      const aStatus = option.adminStatus || (interestConfig[option.id]?.adminStatus) || 'active';
-                      if (aStatus === 'hidden') return false;
-                      if (aStatus === 'draft' && !isUnlocked) return false;
-                      return interestStatus[option.id] !== false;
-                    }).map(option => (
-                      <button
-                        key={option.id}
-                        onClick={() => {
-                          const updates = { ...newLocation, interests: [option.id] };
-                          const result = window.BKK.generateLocationName(
-                            option.id, newLocation.lat, newLocation.lng,
-                            interestCounters, allInterestOptions, areaOptions
-                          );
-                          if (result.name) updates.name = result.name;
-                          setNewLocation(updates);
-                          if (activeTrail) {
-                            const updatedTrail = { ...activeTrail, lastInterest: option.id };
-                            setActiveTrail(updatedTrail);
-                            localStorage.setItem('foufou_active_trail', JSON.stringify(updatedTrail));
-                          }
-                        }}
-                        className={`p-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                          (newLocation.interests || []).includes(option.id)
-                            ? 'bg-green-500 text-white shadow-md'
-                            : 'bg-white border border-gray-300'
-                        }`}
-                      >
-                        <span className="text-lg block">{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-5 h-5 object-contain mx-auto" /> : option.icon}</span>
-                        <span className="text-[7px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Auto-generated name (info only) */}
-                {newLocation.name && (
-                  <div style={{ padding: '6px 10px', background: '#f3f4f6', borderRadius: '8px', marginBottom: '10px', fontSize: '12px', color: '#6b7280' }}>
-                    📝 {newLocation.name}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setShowQuickCapture(false)}
-                    style={{
-                      padding: '14px 20px', border: 'none', borderRadius: '12px',
-                      fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
-                      background: '#fee2e2', color: '#dc2626'
-                    }}
-                  >
-                    {t('general.cancel')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!newLocation.uploadedImage) {
-                        showToast('📸 ' + t('trail.photoRequired'), 'warning');
-                        return;
-                      }
-                      if (!newLocation.interests || newLocation.interests.length === 0) {
-                        const defaultInterest = activeTrail?.interests?.[0] || 'spotted';
-                        newLocation.interests = [defaultInterest];
-                      }
-                      if (!newLocation.name.trim()) {
-                        const result = window.BKK.generateLocationName(
-                          newLocation.interests[0], newLocation.lat, newLocation.lng,
-                          interestCounters, allInterestOptions, areaOptions
-                        );
-                        newLocation.name = result?.name || ('Spotted #' + Date.now().toString().slice(-4));
-                      }
-                      saveWithDedupCheck(true, true);
-                    }}
-                    disabled={!newLocation.uploadedImage}
-                    style={{
-                      flex: 1, padding: '14px', border: 'none', borderRadius: '12px',
-                      fontSize: '16px', fontWeight: 'bold',
-                      cursor: newLocation.uploadedImage ? 'pointer' : 'not-allowed',
-                      background: newLocation.uploadedImage ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#e5e7eb',
-                      color: newLocation.uploadedImage ? 'white' : '#9ca3af',
-                      boxShadow: newLocation.uploadedImage ? '0 4px 15px rgba(34,197,94,0.4)' : 'none'
-                    }}
-                  >
-                    {`✅ ${t('trail.saveAndContinue')}`}
-                  </button>
-                </div>
-              </div>
-          </div>
+          <QuickAddPlaceDialog
+            captureMode={true}
+            place={{
+              ...newLocation,
+              id: newLocation.id || Date.now(),
+              custom: true,
+              status: "active",
+              cityId: selectedCityId,
+              addedAt: new Date().toISOString(),
+              _onGpsFromExif: (gps) => {
+                const detected = window.BKK.getAreasForCoordinates(gps.lat, gps.lng);
+                setNewLocation(prev => ({
+                  ...prev, lat: gps.lat, lng: gps.lng,
+                  ...(detected.length > 0 ? { areas: detected, area: detected[0] } : {})
+                }));
+              }
+            }}
+            gpsStatus={{
+              loading: newLocation.gpsLoading,
+              lat: newLocation.lat,
+              lng: newLocation.lng,
+              nearestStop: newLocation.nearestStop,
+              blocked: newLocation.gpsBlocked
+            }}
+            onAutoName={(interestId) => {
+              const result = window.BKK.generateLocationName(
+                interestId, newLocation.lat, newLocation.lng,
+                interestCounters, allInterestOptions, areaOptions
+              );
+              setNewLocation(prev => ({ ...prev, interests: [interestId], name: result?.name || prev.name }));
+              if (activeTrail) {
+                const updatedTrail = { ...activeTrail, lastInterest: interestId };
+                setActiveTrail(updatedTrail);
+                localStorage.setItem("foufou_active_trail", JSON.stringify(updatedTrail));
+              }
+              return result?.name || "";
+            }}
+            allInterestOptions={allInterestOptions}
+            interestStatus={interestStatus}
+            selectedCityId={selectedCityId}
+            isUnlocked={isUnlocked}
+            tLabel={tLabel}
+            t={t}
+            onSave={(enriched, rating) => {
+              const defaultInterest = activeTrail?.interests?.[0] || "spotted";
+              const finalInterests = enriched.interests?.length > 0 ? enriched.interests : [defaultInterest];
+              const finalName = enriched.name?.trim() || (() => {
+                const r = window.BKK.generateLocationName(
+                  finalInterests[0], enriched.lat, enriched.lng,
+                  interestCounters, allInterestOptions, areaOptions
+                );
+                return r?.name || ("Spotted #" + Date.now().toString().slice(-4));
+              })();
+              setNewLocation(prev => ({
+                ...prev,
+                ...enriched,
+                name: finalName,
+                interests: finalInterests,
+                uploadedImage: enriched.uploadedImage
+              }));
+              if (rating && rating.score > 0) {
+                window._pendingCaptureRating = rating;
+              }
+              saveWithDedupCheck(true, true);
+            }}
+            onCancel={() => setShowQuickCapture(false)}
+          />
         )}
 
         {/* Reorder Stops Dialog */}
