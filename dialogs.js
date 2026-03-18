@@ -3028,30 +3028,28 @@
             tLabel={tLabel}
             t={t}
             onSave={(enriched, rating) => {
-              // Merge enriched data back into newLocation then save
+              // Build the final location object directly — do NOT use setNewLocation + saveWithDedupCheck
+              // because setNewLocation is async and saveWithDedupCheck would read stale state
+              // (this was the root cause of images not being saved from QuickCapture)
               const defaultInterest = activeTrail?.interests?.[0] || "spotted";
               const finalInterests = enriched.interests?.length > 0 ? enriched.interests : [defaultInterest];
-              // Remember interests for next capture in this session
               lastCaptureInterestsRef.current = finalInterests;
               const finalName = enriched.name?.trim() || (() => {
                 const r = window.BKK.generateLocationName(
-                  finalInterests[0], enriched.lat, enriched.lng,
+                  finalInterests[0], newLocation.lat, newLocation.lng,
                   interestCounters, allInterestOptions, areaOptions
                 );
                 return r?.name || ("Spotted #" + Date.now().toString().slice(-4));
               })();
-              setNewLocation(prev => ({
-                ...prev,
+              const finalLocation = {
+                ...newLocation,
                 ...enriched,
                 name: finalName,
                 interests: finalInterests,
-                uploadedImage: enriched.uploadedImage
-              }));
-              // rating from capture is saved alongside via saveQuickAddPlace flow
-              if (rating && rating.score > 0) {
-                window._pendingCaptureRating = rating;
-              }
-              saveWithDedupCheck(true, true);
+                uploadedImage: enriched.uploadedImage || null
+              };
+              // Pass finalLocation as overrideData — bypasses stale newLocation state
+              saveWithDedupCheck(true, true, finalLocation);
             }}
             onCancel={() => setShowQuickCapture(false)}
           />

@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.22` (Mar 18, 2026)
+- **גרסה:** `3.9.23` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,15 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.23 — QuickCapture image not saved — root cause fixed
+**Bug:** image uploaded from gallery (or camera) in QuickCapture was not saved to the location.
+**Root cause:** `setNewLocation(enriched)` is async — React batches the update. `saveWithDedupCheck` was called immediately after, reading stale `newLocation` without the image.
+**Fix:** 
+- `saveWithDedupCheck(closeAfter, closeQuickCapture, overrideData)` — added optional 3rd param
+- All internal `addCustomLocation` calls now pass `overrideData` through
+- `onSave` in dialogs.js builds `finalLocation` object directly and passes it as `overrideData` — never touches stale state
+- **RULE:** Never call `setNewLocation(x)` then immediately read `newLocation` in the next line — always use `overrideData` pattern or `useRef`
 
 ### v3.9.22 — Console cleanup + Firebase index
 - `build.py`: `strip_for_production` now also removes `console.info` (was only log/warn)

@@ -7031,16 +7031,18 @@
   };
 
   // ── Save with duplicate detection ──
-  const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false) => {
-    const loc = { ...newLocation };
+  // overrideData: use this instead of newLocation (needed when called right after setNewLocation,
+  // before React has re-rendered — e.g. from QuickCapture onSave where state update is async)
+  const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false, overrideData = null) => {
+    const loc = overrideData ? { ...overrideData } : { ...newLocation };
     if (!loc.name?.trim() || !loc.interests?.length) {
-      addCustomLocation(closeAfter);
+      addCustomLocation(closeAfter, overrideData);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
     // Skip dedup if no GPS or dedup disabled
     if (!loc.lat || !loc.lng || (!sp.dedupGoogleEnabled && !sp.dedupCustomEnabled)) {
-      addCustomLocation(closeAfter);
+      addCustomLocation(closeAfter, overrideData);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
@@ -7065,7 +7067,7 @@
     }
     
     // No matches or check failed — save normally
-    addCustomLocation(closeAfter);
+    addCustomLocation(closeAfter, overrideData);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
       showToast('✅ ' + t('trail.saved'), 'success');

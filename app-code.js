@@ -6616,15 +6616,15 @@ const FouFouApp = () => {
     localStorage.removeItem('foufou_active_trail');
   };
 
-  const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false) => {
-    const loc = { ...newLocation };
+  const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false, overrideData = null) => {
+    const loc = overrideData ? { ...overrideData } : { ...newLocation };
     if (!loc.name?.trim() || !loc.interests?.length) {
-      addCustomLocation(closeAfter);
+      addCustomLocation(closeAfter, overrideData);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
     if (!loc.lat || !loc.lng || (!sp.dedupGoogleEnabled && !sp.dedupCustomEnabled)) {
-      addCustomLocation(closeAfter);
+      addCustomLocation(closeAfter, overrideData);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
@@ -6646,7 +6646,7 @@ const FouFouApp = () => {
     } catch (e) {
     }
     
-    addCustomLocation(closeAfter);
+    addCustomLocation(closeAfter, overrideData);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
       showToast('✅ ' + t('trail.saved'), 'success');
@@ -14908,22 +14908,19 @@ const FouFouApp = () => {
               lastCaptureInterestsRef.current = finalInterests;
               const finalName = enriched.name?.trim() || (() => {
                 const r = window.BKK.generateLocationName(
-                  finalInterests[0], enriched.lat, enriched.lng,
+                  finalInterests[0], newLocation.lat, newLocation.lng,
                   interestCounters, allInterestOptions, areaOptions
                 );
                 return r?.name || ("Spotted #" + Date.now().toString().slice(-4));
               })();
-              setNewLocation(prev => ({
-                ...prev,
+              const finalLocation = {
+                ...newLocation,
                 ...enriched,
                 name: finalName,
                 interests: finalInterests,
-                uploadedImage: enriched.uploadedImage
-              }));
-              if (rating && rating.score > 0) {
-                window._pendingCaptureRating = rating;
-              }
-              saveWithDedupCheck(true, true);
+                uploadedImage: enriched.uploadedImage || null
+              };
+              saveWithDedupCheck(true, true, finalLocation);
             }}
             onCancel={() => setShowQuickCapture(false)}
           />
