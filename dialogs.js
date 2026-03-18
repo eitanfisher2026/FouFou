@@ -3004,13 +3004,15 @@
               nearestStop: newLocation.nearestStop,
               blocked: newLocation.gpsBlocked
             }}
-            onAutoName={(interestId) => {
+            onAutoName={(interestId, allSelectedInterests) => {
               const result = window.BKK.generateLocationName(
                 interestId, newLocation.lat, newLocation.lng,
                 interestCounters, allInterestOptions, areaOptions
               );
-              // Update newLocation.interests and name too
-              setNewLocation(prev => ({ ...prev, interests: [interestId], name: result?.name || prev.name }));
+              // Update newLocation and remember interests for next capture (session only)
+              const updatedInterests = allSelectedInterests || [interestId];
+              setNewLocation(prev => ({ ...prev, interests: updatedInterests, name: result?.name || prev.name }));
+              lastCaptureInterestsRef.current = updatedInterests;
               // Remember last interest for trail
               if (activeTrail) {
                 const updatedTrail = { ...activeTrail, lastInterest: interestId };
@@ -3029,6 +3031,8 @@
               // Merge enriched data back into newLocation then save
               const defaultInterest = activeTrail?.interests?.[0] || "spotted";
               const finalInterests = enriched.interests?.length > 0 ? enriched.interests : [defaultInterest];
+              // Remember interests for next capture in this session
+              lastCaptureInterestsRef.current = finalInterests;
               const finalName = enriched.name?.trim() || (() => {
                 const r = window.BKK.generateLocationName(
                   finalInterests[0], enriched.lat, enriched.lng,

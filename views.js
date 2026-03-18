@@ -391,14 +391,11 @@
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
-                const defaultInterests = activeTrail.lastInterest 
-                  ? [activeTrail.lastInterest] 
-                  : (activeTrail.interests || []).slice(0, 1);
                 const initLocation = {
                   name: '', description: '', notes: '',
                   area: activeTrail.area || formData.area,
                   areas: activeTrail.area ? [activeTrail.area] : [formData.area],
-                  interests: defaultInterests,
+                  interests: lastCaptureInterestsRef.current,
                   lat: null, lng: null, mapsUrl: '', address: '',
                   uploadedImage: null, imageUrls: [],
                   nearestStop: null, gpsLoading: true
@@ -1052,7 +1049,7 @@
               name: '', description: '', notes: '',
               area: formData.area || 'chinatown',
               areas: formData.areas?.length > 0 ? formData.areas : [formData.area || 'chinatown'],
-              interests: formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [],
+              interests: lastCaptureInterestsRef.current,
               lat: null, lng: null, mapsUrl: '', address: '',
               uploadedImage: null, imageUrls: [], gpsLoading: true
             };

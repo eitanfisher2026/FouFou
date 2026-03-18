@@ -34,7 +34,7 @@ const QuickAddPlaceDialog = ({
       : [...qaInterests, optId];
     setQaInterests(newInterests);
     if (captureMode && onAutoName && newInterests.length > 0) {
-      const generated = onAutoName(newInterests[0]);
+      const generated = onAutoName(newInterests[0], newInterests);
       if (generated) setQaName(generated);
     }
   };
@@ -238,22 +238,23 @@ const QuickAddPlaceDialog = ({
             )}
           </div>
 
-          {/* Auto-name display — captureMode only */}
-          {captureMode && qaName && (
-            <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
-              📝 {qaName}
-            </div>
-          )}
-
-          {/* Name field — QuickAdd mode only */}
-          {!captureMode && (
-            <div>
-              <label className={labelCls}>{t("places.placeName")}</label>
-              <input value={qaName} onChange={e => setQaName(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "16px" }} />
-            </div>
-          )}
+          {/* Name field — both modes. captureMode: auto-generated but editable. QuickAdd: from Google but editable */}
+          <div>
+            <label className={labelCls}>{t("places.placeName")}</label>
+            <input value={qaName} onChange={e => setQaName(e.target.value)}
+              placeholder={captureMode ? (t("places.placeName") + "...") : ""}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+              style={{
+                direction: isRTL ? "rtl" : "ltr", fontSize: "16px",
+                borderColor: captureMode ? "#22c55e" : "#d1d5db",
+                outline: "none"
+              }} />
+            {captureMode && !qaName && (
+              <p style={{ fontSize: "10px", color: "#9ca3af", margin: "3px 0 0 4px" }}>
+                {t("trail.whatDidYouSee")} → {t("places.placeName")}
+              </p>
+            )}
+          </div>
 
           {/* Description + mic */}
           <div>

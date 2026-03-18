@@ -77,7 +77,7 @@ const QuickAddPlaceDialog = ({
       : [...qaInterests, optId];
     setQaInterests(newInterests);
     if (captureMode && onAutoName && newInterests.length > 0) {
-      const generated = onAutoName(newInterests[0]);
+      const generated = onAutoName(newInterests[0], newInterests);
       if (generated) setQaName(generated);
     }
   };
@@ -281,22 +281,23 @@ const QuickAddPlaceDialog = ({
             )}
           </div>
 
-          {/* Auto-name display — captureMode only */}
-          {captureMode && qaName && (
-            <div style={{ padding: "6px 10px", background: "#f3f4f6", borderRadius: "8px", fontSize: "12px", color: "#6b7280" }}>
-              📝 {qaName}
-            </div>
-          )}
-
-          {/* Name field — QuickAdd mode only */}
-          {!captureMode && (
-            <div>
-              <label className={labelCls}>{t("places.placeName")}</label>
-              <input value={qaName} onChange={e => setQaName(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "16px" }} />
-            </div>
-          )}
+          {/* Name field — both modes. captureMode: auto-generated but editable. QuickAdd: from Google but editable */}
+          <div>
+            <label className={labelCls}>{t("places.placeName")}</label>
+            <input value={qaName} onChange={e => setQaName(e.target.value)}
+              placeholder={captureMode ? (t("places.placeName") + "...") : ""}
+              className="w-full p-2 border border-gray-300 rounded-lg"
+              style={{
+                direction: isRTL ? "rtl" : "ltr", fontSize: "16px",
+                borderColor: captureMode ? "#22c55e" : "#d1d5db",
+                outline: "none"
+              }} />
+            {captureMode && !qaName && (
+              <p style={{ fontSize: "10px", color: "#9ca3af", margin: "3px 0 0 4px" }}>
+                {t("trail.whatDidYouSee")} → {t("places.placeName")}
+              </p>
+            )}
+          </div>
 
           {/* Description + mic */}
           <div>
@@ -800,6 +801,7 @@ const FouFouApp = () => {
     try { const s = localStorage.getItem('foufou_fab_pos'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   });
   const fabDragRef = React.useRef({ dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, moved: false });
+  const lastCaptureInterestsRef = React.useRef([]);
   const [isRecording, setIsRecording] = useState(false);
   const stopRecordingRef = React.useRef(null);
 
@@ -7652,14 +7654,11 @@ const FouFouApp = () => {
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
-                const defaultInterests = activeTrail.lastInterest 
-                  ? [activeTrail.lastInterest] 
-                  : (activeTrail.interests || []).slice(0, 1);
                 const initLocation = {
                   name: '', description: '', notes: '',
                   area: activeTrail.area || formData.area,
                   areas: activeTrail.area ? [activeTrail.area] : [formData.area],
-                  interests: defaultInterests,
+                  interests: lastCaptureInterestsRef.current,
                   lat: null, lng: null, mapsUrl: '', address: '',
                   uploadedImage: null, imageUrls: [],
                   nearestStop: null, gpsLoading: true
@@ -8306,7 +8305,7 @@ const FouFouApp = () => {
               name: '', description: '', notes: '',
               area: formData.area || 'chinatown',
               areas: formData.areas?.length > 0 ? formData.areas : [formData.area || 'chinatown'],
-              interests: formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [],
+              interests: lastCaptureInterestsRef.current,
               lat: null, lng: null, mapsUrl: '', address: '',
               uploadedImage: null, imageUrls: [], gpsLoading: true
             };
@@ -14904,12 +14903,14 @@ const FouFouApp = () => {
               nearestStop: newLocation.nearestStop,
               blocked: newLocation.gpsBlocked
             }}
-            onAutoName={(interestId) => {
+            onAutoName={(interestId, allSelectedInterests) => {
               const result = window.BKK.generateLocationName(
                 interestId, newLocation.lat, newLocation.lng,
                 interestCounters, allInterestOptions, areaOptions
               );
-              setNewLocation(prev => ({ ...prev, interests: [interestId], name: result?.name || prev.name }));
+              const updatedInterests = allSelectedInterests || [interestId];
+              setNewLocation(prev => ({ ...prev, interests: updatedInterests, name: result?.name || prev.name }));
+              lastCaptureInterestsRef.current = updatedInterests;
               if (activeTrail) {
                 const updatedTrail = { ...activeTrail, lastInterest: interestId };
                 setActiveTrail(updatedTrail);
@@ -14926,6 +14927,7 @@ const FouFouApp = () => {
             onSave={(enriched, rating) => {
               const defaultInterest = activeTrail?.interests?.[0] || "spotted";
               const finalInterests = enriched.interests?.length > 0 ? enriched.interests : [defaultInterest];
+              lastCaptureInterestsRef.current = finalInterests;
               const finalName = enriched.name?.trim() || (() => {
                 const r = window.BKK.generateLocationName(
                   finalInterests[0], enriched.lat, enriched.lng,

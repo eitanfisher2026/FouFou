@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.20` (Mar 18, 2026)
+- **גרסה:** `3.9.21` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,17 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.21 — Capture dialog: session interests + editable name
+- `app-logic.js`: added `lastCaptureInterestsRef` (useRef, session-only, not persisted)
+  - Starts empty → first capture has no pre-selected interests
+  - After each capture: ref updated with selected interests
+  - Next capture in same session: same interests pre-selected
+- `quick-add-component.js`: captureMode name field is now an editable input (was read-only display)
+  - Auto-filled by generateLocationName when interest selected, but user can edit
+  - Green border in captureMode, hint text shown when no interest selected yet
+- `dialogs.js`: onAutoName passes full interests list to ref; onSave also updates ref
+- `views.js`: all three capture entry points (FAB, active trail button, route results button) now use lastCaptureInterestsRef instead of formData.interests
 
 ### v3.9.20 — EXIF GPS removed from gallery upload
 - `dialogs.js`: gallery file input no longer attempts EXIF GPS extraction (Android/iOS strip GPS from gallery images)

@@ -465,6 +465,9 @@
     try { const s = localStorage.getItem('foufou_fab_pos'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
   });
   const fabDragRef = React.useRef({ dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, moved: false });
+  // Remembers last capture interests within the session (NOT persisted — resets on page load)
+  // Used to pre-select the same interest(s) on next capture. Empty on first capture.
+  const lastCaptureInterestsRef = React.useRef([]);
   const [isRecording, setIsRecording] = useState(false);
   const stopRecordingRef = React.useRef(null);
 
