@@ -71,6 +71,15 @@ const QuickAddPlaceDialog = ({
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
   const qaStopRecRef = React.useRef(null);
 
+  // Bug fix: when dialog opens with pre-selected interests (from lastCaptureInterestsRef),
+  // no toggle event fires, so onAutoName is never called. Generate name on mount.
+  React.useEffect(() => {
+    if (captureMode && onAutoName && qaInterests.length > 0 && !qaName) {
+      const generated = onAutoName(qaInterests[0], qaInterests);
+      if (generated) setQaName(generated);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleInterestToggle = (optId) => {
     const newInterests = qaInterests.includes(optId)
       ? qaInterests.filter(i => i !== optId)
@@ -6886,16 +6895,21 @@ const FouFouApp = () => {
     locationToAdd = sanitizeMapsUrl(locationToAdd);
     
     const incrementCounters = () => {
-      if (isFirebaseAvailable && database && locationToAdd.interests?.length > 0) {
-        const nameMatch = locationToAdd.name.match(/#(\d+)$/);
-        if (nameMatch) {
-          const num = parseInt(nameMatch[1]);
-          locationToAdd.interests.forEach(interestId => {
-            const current = interestCounters[interestId] || 0;
-            if (num > current) {
+      const nameMatch = locationToAdd.name.match(/#(\d+)$/);
+      if (nameMatch && locationToAdd.interests?.length > 0) {
+        const num = parseInt(nameMatch[1]);
+        const updates = {};
+        locationToAdd.interests.forEach(interestId => {
+          const current = interestCounters[interestId] || 0;
+          if (num > current) {
+            updates[interestId] = num;
+            if (isFirebaseAvailable && database) {
               database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(num);
             }
-          });
+          }
+        });
+        if (Object.keys(updates).length > 0) {
+          setInterestCounters(prev => ({ ...prev, ...updates }));
         }
       }
     };

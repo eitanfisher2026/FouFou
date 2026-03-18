@@ -28,6 +28,15 @@ const QuickAddPlaceDialog = ({
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
   const qaStopRecRef = React.useRef(null);
 
+  // Bug fix: when dialog opens with pre-selected interests (from lastCaptureInterestsRef),
+  // no toggle event fires, so onAutoName is never called. Generate name on mount.
+  React.useEffect(() => {
+    if (captureMode && onAutoName && qaInterests.length > 0 && !qaName) {
+      const generated = onAutoName(qaInterests[0], qaInterests);
+      if (generated) setQaName(generated);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleInterestToggle = (optId) => {
     const newInterests = qaInterests.includes(optId)
       ? qaInterests.filter(i => i !== optId)

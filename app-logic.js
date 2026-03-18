@@ -7326,16 +7326,24 @@
     
     // Increment interest counters for auto-naming (if name matches "#N" pattern)
     const incrementCounters = () => {
-      if (isFirebaseAvailable && database && locationToAdd.interests?.length > 0) {
-        const nameMatch = locationToAdd.name.match(/#(\d+)$/);
-        if (nameMatch) {
-          const num = parseInt(nameMatch[1]);
-          locationToAdd.interests.forEach(interestId => {
-            const current = interestCounters[interestId] || 0;
-            if (num > current) {
+      const nameMatch = locationToAdd.name.match(/#(\d+)$/);
+      if (nameMatch && locationToAdd.interests?.length > 0) {
+        const num = parseInt(nameMatch[1]);
+        const updates = {};
+        locationToAdd.interests.forEach(interestId => {
+          const current = interestCounters[interestId] || 0;
+          if (num > current) {
+            updates[interestId] = num;
+            // Write to Firebase
+            if (isFirebaseAvailable && database) {
               database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(num);
             }
-          });
+          }
+        });
+        // Update local state immediately — don't wait for Firebase listener
+        // This ensures next generateLocationName call in the same session uses the correct counter
+        if (Object.keys(updates).length > 0) {
+          setInterestCounters(prev => ({ ...prev, ...updates }));
         }
       }
     };

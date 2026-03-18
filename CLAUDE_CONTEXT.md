@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.23` (Mar 18, 2026)
+- **גרסה:** `3.9.24` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,13 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.24 — QuickCapture: auto-name not generated + counter duplicate fix
+**Bug 1:** Opening capture dialog second time with pre-selected interest (from lastCaptureInterestsRef) — no name generated because handleInterestToggle never fires.
+**Fix 1:** Added `useEffect` in QuickAddPlaceDialog (captureMode) — runs on mount, calls `onAutoName` if interests pre-selected and name is empty.
+
+**Bug 2:** Toggle interest off → back on → generates same name number that was just used (counter not updated).
+**Fix 2:** `incrementCounters` in addCustomLocation now also calls `setInterestCounters(prev => {...prev, ...updates})` immediately, not waiting for Firebase listener. Next `generateLocationName` call uses correct counter.
 
 ### v3.9.23 — QuickCapture image not saved — root cause fixed
 **Bug:** image uploaded from gallery (or camera) in QuickCapture was not saved to the location.
