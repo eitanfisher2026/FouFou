@@ -1135,7 +1135,7 @@ help: {
     noGoogleId: 'ללא קישור גוגל',
     updateWithGoogle: 'עדכן מועדף בנתוני גוגל',
     updatedWithGoogle: 'עודכן בנתוני גוגל',
-    openExisting: 'פתח מועדף קיים לעריכה',
+    openExisting: 'פתח מועדף קיים',
   },
 }, // end Hebrew
 

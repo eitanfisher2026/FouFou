@@ -690,6 +690,7 @@
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
                     )}
+                    {(isAdmin || isEditor) && (
                     <button
                       onClick={() => {
                         setGooglePlaceInfo(null);
@@ -704,6 +705,7 @@
                     >
                       🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}
                     </button>
+                    )}
                     {(isAdmin || isEditor) && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
@@ -805,7 +807,9 @@
               {/* Footer */}
               {(() => {
                 const isOwnPlace = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
-                const canEdit = isAdmin || isEditor || isOwnPlace;
+                // Regular users can only edit their own draft (unlocked) places
+                // Editors/admins can edit any place
+                const canEdit = isAdmin || isEditor || (isOwnPlace && !editingLocation?.locked);
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 {!canEdit ? (

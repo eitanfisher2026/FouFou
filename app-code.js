@@ -12641,6 +12641,7 @@ const FouFouApp = () => {
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
                     )}
+                    {(isAdmin || isEditor) && (
                     <button
                       onClick={() => {
                         setGooglePlaceInfo(null);
@@ -12655,6 +12656,7 @@ const FouFouApp = () => {
                     >
                       🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}
                     </button>
+                    )}
                     {(isAdmin || isEditor) && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
@@ -12756,7 +12758,7 @@ const FouFouApp = () => {
               {/* Footer */}
               {(() => {
                 const isOwnPlace = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
-                const canEdit = isAdmin || isEditor || isOwnPlace;
+                const canEdit = isAdmin || isEditor || (isOwnPlace && !editingLocation?.locked);
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                 {!canEdit ? (
