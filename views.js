@@ -1352,6 +1352,9 @@
                                         </span>
                                       )}
                                       <span style={!isDisabled ? { textDecoration: 'underline', textUnderlineOffset: '2px' } : undefined}>{stop.name}</span>
+                                      {stop.trailSkipped && (
+                                        <span className="text-[8px] bg-gray-200 text-gray-500 px-1 py-0.5 rounded font-bold">{t('trail.skipped') || 'דולג'}</span>
+                                      )}
                                       {isStartPoint && (
                                         <span className="text-[8px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{t("general.start")}</span>
                                       )}

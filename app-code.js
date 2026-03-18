@@ -666,7 +666,7 @@ const FouFouApp = () => {
   
   // === SHARED HELPERS (avoid code duplication) ===
   
-  const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim());
+  const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim()) || !!stop.trailSkipped;
   const isStopDisabledRef = (stop) => (disabledStopsRef.current || []).includes((stop.name || '').toLowerCase().trim());
   
   const runSmartPlanRef = React.useRef(null);
@@ -6643,7 +6643,8 @@ const FouFouApp = () => {
       area: area || formData.area || '',
       cityId: selectedCityId,
       circular: routeType === 'circular',
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      routeSnapshot: route ? JSON.parse(JSON.stringify(route)) : null
     };
     lastCaptureInterestsRef.current = [];
     setActiveTrail(trail);
@@ -6651,6 +6652,20 @@ const FouFouApp = () => {
   };
 
   const endActiveTrail = () => {
+    if (activeTrail?.routeSnapshot) {
+      const skippedIdxSet = skippedTrailStops;
+      const restoredRoute = { ...activeTrail.routeSnapshot };
+      if (restoredRoute.stops) {
+        restoredRoute.stops = restoredRoute.stops.map((stop, idx) => ({
+          ...stop,
+          trailSkipped: skippedIdxSet.has(idx) ? true : undefined
+        }));
+      }
+      setRoute(restoredRoute);
+      setWizardStep(3);
+      setCurrentView('form');
+      setRouteChoiceMade('manual'); // show route results panel
+    }
     setActiveTrail(null);
     setSkippedTrailStops(new Set());
     localStorage.removeItem('foufou_active_trail');
@@ -8618,6 +8633,9 @@ const FouFouApp = () => {
                                         </span>
                                       )}
                                       <span style={!isDisabled ? { textDecoration: 'underline', textUnderlineOffset: '2px' } : undefined}>{stop.name}</span>
+                                      {stop.trailSkipped && (
+                                        <span className="text-[8px] bg-gray-200 text-gray-500 px-1 py-0.5 rounded font-bold">{t('trail.skipped') || 'דולג'}</span>
+                                      )}
                                       {isStartPoint && (
                                         <span className="text-[8px] bg-green-600 text-white px-1 py-0.5 rounded font-bold">{t("general.start")}</span>
                                       )}

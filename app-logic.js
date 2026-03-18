@@ -300,7 +300,7 @@
   // === SHARED HELPERS (avoid code duplication) ===
   
   // Check if a stop is disabled — single source of truth
-  const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim());
+  const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim()) || !!stop.trailSkipped;
   const isStopDisabledRef = (stop) => (disabledStopsRef.current || []).includes((stop.name || '').toLowerCase().trim());
   
   // Find smart start point: GPS nearest → circular first → null (let optimizer pick)
@@ -7051,7 +7051,9 @@
       area: area || formData.area || '',
       cityId: selectedCityId,
       circular: routeType === 'circular',
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      // Full route snapshot — restored on endActiveTrail so user sees complete route state
+      routeSnapshot: route ? JSON.parse(JSON.stringify(route)) : null
     };
     // Reset capture interests on new trail — next capture starts from trail interests, not previous session
     lastCaptureInterestsRef.current = [];
@@ -7060,6 +7062,22 @@
   };
 
   const endActiveTrail = () => {
+    // Restore the route snapshot from when the trail started
+    // Mark skipped stops with trailSkipped:true so route results screen can show them grayed
+    if (activeTrail?.routeSnapshot) {
+      const skippedIdxSet = skippedTrailStops;
+      const restoredRoute = { ...activeTrail.routeSnapshot };
+      if (restoredRoute.stops) {
+        restoredRoute.stops = restoredRoute.stops.map((stop, idx) => ({
+          ...stop,
+          trailSkipped: skippedIdxSet.has(idx) ? true : undefined
+        }));
+      }
+      setRoute(restoredRoute);
+      setWizardStep(3);
+      setCurrentView('form');
+      setRouteChoiceMade('manual'); // show route results panel
+    }
     setActiveTrail(null);
     setSkippedTrailStops(new Set());
     localStorage.removeItem('foufou_active_trail');
