@@ -380,7 +380,7 @@
               </span>
             </div>
             <p style={{ fontSize: '11px', color: '#6b7280', margin: '0 0 8px 0', textAlign: 'center' }}>{t('trail.activeDesc')}</p>
-            {renderContextHint('hint_trail')}
+            {renderContextHint('activeTrail')}
 
             {/* Camera Button row — doc button on left (after camera in DOM = left in RTL, closes naturally (ok) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
