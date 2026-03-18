@@ -28,7 +28,7 @@ def strip_for_production(code):
                 skip_depth = 0
             continue
 
-        if re.match(r'\s*console\.(log|warn)\s*\(', stripped):
+        if re.match(r'\s*console\.(log|warn|info)\s*\(', stripped):
             opens = stripped.count('(') + stripped.count('{') + stripped.count('[')
             closes = stripped.count(')') + stripped.count('}') + stripped.count(']')
             if opens > closes:

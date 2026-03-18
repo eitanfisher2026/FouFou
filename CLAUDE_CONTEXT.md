@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.21` (Mar 18, 2026)
+- **גרסה:** `3.9.22` (Mar 18, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1038,6 +1038,12 @@ What I did before:
 ---
 
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
+
+### v3.9.22 — Console cleanup + Firebase index
+- `build.py`: `strip_for_production` now also removes `console.info` (was only log/warn)
+- `config.js`, `i18n.js`: removed startup console calls — `[CONFIG] Loaded` and `[I18N] Loaded` no longer appear in production console
+- `firebase-rules.json`: added `.indexOn: ["timestamp"]` to `/feedback` — fixes Firebase performance warning
+- app-code.js: reduced from 838KB → 831KB (stripped console.info calls from RATING-REFRESH etc.)
 
 ### v3.9.21 — Capture dialog: session interests + editable name
 - `app-logic.js`: added `lastCaptureInterestsRef` (useRef, session-only, not persisted)

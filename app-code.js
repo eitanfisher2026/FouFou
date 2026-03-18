@@ -3849,7 +3849,6 @@ const FouFouApp = () => {
     const startTime = Date.now();
     
     setRatingsRefreshProgress({ current: 0, total: candidates.length, updated: 0 });
-    console.info(`[RATING-REFRESH] 🚀 Starting: ${candidates.length} places to check (${skippedRecent} skipped — updated within 7 days)`);
     
     for (let i = 0; i < candidates.length; i++) {
       const loc = candidates[i];
@@ -3912,13 +3911,11 @@ const FouFouApp = () => {
         }
         
         if (!newRating) {
-          console.info(`[RATING-REFRESH] ${i+1}/${candidates.length} ${loc.name} — no rating found`);
           stats.noRating++;
           continue;
         }
         
         if (loc.googleRating === newRating && loc.googleRatingCount === newCount) {
-          console.info(`[RATING-REFRESH] ${i+1}/${candidates.length} ${loc.name} — unchanged ⭐${newRating} (${newCount})`);
           stats.unchanged++;
           if (loc.firebaseId) {
             const tsUpdate = { googleRatingUpdated: Date.now() };
@@ -3927,8 +3924,6 @@ const FouFouApp = () => {
           }
           continue;
         }
-        
-        console.info(`[RATING-REFRESH] ${i+1}/${candidates.length} ${loc.name} — ⭐${loc.googleRating || 'none'}→${newRating} (${loc.googleRatingCount || 0}→${newCount})`);
         
         if (loc.firebaseId) {
           try {
@@ -3940,10 +3935,8 @@ const FouFouApp = () => {
             });
             const verify = await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRating`).once('value');
             if (verify.val() === newRating) {
-              console.info(`[RATING-REFRESH] ✅ ${loc.name} saved & verified ⭐${newRating}`);
               stats.saved++;
             } else {
-              console.info(`[RATING-REFRESH] ⚠️ ${loc.name} write mismatch: expected ${newRating}, got ${verify.val()}`);
               stats.errors++;
             }
           } catch (fbErr) {
@@ -3961,7 +3954,6 @@ const FouFouApp = () => {
         stats.updated++;
         setRatingsRefreshProgress({ current: i + 1, total: candidates.length, updated: stats.updated });
       } catch (e) {
-        console.info(`[RATING-REFRESH] ❌ ${loc.name}: ${e.message}`);
         stats.errors++;
       }
       
@@ -3971,21 +3963,7 @@ const FouFouApp = () => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const estCost = (stats.detailsCalls * 0.005 + stats.textSearchCalls * 0.032).toFixed(3);
     
-    console.info(`[RATING-REFRESH] ════════════════════════════════`);
-    console.info(`[RATING-REFRESH] 📊 Summary:`);
-    console.info(`[RATING-REFRESH]   Total favorites: ${allPlaces.length}`);
-    console.info(`[RATING-REFRESH]   Skipped (updated <7d): ${stats.skippedRecent}`);
-    console.info(`[RATING-REFRESH]   Scanned: ${stats.total}`);
-    console.info(`[RATING-REFRESH]   ✅ Updated: ${stats.updated} (saved to Firebase: ${stats.saved})`);
-    console.info(`[RATING-REFRESH]   ⏭️ Unchanged: ${stats.unchanged}`);
-    console.info(`[RATING-REFRESH]   ❌ No rating: ${stats.noRating}`);
-    console.info(`[RATING-REFRESH]   ⚠️ Errors: ${stats.errors}`);
-    console.info(`[RATING-REFRESH]   API calls: ${stats.apiCalls} (Details: ${stats.detailsCalls} × $0.005, TextSearch: ${stats.textSearchCalls} × $0.032)`);
-    console.info(`[RATING-REFRESH]   🔑 New placeIds saved: ${stats.newPlaceIds} (cheaper next time)`);
     const nextCost = ((stats.detailsCalls + stats.newPlaceIds) * 0.005 + Math.max(0, stats.textSearchCalls - stats.newPlaceIds) * 0.032).toFixed(3);
-    console.info(`[RATING-REFRESH]   💰 Est. cost: $${estCost} (next run: ~$${nextCost})`);
-    console.info(`[RATING-REFRESH]   ⏱️ Time: ${elapsed}s`);
-    console.info(`[RATING-REFRESH] ════════════════════════════════`);
     
     showToast(
       `⭐ ${stats.updated} ${t('settings.updated')} / ${stats.total} ${t('settings.scanned') || 'נסרקו'} (${stats.unchanged} ${t('settings.unchangedRating') || 'ללא שינוי'}) · $${estCost}`,

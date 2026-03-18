@@ -2178,4 +2178,4 @@ help: {
 
 }; // end strings
 
-console.log('[I18N] Loaded translations: he, en');
+// [I18N] translations loaded
