@@ -1099,17 +1099,26 @@ window.BKK.startSpeechToText = (options = {}) => {
   
   let finalText = '';
   let timeoutId = null;
-  
+
   recognition.onresult = function(event) {
+    let newFinal = '';
     let interim = '';
     for (var i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
-        finalText += event.results[i][0].transcript;
+        newFinal += event.results[i][0].transcript;
       } else {
         interim += event.results[i][0].transcript;
       }
     }
-    onResult(finalText || interim, !!finalText);
+    if (newFinal) {
+      finalText += newFinal;
+      // Call onResult only with the new final chunk — not the full accumulated text
+      // Callers are responsible for appending to their own state
+      onResult(newFinal, true);
+    } else if (interim) {
+      // Interim results: pass for live preview only (isFinal=false)
+      onResult(interim, false);
+    }
   };
   
   recognition.onend = function() {

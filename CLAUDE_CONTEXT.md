@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.43` (Mar 19, 2026)
+- **גרסה:** `3.9.45` (Mar 19, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -672,6 +672,50 @@ places.photos      <- expensive — never request automatically
 places.website     <- not used
 places.priceLevel  <- only if displaying it
 ```
+
+---
+
+## אחידות UI — עיקרון מרכזי
+
+> **Eitan מקפיד מאוד על אחידות בכל המערכת. כל שינוי צריך לבדוק שהוא אחיד בכל המקומות.**
+
+כלל: כל פיצ'ר שקיים במסך אחד — אמור לעבוד **בדיוק אותו דבר** בכל המסכים. לפני כל שינוי — לרוץ על כל המסכים הרלוונטיים ולוודא אחידות.
+
+דוגמאות שכבר נגרמו מהיעדר אחידות: הקלטה קולית הכפילה טקסט רק בקומפוננט אחד; כפתורים נראו שונה בין מסכים; תחומים לא נשמרו אחיד.
+
+---
+
+## הקלטה קולית (`window.BKK.startSpeechToText`) — כלל שימוש
+
+> **זו הפונקציה היחידה לכל ההקלטות.** לא לכתוב הקלטה ישירה ב-SpeechRecognition במקומות חדשים.
+
+### חתימה
+```js
+const stop = window.BKK.startSpeechToText({
+  maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+  onResult: (text, isFinal) => { ... },  // isFinal=true: טקסט סופי; isFinal=false: interim בלבד
+  onEnd: () => { ... },
+  onError: (error) => { ... }
+});
+// stop() = עצור הקלטה
+```
+
+### חוקי `onResult`
+- `isFinal=false` (interim) → **תצוגה חיה בלבד** — לא לשמור ב-state
+- `isFinal=true` (final) → **צרף** (`prev + ' ' + text`) ל-state
+- **לעולם לא לשים** `setField(text)` ישירות (replace) — תמיד append כשisFinal
+- **לעולם לא להתעלם מ-isFinal** — זו הסיבה לכפילות
+
+### טווחי זמן
+- כל הקלטה = 15 שניות (`speechMaxSeconds` ב-systemParams)
+- יוצא דופן: hint dictation (כתיבת עזרה) = ללא הגבלה, מצב continuous מיוחד ב-app-logic.js
+
+### מיקומים קיימים (חייבים להישאר אחידים)
+| מיקום | שדות | קובץ |
+|-------|------|------|
+| QuickCapture / QuickAdd | description, notes, rating | quick-add-component.js → startRec() |
+| עריכת מקום מועדף | description, notes | dialogs.js |
+| כתיבת hint (admin) | hint text | app-logic.js → startHintDictation() (מיוחד — continuous) |
 
 ---
 

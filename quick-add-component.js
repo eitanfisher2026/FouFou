@@ -58,7 +58,8 @@ const QuickAddPlaceDialog = ({
     setQaRecordingField(field);
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-      onResult: (text) => {
+      onResult: (text, isFinal) => {
+        if (!isFinal) return; // ignore interim — only append confirmed final text
         if (field === "description") setQaDescription(prev => (prev ? prev + " " : "") + text);
         if (field === "notes") setQaNotes(prev => (prev ? prev + " " : "") + text);
         if (field === "rating") setQaRatingText(prev => (prev ? prev + " " : "") + text);

@@ -495,8 +495,11 @@
                               setIsRecording(true);
                               const stop = window.BKK.startSpeechToText({
                                 maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                                onResult: (text) => {
-                                  setNewLocation(prev => ({...prev, description: text}));
+                                onResult: (text, isFinal) => {
+                                  if (isFinal) {
+                                    setNewLocation(prev => ({...prev, description: (prev.description ? prev.description + ' ' : '') + text}));
+                                  }
+                                  // interim: no-op (no live preview in this dialog)
                                 },
                                 onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
                                 onError: (error) => {
@@ -570,8 +573,10 @@
                               setIsRecording(true);
                               const stop = window.BKK.startSpeechToText({
                                 maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                                onResult: (text) => {
-                                  setNewLocation(prev => ({...prev, notes: text}));
+                                onResult: (text, isFinal) => {
+                                  if (isFinal) {
+                                    setNewLocation(prev => ({...prev, notes: (prev.notes ? prev.notes + ' ' : '') + text}));
+                                  }
                                 },
                                 onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
                                 onError: (error) => {
