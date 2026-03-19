@@ -91,7 +91,7 @@ const QuickAddPlaceDialog = ({
     if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
     if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
-  }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', undefined, {sensitivity: 'base'}));
+  }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
 
   const isRTL = window.BKK.i18n.isRTL();
   const labelCls = "block text-xs font-bold mb-1";

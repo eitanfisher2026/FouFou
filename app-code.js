@@ -134,7 +134,7 @@ const QuickAddPlaceDialog = ({
     if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
     if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
-  }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', undefined, {sensitivity: 'base'}));
+  }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
 
   const isRTL = window.BKK.i18n.isRTL();
   const labelCls = "block text-xs font-bold mb-1";
@@ -9824,7 +9824,7 @@ const FouFouApp = () => {
                 if (!cfg) return i;
                 return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
               });
-              const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', undefined, {sensitivity: 'base'}));
+              const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const activeBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
@@ -12392,7 +12392,7 @@ const FouFouApp = () => {
                       if ((newLocation.interests || []).includes(option.id)) return true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
-                    }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', undefined, {sensitivity: 'base'})).map(option => (
+                    }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he')).map(option => (
                       <button
                         key={option.id}
                         onClick={() => {
