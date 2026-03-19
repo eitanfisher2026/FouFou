@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.41
+// FouFou app-data.js v3.9.42
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3582,7 +3582,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.41';
+window.BKK.VERSION = '3.9.42';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4438,16 +4438,16 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
   }
   
-  if ((place.fromGoogle || place.googlePlace) && place.name && hasCoords) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.lat + ',' + place.lng)}`;
-  }
-  
-  if (addressStr) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
-  }
-  
   if (place.name?.trim() && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
+  }
+
+  if (place.name?.trim() && addressStr) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + addressStr)}`;
+  }
+
+  if (addressStr) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
   }
   
   if (hasCoords) {

@@ -510,19 +510,19 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
   }
   
-  // Google-origin place with name + coords
-  if ((place.fromGoogle || place.googlePlace) && place.name && hasCoords) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + place.lat + ',' + place.lng)}`;
-  }
-  
-  // Fallback: address
-  if (addressStr) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
-  }
-  
-  // Custom place with name + coords
+  // Any place with name + coords — most reliable combination
   if (place.name?.trim() && hasCoords) {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
+  }
+
+  // Name + address (no coords) — always combine name+address, never address alone
+  if (place.name?.trim() && addressStr) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + addressStr)}`;
+  }
+
+  // Address only — last resort, no name available
+  if (addressStr) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
   }
   
   // Coordinate-only custom place: just pin on map

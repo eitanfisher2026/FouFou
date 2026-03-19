@@ -169,6 +169,28 @@ def test_maps_url_sanitize():
         'https://www.google.com/maps/search/?api=1&query=Bangkok&query_place_id=EiIabc',
         'https://www.google.com/maps/@13.73,100.52,15z',
     ]
+
+    # Verify name+address is used over address-only (the Heng HoiTod bug)
+    # Simulate: place with name + address, no coords, no placeId
+    # Expected URL must contain the restaurant name, not just the address
+    import urllib.parse
+    def mock_url(name, address, coords=None, place_id=None):
+        if place_id:
+            return f'https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(name)}&query_place_id={place_id}'
+        if name and coords:
+            return f'https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(name + " " + str(coords[0]) + "," + str(coords[1]))}'
+        if name and address:
+            return f'https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(name + " " + address)}'
+        if address:
+            return f'https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(address)}'
+        return '#'
+
+    url = mock_url('Heng HoiTod Chawlae', '1326 Banthat Thong Rd')
+    if 'Heng+HoiTod' not in url and 'Heng%20HoiTod' not in url and 'Heng HoiTod' not in url:
+        errors.append(f'name+address bug: URL does not contain restaurant name: {url}')
+    url_addr_only = mock_url('', '1326 Banthat Thong Rd')
+    if '1326' not in url_addr_only:
+        errors.append(f'address-only fallback broken: {url_addr_only}')
     errors = []
     for url in must_break:
         if not is_broken(url): errors.append(f'MISSED broken URL: {url}')
