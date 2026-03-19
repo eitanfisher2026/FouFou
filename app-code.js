@@ -852,7 +852,13 @@ const FouFouApp = () => {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
-  const [interestTimeFilter, setInterestTimeFilter] = useState('all');
+  const [interestTimeFilter, setInterestTimeFilter] = useState(
+    () => localStorage.getItem('foufou_time_filter') || 'all'
+  );
+  const setInterestTimeFilterAndSave = (val) => {
+    setInterestTimeFilter(val);
+    try { localStorage.setItem('foufou_time_filter', val); } catch(e) {}
+  };
 
   const [routeType, setRouteType] = useState(() => {
     const saved = localStorage.getItem('foufou_route_type');
@@ -8260,7 +8266,7 @@ const FouFouApp = () => {
                     { key: 'night', icon: '🌙', label: t('time.night') || 'לילה' },
                     { key: 'all',   icon: '🌗', label: t('time.all') || 'הכל' },
                   ].map(opt => (
-                    <button key={opt.key} onClick={() => setInterestTimeFilter(opt.key)}
+                    <button key={opt.key} onClick={() => setInterestTimeFilterAndSave(opt.key)}
                       title={opt.label}
                       style={{
                         padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',

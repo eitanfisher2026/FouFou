@@ -909,7 +909,7 @@
                     { key: 'night', icon: '🌙', label: t('time.night') || 'לילה' },
                     { key: 'all',   icon: '🌗', label: t('time.all') || 'הכל' },
                   ].map(opt => (
-                    <button key={opt.key} onClick={() => setInterestTimeFilter(opt.key)}
+                    <button key={opt.key} onClick={() => setInterestTimeFilterAndSave(opt.key)}
                       title={opt.label}
                       style={{
                         padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',

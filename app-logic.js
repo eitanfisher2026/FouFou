@@ -504,7 +504,14 @@
   // Time filter for interest grid: 'all' | 'day' | 'night'
   // Controls which interests are visible in wizard step 1.
   // Also drives hard time filter in smartSelectStops (see below).
-  const [interestTimeFilter, setInterestTimeFilter] = useState('all');
+  const [interestTimeFilter, setInterestTimeFilter] = useState(
+    () => localStorage.getItem('foufou_time_filter') || 'all'
+  );
+  // Persist time filter changes
+  const setInterestTimeFilterAndSave = (val) => {
+    setInterestTimeFilter(val);
+    try { localStorage.setItem('foufou_time_filter', val); } catch(e) {}
+  };
 
   const [routeType, setRouteType] = useState(() => {
     // Load from localStorage or default to 'circular'
