@@ -3945,16 +3945,16 @@
         // Build new stable URL
         const updatedLoc = { ...loc, googlePlaceId: newPlaceId, mapsUrl: '' };
         const newUrl = window.BKK.getGoogleMapsUrl(updatedLoc);
-        // Save to Firebase
-        const batch = {};
-        if (loc.firebaseId) {
-          batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = newPlaceId;
-          batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`] = newUrl;
-          if (best.rating) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRating`] = best.rating;
-          if (best.userRatingCount) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRatingCount`] = best.userRatingCount;
-        }
+        // Save to Firebase — skip if no firebaseId (offline/pending place)
+        if (!loc.firebaseId) { skipped++; continue; }
+        const batch = {
+          [`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`]: newPlaceId,
+          [`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`]: newUrl,
+        };
+        if (best.rating) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRating`] = best.rating;
+        if (best.userRatingCount) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRatingCount`] = best.userRatingCount;
         await database.ref().update(batch);
-        // Update memory
+        // Update memory immediately
         setCustomLocations(prev => prev.map(l =>
           l.id === loc.id ? { ...l, googlePlaceId: newPlaceId, mapsUrl: newUrl } : l
         ));
