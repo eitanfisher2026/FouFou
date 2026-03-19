@@ -3360,7 +3360,43 @@
                 </button>
               </div>
             </div>
-            
+
+            {/* Bulk Fix: fetch googlePlaceId for all places missing it */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-indigo-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔗 תקן URL לכל המקומות</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  מחפש ב-Google Places את ה-ID הייחודי של כל מקום שחסר לו — ומבנה URL יציב שנפתח נכון בכל מכשיר. פעולה חד-פעמית.
+                </p>
+                <div className="text-xs text-indigo-700 mb-2">
+                  {`${customLocations.filter(l => (l.cityId||'bangkok')===selectedCityId && l.status!=='blacklist' && l.name?.trim() && !l.googlePlaceId?.match(/^(ChIJ|EiI|GhIJ)/) && (l.lat||l.lng)).length} מקומות ללא ID`}
+                </div>
+                <button
+                  onClick={() => {
+                    if (!window.confirm('יחפש ב-Google Places את כל המקומות ללא ID ייחודי ויתקן את ה-URL שלהם. כל חיפוש = קריאת API אחת. להמשיך?')) return;
+                    bulkFixGooglePlaceIds();
+                  }}
+                  disabled={!!bulkFixProgress}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    bulkFixProgress
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800'
+                  }`}
+                >
+                  {bulkFixProgress ? (
+                    <>
+                      <span className="animate-spin">🔗</span>
+                      <span>{`${bulkFixProgress.current}/${bulkFixProgress.total} · תוקנו ${bulkFixProgress.fixed}`}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔗</span>
+                      <span>תקן URL לכל המקומות (חד-פעמי)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
 
             )}
             {/* Bulk Approve Drafts */}

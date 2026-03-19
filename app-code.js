@@ -3883,6 +3883,76 @@ const FouFouApp = () => {
     setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
   };
 
+  const [bulkFixProgress, setBulkFixProgress] = useState(null); // null | {current, total, fixed, skipped, errors}
+  const bulkFixGooglePlaceIds = async () => {
+    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
+      showToast('Google API or Firebase not available', 'error');
+      return;
+    }
+    const isValidGPID = (pid) => pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+    const candidates = customLocations.filter(l =>
+      (l.cityId || 'bangkok') === selectedCityId &&
+      l.status !== 'blacklist' &&
+      l.name?.trim() &&
+      !isValidGPID(l.googlePlaceId) &&
+      (l.lat || l.lng) // must have coords to bias search
+    );
+    if (candidates.length === 0) {
+      showToast('✅ כל המקומות כבר עם googlePlaceId', 'success');
+      return;
+    }
+    setBulkFixProgress({ current: 0, total: candidates.length, fixed: 0, skipped: 0, errors: 0 });
+    let fixed = 0, skipped = 0, errors = 0;
+    for (let i = 0; i < candidates.length; i++) {
+      const loc = candidates[i];
+      setBulkFixProgress({ current: i + 1, total: candidates.length, fixed, skipped, errors });
+      try {
+        const searchQuery = loc.name.trim() + ' ' + (window.BKK.cityNameForSearch || 'Bangkok');
+        const response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount'
+          },
+          body: JSON.stringify({
+            textQuery: searchQuery,
+            maxResultCount: 3,
+            locationBias: { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } }
+          })
+        });
+        if (!response.ok) { errors++; continue; }
+        const data = await response.json();
+        if (!data.places?.length) { skipped++; continue; }
+        const best = data.places.reduce((b, p) => {
+          const d = (a, bp) => Math.sqrt(Math.pow((a.location?.latitude||0)-loc.lat,2)+Math.pow((a.location?.longitude||0)-loc.lng,2));
+          return d(p) < d(b) ? p : b;
+        });
+        const newPlaceId = best.id;
+        if (!isValidGPID(newPlaceId)) { skipped++; continue; }
+        const updatedLoc = { ...loc, googlePlaceId: newPlaceId, mapsUrl: '' };
+        const newUrl = window.BKK.getGoogleMapsUrl(updatedLoc);
+        const batch = {};
+        if (loc.firebaseId) {
+          batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = newPlaceId;
+          batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`] = newUrl;
+          if (best.rating) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRating`] = best.rating;
+          if (best.userRatingCount) batch[`cities/${selectedCityId}/locations/${loc.firebaseId}/googleRatingCount`] = best.userRatingCount;
+        }
+        await database.ref().update(batch);
+        setCustomLocations(prev => prev.map(l =>
+          l.id === loc.id ? { ...l, googlePlaceId: newPlaceId, mapsUrl: newUrl } : l
+        ));
+        fixed++;
+      } catch (e) {
+        errors++;
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    setBulkFixProgress(null);
+    showToast(`✅ תוקנו ${fixed} מקומות · דולגו ${skipped} · שגיאות ${errors}`, fixed > 0 ? 'success' : 'info', 'sticky');
+  };
+
   const refreshAllGoogleRatings = async () => {
     if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database) {
       showToast('Google API or Firebase not available', 'error');
@@ -10636,7 +10706,44 @@ const FouFouApp = () => {
                 </button>
               </div>
             </div>
-            
+
+            {/* Bulk Fix: fetch googlePlaceId for all places missing it */}
+            <div className="mb-3">
+              <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-indigo-400 rounded-xl p-3">
+                <h3 className="text-base font-bold text-gray-800 mb-1">🔗 תקן URL לכל המקומות</h3>
+                <p className="text-xs text-gray-600 mb-2">
+                  מחפש ב-Google Places את ה-ID הייחודי של כל מקום שחסר לו — ומבנה URL יציב שנפתח נכון בכל מכשיר. פעולה חד-פעמית.
+                </p>
+                <div className="text-xs text-indigo-700 mb-2">
+                  {`${customLocations.filter(l => (l.cityId||'bangkok')===selectedCityId && l.status!=='blacklist' && l.name?.trim() && !l.googlePlaceId?.match(/^(ChIJ|EiI|GhIJ)/) && (l.lat||l.lng)).length} מקומות ללא ID`}
+                </div>
+                <button
+                  onClick={() => {
+                    if (!window.confirm('יחפש ב-Google Places את כל המקומות ללא ID ייחודי ויתקן את ה-URL שלהם. כל חיפוש = קריאת API אחת. להמשיך?')) return;
+                    bulkFixGooglePlaceIds();
+                  }}
+                  disabled={!!bulkFixProgress}
+                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    bulkFixProgress
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800'
+                  }`}
+                >
+                  {bulkFixProgress ? (
+                    <>
+                      <span className="animate-spin">🔗</span>
+                      <span>{`${bulkFixProgress.current}/${bulkFixProgress.total} · תוקנו ${bulkFixProgress.fixed}`}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔗</span>
+                      <span>תקן URL לכל המקומות (חד-פעמי)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             )}
             {/* Bulk Approve Drafts */}
             {isUnlocked && (
