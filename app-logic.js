@@ -6733,7 +6733,7 @@
         const pk = (enriched.name || '').replace(/[.#$/\[\]]/g, '_');
         const uid = authUser?.uid || window.BKK.visitorId;
         await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
-          score: rating.score,
+          rating: rating.score,  // field name 'rating' — consistent with loadReviewAverages and reviewDialog
           text: rating.text || '',
           timestamp: Date.now(),
           uid,
