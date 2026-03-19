@@ -501,6 +501,11 @@
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
+  // Time filter for interest grid: 'all' | 'day' | 'night'
+  // Controls which interests are visible in wizard step 1.
+  // Also drives hard time filter in smartSelectStops (see below).
+  const [interestTimeFilter, setInterestTimeFilter] = useState('all');
+
   const [routeType, setRouteType] = useState(() => {
     // Load from localStorage or default to 'circular'
     const saved = localStorage.getItem('foufou_route_type');
@@ -4574,9 +4579,49 @@
     
     // Sort each bucket: custom/pinned first, then by time match, then by rating
     const timeMode = getEffectiveTimeMode(); // 'day' or 'night'
-    
+
+    // Hard time filter — generic, based on which interests the USER selected.
+    // RULE: if all selected interests are 'day' → filter out 'night' stops.
+    //       if all selected interests are 'night' → filter out 'day' stops.
+    //       if mix of day+night → no filter (user explicitly wants both).
+    //       anytime interests → never affect filter direction.
+    // Custom (saved) places are always kept regardless.
+    {
+      const selectedBestTimes = new Set(
+        selectedInterests
+          .map(id => {
+            const cfg = interestConfig[id];
+            if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
+            const hardDefault = { temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
+              beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day', culture: 'day',
+              history: 'day', nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night' };
+            return hardDefault[id] || 'anytime';
+          })
+          .filter(bt => bt !== 'anytime')
+      );
+      const onlyDay = selectedBestTimes.size > 0 && !selectedBestTimes.has('night');
+      const onlyNight = selectedBestTimes.size > 0 && !selectedBestTimes.has('day');
+      const effectiveFilter = onlyDay ? 'day' : onlyNight ? 'night' : null; // null = no filter
+
+      if (effectiveFilter) {
+        for (const id of Object.keys(buckets)) {
+          buckets[id] = buckets[id].filter(stop => {
+            const isCustom = stop.source === 'custom' || stop.custom;
+            if (isCustom) return true;
+            const bt = getStopBestTime(stop);
+            if (bt === 'anytime') return true;
+            if (bt !== effectiveFilter) {
+              addDebugLog('SMART', `⏰ Hard-filtered: ${stop.name} bestTime=${bt} effectiveFilter=${effectiveFilter}`);
+              return false;
+            }
+            return true;
+          });
+        }
+      }
+    }
+
     // Get a stop's preferred time — uses shared getStopBestTime helper
-    
+
     // Time score: matching=sp.timeScoreMatch, anytime=sp.timeScoreAnytime, conflicting=sp.timeScoreConflict
     const timeScore = (stop) => {
       const bt = getStopBestTime(stop);

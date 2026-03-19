@@ -843,6 +843,8 @@ const FouFouApp = () => {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
+  const [interestTimeFilter, setInterestTimeFilter] = useState('all');
+
   const [routeType, setRouteType] = useState(() => {
     const saved = localStorage.getItem('foufou_route_type');
     return saved || 'circular';
@@ -4463,7 +4465,41 @@ const FouFouApp = () => {
     }
     
     const timeMode = getEffectiveTimeMode(); // 'day' or 'night'
-    
+
+    {
+      const selectedBestTimes = new Set(
+        selectedInterests
+          .map(id => {
+            const cfg = interestConfig[id];
+            if (cfg?.bestTime && cfg.bestTime !== 'anytime') return cfg.bestTime;
+            const hardDefault = { temples: 'day', galleries: 'day', architecture: 'day', parks: 'day',
+              beaches: 'day', graffiti: 'day', artisans: 'day', canals: 'day', culture: 'day',
+              history: 'day', nightlife: 'night', bars: 'night', rooftop: 'night', entertainment: 'night' };
+            return hardDefault[id] || 'anytime';
+          })
+          .filter(bt => bt !== 'anytime')
+      );
+      const onlyDay = selectedBestTimes.size > 0 && !selectedBestTimes.has('night');
+      const onlyNight = selectedBestTimes.size > 0 && !selectedBestTimes.has('day');
+      const effectiveFilter = onlyDay ? 'day' : onlyNight ? 'night' : null; // null = no filter
+
+      if (effectiveFilter) {
+        for (const id of Object.keys(buckets)) {
+          buckets[id] = buckets[id].filter(stop => {
+            const isCustom = stop.source === 'custom' || stop.custom;
+            if (isCustom) return true;
+            const bt = getStopBestTime(stop);
+            if (bt === 'anytime') return true;
+            if (bt !== effectiveFilter) {
+              addDebugLog('SMART', `⏰ Hard-filtered: ${stop.name} bestTime=${bt} effectiveFilter=${effectiveFilter}`);
+              return false;
+            }
+            return true;
+          });
+        }
+      }
+    }
+
     const timeScore = (stop) => {
       const bt = getStopBestTime(stop);
       if (bt === 'anytime') return sp.timeScoreAnytime;
@@ -8207,7 +8243,27 @@ const FouFouApp = () => {
                 )}
                 {renderStepHeader('⭐', t('wizard.step2Title'), t('wizard.step2Subtitle'), 'hint_interests')}
                 {renderContextHint('hint_interests')}
-                
+
+                {/* Time filter toggle — ☀️ day / 🌙 night / ☯ all */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '8px' }}>
+                  {[
+                    { key: 'day',   icon: '☀️', label: t('time.day') || 'יום' },
+                    { key: 'night', icon: '🌙', label: t('time.night') || 'לילה' },
+                    { key: 'all',   icon: '🌗', label: t('time.all') || 'הכל' },
+                  ].map(opt => (
+                    <button key={opt.key} onClick={() => setInterestTimeFilter(opt.key)}
+                      title={opt.label}
+                      style={{
+                        padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                        fontSize: '16px', lineHeight: 1,
+                        background: interestTimeFilter === opt.key ? '#1f2937' : '#f3f4f6',
+                        boxShadow: interestTimeFilter === opt.key ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                        transition: 'all 0.15s'
+                      }}
+                    >{opt.icon}</button>
+                  ))}
+                </div>
+
                 {/* Interest Grid — grouped by category */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '12px' }}>
                   {(() => {
@@ -8219,7 +8275,13 @@ const FouFouApp = () => {
                       if (option.uncovered) return status === true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
-                      return status !== false;
+                      if (status === false) return false;
+                      if (interestTimeFilter !== 'all') {
+                        const cfg = interestConfig[option.id];
+                        const bt = cfg?.bestTime || 'anytime';
+                        if (bt !== 'anytime' && bt !== interestTimeFilter) return false;
+                      }
+                      return true;
                     });
                     const groupOrder = [];
                     filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });

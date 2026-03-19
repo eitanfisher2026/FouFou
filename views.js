@@ -901,7 +901,27 @@
                 )}
                 {renderStepHeader('⭐', t('wizard.step2Title'), t('wizard.step2Subtitle'), 'hint_interests')}
                 {renderContextHint('hint_interests')}
-                
+
+                {/* Time filter toggle — ☀️ day / 🌙 night / ☯ all */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '8px' }}>
+                  {[
+                    { key: 'day',   icon: '☀️', label: t('time.day') || 'יום' },
+                    { key: 'night', icon: '🌙', label: t('time.night') || 'לילה' },
+                    { key: 'all',   icon: '🌗', label: t('time.all') || 'הכל' },
+                  ].map(opt => (
+                    <button key={opt.key} onClick={() => setInterestTimeFilter(opt.key)}
+                      title={opt.label}
+                      style={{
+                        padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',
+                        fontSize: '16px', lineHeight: 1,
+                        background: interestTimeFilter === opt.key ? '#1f2937' : '#f3f4f6',
+                        boxShadow: interestTimeFilter === opt.key ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                        transition: 'all 0.15s'
+                      }}
+                    >{opt.icon}</button>
+                  ))}
+                </div>
+
                 {/* Interest Grid — grouped by category */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '12px' }}>
                   {(() => {
@@ -913,7 +933,14 @@
                       if (option.uncovered) return status === true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
-                      return status !== false;
+                      if (status === false) return false;
+                      // Time filter: show only interests matching selected time filter
+                      if (interestTimeFilter !== 'all') {
+                        const cfg = interestConfig[option.id];
+                        const bt = cfg?.bestTime || 'anytime';
+                        if (bt !== 'anytime' && bt !== interestTimeFilter) return false;
+                      }
+                      return true;
                     });
                     // Sort by group, preserving order within groups
                     const groupOrder = [];
