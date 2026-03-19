@@ -134,7 +134,7 @@ const QuickAddPlaceDialog = ({
     if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
     if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
-  });
+  }).sort((a, b) => (a.label || '').localeCompare(b.label || '', 'he'));
 
   const isRTL = window.BKK.i18n.isRTL();
   const labelCls = "block text-xs font-bold mb-1";
@@ -12392,7 +12392,7 @@ const FouFouApp = () => {
                       if ((newLocation.interests || []).includes(option.id)) return true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
-                    }).map(option => (
+                    }).sort((a, b) => (a.label || '').localeCompare(b.label || '', 'he')).map(option => (
                       <button
                         key={option.id}
                         onClick={() => {

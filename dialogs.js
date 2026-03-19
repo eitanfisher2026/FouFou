@@ -342,7 +342,7 @@
                       // Filter by city scope only (location tagging shouldn't depend on enabled/adminStatus)
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
-                    }).map(option => (
+                    }).sort((a, b) => (a.label || '').localeCompare(b.label || '', 'he')).map(option => (
                       <button
                         key={option.id}
                         onClick={() => {
