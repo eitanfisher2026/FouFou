@@ -2505,7 +2505,7 @@
                 if (!cfg) return i;
                 return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
               });
-              const sortAlpha = (arr) => [...arr].sort((a, b) => (a.label || '').localeCompare(b.label || '', 'he'));
+              const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', undefined, {sensitivity: 'base'}));
               const activeBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
