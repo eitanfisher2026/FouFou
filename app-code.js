@@ -9855,15 +9855,13 @@ const FouFouApp = () => {
               
               return (
                 <>
-                  {/* Active Interests */}
+                  {/* Active Interests — merged and sorted alphabetically */}
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-green-700 mb-2">
                       {t("interests.activeInterests")} ({activeBuiltIn.length + activeUncovered.length + activeCustom.length})
                     </h3>
                     <div className="space-y-1">
-                      {activeBuiltIn.map(i => renderInterestRow(i, true))}
-                      {activeUncovered.map(i => renderInterestRow(i, true))}
-                      {activeCustom.map(i => renderInterestRow(i, true))}
+                      {sortAlpha([...activeBuiltIn, ...activeUncovered, ...activeCustom]).map(i => renderInterestRow(i, true))}
                     </div>
                   </div>
                   
