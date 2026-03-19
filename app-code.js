@@ -8278,7 +8278,7 @@ const FouFouApp = () => {
                       if (status === false) return false;
                       if (interestTimeFilter !== 'all') {
                         const cfg = interestConfig[option.id];
-                        const bt = cfg?.bestTime || 'anytime';
+                        const bt = cfg?.bestTime || option.bestTime || 'anytime';
                         if (bt !== 'anytime' && bt !== interestTimeFilter) return false;
                       }
                       return true;
@@ -9824,30 +9824,31 @@ const FouFouApp = () => {
                 if (!cfg) return i;
                 return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
               });
-              const activeBuiltIn = overriddenBuiltIn.filter(i => {
+              const sortAlpha = (arr) => [...arr].sort((a, b) => (a.label || '').localeCompare(b.label || '', 'he'));
+              const activeBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
-              });
-              const activeUncovered = overriddenUncovered.filter(i => {
+              }));
+              const activeUncovered = sortAlpha(overriddenUncovered.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] === true;
-              });
-              const activeCustom = cityCustomInterests.filter(i => {
+              }));
+              const activeCustom = sortAlpha(cityCustomInterests.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
-              });
-              const inactiveBuiltIn = overriddenBuiltIn.filter(i => {
+              }));
+              const inactiveBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] === false);
-              });
-              const inactiveUncovered = overriddenUncovered.filter(i => {
+              }));
+              const inactiveUncovered = sortAlpha(overriddenUncovered.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] !== true);
-              });
-              const inactiveCustom = cityCustomInterests.filter(i => {
+              }));
+              const inactiveCustom = sortAlpha(cityCustomInterests.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] === false);
-              });
+              }));
               const allForAdmin = [...overriddenBuiltIn, ...overriddenUncovered, ...cityCustomInterests];
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
