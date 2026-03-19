@@ -950,7 +950,9 @@
                     const sorted = [...filtered].sort((a, b) => {
                       const ga = groupOrder.indexOf(a.group || '_none');
                       const gb = groupOrder.indexOf(b.group || '_none');
-                      return ga - gb;
+                      if (ga !== gb) return ga - gb; // keep group order
+                      // Within same group: sort alphabetically by display label
+                      return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he');
                     });
                     // Render with separator lines between groups
                     let lastGroup = null;

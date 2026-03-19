@@ -274,6 +274,9 @@ const QuickAddPlaceDialog = ({
                 placeholder={t("places.description")}
                 className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
+              {qaDescription.trim() && (
+                <button type="button" onClick={() => setQaDescription('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+              )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("description")} style={micStyle(qaRecordingField === "description")}
                   title={qaRecordingField === "description" ? t("speech.stopRecording") : t("speech.startRecording")}>
@@ -291,6 +294,9 @@ const QuickAddPlaceDialog = ({
                 placeholder={t("places.notes")}
                 className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
+              {qaNotes.trim() && (
+                <button type="button" onClick={() => setQaNotes('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+              )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("notes")} style={micStyle(qaRecordingField === "notes")}
                   title={qaRecordingField === "notes" ? t("speech.stopRecording") : t("speech.startRecording")}>
@@ -318,6 +324,9 @@ const QuickAddPlaceDialog = ({
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
                   style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical" }} />
                 {window.BKK.speechSupported && (
+                  {qaRatingText.trim() && (
+                    <button type="button" onClick={() => setQaRatingText('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                  )}
                   <button type="button" onClick={() => startRec("rating")} style={micStyle(qaRecordingField === "rating")}>
                     {qaRecordingField === "rating" ? "⏹️" : "🎤"}
                   </button>

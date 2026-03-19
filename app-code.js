@@ -317,6 +317,9 @@ const QuickAddPlaceDialog = ({
                 placeholder={t("places.description")}
                 className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
+              {qaDescription.trim() && (
+                <button type="button" onClick={() => setQaDescription('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+              )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("description")} style={micStyle(qaRecordingField === "description")}
                   title={qaRecordingField === "description" ? t("speech.stopRecording") : t("speech.startRecording")}>
@@ -334,6 +337,9 @@ const QuickAddPlaceDialog = ({
                 placeholder={t("places.notes")}
                 className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
+              {qaNotes.trim() && (
+                <button type="button" onClick={() => setQaNotes('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+              )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("notes")} style={micStyle(qaRecordingField === "notes")}
                   title={qaRecordingField === "notes" ? t("speech.stopRecording") : t("speech.startRecording")}>
@@ -361,6 +367,9 @@ const QuickAddPlaceDialog = ({
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
                   style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical" }} />
                 {window.BKK.speechSupported && (
+                  {qaRatingText.trim() && (
+                    <button type="button" onClick={() => setQaRatingText('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                  )}
                   <button type="button" onClick={() => startRec("rating")} style={micStyle(qaRecordingField === "rating")}>
                     {qaRecordingField === "rating" ? "⏹️" : "🎤"}
                   </button>
@@ -8289,7 +8298,8 @@ const FouFouApp = () => {
                     const sorted = [...filtered].sort((a, b) => {
                       const ga = groupOrder.indexOf(a.group || '_none');
                       const gb = groupOrder.indexOf(b.group || '_none');
-                      return ga - gb;
+                      if (ga !== gb) return ga - gb; // keep group order
+                      return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he');
                     });
                     let lastGroup = null;
                     const elements = [];
@@ -12526,6 +12536,9 @@ const FouFouApp = () => {
                         style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4' }}
                         rows="2"
                       />
+                      {newLocation.description?.trim() && (
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                      )}
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -12602,6 +12615,9 @@ const FouFouApp = () => {
                         style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
                         rows="2"
                       />
+                      {newLocation.notes?.trim() && (
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                      )}
                       {window.BKK.speechSupported && (
                         <button
                           type="button"

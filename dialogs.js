@@ -483,6 +483,9 @@
                         style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4' }}
                         rows="2"
                       />
+                      {newLocation.description?.trim() && (
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                      )}
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -561,6 +564,9 @@
                         style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
                         rows="2"
                       />
+                      {newLocation.notes?.trim() && (
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                      )}
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
