@@ -323,10 +323,10 @@ const QuickAddPlaceDialog = ({
                   placeholder={t("reviews.writeReview")}
                   className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
                   style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical" }} />
+                {qaRatingText.trim() && (
+                  <button type="button" onClick={() => setQaRatingText('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                )}
                 {window.BKK.speechSupported && (
-                  {qaRatingText.trim() && (
-                    <button type="button" onClick={() => setQaRatingText('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
-                  )}
                   <button type="button" onClick={() => startRec("rating")} style={micStyle(qaRecordingField === "rating")}>
                     {qaRecordingField === "rating" ? "⏹️" : "🎤"}
                   </button>
