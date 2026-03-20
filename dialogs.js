@@ -1168,6 +1168,21 @@
                       Places with these words in name will be filtered out
                     </p>
                   </div>
+
+                  <div>
+                    <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>Name keywords (include by name):</label>
+                    <textarea
+                      value={newInterest.nameKeywords || ''}
+                      onChange={(e) => setNewInterest({...newInterest, nameKeywords: e.target.value})}
+                      placeholder="e.g., graffiti, mural, street art"
+                      className="w-full p-2 text-sm border rounded"
+                      style={{ direction: 'ltr', minHeight: '40px', fontSize: '14px', resize: 'vertical' }}
+                      rows={2}
+                    />
+                    <p className="text-[9px] text-gray-500 mt-0.5" style={{ direction: 'ltr' }}>
+                      Places with these words in name pass type filter even without matching type
+                    </p>
+                  </div>
                   </div>
                 </div>
 
@@ -1470,6 +1485,9 @@
                         }
                         if (newInterest.blacklist) {
                           searchConfig.blacklist = newInterest.blacklist.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+                        }
+                        if (newInterest.nameKeywords) {
+                          searchConfig.nameKeywords = newInterest.nameKeywords.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
                         }
                         
                         if (editingCustomInterest) {

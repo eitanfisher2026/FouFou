@@ -2383,6 +2383,7 @@
                   types: (config.types || []).join(', '),
                   textSearch: config.textSearch || '',
                   blacklist: (config.blacklist || []).join(', '),
+                  nameKeywords: (config.nameKeywords || []).join(', '),
                   privateOnly: interest.privateOnly || false,
                   locked: interest.locked || false,
                   builtIn: !isFromCustom,

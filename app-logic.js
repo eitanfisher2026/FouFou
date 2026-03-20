@@ -3489,6 +3489,9 @@
       // Check if this interest uses text search (Firebase config first, then city defaults)
       const textSearchQuery = config.textSearch || (window.BKK.textSearchInterests || {})[validInterests[0]] || '';
       
+      // Name keywords: if place name contains any of these, it passes type filter even without matching type
+      const nameKeywords = (config.nameKeywords || []).map(k => k.toLowerCase().trim()).filter(Boolean);
+      
       // Collect blacklist words from all valid interests
       const blacklistWords = validInterests
         .flatMap(interest => {
@@ -3785,16 +3788,21 @@
           }
           
           // Filter 3: Type validation - for category search only
+          // A place passes if: type matches OR name contains a nameKeyword
           if (!isTextSearch && placeTypes.length > 0) {
             const placeTypesFromGoogle = place.types || [];
             const hasValidType = placeTypesFromGoogle.some(type => placeTypes.includes(type));
+            const hasNameKeyword = nameKeywords.length > 0 && nameKeywords.some(kw => placeName.includes(kw));
             
-            if (!hasValidType) {
+            if (!hasValidType && !hasNameKeyword) {
               typeFilteredCount++;
               debugEntry.status = '❌ TYPE MISMATCH';
               debugEntry.reason = `google types [${placeTypesFromGoogle.slice(0,5).join(',')}] don't match [${placeTypes.join(',')}]`;
               debugPlaceResults.push(debugEntry);
               return false;
+            }
+            if (!hasValidType && hasNameKeyword) {
+              debugEntry.nameKeywordMatch = nameKeywords.find(kw => placeName.includes(kw));
             }
           }
           
