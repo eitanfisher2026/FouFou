@@ -3500,85 +3500,6 @@
             </div>
             
             {/* Search Debug Log Panel */}
-            {/* Google Info Debug Log */}
-            {debugMode && googleInfoDebugLog.length > 0 && (
-              <div className="mb-4">
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h3 className="text-base font-bold text-green-800">🔍 Google Info Debug ({googleInfoDebugLog.length})</h3>
-                    <button onClick={() => { googleInfoDebugLogRef.current = []; setGoogleInfoDebugLog([]); }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: '#fecaca', border: 'none', color: '#991b1b', cursor: 'pointer' }}>Clear</button>
-                  </div>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}>
-                    {googleInfoDebugLog.map((entry, idx) => (
-                      <div key={idx} style={{ marginBottom: '10px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bbf7d0' }}>
-                        <div style={{ fontWeight: 'bold', color: '#064e3b', marginBottom: '6px' }}>📍 {entry.locationName}</div>
-                        <div style={{ fontSize: '10px', color: '#374151', fontFamily: 'monospace' }}>
-                          <div style={{ marginBottom: '3px', color: '#6b7280' }}>Query: {entry.searchQuery}</div>
-                          <div style={{ marginBottom: '3px' }}>
-                            <b>Place ID:</b> <span style={{ color: entry.rawFromGoogle.placeIdValid ? '#059669' : '#dc2626' }}>
-                              {entry.rawFromGoogle.placeId || '(none)'}
-                            </span>
-                            {' '}{entry.rawFromGoogle.placeId ? (entry.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}
-                          </div>
-                          <div style={{ marginBottom: '3px' }}><b>Name from Google:</b> {entry.rawFromGoogle.name || '(none)'}</div>
-                          <div style={{ marginBottom: '3px' }}><b>Rating:</b> {entry.rawFromGoogle.rating ? `⭐${entry.rawFromGoogle.rating} (${entry.rawFromGoogle.ratingCount})` : '(none)'}</div>
-                          <div style={{ marginBottom: '3px' }}><b>Coords:</b> {entry.rawFromGoogle.lat},{entry.rawFromGoogle.lng}</div>
-                          <div style={{ marginBottom: '3px' }}><b>Primary type:</b> {entry.rawFromGoogle.primaryType || '(none)'}</div>
-                          <div style={{ marginBottom: '3px' }}><b>Existing mapsUrl:</b> <span style={{ color: entry.existingMapsUrl ? '#059669' : '#9ca3af' }}>{entry.existingMapsUrl || '(none)'}</span></div>
-                          <div style={{ marginTop: '4px' }}><b>Built URL:</b></div>
-                          <div style={{ paddingLeft: '8px', wordBreak: 'break-all', color: entry.builtUrl ? '#2563eb' : '#dc2626' }}>{entry.builtUrl || '(could not build — no placeId)'}</div>
-                          {entry.builtUrl && (
-                            <button onClick={() => navigator.clipboard?.writeText(entry.builtUrl)} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#166534' }}>📋 Copy URL</button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* URL Debug Log */}
-            {debugMode && urlDebugLog.length > 0 && (
-              <div className="mb-4">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-3">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h3 className="text-base font-bold text-blue-800">🔗 URL Debug Log ({urlDebugLog.length})</h3>
-                    <button onClick={() => { urlDebugLogRef.current = []; setUrlDebugLog([]); }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: '#fecaca', border: 'none', color: '#991b1b', cursor: 'pointer' }}>Clear</button>
-                  </div>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}>
-                    {[...urlDebugLog].reverse().map((entry, idx) => (
-                      <div key={idx} style={{ marginBottom: '10px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bfdbfe' }}>
-                        <div style={{ fontWeight: 'bold', color: '#1e3a5f', marginBottom: '6px' }}>{entry.message}</div>
-                        {entry.data && (
-                          <div style={{ fontSize: '10px', color: '#374151', fontFamily: 'monospace' }}>
-                            <div style={{ marginBottom: '3px' }}><b>Input:</b></div>
-                            <div style={{ paddingLeft: '8px', color: '#6b7280' }}>
-                              <div>mapsUrl: <span style={{ color: entry.data.raw?.mapsUrl ? '#059669' : '#dc2626' }}>{entry.data.raw?.mapsUrl || '(none)'}</span></div>
-                              <div>googlePlaceId: <span style={{ color: entry.data.raw?.googlePlaceId ? '#059669' : '#dc2626' }}>{entry.data.raw?.googlePlaceId || '(none)'}</span></div>
-                              <div>lat/lng: {entry.data.raw?.lat},{entry.data.raw?.lng}</div>
-                              <div>address: {entry.data.raw?.address || '(none)'}</div>
-                            </div>
-                            <div style={{ marginTop: '4px', marginBottom: '2px' }}><b>Decision path:</b></div>
-                            {(entry.data.steps || []).map((s, i) => (
-                              <div key={i} style={{ paddingLeft: '8px', color: s.step?.includes('BROKEN') || s.step?.includes('FAILED') || s.step?.includes('INVALID') ? '#dc2626' : '#059669' }}>
-                                → {s.step}
-                              </div>
-                            ))}
-                            <div style={{ marginTop: '4px' }}><b>Final URL:</b></div>
-                            <div style={{ paddingLeft: '8px', wordBreak: 'break-all', color: '#2563eb' }}>{entry.data.url || '#'}</div>
-                            {entry.data.url && (
-                              <button onClick={() => navigator.clipboard?.writeText(entry.data.url)} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer', color: '#1d4ed8' }}>📋 Copy URL</button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {debugMode && searchDebugLog.length > 0 && (
               <div className="mb-4">
                 <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-amber-400 rounded-xl p-3">
@@ -4668,7 +4589,7 @@
       )}
 
         {/* Debug Search Log - Floating Badge */}
-        {debugMode && (searchDebugLog.length > 0 || debugSessions.length > 0) && currentView === 'form' && !showSearchDebugPanel && (
+        {debugMode && (searchDebugLog.length > 0 || debugSessions.length > 0 || googleInfoDebugLog.length > 0 || urlDebugLog.length > 0) && currentView === 'form' && !showSearchDebugPanel && (
           <button
             onClick={() => setShowSearchDebugPanel(true)}
             style={{
@@ -4821,6 +4742,57 @@
                   </details>
                 );
               })()}
+              {/* Google Info Debug section */}
+              {googleInfoDebugLog.length > 0 && (
+                <details style={{ marginTop: '8px' }}>
+                  <summary style={{ cursor: 'pointer', padding: '6px 10px', background: '#d1fae5', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', color: '#064e3b' }}>
+                    🔍 Google Info Debug ({googleInfoDebugLog.length}) — click to expand
+                  </summary>
+                  <div style={{ marginTop: '6px' }}>
+                    {googleInfoDebugLog.map((entry, idx) => (
+                      <div key={idx} style={{ marginBottom: '8px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bbf7d0', fontSize: '10px', fontFamily: 'monospace' }}>
+                        <div style={{ fontWeight: 'bold', color: '#064e3b', marginBottom: '4px' }}>📍 {entry.locationName}</div>
+                        <div style={{ color: '#6b7280', marginBottom: '3px' }}>Query: {entry.searchQuery}</div>
+                        <div>PlaceID: <span style={{ color: entry.rawFromGoogle.placeIdValid ? '#059669' : '#dc2626', fontWeight: 'bold' }}>{entry.rawFromGoogle.placeId || '(none)'}</span> {entry.rawFromGoogle.placeId ? (entry.rawFromGoogle.placeIdValid ? '✅' : '❌ INVALID') : ''}</div>
+                        <div>Name from Google: {entry.rawFromGoogle.name || '(none)'}</div>
+                        <div>Rating: {entry.rawFromGoogle.rating ? `⭐${entry.rawFromGoogle.rating} (${entry.rawFromGoogle.ratingCount})` : '(none)'}</div>
+                        <div>Coords: {entry.rawFromGoogle.lat},{entry.rawFromGoogle.lng}</div>
+                        <div>Existing mapsUrl: <span style={{ color: entry.existingMapsUrl ? '#059669' : '#9ca3af' }}>{entry.existingMapsUrl || '(none)'}</span></div>
+                        <div style={{ marginTop: '3px' }}>Built URL: <span style={{ color: entry.builtUrl ? '#2563eb' : '#dc2626', wordBreak: 'break-all' }}>{entry.builtUrl || '(none — no placeId)'}</span></div>
+                        {entry.builtUrl && <button onClick={() => navigator.clipboard?.writeText(entry.builtUrl).then(() => {})} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', cursor: 'pointer' }}>📋 Copy URL</button>}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {/* URL Debug section */}
+              {urlDebugLog.length > 0 && (
+                <details style={{ marginTop: '8px' }}>
+                  <summary style={{ cursor: 'pointer', padding: '6px 10px', background: '#dbeafe', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', color: '#1e3a5f' }}>
+                    🔗 URL Build Debug ({urlDebugLog.length}) — click to expand
+                  </summary>
+                  <div style={{ marginTop: '6px' }}>
+                    {[...urlDebugLog].reverse().map((entry, idx) => (
+                      <div key={idx} style={{ marginBottom: '8px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bfdbfe', fontSize: '10px', fontFamily: 'monospace' }}>
+                        <div style={{ fontWeight: 'bold', color: '#1e3a5f', marginBottom: '4px' }}>{entry.message}</div>
+                        {entry.data && (<>
+                          <div>mapsUrl: <span style={{ color: entry.data.raw?.mapsUrl ? '#059669' : '#dc2626' }}>{entry.data.raw?.mapsUrl || '(none)'}</span></div>
+                          <div>placeId: <span style={{ color: entry.data.raw?.googlePlaceId ? '#059669' : '#dc2626' }}>{entry.data.raw?.googlePlaceId || '(none)'}</span></div>
+                          <div>lat/lng: {entry.data.raw?.lat},{entry.data.raw?.lng}</div>
+                          <div style={{ marginTop: '3px', fontWeight: 'bold' }}>Steps:</div>
+                          {(entry.data.steps || []).map((s, i) => (
+                            <div key={i} style={{ color: s.step?.includes('BROKEN') || s.step?.includes('FAILED') || s.step?.includes('INVALID') ? '#dc2626' : '#059669' }}>→ {s.step}</div>
+                          ))}
+                          <div style={{ marginTop: '3px', fontWeight: 'bold' }}>Final URL:</div>
+                          <div style={{ wordBreak: 'break-all', color: '#2563eb' }}>{entry.data.url || '#'}</div>
+                          {entry.data.url && <button onClick={() => navigator.clipboard?.writeText(entry.data.url).then(() => {})} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer' }}>📋 Copy URL</button>}
+                        </>)}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
           );
