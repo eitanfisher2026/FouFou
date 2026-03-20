@@ -3698,6 +3698,12 @@
             });
             return filteredPlaces;
           }
+          const interestLabelRetry = allInterestOptions.find(o => o.id === validInterests[0]);
+          addDebugLog('API', `❌ ZERO RESULTS: ${tLabel(interestLabelRetry) || validInterests[0]} — all types returned nothing`, {
+            tried: placeTypes,
+            blacklist: blacklistWords,
+            area: area || 'GPS',
+          });
           return []; // No results from any type
         }
         
@@ -3774,16 +3780,20 @@
           }
           
           // Filter 2: For text search - relevance check
-          // Place name must contain the FULL search phrase (e.g. "street art")
+          // Place passes if: name contains the full phrase OR name contains any nameKeyword
           if (isTextSearch && textSearchPhrase) {
             const nameHasPhrase = placeName.includes(textSearchPhrase);
+            const nameHasKeyword = nameKeywords.length > 0 && nameKeywords.some(kw => placeName.includes(kw));
             
-            if (!nameHasPhrase) {
+            if (!nameHasPhrase && !nameHasKeyword) {
               relevanceFilteredCount++;
               debugEntry.status = '❌ NO MATCH';
-              debugEntry.reason = `name doesn't contain "${textSearchPhrase}"`;
+              debugEntry.reason = `name doesn't contain "${textSearchPhrase}"${nameKeywords.length > 0 ? ` or keywords [${nameKeywords.join(',')}]` : ''}`;
               debugPlaceResults.push(debugEntry);
               return false;
+            }
+            if (!nameHasPhrase && nameHasKeyword) {
+              debugEntry.nameKeywordMatch = nameKeywords.find(kw => placeName.includes(kw));
             }
           }
           
@@ -3865,14 +3875,20 @@
       
       // Log detailed debug results for in-app viewer
       const interestLabel = allInterestOptions.find(o => o.id === validInterests[0]);
-      addDebugLog('API', `📊 RESULTS: ${tLabel(interestLabel) || validInterests[0]}`, {
+      const zeroResults = transformed.length === 0;
+      addDebugLog('API', `${zeroResults ? '❌ ZERO RESULTS' : '📊 RESULTS'}: ${tLabel(interestLabel) || validInterests[0]}`, {
         total: data.places.length,
         kept: transformed.length,
         blacklistFiltered: blacklistFilteredCount,
         typeFiltered: typeFilteredCount,
         relevanceFiltered: relevanceFilteredCount,
-        places: debugPlaceResults
+        places: debugPlaceResults  // always include all filtered entries
       });
+      if (zeroResults) {
+        addDebugLog('API', `❌ All ${data.places.length} places were filtered out — blacklist:${blacklistFilteredCount} type:${typeFilteredCount} relevance:${relevanceFilteredCount}`, {
+          filteredOut: debugPlaceResults.map(p => `${p.status} ${p.name} — ${p.reason || ''}`)
+        });
+      }
       // Readable console log of all places with status
       console.log(`[API] 📊 ${tLabel(interestLabel) || validInterests[0]} — ${data.places.length} from Google, ${transformed.length} kept:`);
       debugPlaceResults.forEach((p, i) => {
