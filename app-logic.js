@@ -1626,17 +1626,28 @@
     }
 
     const text = lines.join('\n');
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('📋 Debug sessions copied to clipboard!', 'success');
-    }).catch(() => {
-      // Fallback: download as file
+    // On mobile: try clipboard; on desktop: always download file (more reliable)
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const filename = `foufou-debug-${new Date().toISOString().slice(0,16).replace('T','-')}.txt`;
+    if (isMobile && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 Debug copied to clipboard!', 'success');
+      }).catch(() => {
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        a.click(); URL.revokeObjectURL(url);
+        showToast('📥 Debug file downloaded', 'success');
+      });
+    } else {
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `foufou-debug-${Date.now()}.txt`;
+      a.href = url; a.download = filename;
       a.click(); URL.revokeObjectURL(url);
       showToast('📥 Debug file downloaded', 'success');
-    });
+    }
   };
   
   // Share debug as file (mobile: Web Share API → WhatsApp/etc; desktop: download)
@@ -3734,7 +3745,24 @@
       const isTextSearch = !!textSearchQuery;
       
       // For text search: use the full query phrase for relevance filtering
-      const textSearchPhrase = isTextSearch ? textSearchQuery.toLowerCase().trim() : '';
+      // Parse textSearch into individual phrases:
+      // - comma-separated terms
+      // - "quoted phrases" treated as single phrase with spaces
+      // - underscores normalized to spaces (street_art → street art)
+      // All case-insensitive
+      const parseTextSearchPhrases = (query) => {
+        if (!query) return [];
+        const phrases = [];
+        const regex = /"([^"]+)"|([^,]+)/g;
+        let m;
+        while ((m = regex.exec(query)) !== null) {
+          const raw = (m[1] || m[2] || '').trim().toLowerCase().replace(/_/g, ' ');
+          if (raw) phrases.push(raw);
+        }
+        return phrases;
+      };
+      const textSearchPhrases = isTextSearch ? parseTextSearchPhrases(textSearchQuery) : [];
+      const textSearchPhrase = textSearchPhrases[0] || ''; // keep for legacy/debug
       
       // Filter and transform Google Places data
       let typeFilteredCount = 0;
@@ -3780,20 +3808,20 @@
           }
           
           // Filter 2: For text search - relevance check
-          // Place passes if: name contains the full phrase OR name contains any nameKeyword
-          if (isTextSearch && textSearchPhrase) {
-            const nameHasPhrase = placeName.includes(textSearchPhrase);
-            const nameHasKeyword = nameKeywords.length > 0 && nameKeywords.some(kw => placeName.includes(kw));
+          // Place passes if: name contains ANY of the search phrases OR any nameKeyword
+          if (isTextSearch && textSearchPhrases.length > 0) {
+            const matchedPhrase = textSearchPhrases.find(ph => placeName.includes(ph));
+            const matchedKeyword = nameKeywords.length > 0 ? nameKeywords.find(kw => placeName.includes(kw)) : null;
             
-            if (!nameHasPhrase && !nameHasKeyword) {
+            if (!matchedPhrase && !matchedKeyword) {
               relevanceFilteredCount++;
               debugEntry.status = '❌ NO MATCH';
-              debugEntry.reason = `name doesn't contain "${textSearchPhrase}"${nameKeywords.length > 0 ? ` or keywords [${nameKeywords.join(',')}]` : ''}`;
+              debugEntry.reason = `name doesn't contain any of [${textSearchPhrases.join(', ')}]${nameKeywords.length > 0 ? ` or keywords [${nameKeywords.join(',')}]` : ''}`;
               debugPlaceResults.push(debugEntry);
               return false;
             }
-            if (!nameHasPhrase && nameHasKeyword) {
-              debugEntry.nameKeywordMatch = nameKeywords.find(kw => placeName.includes(kw));
+            if (!matchedPhrase && matchedKeyword) {
+              debugEntry.nameKeywordMatch = matchedKeyword;
             }
           }
           
