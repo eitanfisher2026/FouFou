@@ -2108,34 +2108,7 @@
                     <img src={modalImage} alt={loc?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.25 }} />
-                      {loc && !loc.locked && (isEditor || isAdmin) && (
-                        <label style={{ cursor: 'pointer', background: '#8b5cf6', color: 'white', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
-                          📷 {t('places.camera') || 'הוסף תמונה'}
-                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                            const file = e.target.files?.[0]; if (!file) return; e.target.value = '';
-                            const img2 = new Image();
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              img2.onload = () => {
-                                const maxW = 1200, maxH = 1200; let w = img2.width, h = img2.height;
-                                if (w > maxW || h > maxH) { const r = Math.min(maxW/w, maxH/h); w *= r; h *= r; }
-                                const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-                                cv.getContext('2d').drawImage(img2, 0, 0, w, h);
-                                const dataUrl = cv.toDataURL('image/jpeg', 0.8);
-                                if (loc.firebaseId && isFirebaseAvailable && database) {
-                                  database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/uploadedImage`).set(dataUrl);
-                                }
-                                setCustomLocations(prev => prev.map(l => l.name === loc.name ? {...l, uploadedImage: dataUrl} : l));
-                                setModalImage(dataUrl);
-                                showToast('📷 ' + (t('places.photoAdded') || 'תמונה נוספה!'), 'success');
-                              };
-                              img2.src = ev.target.result;
-                            };
-                            reader.readAsDataURL(file);
-                          }} />
-                        </label>
-                      )}
+                      <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.2 }} />
                     </div>
                   )}
                 </div>
@@ -2187,11 +2160,11 @@
                         if (window.confirm(msg)) { window.open(mapsUrl, '_blank'); }
                       }}
                       style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('navigate') || 'נווט'}</button>
+                    >🧭 {t('route.navigate') || 'נווט'}</button>
                   ) : (
                     <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
                       style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('navigate') || 'נווט'}</a>
+                    >🧭 {t('route.navigate') || 'נווט'}</a>
                   )
                 )}
                 <button

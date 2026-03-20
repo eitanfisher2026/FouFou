@@ -8846,10 +8846,10 @@ const FouFouApp = () => {
                                             setModalImageCtx({ description: stop.description || cl?.description, location: cl || stop });
                                             setShowImageModal(true);
                                           }}
-                                          style={{ cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#ede9fe', border: '2px solid ' + ((stop.uploadedImage || cl?.uploadedImage) ? '#f59e0b' : '#7c3aed'), borderRadius: '10px', display: 'inline-flex', alignItems: 'center', padding: '3px 7px', gap: '3px', transition: 'all 0.15s', boxShadow: '0 2px 5px rgba(124,58,237,0.25)', minWidth: '28px', justifyContent: 'center' }}
+                                          style={{ cursor: 'pointer', background: 'transparent', border: 'none', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', padding: '2px', opacity: 0.75 }}
                                           title={t("general.placeInfo") || "מידע על המקום"}
                                         >
-                                          <img src="icon-32x32.png" alt="FouFou" style={{ width: '16px', height: '16px' }} />
+                                          <img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} />
                                         </button>
                                         );
                                       })()}
@@ -11871,9 +11871,9 @@ const FouFouApp = () => {
                               setModalImageCtx({ description: loc.description, location: loc });
                               setShowImageModal(true);
                             }}
-                            style={{ background: loc.uploadedImage ? '#fef3c7' : '#ede9fe', border: '2px solid ' + (loc.uploadedImage ? '#f59e0b' : '#7c3aed'), borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(124,58,237,0.2)' }}
+                            style={{ background: 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '2px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, opacity: 0.75 }}
                             title={t('general.placeInfo') || 'מידע על המקום'}
-                          ><img src="icon-32x32.png" alt="FouFou" style={{ width: '16px', height: '16px' }} /></button>
+                          ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
                         </div>
                         <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>📍 {areaLabels}</div>
                         {intLabels && <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>{intLabels}</div>}
@@ -14219,34 +14219,7 @@ const FouFouApp = () => {
                     <img src={modalImage} alt={loc?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.25 }} />
-                      {loc && !loc.locked && (isEditor || isAdmin) && (
-                        <label style={{ cursor: 'pointer', background: '#8b5cf6', color: 'white', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
-                          📷 {t('places.camera') || 'הוסף תמונה'}
-                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                            const file = e.target.files?.[0]; if (!file) return; e.target.value = '';
-                            const img2 = new Image();
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              img2.onload = () => {
-                                const maxW = 1200, maxH = 1200; let w = img2.width, h = img2.height;
-                                if (w > maxW || h > maxH) { const r = Math.min(maxW/w, maxH/h); w *= r; h *= r; }
-                                const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-                                cv.getContext('2d').drawImage(img2, 0, 0, w, h);
-                                const dataUrl = cv.toDataURL('image/jpeg', 0.8);
-                                if (loc.firebaseId && isFirebaseAvailable && database) {
-                                  database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/uploadedImage`).set(dataUrl);
-                                }
-                                setCustomLocations(prev => prev.map(l => l.name === loc.name ? {...l, uploadedImage: dataUrl} : l));
-                                setModalImage(dataUrl);
-                                showToast('📷 ' + (t('places.photoAdded') || 'תמונה נוספה!'), 'success');
-                              };
-                              img2.src = ev.target.result;
-                            };
-                            reader.readAsDataURL(file);
-                          }} />
-                        </label>
-                      )}
+                      <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.2 }} />
                     </div>
                   )}
                 </div>
@@ -14298,11 +14271,11 @@ const FouFouApp = () => {
                         if (window.confirm(msg)) { window.open(mapsUrl, '_blank'); }
                       }}
                       style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('navigate') || 'נווט'}</button>
+                    >🧭 {t('route.navigate') || 'נווט'}</button>
                   ) : (
                     <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
                       style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('navigate') || 'נווט'}</a>
+                    >🧭 {t('route.navigate') || 'נווט'}</a>
                   )
                 )}
                 <button
