@@ -12,7 +12,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.81` (Mar 20, 2026)
+- **גרסה:** `3.9.82` (Mar 20, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -672,6 +672,17 @@ places.photos      <- expensive — never request automatically
 places.website     <- not used
 places.priceLevel  <- only if displaying it
 ```
+
+---
+
+## כלל Toasts — אחידות
+
+> **כל toast חייב להשתמש ב-`t('key')` בלבד — לא hardcoded טקסט.**
+
+- `showToast(t('key') || 'fallback', 'type')` — תמיד עם translation key
+- toast שמציג הודעות auth/security — להשתמש ב-`t('auth.signInRequired')`
+- **אסור:** `showToast(\`🔒 ${hardcoded_text}\`, ...)`
+- טקסט toast מוגדר ב-`i18n.js` גם בעברית וגם באנגלית
 
 ---
 

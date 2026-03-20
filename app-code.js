@@ -6497,12 +6497,9 @@ const FouFouApp = () => {
     setShowEditLocationDialog(true);
   };
   
-  const requireSignIn = (actionLabel) => {
+  const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
-      showToast(
-        `🔒 ${t('auth.signInRequired') || 'יש להירשם כדי לבצע פעולה זו'} — ${actionLabel || ''}`,
-        'warning', 'sticky'
-      );
+      showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'warning', 'sticky');
       setTimeout(() => setShowLoginDialog(true), 600);
       return false;
     }
@@ -6510,7 +6507,7 @@ const FouFouApp = () => {
   };
 
   const addGooglePlaceToCustom = async (place, forceAdd = false) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return false;
+    if (!requireSignIn()) return false;
     if (!forceAdd) {
       const existsByName = customLocations.find(loc =>
         loc.name.toLowerCase().trim() === place.name.toLowerCase().trim()
@@ -6579,7 +6576,7 @@ const FouFouApp = () => {
   };
   
   const saveQuickAddPlace = async (enriched, rating) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return;
+    if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
@@ -7191,7 +7188,7 @@ const FouFouApp = () => {
   };
 
   const addCustomLocation = (closeAfter = true, overrideData = null) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return;
+    if (!requireSignIn()) return;
     const locData = overrideData || newLocation;
     if (!locData.name?.trim() || !locData.interests?.length) {
       return; // Just don't add if validation fails

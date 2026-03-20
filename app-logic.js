@@ -6901,12 +6901,9 @@
   // Add Google place to My Locations
   // Auth guard: call before any write action. If anonymous → show toast + open login.
   // Returns true if allowed, false if blocked.
-  const requireSignIn = (actionLabel) => {
+  const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
-      showToast(
-        `🔒 ${t('auth.signInRequired') || 'יש להירשם כדי לבצע פעולה זו'} — ${actionLabel || ''}`,
-        'warning', 'sticky'
-      );
+      showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'warning', 'sticky');
       setTimeout(() => setShowLoginDialog(true), 600);
       return false;
     }
@@ -6914,7 +6911,7 @@
   };
 
   const addGooglePlaceToCustom = async (place, forceAdd = false) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return false;
+    if (!requireSignIn()) return false;
     if (!forceAdd) {
       // Check if already exists (by name, case-insensitive)
       const existsByName = customLocations.find(loc =>
@@ -6991,7 +6988,7 @@
   
   // Save a place from the QuickAddDialog (enriched by user before saving)
   const saveQuickAddPlace = async (enriched, rating) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return;
+    if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
@@ -7653,7 +7650,7 @@
   };
 
   const addCustomLocation = (closeAfter = true, overrideData = null) => {
-    if (!requireSignIn(t('places.addToFavorites') || 'הוסף למועדפים')) return;
+    if (!requireSignIn()) return;
     const locData = overrideData || newLocation;
     if (!locData.name?.trim() || !locData.interests?.length) {
       return; // Just don't add if validation fails

@@ -914,6 +914,7 @@ auth: {
   signIn: 'התחבר',
   signOut: 'התנתק',
   register: 'הרשם',
+  signInRequired: '🔒 כדי לבצע פעולה זו יש להתחבר — FouFou רוצה לשייך את התרומה שלך לחשבונך ולהגן על המידע',
   loginSubtitle: 'התחבר כדי לשמור את ההתקדמות שלך',
   continueGoogle: 'המשך עם Google',
   continueAnonymous: 'המשך בלי חשבון',
@@ -1950,6 +1951,7 @@ settings: {
 // --- Auth ---
 auth: {
   signIn: 'Sign In',
+  signInRequired: '🔒 Please sign in to continue — FouFou links your contributions to your account and keeps the data secure',
   signOut: 'Sign Out',
   register: 'Register',
   loginSubtitle: 'Sign in to save your progress',

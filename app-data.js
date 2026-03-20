@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.81
+// FouFou app-data.js v3.9.82
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -915,6 +915,7 @@ auth: {
   signIn: 'התחבר',
   signOut: 'התנתק',
   register: 'הרשם',
+  signInRequired: '🔒 כדי לבצע פעולה זו יש להתחבר — FouFou רוצה לשייך את התרומה שלך לחשבונך ולהגן על המידע',
   loginSubtitle: 'התחבר כדי לשמור את ההתקדמות שלך',
   continueGoogle: 'המשך עם Google',
   continueAnonymous: 'המשך בלי חשבון',
@@ -1951,6 +1952,7 @@ settings: {
 // --- Auth ---
 auth: {
   signIn: 'Sign In',
+  signInRequired: '🔒 Please sign in to continue — FouFou links your contributions to your account and keeps the data secure',
   signOut: 'Sign Out',
   register: 'Register',
   loginSubtitle: 'Sign in to save your progress',
@@ -3582,7 +3584,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.81';
+window.BKK.VERSION = '3.9.82';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
