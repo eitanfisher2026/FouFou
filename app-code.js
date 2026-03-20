@@ -855,7 +855,20 @@ const FouFouApp = () => {
   const [interestTimeFilter, setInterestTimeFilter] = useState(
     () => localStorage.getItem('foufou_time_filter') || 'all'
   );
+  const saveInterestsForMode = (mode, interests) => {
+    try { localStorage.setItem(`foufou_interests_${mode}`, JSON.stringify(interests)); } catch(e) {}
+  };
+  const loadInterestsForMode = (mode) => {
+    try {
+      const saved = localStorage.getItem(`foufou_interests_${mode}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch(e) { return []; }
+  };
+
   const setInterestTimeFilterAndSave = (val) => {
+    saveInterestsForMode(interestTimeFilter, formData.interests);
+    const savedForNewMode = loadInterestsForMode(val);
+    setFormData(prev => ({ ...prev, interests: savedForNewMode }));
     setInterestTimeFilter(val);
     try { localStorage.setItem('foufou_time_filter', val); } catch(e) {}
   };
@@ -3836,6 +3849,26 @@ const FouFouApp = () => {
           updated.mapsUrl = window.BKK.getGoogleMapsUrl(updated);
           return updated;
         });
+
+        if (placeInfo.rating && isFirebaseAvailable && database) {
+          const existingLoc = customLocations.find(l => l.name === location.name);
+          if (existingLoc?.firebaseId) {
+            const updates = {
+              googlePlaceId: placeInfo.googlePlaceId,
+              googleRating: placeInfo.rating,
+              googleRatingCount: placeInfo.ratingCount || 0,
+              googlePlace: true
+            };
+            if (placeInfo.address && !existingLoc.address) updates.address = placeInfo.address;
+            database.ref(`cities/${selectedCityId}/locations/${existingLoc.firebaseId}`).update(updates)
+              .then(() => {
+                setCustomLocations(prev => prev.map(l =>
+                  l.firebaseId === existingLoc.firebaseId ? { ...l, ...updates } : l
+                ));
+                addDebugLog('API', `Auto-saved Google rating for ${existingLoc.name}: ⭐${placeInfo.rating}`);
+              })
+          }
+        }
       }
       
       addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });
@@ -8346,6 +8379,7 @@ const FouFouApp = () => {
                               ? formData.interests.filter(id => id !== option.id)
                               : [...formData.interests, option.id];
                             setFormData({...formData, interests: newInterests});
+                            saveInterestsForMode(interestTimeFilter, newInterests);
                             if (!isSelected && option.privateOnly) {
                               const label = tLabel(option) || option.id;
                               showToast(
@@ -12609,22 +12643,25 @@ const FouFouApp = () => {
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
                     return (
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '4px 0', flexWrap: 'nowrap', overflow: 'hidden' }}>
-                        {gR && (
-                          <span style={{ fontSize: '12px', color: '#b45309', whiteSpace: 'nowrap', flexShrink: 0 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af'}}> ({newLocation.googleRatingCount})</span> : null}</span>
-                        )}
-                        {ra ? (
-                          <button
-                            onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: 0, whiteSpace: 'nowrap', flexShrink: 0 }}
-                            title={t('reviews.seeReviews') || 'ראה ביקורות'}
-                          >🌟 {ra.avg.toFixed(1)} <span style={{fontWeight:400,color:'#9ca3af'}}>({ra.count})</span> ›</button>
-                        ) : (
-                          <button
-                            onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: '#9ca3af', textDecoration: 'underline', padding: 0, whiteSpace: 'nowrap' }}
-                          >☆ {t('reviews.rate')}</button>
-                        )}
+                      <div style={{ padding: '4px 0' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                          {gR && (
+                            <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
+                          )}
+                          {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
+                          {ra ? (
+                            <button
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              title={t('reviews.seeReviews') || 'ראה ביקורות'}
+                            >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
+                          ) : (
+                            <button
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
+                            >☆ {t('reviews.rate') || 'דרג'}</button>
+                          )}
+                        </span>
                       </div>
                     );
                   })()}
@@ -14200,25 +14237,28 @@ const FouFouApp = () => {
                   </div>
                 )}
 
-                {/* Ratings — always one line, nowrap */}
-                <div style={{ padding: '4px 16px 10px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'nowrap', overflow: 'hidden' }}>
-                  {gR && (
-                    <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      ⭐ {gR.toFixed?.(1) || gR}{loc?.googleRatingCount ? <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({loc.googleRatingCount})</span> : null}
-                    </span>
-                  )}
-                  {ra ? (
-                    <button
-                      onClick={() => { close(); openReviewDialog(loc); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: 0, whiteSpace: 'nowrap', flexShrink: 0 }}
-                      title={t('reviews.seeReviews') || 'ראה ביקורות'}
-                    >🌟 {ra.avg.toFixed(1)} <span style={{ fontWeight: 400, color: '#9ca3af' }}>({ra.count})</span> ›</button>
-                  ) : (
-                    <button
-                      onClick={() => { close(); openReviewDialog(loc); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', textDecoration: 'underline', padding: 0, whiteSpace: 'nowrap' }}
-                    >☆ {t('reviews.rate')}</button>
-                  )}
+                {/* Ratings — single line, inline, direction-safe */}
+                <div style={{ padding: '4px 16px 10px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                    {gR && (
+                      <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>
+                        ⭐ {gR.toFixed?.(1) || gR}{loc?.googleRatingCount ? <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({loc.googleRatingCount})</span> : null}
+                      </span>
+                    )}
+                    {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
+                    {ra ? (
+                      <button
+                        onClick={() => { close(); openReviewDialog(loc); }}
+                        style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title={t('reviews.seeReviews') || 'ראה ביקורות'}
+                      >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
+                    ) : (
+                      <button
+                        onClick={() => { close(); openReviewDialog(loc); }}
+                        style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
+                      >☆ {t('reviews.rate') || 'דרג'}</button>
+                    )}
+                  </span>
                 </div>
               </div>
 

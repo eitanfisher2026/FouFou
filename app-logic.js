@@ -508,7 +508,24 @@
     () => localStorage.getItem('foufou_time_filter') || 'all'
   );
   // Persist time filter changes
+  // Per-mode interest selections: save/restore when switching time filter
+  // Key: foufou_interests_day / foufou_interests_night / foufou_interests_all
+  const saveInterestsForMode = (mode, interests) => {
+    try { localStorage.setItem(`foufou_interests_${mode}`, JSON.stringify(interests)); } catch(e) {}
+  };
+  const loadInterestsForMode = (mode) => {
+    try {
+      const saved = localStorage.getItem(`foufou_interests_${mode}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch(e) { return []; }
+  };
+
   const setInterestTimeFilterAndSave = (val) => {
+    // Save current selections for the current mode before switching
+    saveInterestsForMode(interestTimeFilter, formData.interests);
+    // Load saved selections for the new mode
+    const savedForNewMode = loadInterestsForMode(val);
+    setFormData(prev => ({ ...prev, interests: savedForNewMode }));
     setInterestTimeFilter(val);
     try { localStorage.setItem('foufou_time_filter', val); } catch(e) {}
   };
@@ -3833,6 +3850,29 @@
           updated.mapsUrl = window.BKK.getGoogleMapsUrl(updated);
           return updated;
         });
+
+        // Auto-save rating + placeId to Firebase immediately — no need to wait for "עדכן"
+        // This way single-place Google fetch is complete without running full batch refresh
+        if (placeInfo.rating && isFirebaseAvailable && database) {
+          const existingLoc = customLocations.find(l => l.name === location.name);
+          if (existingLoc?.firebaseId) {
+            const updates = {
+              googlePlaceId: placeInfo.googlePlaceId,
+              googleRating: placeInfo.rating,
+              googleRatingCount: placeInfo.ratingCount || 0,
+              googlePlace: true
+            };
+            if (placeInfo.address && !existingLoc.address) updates.address = placeInfo.address;
+            database.ref(`cities/${selectedCityId}/locations/${existingLoc.firebaseId}`).update(updates)
+              .then(() => {
+                setCustomLocations(prev => prev.map(l =>
+                  l.firebaseId === existingLoc.firebaseId ? { ...l, ...updates } : l
+                ));
+                addDebugLog('API', `Auto-saved Google rating for ${existingLoc.name}: ⭐${placeInfo.rating}`);
+              })
+              .catch(e => console.warn('[API] Failed to auto-save Google rating:', e));
+          }
+        }
       }
       
       addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });

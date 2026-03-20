@@ -975,6 +975,7 @@
                               ? formData.interests.filter(id => id !== option.id)
                               : [...formData.interests, option.id];
                             setFormData({...formData, interests: newInterests});
+                            saveInterestsForMode(interestTimeFilter, newInterests);
                             if (!isSelected && option.privateOnly) {
                               const label = tLabel(option) || option.id;
                               showToast(
