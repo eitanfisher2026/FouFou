@@ -6789,7 +6789,7 @@ const FouFouApp = () => {
     if (!dedupConfirm) return;
     const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
 
-    if (loc?.uploadedImage) {
+    if (loc?.uploadedImage && !closeQuickCapture) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
     }
 

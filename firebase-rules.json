@@ -4,18 +4,18 @@
       "$cityId": {
         "locations": {
           ".read": true,
-          ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous')"
+          ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
         },
         "routes": {
           ".read": true,
-          ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous')"
+          ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"
         },
         "reviews": {
           ".read": true,
           "$placeKey": {
             ".read": true,
             "$userId": {
-              ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous') && auth.uid === $userId",
+              ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && auth.uid === $userId",
               ".validate": "newData.hasChildren(['rating', 'timestamp'])"
             }
           }

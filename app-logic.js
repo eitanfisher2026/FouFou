@@ -7216,8 +7216,8 @@
     if (!dedupConfirm) return;
     const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
 
-    // Always save photo to device
-    if (loc?.uploadedImage) {
+    // Save photo to device — only if NOT from captureMode (captureMode already saved on capture)
+    if (loc?.uploadedImage && !closeQuickCapture) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
     }
 
