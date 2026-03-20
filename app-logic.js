@@ -2352,6 +2352,8 @@
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
             const loc = { ...data[key], firebaseId: key, cityId: selectedCityId };
+            // Ensure name is always a string — Firebase may have null/missing name
+            if (!loc.name || typeof loc.name !== 'string') loc.name = `(no name) ${key.slice(-4)}`;
             // Sanitize: fix address if it's an object (import bug)
             if (loc.address && typeof loc.address === 'object') {
               if (loc.address.lat && !loc.lat) { loc.lat = loc.address.lat; loc.lng = loc.address.lng; }
@@ -2370,6 +2372,9 @@
           console.log('[FIREBASE] Loaded', locationsArray.length, 'locations for', selectedCityId);
           // Load review averages for all custom locations
           const allNames = locationsArray.filter(l => l.status !== 'blacklist').map(l => l.name);
+          // Warn about locations with missing name (data integrity issue)
+          const nameless = locationsArray.filter(l => l.name?.startsWith('(no name)'));
+          if (nameless.length > 0) console.warn('[DATA] Locations with missing name:', nameless.map(l => l.firebaseId));
           if (allNames.length > 0) loadReviewAverages(allNames);
         } else {
           setCustomLocations([]);
@@ -5225,7 +5230,7 @@
           .slice(0, stopsForThisInterest);
         customPerInterest[interest] = customToUse;
         for (const cs of customToUse) {
-          const key = cs.name.toLowerCase().trim();
+          const key = (cs.name || '').toLowerCase().trim();
           if (!addedCustomNames.has(key)) {
             addedCustomNames.add(key);
             allStops.push({ ...cs, _debug: {
@@ -5424,7 +5429,7 @@
         for (const interest of searchInterests) {
           if (googleCacheRef.current[interest]?.length > 0) {
             googleCacheRef.current[interest] = googleCacheRef.current[interest]
-              .filter(p => !usedInRound2.has(p.name.toLowerCase().trim()));
+              .filter(p => !usedInRound2.has((p.name || '').toLowerCase().trim()));
           }
         }
       }
@@ -5572,8 +5577,8 @@
 
       // Include manually added stops (if any)
       if (manualStops.length > 0) {
-        const existingNames = new Set(uniqueStops.map(s => s.name.toLowerCase().trim()));
-        const nonDuplicateManual = manualStops.filter(ms => !existingNames.has(ms.name.toLowerCase().trim()));
+        const existingNames = new Set(uniqueStops.map(s => (s.name || '').toLowerCase().trim()));
+        const nonDuplicateManual = manualStops.filter(ms => !existingNames.has((ms.name || '').toLowerCase().trim()));
         if (nonDuplicateManual.length > 0) {
           newRoute.stops = [...newRoute.stops, ...nonDuplicateManual];
           newRoute.stats.manual = nonDuplicateManual.length;
@@ -5730,7 +5735,7 @@
           if (!locAreas.includes(formData.area)) return false;
         }
         // Not already in route
-        return !existingNames.includes(loc.name.toLowerCase().trim());
+        return !existingNames.includes((loc.name || '').toLowerCase().trim());
       });
       
       if (unusedCustom.length > 0) {
@@ -5988,12 +5993,13 @@
   // Filter out Google places that already exist in custom locations (exact name match)
   const filterDuplicatesOfCustom = (places) => {
     const customNames = customLocations
-      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
+      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId && loc.name)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (customNames.length === 0) return places;
     
     return places.filter(place => {
+      if (!place.name) return true; // keep places with no name — will be filtered elsewhere
       const placeName = place.name.toLowerCase().trim();
       const isDuplicate = customNames.includes(placeName);
       if (isDuplicate) {

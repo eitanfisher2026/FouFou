@@ -2525,6 +2525,7 @@ const FouFouApp = () => {
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
             const loc = { ...data[key], firebaseId: key, cityId: selectedCityId };
+            if (!loc.name || typeof loc.name !== 'string') loc.name = `(no name) ${key.slice(-4)}`;
             if (loc.address && typeof loc.address === 'object') {
               if (loc.address.lat && !loc.lat) { loc.lat = loc.address.lat; loc.lng = loc.address.lng; }
               delete loc.address;
@@ -2538,6 +2539,8 @@ const FouFouApp = () => {
           });
           setCustomLocations(locationsArray);
           const allNames = locationsArray.filter(l => l.status !== 'blacklist').map(l => l.name);
+          const nameless = locationsArray.filter(l => l.name?.startsWith('(no name)'));
+          if (nameless.length > 0) console.warn('[DATA] Locations with missing name:', nameless.map(l => l.firebaseId));
           if (allNames.length > 0) loadReviewAverages(allNames);
         } else {
           setCustomLocations([]);
@@ -5018,7 +5021,7 @@ const FouFouApp = () => {
           .slice(0, stopsForThisInterest);
         customPerInterest[interest] = customToUse;
         for (const cs of customToUse) {
-          const key = cs.name.toLowerCase().trim();
+          const key = (cs.name || '').toLowerCase().trim();
           if (!addedCustomNames.has(key)) {
             addedCustomNames.add(key);
             allStops.push({ ...cs, _debug: {
@@ -5183,7 +5186,7 @@ const FouFouApp = () => {
         for (const interest of searchInterests) {
           if (googleCacheRef.current[interest]?.length > 0) {
             googleCacheRef.current[interest] = googleCacheRef.current[interest]
-              .filter(p => !usedInRound2.has(p.name.toLowerCase().trim()));
+              .filter(p => !usedInRound2.has((p.name || '').toLowerCase().trim()));
           }
         }
       }
@@ -5317,8 +5320,8 @@ const FouFouApp = () => {
       };
 
       if (manualStops.length > 0) {
-        const existingNames = new Set(uniqueStops.map(s => s.name.toLowerCase().trim()));
-        const nonDuplicateManual = manualStops.filter(ms => !existingNames.has(ms.name.toLowerCase().trim()));
+        const existingNames = new Set(uniqueStops.map(s => (s.name || '').toLowerCase().trim()));
+        const nonDuplicateManual = manualStops.filter(ms => !existingNames.has((ms.name || '').toLowerCase().trim()));
         if (nonDuplicateManual.length > 0) {
           newRoute.stops = [...newRoute.stops, ...nonDuplicateManual];
           newRoute.stats.manual = nonDuplicateManual.length;
@@ -5445,7 +5448,7 @@ const FouFouApp = () => {
           const locAreas = loc.areas || (loc.area ? [loc.area] : []);
           if (!locAreas.includes(formData.area)) return false;
         }
-        return !existingNames.includes(loc.name.toLowerCase().trim());
+        return !existingNames.includes((loc.name || '').toLowerCase().trim());
       });
       
       if (unusedCustom.length > 0) {
@@ -5679,12 +5682,13 @@ const FouFouApp = () => {
   
   const filterDuplicatesOfCustom = (places) => {
     const customNames = customLocations
-      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId)
+      .filter(loc => loc.status !== 'blacklist' && (loc.cityId || 'bangkok') === selectedCityId && loc.name)
       .map(loc => loc.name.toLowerCase().trim());
     
     if (customNames.length === 0) return places;
     
     return places.filter(place => {
+      if (!place.name) return true; // keep places with no name — will be filtered elsewhere
       const placeName = place.name.toLowerCase().trim();
       const isDuplicate = customNames.includes(placeName);
       if (isDuplicate) {
