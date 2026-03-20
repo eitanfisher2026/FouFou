@@ -6782,9 +6782,9 @@
   
   const saveReview = async () => {
     if (!reviewDialog) return;
-    if (!authUser?.uid) {
-      showToast(t('reviews.loginRequired') || 'יש להתחבר כדי לדרג', 'warning');
+    if (!authUser?.uid || authUser.isAnonymous) {
       setReviewDialog(null);
+      if (!requireSignIn()) return;
       return;
     }
     if (reviewDialog.myRating === 0) {
@@ -6903,7 +6903,7 @@
   // Returns true if allowed, false if blocked.
   const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
-      showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'warning', 'sticky');
+      showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'info', 'sticky');
       setTimeout(() => setShowLoginDialog(true), 600);
       return false;
     }
