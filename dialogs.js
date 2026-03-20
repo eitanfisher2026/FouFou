@@ -2178,9 +2178,21 @@
               {/* Action bar */}
               <div style={{ padding: '10px 12px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {mapsUrl && (
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                  >🧭 {t('navigate') || 'נווט'}</a>
+                  activeTrail ? (
+                    <button
+                      onClick={() => {
+                        const msg = window.BKK.i18n.currentLang === 'en'
+                          ? '⚠️ On mobile, opening Google Maps may interrupt your active navigation. Continue?'
+                          : '⚠️ בטלפון, פתיחת גוגל מפס עשויה לעצור את הניווט הפעיל. להמשיך?';
+                        if (window.confirm(msg)) { window.open(mapsUrl, '_blank'); }
+                      }}
+                      style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                    >🧭 {t('navigate') || 'נווט'}</button>
+                  ) : (
+                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                    >🧭 {t('navigate') || 'נווט'}</a>
+                  )
                 )}
                 <button
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}

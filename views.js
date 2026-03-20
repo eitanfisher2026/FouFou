@@ -1423,10 +1423,10 @@
                                             setModalImageCtx({ description: stop.description || cl?.description, location: cl || stop });
                                             setShowImageModal(true);
                                           }}
-                                          style={{ cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#ede9fe', border: '1.5px solid ' + ((stop.uploadedImage || cl?.uploadedImage) ? '#fcd34d' : '#8b5cf6'), borderRadius: '8px', display: 'inline-flex', alignItems: 'center', padding: '2px 5px', gap: '3px', transition: 'transform 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                                          style={{ cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#ede9fe', border: '2px solid ' + ((stop.uploadedImage || cl?.uploadedImage) ? '#f59e0b' : '#7c3aed'), borderRadius: '10px', display: 'inline-flex', alignItems: 'center', padding: '3px 7px', gap: '3px', transition: 'all 0.15s', boxShadow: '0 2px 5px rgba(124,58,237,0.25)', minWidth: '28px', justifyContent: 'center' }}
                                           title={t("general.placeInfo") || "מידע על המקום"}
                                         >
-                                          <img src="icon-32x32.png" alt="FouFou" style={{ width: '14px', height: '14px' }} />
+                                          <img src="icon-32x32.png" alt="FouFou" style={{ width: '16px', height: '16px' }} />
                                         </button>
                                         );
                                       })()}
@@ -4489,9 +4489,9 @@
                               setModalImageCtx({ description: loc.description, location: loc });
                               setShowImageModal(true);
                             }}
-                            style={{ background: loc.uploadedImage ? '#fef3c7' : '#f3f4f6', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '1px 3px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                            style={{ background: loc.uploadedImage ? '#fef3c7' : '#ede9fe', border: '2px solid ' + (loc.uploadedImage ? '#f59e0b' : '#7c3aed'), borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, boxShadow: '0 1px 4px rgba(124,58,237,0.2)' }}
                             title={t('general.placeInfo') || 'מידע על המקום'}
-                          ><img src="icon-32x32.png" alt="FouFou" style={{ width: '14px', height: '14px' }} /></button>
+                          ><img src="icon-32x32.png" alt="FouFou" style={{ width: '16px', height: '16px' }} /></button>
                         </div>
                         <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>📍 {areaLabels}</div>
                         {intLabels && <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>{intLabels}</div>}
