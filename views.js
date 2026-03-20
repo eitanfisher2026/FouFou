@@ -4612,6 +4612,7 @@
               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 {debugFlagged.size > 0 && <button onClick={exportFlaggedStops} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#f59e0b', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>🚩 Copy {debugFlagged.size}</button>}
                 <button onClick={exportDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#2563eb', border: 'none', color: 'white', cursor: 'pointer' }}>📋 All</button>
+                <button onClick={shareDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#059669', border: 'none', color: 'white', cursor: 'pointer' }}>📤 שתף</button>
                 <button onClick={clearDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#dc2626', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
                 <button onClick={() => setShowSearchDebugPanel(false)} style={{ fontSize: '22px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', padding: '0 8px' }}>✕</button>
               </div>

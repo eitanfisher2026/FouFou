@@ -1577,6 +1577,41 @@
         if (st.address) lines.push(`     Address: ${st.address}`);
       });
     });
+    // Append Google Info debug
+    if (googleInfoDebugLogRef.current.length > 0) {
+      lines.push('\n' + '='.repeat(60));
+      lines.push('GOOGLE INFO DEBUG');
+      lines.push('='.repeat(60));
+      googleInfoDebugLogRef.current.forEach((e, i) => {
+        lines.push(`\n[${i+1}] ${e.locationName}`);
+        lines.push(`  Query: ${e.searchQuery}`);
+        lines.push(`  PlaceID: ${e.rawFromGoogle.placeId || '(none)'} ${e.rawFromGoogle.placeId ? (e.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}`);
+        lines.push(`  Name from Google: ${e.rawFromGoogle.name || '(none)'}`);
+        lines.push(`  Rating: ${e.rawFromGoogle.rating ? `${e.rawFromGoogle.rating} (${e.rawFromGoogle.ratingCount})` : '(none)'}`);
+        lines.push(`  Coords: ${e.rawFromGoogle.lat},${e.rawFromGoogle.lng}`);
+        lines.push(`  Primary type: ${e.rawFromGoogle.primaryType || '(none)'}`);
+        lines.push(`  Existing mapsUrl: ${e.existingMapsUrl || '(none)'}`);
+        lines.push(`  Built URL: ${e.builtUrl || '(none)'}`);
+      });
+    }
+
+    // Append URL debug
+    if (urlDebugLogRef.current.length > 0) {
+      lines.push('\n' + '='.repeat(60));
+      lines.push('URL BUILD DEBUG');
+      lines.push('='.repeat(60));
+      urlDebugLogRef.current.forEach((e, i) => {
+        lines.push(`\n[${i+1}] ${e.message}`);
+        if (e.data) {
+          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
+          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
+          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        }
+      });
+    }
+
     const text = lines.join('\n');
     navigator.clipboard.writeText(text).then(() => {
       showToast('📋 Debug sessions copied to clipboard!', 'success');
@@ -1591,6 +1626,85 @@
     });
   };
   
+  // Share debug as file (mobile: Web Share API → WhatsApp/etc; desktop: download)
+  const shareDebugSessions = async () => {
+    if (debugSessions.length === 0 && googleInfoDebugLogRef.current.length === 0 && urlDebugLogRef.current.length === 0) return;
+    // Build same text as export
+    const lines = [];
+    debugSessions.forEach((s, si) => {
+      lines.push(`\n${'='.repeat(60)}`);
+      lines.push(`SESSION ${si + 1} — ${s.time} — ${s.city} / ${s.areaName || s.area} (${s.searchMode}${s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''})`);
+      lines.push(`Interests: ${s.interests.map(i => i.label).join(', ')}`);
+      if (s.stats) {
+        lines.push(`Stats: custom=${s.stats.custom} | fetched=${s.stats.fetched} | total=${s.stats.total} | maxStops=${s.stats.maxStops}`);
+        if (s.stats.interestLimits) lines.push(`Limits: ${Object.entries(s.stats.interestLimits).map(([k,v])=>`${k}=${v}`).join(', ')}`);
+        if (s.stats.interestResults) lines.push(`Results: ${Object.entries(s.stats.interestResults).map(([k,v])=>`${k}: custom=${v.custom}, google=${v.google??v.fetched}, total=${v.total}, limit=${v.limit??'?'}`).join(' | ')}`);
+      }
+      lines.push(`${'='.repeat(60)}`);
+      (s.stops || []).forEach((st, i) => {
+        const d = st._debug;
+        lines.push(`  ${i+1}. ${st.name} ${st.custom ? '📌' : '🌐'} ⭐${st.rating || '?'} (${st.ratingCount || '?'})`);
+        if (d) {
+          lines.push(`     Interest: ${d.interestLabel} | Source: ${d.source} | Search: ${d.searchType || '-'}`);
+          if (d.query) lines.push(`     Query: "${d.query}"`);
+          if (d.placeTypes) lines.push(`     Types: ${d.placeTypes.join(', ')}`);
+          if (d.googleTypes) lines.push(`     Google types: ${d.googleTypes.join(', ')}`);
+          if (d.primaryType) lines.push(`     Primary: ${d.primaryType}`);
+          if (d.rank) lines.push(`     Rank: ${d.rank}/${d.totalFromGoogle}`);
+          lines.push(`     Area: ${d.area} | Center: ${d.center || '-'} | Radius: ${d.radius || '-'}m`);
+        }
+        if (st.address) lines.push(`     Address: ${st.address}`);
+      });
+    });
+    if (googleInfoDebugLogRef.current.length > 0) {
+      lines.push('\n' + '='.repeat(60));
+      lines.push('GOOGLE INFO DEBUG');
+      lines.push('='.repeat(60));
+      googleInfoDebugLogRef.current.forEach((e, i) => {
+        lines.push(`\n[${i+1}] ${e.locationName}`);
+        lines.push(`  Query: ${e.searchQuery}`);
+        lines.push(`  PlaceID: ${e.rawFromGoogle.placeId || '(none)'} ${e.rawFromGoogle.placeId ? (e.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}`);
+        lines.push(`  Name from Google: ${e.rawFromGoogle.name || '(none)'}`);
+        lines.push(`  Rating: ${e.rawFromGoogle.rating ? `${e.rawFromGoogle.rating} (${e.rawFromGoogle.ratingCount})` : '(none)'}`);
+        lines.push(`  Coords: ${e.rawFromGoogle.lat},${e.rawFromGoogle.lng}`);
+        lines.push(`  Primary type: ${e.rawFromGoogle.primaryType || '(none)'}`);
+        lines.push(`  Existing mapsUrl: ${e.existingMapsUrl || '(none)'}`);
+        lines.push(`  Built URL: ${e.builtUrl || '(none)'}`);
+      });
+    }
+    if (urlDebugLogRef.current.length > 0) {
+      lines.push('\n' + '='.repeat(60));
+      lines.push('URL BUILD DEBUG');
+      lines.push('='.repeat(60));
+      urlDebugLogRef.current.forEach((e, i) => {
+        lines.push(`\n[${i+1}] ${e.message}`);
+        if (e.data) {
+          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
+          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
+          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        }
+      });
+    }
+    const text = lines.join('\n');
+    const filename = `foufou-debug-${new Date().toISOString().slice(0,16).replace('T','-')}.txt`;
+    const file = new File([text], filename, { type: 'text/plain' });
+    // Try Web Share API (mobile)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'FouFou Debug', text: 'FouFou debug log' });
+        return;
+      } catch(e) { /* user cancelled or failed — fall through to download */ }
+    }
+    // Fallback: download
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    a.click(); URL.revokeObjectURL(url);
+    showToast('📥 Debug file downloaded', 'success');
+  };
+
   // Clear debug sessions
   const clearDebugSessions = () => {
     setDebugSessions([]);
