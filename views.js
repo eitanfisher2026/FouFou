@@ -1422,8 +1422,7 @@
                                             setModalImageCtx({ description: stop.description || cl?.description, location: cl || stop });
                                             setShowImageModal(true);
                                           }}
-                                          className="hover:scale-110 transition rounded px-0.5"
-                                          style={{ fontSize: '11px', cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#f3f4f6', display: 'inline-flex', alignItems: 'center', padding: '1px 2px' }}
+                                          style={{ cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#ede9fe', border: '1.5px solid ' + ((stop.uploadedImage || cl?.uploadedImage) ? '#fcd34d' : '#8b5cf6'), borderRadius: '8px', display: 'inline-flex', alignItems: 'center', padding: '2px 5px', gap: '3px', transition: 'transform 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
                                           title={t("general.placeInfo") || "מידע על המקום"}
                                         >
                                           <img src="icon-32x32.png" alt="FouFou" style={{ width: '14px', height: '14px' }} />

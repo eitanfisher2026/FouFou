@@ -8782,8 +8782,7 @@ const FouFouApp = () => {
                                             setModalImageCtx({ description: stop.description || cl?.description, location: cl || stop });
                                             setShowImageModal(true);
                                           }}
-                                          className="hover:scale-110 transition rounded px-0.5"
-                                          style={{ fontSize: '11px', cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#f3f4f6', display: 'inline-flex', alignItems: 'center', padding: '1px 2px' }}
+                                          style={{ cursor: 'pointer', background: (stop.uploadedImage || cl?.uploadedImage) ? '#fef3c7' : '#ede9fe', border: '1.5px solid ' + ((stop.uploadedImage || cl?.uploadedImage) ? '#fcd34d' : '#8b5cf6'), borderRadius: '8px', display: 'inline-flex', alignItems: 'center', padding: '2px 5px', gap: '3px', transition: 'transform 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
                                           title={t("general.placeInfo") || "מידע על המקום"}
                                         >
                                           <img src="icon-32x32.png" alt="FouFou" style={{ width: '14px', height: '14px' }} />
@@ -14096,113 +14095,166 @@ const FouFouApp = () => {
       })()}
 
       {/* Image Modal */}
-      {showImageModal && modalImage && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4"
-          onClick={() => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); }}
-        >
-          <button
-            onClick={() => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); }}
-            className="absolute top-4 right-4 bg-white bg-opacity-90 text-black rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold shadow-lg hover:bg-opacity-100 z-10"
-          >✕</button>
-          <div onClick={e => e.stopPropagation()} className="flex flex-col items-center max-w-full max-h-full">
-            {modalImage !== '__placeholder__' ? (
-              <img src={modalImage} alt="enlarged" className="max-w-full max-h-[70vh] rounded-lg shadow-2xl" />
-            ) : (
-              <div style={{ width: '300px', maxWidth: '90vw', height: '200px', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #d1d5db', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.5 }} />
-                {modalImageCtx?.location && !modalImageCtx.location.locked && (() => {
-                  const handleImageFile = (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    e.target.value = '';
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const img = new Image();
-                      img.onload = () => {
-                        const maxW = 1200, maxH = 1200;
-                        let w = img.width, h = img.height;
-                        if (w > maxW || h > maxH) { const r = Math.min(maxW/w, maxH/h); w *= r; h *= r; }
-                        const c = document.createElement('canvas'); c.width = w; c.height = h;
-                        c.getContext('2d').drawImage(img, 0, 0, w, h);
-                        const dataUrl = c.toDataURL('image/jpeg', 0.8);
-                        const loc = modalImageCtx.location;
-                        setNewLocation(prev => ({...prev, uploadedImage: dataUrl}));
-                        if (loc.firebaseId && isFirebaseAvailable && database) {
-                          database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/uploadedImage`).set(dataUrl);
-                        }
-                        setCustomLocations(prev => prev.map(l => l.name === loc.name ? {...l, uploadedImage: dataUrl} : l));
-                        setModalImage(dataUrl);
-                        showToast('📷 ' + (t('places.photoAdded') || 'תמונה נוספה!'), 'success');
-                      };
-                      img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                  };
-                  return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <label style={{ cursor: 'pointer', background: '#8b5cf6', color: 'white', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        📷 {t('places.camera') || 'צלם'}
-                        <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleImageFile} />
-                      </label>
-                      <label style={{ cursor: 'pointer', background: '#6d28d9', color: 'white', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        🖼️ {t('places.gallery') || 'גלריה'}
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageFile} />
-                      </label>
-                    </div>
-                  );
-                })()}
-{/* readOnly label removed */}
-              </div>
-            )}
-            {modalImageCtx && (
-              <div className="bg-white bg-opacity-95 rounded-lg mt-2 p-3 max-w-md w-full shadow-lg" style={{direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'}}>
-                {/* Editable description for admin/editor, read-only for others */}
-                {modalImageCtx.location && (isAdmin || isEditor || authUser?.uid === modalImageCtx.location.addedBy) ? (
-                  <div style={{ marginBottom: '8px' }}>
-                    <textarea
-                      value={modalImageCtx.description || ''}
-                      onChange={(e) => setModalImageCtx(prev => ({...prev, description: e.target.value}))}
-                      placeholder={t('places.descriptionPlaceholder') || 'תיאור קצר של המקום...'}
-                      style={{ width: '100%', minHeight: '50px', padding: '6px 8px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '8px', resize: 'vertical', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                    />
+      {/* ===== PLACE INFO POPUP (FouFou popup) ===== */}
+      {showImageModal && modalImage && (() => {
+        const loc = modalImageCtx?.location || null;
+        const isRTL = window.BKK.i18n.isRTL();
+        const close = () => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); };
+        const pk = (loc?.name || '').replace(/[.#$/\[\]]/g, '_');
+        const ra = reviewAverages[pk];
+        const gR = loc?.googleRating;
+        const hasImage = modalImage && modalImage !== '__placeholder__';
+        const mapsUrl = loc ? window.BKK.getGoogleMapsUrl(loc) : null;
+        const interestLabels = (loc?.interests || []).map(id => {
+          const opt = allInterestOptions.find(o => o.id === id);
+          return opt ? (tLabel(opt) || opt.label) : null;
+        }).filter(Boolean);
 
-                  </div>
-                ) : (
-                  modalImageCtx.description && (
-                    <p className="text-gray-700 text-sm mb-2" style={{whiteSpace: 'pre-line'}}>{modalImageCtx.description}</p>
-                  )
-                )}
-                {modalImageCtx.location && (() => {
-                  const loc = modalImageCtx.location;
-                  const pk = (loc.name || '').replace(/[.#$/\[\]]/g, '_');
-                  const ra = reviewAverages[pk];
-                  const gR = loc.googleRating;
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => {
-                          setShowImageModal(false); setModalImage(null); setModalImageCtx(null);
-                          handleEditLocation(loc);
-                        }}
-                        className="bg-blue-500 text-white py-1.5 px-4 rounded-lg text-xs font-bold hover:bg-blue-600 flex items-center justify-center gap-1"
-                      >📍 {t('places.openFavorite') || 'פתח מקום מועדף'}</button>
-                      {gR && <span style={{ fontSize: '11px', color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({loc.googleRatingCount || 0})</span>}
-                      {ra && <span style={{ fontSize: '11px', color: '#8b5cf6' }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>}
-                      {!ra && (
-                        <span
-                          onClick={() => { setShowImageModal(false); setModalImage(null); setModalImageCtx(null); openReviewDialog(loc); }}
-                          style={{ fontSize: '11px', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}
-                        >☆ {t('reviews.rate')}</span>
+        return (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 z-[100] flex items-end sm:items-center justify-center"
+            onClick={close}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '16px 16px 0 0',
+                width: '100%',
+                maxWidth: '440px',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                direction: isRTL ? 'rtl' : 'ltr',
+                boxShadow: '0 -4px 32px rgba(0,0,0,0.25)',
+              }}
+              className="sm:rounded-2xl sm:mb-0"
+            >
+              {/* Header — name + interests */}
+              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: '16px', color: '#111827', lineHeight: 1.3 }}>{loc?.name || ''}</div>
+                  {interestLabels.length > 0 && (
+                    <div style={{ fontSize: '11px', color: '#8b5cf6', fontWeight: 600, marginTop: '3px' }}>
+                      {interestLabels.join(' · ')}
+                    </div>
+                  )}
+                </div>
+                <button onClick={close} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+              </div>
+
+              {/* Scrollable body */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {/* Image area — fixed height */}
+                <div style={{ width: '100%', height: '200px', background: '#f9fafb', position: 'relative', overflow: 'hidden' }}>
+                  {hasImage ? (
+                    <img src={modalImage} alt={loc?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.25 }} />
+                      {loc && !loc.locked && (isEditor || isAdmin) && (
+                        <label style={{ cursor: 'pointer', background: '#8b5cf6', color: 'white', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                          📷 {t('places.camera') || 'הוסף תמונה'}
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                            const file = e.target.files?.[0]; if (!file) return; e.target.value = '';
+                            const img2 = new Image();
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              img2.onload = () => {
+                                const maxW = 1200, maxH = 1200; let w = img2.width, h = img2.height;
+                                if (w > maxW || h > maxH) { const r = Math.min(maxW/w, maxH/h); w *= r; h *= r; }
+                                const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                                cv.getContext('2d').drawImage(img2, 0, 0, w, h);
+                                const dataUrl = cv.toDataURL('image/jpeg', 0.8);
+                                if (loc.firebaseId && isFirebaseAvailable && database) {
+                                  database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/uploadedImage`).set(dataUrl);
+                                }
+                                setCustomLocations(prev => prev.map(l => l.name === loc.name ? {...l, uploadedImage: dataUrl} : l));
+                                setModalImage(dataUrl);
+                                showToast('📷 ' + (t('places.photoAdded') || 'תמונה נוספה!'), 'success');
+                              };
+                              img2.src = ev.target.result;
+                            };
+                            reader.readAsDataURL(file);
+                          }} />
+                        </label>
                       )}
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
+
+                {/* Description */}
+                {modalImageCtx?.description && (
+                  <div style={{ padding: '12px 16px 8px', fontSize: '13px', color: '#374151', lineHeight: 1.55, whiteSpace: 'pre-line' }}>
+                    {modalImageCtx.description}
+                  </div>
+                )}
+
+                {/* Notes — only if content exists */}
+                {loc?.notes?.trim() && (
+                  <div style={{ padding: '4px 16px 8px' }}>
+                    <div style={{ background: '#fffbeb', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
+                      💭 {loc.notes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ratings */}
+                {(gR || ra) && (
+                  <div style={{ padding: '4px 16px 10px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {gR && (
+                      <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>
+                        ⭐ {gR.toFixed?.(1) || gR}
+                        {loc.googleRatingCount ? <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({loc.googleRatingCount})</span> : null}
+                      </span>
+                    )}
+                    {ra ? (
+                      <button
+                        onClick={() => { close(); openReviewDialog(loc); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: 0 }}
+                        title={t('reviews.seeReviews') || 'ראה ביקורות'}
+                      >🌟 {ra.avg.toFixed(1)} <span style={{ fontWeight: 400, color: '#9ca3af' }}>({ra.count})</span> →</button>
+                    ) : (
+                      <button
+                        onClick={() => { close(); openReviewDialog(loc); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', textDecoration: 'underline', padding: 0 }}
+                      >☆ {t('reviews.rate')}</button>
+                    )}
+                  </div>
+                )}
+                {!gR && !ra && loc && (
+                  <div style={{ padding: '4px 16px 10px' }}>
+                    <button
+                      onClick={() => { close(); openReviewDialog(loc); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', textDecoration: 'underline', padding: 0 }}
+                    >☆ {t('reviews.rate')}</button>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Action bar */}
+              <div style={{ padding: '10px 12px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {mapsUrl && (
+                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                  >🧭 {t('places.navigate') || 'נווט'}</a>
+                )}
+                <button
+                  onClick={() => { close(); if (loc) openReviewDialog(loc); }}
+                  style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                >⭐ {t('reviews.rate')}</button>
+                {loc && (isAdmin || isEditor || authUser?.uid === loc.addedBy) && (
+                  <button
+                    onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >✏️ {t('general.edit') || 'ערוך'}</button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Help Dialog */}
       {showHelp && (() => {
