@@ -4,18 +4,18 @@
       "$cityId": {
         "locations": {
           ".read": true,
-          ".write": true
+          ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous')"
         },
         "routes": {
           ".read": true,
-          ".write": true
+          ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous')"
         },
         "reviews": {
           ".read": true,
           "$placeKey": {
             ".read": true,
             "$userId": {
-              ".write": "auth != null && auth.uid === $userId",
+              ".write": "auth != null && !auth.token.firebase.sign_in_provider.matches('anonymous') && auth.uid === $userId",
               ".validate": "newData.hasChildren(['rating', 'timestamp'])"
             }
           }
@@ -23,12 +23,12 @@
       }
     },
     "settings": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
     },
     "customInterests": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 1"
     },
     "helpContent": {
       ".read": true,
@@ -50,8 +50,8 @@
       }
     },
     "accessStats": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2",
+      ".write": "auth != null"
     },
     "feedback": {
       ".read": "auth != null",
