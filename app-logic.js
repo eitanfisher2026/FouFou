@@ -6463,7 +6463,7 @@
       for (const name of placeNames) {
         const placeKey = (name || '').replace(/[.#$/\[\]]/g, '_');
         try {
-          const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+          const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
           const data = snap.val();
           if (data) {
             const ratings = Object.values(data).map(r => r.rating).filter(r => r > 0);
@@ -6496,7 +6496,7 @@
     let reviews = [];
     try {
       if (database) {
-        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         if (data) {
           reviews = Object.entries(data).map(([uid, r]) => ({
@@ -6573,7 +6573,7 @@
       if (database) {
         await database.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
         // Refresh reviews inside dialog
-        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([ruid, r]) => ({
           odvisitorId: ruid, rating: r.rating || 0, text: r.text || '',
@@ -6598,7 +6598,7 @@
     try {
       if (database) {
         await database.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
-        const snap = await db.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+        const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
           odvisitorId: uid, rating: r.rating || 0, text: r.text || '',
