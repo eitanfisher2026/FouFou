@@ -900,6 +900,26 @@
               }
               return;
             }
+            if (action === 'skiptrail') {
+              const trailStops = (activeTrail && activeTrail.stops) || stopsOrderRef.current || stops;
+              const idx = trailStops.findIndex(s => (s.name||'').toLowerCase().trim() === data.toLowerCase().trim());
+              if (idx >= 0) {
+                setSkippedTrailStops(prev => { const next = new Set(prev); next.add(idx); return next; });
+                setMapSkippedStops(prev => { const next = new Set(prev); next.add(idx); return next; });
+              }
+              map.closePopup();
+              return;
+            }
+            if (action === 'unskiptrail') {
+              const trailStops = (activeTrail && activeTrail.stops) || stopsOrderRef.current || stops;
+              const idx = trailStops.findIndex(s => (s.name||'').toLowerCase().trim() === data.toLowerCase().trim());
+              if (idx >= 0) {
+                setSkippedTrailStops(prev => { const next = new Set(prev); next.delete(idx); return next; });
+                setMapSkippedStops(prev => { const next = new Set(prev); next.delete(idx); return next; });
+              }
+              map.closePopup();
+              return;
+            }
             if (action === 'setstart') {
               const newStart = { lat: parseFloat(lat), lng: parseFloat(lng), address: data };
               startPointCoordsRef_local.current = newStart;
@@ -1022,11 +1042,21 @@
               const googleBtn = '<a href="' + googleUrl + '" target="_blank" style="flex:1;display:inline-block;padding:6px 10px;border-radius:8px;background:#3b82f6;color:white;text-decoration:none;font-size:12px;font-weight:bold;">Google Maps ↗</a>';
 
               if (isTrailActive) {
-                // Trail active: Google Maps + Continue from here
+                // Trail active: Google Maps + Skip + Continue from here
                 const continueLabel = isRTL ? 'המשך מנקודה זו ▶' : 'Continue from here ▶';
+                const skipTrailLabel = isRTL ? '⏭️ דלג' : '⏭️ Skip';
+                const isAlreadySkipped = skippedTrailStops.has(
+                  activeTrail?.stops ? activeTrail.stops.findIndex(s => (s.name||'').toLowerCase().trim() === (stop.name||'').toLowerCase().trim()) : -1
+                );
+                const skipColor = isAlreadySkipped ? '#6b7280' : '#ea580c';
+                const skipAction = isAlreadySkipped ? 'unskiptrail' : 'skiptrail';
+                const skipLabel = isAlreadySkipped ? (isRTL ? '↩️ בטל דילוג' : '↩️ Unskip') : skipTrailLabel;
                 return '<div style="text-align:center;direction:' + (isRTL ? 'rtl' : 'ltr') + ';font-size:13px;min-width:160px;padding:4px 0;">' +
                   header +
-                  '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px;">' + googleBtn + '</div>' +
+                  '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px;">' +
+                    googleBtn +
+                    '<button onclick="window._mapStopAction(\'' + skipAction + '\',\'' + escapedName + '\')" style="flex:1;padding:6px 8px;border-radius:8px;background:' + skipColor + ';color:white;border:none;font-size:12px;font-weight:bold;cursor:pointer;">' + skipLabel + '</button>' +
+                  '</div>' +
                   '<button onclick="window._mapStopAction(\'continuefrom\',\'' + escapedName + '\',' + stop.lat + ',' + stop.lng + ')" style="width:100%;padding:7px 8px;border-radius:8px;background:#16a34a;color:white;border:none;font-size:12px;font-weight:bold;cursor:pointer;">' + continueLabel + '</button>' +
                 '</div>';
               } else {

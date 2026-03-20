@@ -1194,6 +1194,26 @@ const FouFouApp = () => {
               }
               return;
             }
+            if (action === 'skiptrail') {
+              const trailStops = (activeTrail && activeTrail.stops) || stopsOrderRef.current || stops;
+              const idx = trailStops.findIndex(s => (s.name||'').toLowerCase().trim() === data.toLowerCase().trim());
+              if (idx >= 0) {
+                setSkippedTrailStops(prev => { const next = new Set(prev); next.add(idx); return next; });
+                setMapSkippedStops(prev => { const next = new Set(prev); next.add(idx); return next; });
+              }
+              map.closePopup();
+              return;
+            }
+            if (action === 'unskiptrail') {
+              const trailStops = (activeTrail && activeTrail.stops) || stopsOrderRef.current || stops;
+              const idx = trailStops.findIndex(s => (s.name||'').toLowerCase().trim() === data.toLowerCase().trim());
+              if (idx >= 0) {
+                setSkippedTrailStops(prev => { const next = new Set(prev); next.delete(idx); return next; });
+                setMapSkippedStops(prev => { const next = new Set(prev); next.delete(idx); return next; });
+              }
+              map.closePopup();
+              return;
+            }
             if (action === 'setstart') {
               const newStart = { lat: parseFloat(lat), lng: parseFloat(lng), address: data };
               startPointCoordsRef_local.current = newStart;
@@ -1309,9 +1329,19 @@ const FouFouApp = () => {
 
               if (isTrailActive) {
                 const continueLabel = isRTL ? 'המשך מנקודה זו ▶' : 'Continue from here ▶';
+                const skipTrailLabel = isRTL ? '⏭️ דלג' : '⏭️ Skip';
+                const isAlreadySkipped = skippedTrailStops.has(
+                  activeTrail?.stops ? activeTrail.stops.findIndex(s => (s.name||'').toLowerCase().trim() === (stop.name||'').toLowerCase().trim()) : -1
+                );
+                const skipColor = isAlreadySkipped ? '#6b7280' : '#ea580c';
+                const skipAction = isAlreadySkipped ? 'unskiptrail' : 'skiptrail';
+                const skipLabel = isAlreadySkipped ? (isRTL ? '↩️ בטל דילוג' : '↩️ Unskip') : skipTrailLabel;
                 return '<div style="text-align:center;direction:' + (isRTL ? 'rtl' : 'ltr') + ';font-size:13px;min-width:160px;padding:4px 0;">' +
                   header +
-                  '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px;">' + googleBtn + '</div>' +
+                  '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:6px;">' +
+                    googleBtn +
+                    '<button onclick="window._mapStopAction(\'' + skipAction + '\',\'' + escapedName + '\')" style="flex:1;padding:6px 8px;border-radius:8px;background:' + skipColor + ';color:white;border:none;font-size:12px;font-weight:bold;cursor:pointer;">' + skipLabel + '</button>' +
+                  '</div>' +
                   '<button onclick="window._mapStopAction(\'continuefrom\',\'' + escapedName + '\',' + stop.lat + ',' + stop.lng + ')" style="width:100%;padding:7px 8px;border-radius:8px;background:#16a34a;color:white;border:none;font-size:12px;font-weight:bold;cursor:pointer;">' + continueLabel + '</button>' +
                 '</div>';
               } else {
@@ -14261,7 +14291,7 @@ const FouFouApp = () => {
                 {mapsUrl && (
                   <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
                     style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                  >{window.BKK.i18n.currentLang === 'en' ? '🧭 Navigate' : '🧭 נווט / Navigate'}</a>
+                  >🧭 {t('navigate') || 'נווט'}</a>
                 )}
                 <button
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
