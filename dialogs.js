@@ -2165,17 +2165,11 @@
                       </span>
                     )}
                     {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
-                    {ra ? (
+                    {ra && (
                       <button
                         onClick={() => { close(); openReviewDialog(loc); }}
                         style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                        title={t('reviews.seeReviews') || 'ראה ביקורות'}
-                      >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
-                    ) : (
-                      <button
-                        onClick={() => { close(); openReviewDialog(loc); }}
-                        style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
-                      >☆ {t('reviews.rate') || 'דרג'}</button>
+                      >🌟 {ra.avg.toFixed(1)} · {window.BKK.i18n.currentLang === 'en' ? `Reviews (${ra.count})` : `ביקורות (${ra.count})`}</button>
                     )}
                   </span>
                 </div>
@@ -2186,13 +2180,13 @@
                 {mapsUrl && (
                   <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
                     style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                  >🧭 {t('places.navigate') || 'נווט'}</a>
+                  >{window.BKK.i18n.currentLang === 'en' ? '🧭 Navigate' : '🧭 נווט / Navigate'}</a>
                 )}
                 <button
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
                   style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >⭐ {t('reviews.rate')}</button>
-                {loc && (isAdmin || isEditor || authUser?.uid === loc.addedBy) && (
+                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) && (
                   <button
                     onClick={() => { close(); handleEditLocation(loc); }}
                     style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
