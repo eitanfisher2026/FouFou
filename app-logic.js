@@ -1474,15 +1474,25 @@
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   useEffect(() => { debugCategoriesRef.current = debugCategories; }, [debugCategories]);
   const searchRunIdRef = React.useRef(null);
-  // Enable URL debug collection when 'url' category active
-  useEffect(() => {
-    const isUrlDebug = debugMode && (debugCategories.includes('all') || debugCategories.includes('url'));
-    if (isUrlDebug) {
-      window.BKK._urlDebug = urlDebugLogRef.current;
-    } else {
-      window.BKK._urlDebug = null;
-    }
-  }, [debugMode, debugCategories]);
+  // URL debug: _urlDebug is activated only during explicit user clicks (onClick handlers)
+  // Setting it globally causes noise from every getGoogleMapsUrl render call
+  // Instead, expose a helper that onClick handlers call to log a single URL build
+  window.BKK._logUrlBuild = (name, stop) => {
+    if (!debugModeRef.current) return;
+    const cats = debugCategoriesRef.current;
+    if (!cats.includes('all') && !cats.includes('url')) return;
+    const buf = [];
+    window.BKK._urlDebug = buf;
+    const url = window.BKK.getGoogleMapsUrl(stop);
+    window.BKK._urlDebug = null;
+    const entry = { ts: Date.now(), category: 'url', message: `URL: ${name}`, data: {
+      name, url, steps: buf,
+      raw: { mapsUrl: stop.mapsUrl, googlePlaceId: stop.googlePlaceId || stop.placeId, lat: stop.lat, lng: stop.lng, address: stop.address }
+    }};
+    urlDebugLogRef.current = [entry, ...urlDebugLogRef.current.slice(0, 49)];
+    setUrlDebugLog([...urlDebugLogRef.current]);
+    window.console.log(`[URL] ${name}`, entry.data);
+  };
 
   const addDebugLog = (category, message, data = null) => {
     if (!debugModeRef.current) return;

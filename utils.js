@@ -493,9 +493,17 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
     if (!url) return false;
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/') || url.includes('app.goo.gl')) return true;
     if (!url.includes('google.com/maps')) return true;
+    // maps/place/?q=place_id: format truncates PlaceID on Android — must rebuild
+    if (url.includes('maps/place/?q=place_id:') || url.includes('maps/place/?q=place_id%3A')) return true;
     const m = url.match(/query_place_id=([^&]+)/);
     if (m && !isValidGooglePlaceId(decodeURIComponent(m[1]))) return true;
     return false;
+  };
+
+  // Extract PlaceID from legacy maps/place/?q=place_id: format
+  const extractPlaceIdFromLegacyUrl = (url) => {
+    const m = url && url.match(/[?&]q=place_id[:%3A]([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
   };
 
   const _log = (step, url) => {
@@ -510,7 +518,16 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
     _log('stored_mapsUrl', url);
     return url;
   }
-  if (place.mapsUrl) { _log('stored_mapsUrl_BROKEN', place.mapsUrl); }
+  if (place.mapsUrl) {
+    // Try to salvage PlaceID from legacy maps/place/?q=place_id: format
+    const legacyPid = extractPlaceIdFromLegacyUrl(place.mapsUrl);
+    if (legacyPid && isValidGooglePlaceId(legacyPid)) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || `${place.lat},${place.lng}`)}&query_place_id=${legacyPid}`;
+      _log('legacy_placeId_rescued', url);
+      return url;
+    }
+    _log('stored_mapsUrl_BROKEN', place.mapsUrl);
+  }
   
   if (!hasCoords && !addressStr) { _log('no_data'); return '#'; }
   

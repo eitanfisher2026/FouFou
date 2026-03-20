@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.78
+// FouFou app-data.js v3.9.80
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3582,7 +3582,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.78';
+window.BKK.VERSION = '3.9.80';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4423,9 +4423,15 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
     if (!url) return false;
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/') || url.includes('app.goo.gl')) return true;
     if (!url.includes('google.com/maps')) return true;
+    if (url.includes('maps/place/?q=place_id:') || url.includes('maps/place/?q=place_id%3A')) return true;
     const m = url.match(/query_place_id=([^&]+)/);
     if (m && !isValidGooglePlaceId(decodeURIComponent(m[1]))) return true;
     return false;
+  };
+
+  const extractPlaceIdFromLegacyUrl = (url) => {
+    const m = url && url.match(/[?&]q=place_id[:%3A]([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
   };
 
   const _log = (step, url) => {
@@ -4439,7 +4445,15 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
     _log('stored_mapsUrl', url);
     return url;
   }
-  if (place.mapsUrl) { _log('stored_mapsUrl_BROKEN', place.mapsUrl); }
+  if (place.mapsUrl) {
+    const legacyPid = extractPlaceIdFromLegacyUrl(place.mapsUrl);
+    if (legacyPid && isValidGooglePlaceId(legacyPid)) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || `${place.lat},${place.lng}`)}&query_place_id=${legacyPid}`;
+      _log('legacy_placeId_rescued', url);
+      return url;
+    }
+    _log('stored_mapsUrl_BROKEN', place.mapsUrl);
+  }
   
   if (!hasCoords && !addressStr) { _log('no_data'); return '#'; }
   

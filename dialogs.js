@@ -704,13 +704,7 @@
                         rel="noopener noreferrer"
                         className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
                         onClick={() => {
-                          if (window.BKK._urlDebug) {
-                            const buf = [];
-                            window.BKK._urlDebug = buf;
-                            const url = window.BKK.getGoogleMapsUrl(newLocation);
-                            addDebugLog('url', `Open in Google: ${newLocation.name}`, { url, steps: buf, raw: { mapsUrl: newLocation.mapsUrl, googlePlaceId: newLocation.googlePlaceId, lat: newLocation.lat, lng: newLocation.lng, address: newLocation.address } });
-                            window.BKK._urlDebug = buf;
-                          }
+                          if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation);
                         }}
                       >
                         🗺️ {t("general.openInGoogle")}

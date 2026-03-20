@@ -1719,14 +1719,22 @@ const FouFouApp = () => {
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   useEffect(() => { debugCategoriesRef.current = debugCategories; }, [debugCategories]);
   const searchRunIdRef = React.useRef(null);
-  useEffect(() => {
-    const isUrlDebug = debugMode && (debugCategories.includes('all') || debugCategories.includes('url'));
-    if (isUrlDebug) {
-      window.BKK._urlDebug = urlDebugLogRef.current;
-    } else {
-      window.BKK._urlDebug = null;
-    }
-  }, [debugMode, debugCategories]);
+  window.BKK._logUrlBuild = (name, stop) => {
+    if (!debugModeRef.current) return;
+    const cats = debugCategoriesRef.current;
+    if (!cats.includes('all') && !cats.includes('url')) return;
+    const buf = [];
+    window.BKK._urlDebug = buf;
+    const url = window.BKK.getGoogleMapsUrl(stop);
+    window.BKK._urlDebug = null;
+    const entry = { ts: Date.now(), category: 'url', message: `URL: ${name}`, data: {
+      name, url, steps: buf,
+      raw: { mapsUrl: stop.mapsUrl, googlePlaceId: stop.googlePlaceId || stop.placeId, lat: stop.lat, lng: stop.lng, address: stop.address }
+    }};
+    urlDebugLogRef.current = [entry, ...urlDebugLogRef.current.slice(0, 49)];
+    setUrlDebugLog([...urlDebugLogRef.current]);
+    window.console.log(`[URL] ${name}`, entry.data);
+  };
 
   const addDebugLog = (category, message, data = null) => {
     if (!debugModeRef.current) return;
@@ -8933,13 +8941,7 @@ const FouFouApp = () => {
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
                                     onClick={(e) => {
-                                      if (window.BKK._urlDebug) {
-                                        const buf = [];
-                                        window.BKK._urlDebug = buf;
-                                        const url = window.BKK.getGoogleMapsUrl(stop);
-                                        addDebugLog('url', `Place link click: ${stop.name}`, { name: stop.name, url, steps: buf, raw: { mapsUrl: stop.mapsUrl, googlePlaceId: stop.googlePlaceId || stop.placeId, lat: stop.lat, lng: stop.lng, address: stop.address } });
-                                        window.BKK._urlDebug = urlDebugLogRef.current;
-                                      }
+                                      if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(stop.name, stop);
                                       if (!hasValidCoords) {
                                         e.preventDefault();
                                         showToast(t('places.editNoCoordsHint'), 'warning');
@@ -13066,13 +13068,7 @@ const FouFouApp = () => {
                         rel="noopener noreferrer"
                         className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
                         onClick={() => {
-                          if (window.BKK._urlDebug) {
-                            const buf = [];
-                            window.BKK._urlDebug = buf;
-                            const url = window.BKK.getGoogleMapsUrl(newLocation);
-                            addDebugLog('url', `Open in Google: ${newLocation.name}`, { url, steps: buf, raw: { mapsUrl: newLocation.mapsUrl, googlePlaceId: newLocation.googlePlaceId, lat: newLocation.lat, lng: newLocation.lng, address: newLocation.address } });
-                            window.BKK._urlDebug = buf;
-                          }
+                          if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation);
                         }}
                       >
                         🗺️ {t("general.openInGoogle")}

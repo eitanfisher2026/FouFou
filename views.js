@@ -1346,13 +1346,7 @@
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
                                     onClick={(e) => {
                                       // URL debug logging
-                                      if (window.BKK._urlDebug) {
-                                        const buf = [];
-                                        window.BKK._urlDebug = buf;
-                                        const url = window.BKK.getGoogleMapsUrl(stop);
-                                        addDebugLog('url', `Place link click: ${stop.name}`, { name: stop.name, url, steps: buf, raw: { mapsUrl: stop.mapsUrl, googlePlaceId: stop.googlePlaceId || stop.placeId, lat: stop.lat, lng: stop.lng, address: stop.address } });
-                                        window.BKK._urlDebug = urlDebugLogRef.current;
-                                      }
+                                      if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(stop.name, stop);
                                       if (!hasValidCoords) {
                                         e.preventDefault();
                                         showToast(t('places.editNoCoordsHint'), 'warning');
