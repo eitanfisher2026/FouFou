@@ -1705,6 +1705,10 @@ const FouFouApp = () => {
   
   const searchDebugLogRef = useRef([]);
   const [searchDebugLog, setSearchDebugLog] = useState([]);
+  const urlDebugLogRef = useRef([]);
+  const [urlDebugLog, setUrlDebugLog] = useState([]);
+  const googleInfoDebugLogRef = useRef([]);
+  const [googleInfoDebugLog, setGoogleInfoDebugLog] = useState([]);
   const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
   
   const [debugSessions, setDebugSessions] = useState(() => {
@@ -1715,6 +1719,15 @@ const FouFouApp = () => {
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   useEffect(() => { debugCategoriesRef.current = debugCategories; }, [debugCategories]);
   const searchRunIdRef = React.useRef(null);
+  useEffect(() => {
+    const isUrlDebug = debugMode && (debugCategories.includes('all') || debugCategories.includes('url'));
+    if (isUrlDebug) {
+      window.BKK._urlDebug = urlDebugLogRef.current;
+    } else {
+      window.BKK._urlDebug = null;
+    }
+  }, [debugMode, debugCategories]);
+
   const addDebugLog = (category, message, data = null) => {
     if (!debugModeRef.current) return;
     const cat = category.toLowerCase();
@@ -1725,6 +1738,10 @@ const FouFouApp = () => {
     if (cat === 'api' || cat === 'search') {
       searchDebugLogRef.current = [...searchDebugLogRef.current.slice(-100), entry];
       setSearchDebugLog([...searchDebugLogRef.current]);
+    }
+    if (cat === 'url') {
+      urlDebugLogRef.current = [...urlDebugLogRef.current.slice(-50), entry];
+      setUrlDebugLog([...urlDebugLogRef.current]);
     }
   };
   
@@ -3902,6 +3919,39 @@ const FouFouApp = () => {
       }
       
       addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });
+
+      if (debugModeRef.current) {
+        const isValidGooglePlaceId = (pid) => {
+          if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
+          if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
+          if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
+          return false;
+        };
+        const builtUrl = placeInfo.googlePlaceId
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeInfo.name || location.name)}&query_place_id=${placeInfo.googlePlaceId}`
+          : null;
+        const entry = {
+          ts: Date.now(),
+          locationName: location.name,
+          searchQuery: location.name + ' Bangkok',
+          rawFromGoogle: {
+            placeId: placeInfo.googlePlaceId,
+            placeIdValid: isValidGooglePlaceId(placeInfo.googlePlaceId),
+            name: placeInfo.name,
+            address: placeInfo.address,
+            rating: placeInfo.rating,
+            ratingCount: placeInfo.ratingCount,
+            lat: placeInfo.location?.latitude,
+            lng: placeInfo.location?.longitude,
+            types: placeInfo.types,
+            primaryType: placeInfo.primaryType,
+          },
+          builtUrl,
+          existingMapsUrl: location.mapsUrl || null,
+        };
+        googleInfoDebugLogRef.current = [entry, ...googleInfoDebugLogRef.current.slice(0, 19)];
+        setGoogleInfoDebugLog([...googleInfoDebugLogRef.current]);
+      }
       
       return placeInfo;
     } catch (error) {
@@ -10905,6 +10955,85 @@ const FouFouApp = () => {
             </div>
             
             {/* Search Debug Log Panel */}
+            {/* Google Info Debug Log */}
+            {debugMode && googleInfoDebugLog.length > 0 && (
+              <div className="mb-4">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 className="text-base font-bold text-green-800">🔍 Google Info Debug ({googleInfoDebugLog.length})</h3>
+                    <button onClick={() => { googleInfoDebugLogRef.current = []; setGoogleInfoDebugLog([]); }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: '#fecaca', border: 'none', color: '#991b1b', cursor: 'pointer' }}>Clear</button>
+                  </div>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}>
+                    {googleInfoDebugLog.map((entry, idx) => (
+                      <div key={idx} style={{ marginBottom: '10px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontWeight: 'bold', color: '#064e3b', marginBottom: '6px' }}>📍 {entry.locationName}</div>
+                        <div style={{ fontSize: '10px', color: '#374151', fontFamily: 'monospace' }}>
+                          <div style={{ marginBottom: '3px', color: '#6b7280' }}>Query: {entry.searchQuery}</div>
+                          <div style={{ marginBottom: '3px' }}>
+                            <b>Place ID:</b> <span style={{ color: entry.rawFromGoogle.placeIdValid ? '#059669' : '#dc2626' }}>
+                              {entry.rawFromGoogle.placeId || '(none)'}
+                            </span>
+                            {' '}{entry.rawFromGoogle.placeId ? (entry.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}
+                          </div>
+                          <div style={{ marginBottom: '3px' }}><b>Name from Google:</b> {entry.rawFromGoogle.name || '(none)'}</div>
+                          <div style={{ marginBottom: '3px' }}><b>Rating:</b> {entry.rawFromGoogle.rating ? `⭐${entry.rawFromGoogle.rating} (${entry.rawFromGoogle.ratingCount})` : '(none)'}</div>
+                          <div style={{ marginBottom: '3px' }}><b>Coords:</b> {entry.rawFromGoogle.lat},{entry.rawFromGoogle.lng}</div>
+                          <div style={{ marginBottom: '3px' }}><b>Primary type:</b> {entry.rawFromGoogle.primaryType || '(none)'}</div>
+                          <div style={{ marginBottom: '3px' }}><b>Existing mapsUrl:</b> <span style={{ color: entry.existingMapsUrl ? '#059669' : '#9ca3af' }}>{entry.existingMapsUrl || '(none)'}</span></div>
+                          <div style={{ marginTop: '4px' }}><b>Built URL:</b></div>
+                          <div style={{ paddingLeft: '8px', wordBreak: 'break-all', color: entry.builtUrl ? '#2563eb' : '#dc2626' }}>{entry.builtUrl || '(could not build — no placeId)'}</div>
+                          {entry.builtUrl && (
+                            <button onClick={() => navigator.clipboard?.writeText(entry.builtUrl)} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#166534' }}>📋 Copy URL</button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* URL Debug Log */}
+            {debugMode && urlDebugLog.length > 0 && (
+              <div className="mb-4">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-3">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 className="text-base font-bold text-blue-800">🔗 URL Debug Log ({urlDebugLog.length})</h3>
+                    <button onClick={() => { urlDebugLogRef.current = []; setUrlDebugLog([]); }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: '#fecaca', border: 'none', color: '#991b1b', cursor: 'pointer' }}>Clear</button>
+                  </div>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}>
+                    {[...urlDebugLog].reverse().map((entry, idx) => (
+                      <div key={idx} style={{ marginBottom: '10px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bfdbfe' }}>
+                        <div style={{ fontWeight: 'bold', color: '#1e3a5f', marginBottom: '6px' }}>{entry.message}</div>
+                        {entry.data && (
+                          <div style={{ fontSize: '10px', color: '#374151', fontFamily: 'monospace' }}>
+                            <div style={{ marginBottom: '3px' }}><b>Input:</b></div>
+                            <div style={{ paddingLeft: '8px', color: '#6b7280' }}>
+                              <div>mapsUrl: <span style={{ color: entry.data.raw?.mapsUrl ? '#059669' : '#dc2626' }}>{entry.data.raw?.mapsUrl || '(none)'}</span></div>
+                              <div>googlePlaceId: <span style={{ color: entry.data.raw?.googlePlaceId ? '#059669' : '#dc2626' }}>{entry.data.raw?.googlePlaceId || '(none)'}</span></div>
+                              <div>lat/lng: {entry.data.raw?.lat},{entry.data.raw?.lng}</div>
+                              <div>address: {entry.data.raw?.address || '(none)'}</div>
+                            </div>
+                            <div style={{ marginTop: '4px', marginBottom: '2px' }}><b>Decision path:</b></div>
+                            {(entry.data.steps || []).map((s, i) => (
+                              <div key={i} style={{ paddingLeft: '8px', color: s.step?.includes('BROKEN') || s.step?.includes('FAILED') || s.step?.includes('INVALID') ? '#dc2626' : '#059669' }}>
+                                → {s.step}
+                              </div>
+                            ))}
+                            <div style={{ marginTop: '4px' }}><b>Final URL:</b></div>
+                            <div style={{ paddingLeft: '8px', wordBreak: 'break-all', color: '#2563eb' }}>{entry.data.url || '#'}</div>
+                            {entry.data.url && (
+                              <button onClick={() => navigator.clipboard?.writeText(entry.data.url)} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer', color: '#1d4ed8' }}>📋 Copy URL</button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {debugMode && searchDebugLog.length > 0 && (
               <div className="mb-4">
                 <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-amber-400 rounded-xl p-3">
@@ -12813,14 +12942,21 @@ const FouFouApp = () => {
                 {/* Google Maps URL */}
                 {isUnlocked && (
                 <div>
-                  <label className="block text-xs font-bold mb-1">🔗 Google Maps URL</label>
-                  <input
-                    type="text"
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label className="block text-xs font-bold">🔗 Google Maps URL</label>
+                    {newLocation.mapsUrl && (
+                      <button type="button" onClick={() => {
+                        navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
+                      }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
+                    )}
+                  </div>
+                  <textarea
                     value={newLocation.mapsUrl || ''}
                     onChange={(e) => setNewLocation({...newLocation, mapsUrl: e.target.value})}
                     placeholder="https://maps.google.com/..."
                     className="w-full p-1.5 border border-gray-300 rounded-lg"
-                    style={{ direction: 'ltr', fontSize: '16px' }}
+                    style={{ direction: 'ltr', fontSize: '13px', minHeight: '56px', resize: 'vertical', wordBreak: 'break-all', fontFamily: 'monospace' }}
+                    rows={2}
                   />
                 </div>
                 )}
@@ -12835,6 +12971,15 @@ const FouFouApp = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                        onClick={() => {
+                          if (window.BKK._urlDebug) {
+                            const buf = [];
+                            window.BKK._urlDebug = buf;
+                            const url = window.BKK.getGoogleMapsUrl(newLocation);
+                            addDebugLog('url', `Open in Google: ${newLocation.name}`, { url, steps: buf, raw: { mapsUrl: newLocation.mapsUrl, googlePlaceId: newLocation.googlePlaceId, lat: newLocation.lat, lng: newLocation.lng, address: newLocation.address } });
+                            window.BKK._urlDebug = buf;
+                          }
+                        }}
                       >
                         🗺️ {t("general.openInGoogle")}
                       </a>

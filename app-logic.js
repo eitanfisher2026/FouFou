@@ -1458,6 +1458,10 @@
   // Add debug log entry (console only, filtered by category)
   const searchDebugLogRef = useRef([]);
   const [searchDebugLog, setSearchDebugLog] = useState([]);
+  const urlDebugLogRef = useRef([]);
+  const [urlDebugLog, setUrlDebugLog] = useState([]);
+  const googleInfoDebugLogRef = useRef([]);
+  const [googleInfoDebugLog, setGoogleInfoDebugLog] = useState([]);
   const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
   
   // Debug sessions — accumulated across searches, persisted to localStorage
@@ -1470,6 +1474,16 @@
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   useEffect(() => { debugCategoriesRef.current = debugCategories; }, [debugCategories]);
   const searchRunIdRef = React.useRef(null);
+  // Enable URL debug collection when 'url' category active
+  useEffect(() => {
+    const isUrlDebug = debugMode && (debugCategories.includes('all') || debugCategories.includes('url'));
+    if (isUrlDebug) {
+      window.BKK._urlDebug = urlDebugLogRef.current;
+    } else {
+      window.BKK._urlDebug = null;
+    }
+  }, [debugMode, debugCategories]);
+
   const addDebugLog = (category, message, data = null) => {
     if (!debugModeRef.current) return;
     const cat = category.toLowerCase();
@@ -1480,6 +1494,10 @@
     if (cat === 'api' || cat === 'search') {
       searchDebugLogRef.current = [...searchDebugLogRef.current.slice(-100), entry];
       setSearchDebugLog([...searchDebugLogRef.current]);
+    }
+    if (cat === 'url') {
+      urlDebugLogRef.current = [...urlDebugLogRef.current.slice(-50), entry];
+      setUrlDebugLog([...urlDebugLogRef.current]);
     }
   };
   
@@ -3906,6 +3924,40 @@
       }
       
       addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });
+
+      // Google Info debug log — always record when debug mode active
+      if (debugModeRef.current) {
+        const isValidGooglePlaceId = (pid) => {
+          if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
+          if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
+          if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
+          return false;
+        };
+        const builtUrl = placeInfo.googlePlaceId
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeInfo.name || location.name)}&query_place_id=${placeInfo.googlePlaceId}`
+          : null;
+        const entry = {
+          ts: Date.now(),
+          locationName: location.name,
+          searchQuery: location.name + ' Bangkok',
+          rawFromGoogle: {
+            placeId: placeInfo.googlePlaceId,
+            placeIdValid: isValidGooglePlaceId(placeInfo.googlePlaceId),
+            name: placeInfo.name,
+            address: placeInfo.address,
+            rating: placeInfo.rating,
+            ratingCount: placeInfo.ratingCount,
+            lat: placeInfo.location?.latitude,
+            lng: placeInfo.location?.longitude,
+            types: placeInfo.types,
+            primaryType: placeInfo.primaryType,
+          },
+          builtUrl,
+          existingMapsUrl: location.mapsUrl || null,
+        };
+        googleInfoDebugLogRef.current = [entry, ...googleInfoDebugLogRef.current.slice(0, 19)];
+        setGoogleInfoDebugLog([...googleInfoDebugLogRef.current]);
+      }
       
       return placeInfo;
     } catch (error) {

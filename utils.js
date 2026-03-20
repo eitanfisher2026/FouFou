@@ -474,10 +474,11 @@ window.BKK.hashPassword = async function(password) {
  * Build the best Google Maps URL for a place.
  * Priority: Place ID → name search for Google-origin places → address → raw coords.
  */
-window.BKK.getGoogleMapsUrl = (place) => {
+window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
   if (!place) return '#';
   const hasCoords = place.lat && place.lng;
   const addressStr = (typeof place.address === 'string') ? place.address.trim() : '';
+  const _dbg = window.BKK._urlDebug; // set by app when debugMode + 'url' category active
   
   // Validate Google Place ID — must look like a real one (starts with ChIJ, EiI, etc.)
   const isValidGooglePlaceId = (pid) => {
@@ -497,39 +498,60 @@ window.BKK.getGoogleMapsUrl = (place) => {
     return false;
   };
 
+  const _log = (step, url) => {
+    if (_dbg) _dbg.push({ name: place.name, step, url: url || null,
+      mapsUrl: place.mapsUrl || null, placeId: place.googlePlaceId || place.placeId || null,
+      hasCoords, lat: place.lat, lng: place.lng, address: addressStr });
+  };
+
   // Top priority: stored mapsUrl — but only if it's a valid, stable google.com/maps URL
   if (place.mapsUrl && !isBrokenUrl(place.mapsUrl) && !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/)) {
-    return place.mapsUrl;
+    const url = place.mapsUrl;
+    _log('stored_mapsUrl', url);
+    return url;
   }
+  if (place.mapsUrl) { _log('stored_mapsUrl_BROKEN', place.mapsUrl); }
   
-  if (!hasCoords && !addressStr) return '#';
+  if (!hasCoords && !addressStr) { _log('no_data'); return '#'; }
   
   // Best: valid Google Place ID
   const pid = place.googlePlaceId || place.placeId;
   if (pid && isValidGooglePlaceId(pid)) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name || addressStr || `${place.lat},${place.lng}`)}&query_place_id=${pid}`;
+    _log('placeId', url);
+    return url;
   }
+  if (pid) { _log('placeId_INVALID', pid); }
   
   // Any place with name + coords — most reliable combination
   if (place.name?.trim() && hasCoords) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + place.lat + ',' + place.lng)}`;
+    _log('name_coords', url);
+    return url;
   }
 
-  // Name + address (no coords) — always combine name+address, never address alone
+  // Name + address (no coords)
   if (place.name?.trim() && addressStr) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + addressStr)}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name.trim() + ' ' + addressStr)}`;
+    _log('name_address', url);
+    return url;
   }
 
-  // Address only — last resort, no name available
+  // Address only
   if (addressStr) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressStr)}`;
+    _log('address_only', url);
+    return url;
   }
   
-  // Coordinate-only custom place: just pin on map
+  // Coordinate-only
   if (hasCoords) {
-    return `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
+    _log('coords_only', url);
+    return url;
   }
   
+  _log('FAILED');
   return '#';
 };
 

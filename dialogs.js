@@ -674,14 +674,21 @@
                 {/* Google Maps URL */}
                 {isUnlocked && (
                 <div>
-                  <label className="block text-xs font-bold mb-1">🔗 Google Maps URL</label>
-                  <input
-                    type="text"
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label className="block text-xs font-bold">🔗 Google Maps URL</label>
+                    {newLocation.mapsUrl && (
+                      <button type="button" onClick={() => {
+                        navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
+                      }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
+                    )}
+                  </div>
+                  <textarea
                     value={newLocation.mapsUrl || ''}
                     onChange={(e) => setNewLocation({...newLocation, mapsUrl: e.target.value})}
                     placeholder="https://maps.google.com/..."
                     className="w-full p-1.5 border border-gray-300 rounded-lg"
-                    style={{ direction: 'ltr', fontSize: '16px' }}
+                    style={{ direction: 'ltr', fontSize: '13px', minHeight: '56px', resize: 'vertical', wordBreak: 'break-all', fontFamily: 'monospace' }}
+                    rows={2}
                   />
                 </div>
                 )}
@@ -696,6 +703,15 @@
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                        onClick={() => {
+                          if (window.BKK._urlDebug) {
+                            const buf = [];
+                            window.BKK._urlDebug = buf;
+                            const url = window.BKK.getGoogleMapsUrl(newLocation);
+                            addDebugLog('url', `Open in Google: ${newLocation.name}`, { url, steps: buf, raw: { mapsUrl: newLocation.mapsUrl, googlePlaceId: newLocation.googlePlaceId, lat: newLocation.lat, lng: newLocation.lng, address: newLocation.address } });
+                            window.BKK._urlDebug = buf;
+                          }
+                        }}
                       >
                         🗺️ {t("general.openInGoogle")}
                       </a>
