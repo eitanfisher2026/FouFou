@@ -1956,6 +1956,10 @@ const FouFouApp = () => {
     setDebugSessions([]);
     searchDebugLogRef.current = [];
     setSearchDebugLog([]);
+    urlDebugLogRef.current = [];
+    setUrlDebugLog([]);
+    googleInfoDebugLogRef.current = [];
+    setGoogleInfoDebugLog([]);
     setDebugFlagged(new Set());
     showToast('🗑️ Debug cleared', 'info');
   };
@@ -4007,16 +4011,13 @@ const FouFouApp = () => {
       
       if (placeInfo.googlePlaceId) {
         setNewLocation(prev => {
-          const updated = {
+          return {
             ...prev,
-            mapsUrl: '',  // Clear old mapsUrl — we have fresh data from API, always rebuild
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
-          updated.mapsUrl = window.BKK.getGoogleMapsUrl(updated);
-          return updated;
         });
 
         if (placeInfo.rating && isFirebaseAvailable && database) {
