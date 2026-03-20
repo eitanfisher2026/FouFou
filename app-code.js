@@ -1839,13 +1839,16 @@ const FouFouApp = () => {
       lines.push('URL BUILD DEBUG');
       lines.push('='.repeat(60));
       urlDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.message}`);
-        if (e.data) {
-          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
-          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
-          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        const msg = e.message || '(no message)';
+        lines.push(`\n[${i+1}] ${msg}`);
+        const d = e.data;
+        if (d) {
+          lines.push(`  Name: ${d.name || '(none)'}`);
+          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
+          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
+          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${d.url || '#'}`);
         }
       });
     }
@@ -1912,13 +1915,16 @@ const FouFouApp = () => {
       lines.push('URL BUILD DEBUG');
       lines.push('='.repeat(60));
       urlDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.message}`);
-        if (e.data) {
-          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
-          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
-          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        const msg = e.message || '(no message)';
+        lines.push(`\n[${i+1}] ${msg}`);
+        const d = e.data;
+        if (d) {
+          lines.push(`  Name: ${d.name || '(none)'}`);
+          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
+          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
+          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${d.url || '#'}`);
         }
       });
     }
@@ -8927,6 +8933,13 @@ const FouFouApp = () => {
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
                                     onClick={(e) => {
+                                      if (window.BKK._urlDebug) {
+                                        const buf = [];
+                                        window.BKK._urlDebug = buf;
+                                        const url = window.BKK.getGoogleMapsUrl(stop);
+                                        addDebugLog('url', `Place link click: ${stop.name}`, { name: stop.name, url, steps: buf, raw: { mapsUrl: stop.mapsUrl, googlePlaceId: stop.googlePlaceId || stop.placeId, lat: stop.lat, lng: stop.lng, address: stop.address } });
+                                        window.BKK._urlDebug = urlDebugLogRef.current;
+                                      }
                                       if (!hasValidCoords) {
                                         e.preventDefault();
                                         showToast(t('places.editNoCoordsHint'), 'warning');

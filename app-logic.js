@@ -1601,13 +1601,16 @@
       lines.push('URL BUILD DEBUG');
       lines.push('='.repeat(60));
       urlDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.message}`);
-        if (e.data) {
-          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
-          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
-          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        const msg = e.message || '(no message)';
+        lines.push(`\n[${i+1}] ${msg}`);
+        const d = e.data;
+        if (d) {
+          lines.push(`  Name: ${d.name || '(none)'}`);
+          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
+          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
+          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${d.url || '#'}`);
         }
       });
     }
@@ -1677,13 +1680,16 @@
       lines.push('URL BUILD DEBUG');
       lines.push('='.repeat(60));
       urlDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.message}`);
-        if (e.data) {
-          lines.push(`  mapsUrl: ${e.data.raw?.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${e.data.raw?.googlePlaceId || '(none)'}`);
-          lines.push(`  lat/lng: ${e.data.raw?.lat},${e.data.raw?.lng}`);
-          (e.data.steps || []).forEach(s => lines.push(`  → ${s.step}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${e.data.url || '#'}`);
+        const msg = e.message || '(no message)';
+        lines.push(`\n[${i+1}] ${msg}`);
+        const d = e.data;
+        if (d) {
+          lines.push(`  Name: ${d.name || '(none)'}`);
+          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
+          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
+          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
+          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
+          lines.push(`  Final URL: ${d.url || '#'}`);
         }
       });
     }
