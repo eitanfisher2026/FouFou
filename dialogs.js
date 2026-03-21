@@ -1186,6 +1186,42 @@
                   </div>
                 </div>
 
+                {/* Rating count thresholds — admin/editor only */}
+                {(isAdmin || isEditor) && (
+                <div style={{ background: '#fef9c3', border: '1.5px solid #fde047', borderRadius: '10px', padding: '10px', marginTop: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#854d0e', marginBottom: '8px' }}>
+                    ⭐ {window.BKK.i18n.currentLang === 'en' ? 'Rating count thresholds' : 'סף מספר דירוגים'} ({window.BKK.i18n.currentLang === 'en' ? 'leave empty = system default' : 'ריק = ברירת מחדל מערכת'})
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '10px', color: '#92400e', marginBottom: '3px' }}>
+                        {window.BKK.i18n.currentLang === 'en' ? 'Min ratings (filtered out below)' : 'מינימום דירוגים (מסונן מתחת)'}
+                      </label>
+                      <input
+                        type="number" min="0" max="10000"
+                        value={newInterest.minRatingCount ?? ''}
+                        onChange={(e) => setNewInterest({...newInterest, minRatingCount: e.target.value === '' ? null : parseInt(e.target.value)})}
+                        placeholder={`default: ${sp.googleMinRatingCount ?? 20}`}
+                        className="w-full p-1.5 border border-yellow-300 rounded text-sm"
+                        style={{ direction: 'ltr', fontSize: '13px' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '10px', color: '#92400e', marginBottom: '3px' }}>
+                        {window.BKK.i18n.currentLang === 'en' ? 'Low ratings (deprioritized below)' : 'דירוגים נמוכים (מדורג נמוך מתחת)'}
+                      </label>
+                      <input
+                        type="number" min="0" max="10000"
+                        value={newInterest.lowRatingCount ?? ''}
+                        onChange={(e) => setNewInterest({...newInterest, lowRatingCount: e.target.value === '' ? null : parseInt(e.target.value)})}
+                        placeholder={`default: ${sp.googleLowRatingCount ?? 60}`}
+                        className="w-full p-1.5 border border-yellow-300 rounded text-sm"
+                        style={{ direction: 'ltr', fontSize: '13px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                )}
 
                 {/* Route planning config — spacious layout */}
                 <div style={{ background: '#faf5ff', border: '2px solid #e9d5ff', borderRadius: '12px', padding: '12px' }}>
@@ -1489,6 +1525,8 @@
                         if (newInterest.nameKeywords) {
                           searchConfig.nameKeywords = newInterest.nameKeywords.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
                         }
+                        if (newInterest.minRatingCount != null) searchConfig.minRatingCount = newInterest.minRatingCount;
+                        if (newInterest.lowRatingCount != null) searchConfig.lowRatingCount = newInterest.lowRatingCount;
                         
                         if (editingCustomInterest) {
                           // EDIT MODE

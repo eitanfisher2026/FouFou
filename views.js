@@ -2384,6 +2384,8 @@
                   textSearch: config.textSearch || '',
                   blacklist: (config.blacklist || []).join(', '),
                   nameKeywords: (config.nameKeywords || []).join(', '),
+                  minRatingCount: config.minRatingCount != null ? config.minRatingCount : null,
+                  lowRatingCount: config.lowRatingCount != null ? config.lowRatingCount : null,
                   privateOnly: interest.privateOnly || false,
                   locked: interest.locked || false,
                   builtIn: !isFromCustom,

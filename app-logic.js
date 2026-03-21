@@ -683,7 +683,7 @@
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10 });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', nameKeywords: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, minRatingCount: null, lowRatingCount: null });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -3808,20 +3808,15 @@
           }
           
           // Filter 2: For text search - relevance check
-          // Place passes if: name contains ANY of the search phrases OR any nameKeyword
+          // Place passes if: name contains ANY of the search phrases
           if (isTextSearch && textSearchPhrases.length > 0) {
             const matchedPhrase = textSearchPhrases.find(ph => placeName.includes(ph));
-            const matchedKeyword = nameKeywords.length > 0 ? nameKeywords.find(kw => placeName.includes(kw)) : null;
-            
-            if (!matchedPhrase && !matchedKeyword) {
+            if (!matchedPhrase) {
               relevanceFilteredCount++;
               debugEntry.status = '❌ NO MATCH';
-              debugEntry.reason = `name doesn't contain any of [${textSearchPhrases.join(', ')}]${nameKeywords.length > 0 ? ` or keywords [${nameKeywords.join(',')}]` : ''}`;
+              debugEntry.reason = `name doesn't contain any of [${textSearchPhrases.join(', ')}]`;
               debugPlaceResults.push(debugEntry);
               return false;
-            }
-            if (!matchedPhrase && matchedKeyword) {
-              debugEntry.nameKeywordMatch = matchedKeyword;
             }
           }
           
@@ -3944,8 +3939,9 @@
       // Layer 6: Rating count filter — applies only to Google results, never to saved favorites
       // googleMinRatingCount: below this → always filtered out (too unknown)
       // googleLowRatingCount: below this → mark as lowRatingCount=true for deprioritization in stopScore
-      const minCount = sp.googleMinRatingCount ?? 20;
-      const lowCount = sp.googleLowRatingCount ?? 60;
+      // Per-interest override takes priority over system params
+      const minCount = config.minRatingCount != null ? config.minRatingCount : (sp.googleMinRatingCount ?? 20);
+      const lowCount = config.lowRatingCount != null ? config.lowRatingCount : (sp.googleLowRatingCount ?? 60);
       let ratingCountFiltered = 0;
       const ratingFiltered = distanceFiltered.filter(place => {
         const count = place.ratingCount || 0;
