@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.9.100
+// FouFou app-data.js v3.10.0
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -199,6 +199,7 @@ general: {
   areas: 'אזורים',
   total: 'סה"כ',
   optional: 'רשות',
+  selectCity: 'בחר עיר...',
   version: 'גרסה',
   selected: 'נבחרו',
   refresh: 'רענן',
@@ -899,6 +900,9 @@ settings: {
   cityStartsInactive: 'העיר תיווצר במצב לא פעיל — התאם אזורים והפעל',
   addCityConfirm: 'הוסף עיר למערכת',
   exportCity: 'ייצא קובץ עיר',
+  copyInterestsFrom: 'העתק תחומים מ:',
+  copyInterests: 'העתק',
+  copyInterestsHint: 'תחומים ספציפיים לעיר המקור לא יועתקו',
   unsavedChanges: 'יש שינויים שלא יוצאו — ייצא קובץ עיר',
   addArea: 'הוסף אזור',
   newAreaName: 'שם האזור החדש',
@@ -1236,6 +1240,7 @@ general: {
   areas: 'areas',
   total: 'Total',
   optional: 'optional',
+  selectCity: 'Select city...',
   version: 'Version',
   selected: 'selected',
   refresh: 'Refresh',
@@ -1938,6 +1943,9 @@ settings: {
   cityStartsInactive: 'City starts inactive — adjust areas and activate',
   addCityConfirm: 'Add city to system',
   exportCity: 'Export city file',
+  copyInterestsFrom: 'Copy interests from:',
+  copyInterests: 'Copy',
+  copyInterestsHint: 'City-specific interests from the source will not be copied',
   unsavedChanges: 'Unsaved changes — export city file',
   addArea: 'Add area',
   newAreaName: 'New area name',
@@ -3584,7 +3592,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.9.100';
+window.BKK.VERSION = '3.10.0';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
