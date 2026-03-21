@@ -10395,6 +10395,70 @@ const FouFouApp = () => {
                   );
                 })()}
 
+                {/* Copy Interests from Source City */}
+                {isUnlocked && window.BKK.selectedCity && (() => {
+                  const targetCity = window.BKK.selectedCity;
+                  const otherCities = Object.values(window.BKK.cities || {}).filter(c => c.id !== targetCity.id);
+                  if (otherCities.length === 0) return null;
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0369a1' }}>📋 {t('settings.copyInterestsFrom') || 'העתק תחומים מ:'}</span>
+                      <select
+                        id="copy-interests-source"
+                        style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', background: 'white', color: '#0369a1', cursor: 'pointer' }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>{t('general.selectCity') || 'בחר עיר...'}</option>
+                        {otherCities.map(c => (
+                          <option key={c.id} value={c.id}>{c.icon} {tLabel(c)}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          const sel = document.getElementById('copy-interests-source');
+                          const sourceCityId = sel?.value;
+                          if (!sourceCityId) { showToast(t('general.selectCity') || 'בחר עיר מקור תחילה', 'warning'); return; }
+                          const sourceCity = window.BKK.cities[sourceCityId];
+                          if (!sourceCity) { showToast('Source city not found', 'error'); return; }
+
+                          const toCopy = (sourceCity.interests || []).filter(i => !i.cityId && i.scope !== 'local');
+                          const skipped = (sourceCity.interests || []).length - toCopy.length;
+
+                          const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?
+` +
+                            (skipped > 0 ? `(${skipped} תחומים ספציפיים ל-${tLabel(sourceCity)} לא יועתקו)
+` : '') +
+                            `
+התחומים הנוכחיים של ${tLabel(targetCity)} (${targetCity.interests?.length || 0}) יימחקו ויוחלפו.
+
+להמשיך?`;
+
+                          showConfirm(msg, () => {
+                            targetCity.interests = toCopy.map(i => {
+                              const copy = { ...i };
+                              delete copy.cityId;
+                              return copy;
+                            });
+                            try {
+                              const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
+                              if (customCities[targetCity.id]) {
+                                customCities[targetCity.id].interests = targetCity.interests;
+                                localStorage.setItem('custom_cities', JSON.stringify(customCities));
+                              }
+                            } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
+                            window.BKK.exportCityFile(targetCity);
+                            setCityModified(false);
+                            setFormData(prev => ({ ...prev })); // force re-render
+                            showToast(`✅ הועתקו ${toCopy.length} תחומים מ-${tLabel(sourceCity)}`, 'success');
+                          });
+                        }}
+                        style={{ padding: '3px 10px', borderRadius: '6px', border: 'none', background: '#0284c7', color: 'white', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                      >📋 {t('settings.copyInterests') || 'העתק'}</button>
+                      <span style={{ fontSize: '10px', color: '#64748b' }}>{t('settings.copyInterestsHint') || 'תחומים ספציפיים לעיר המקור לא יועתקו'}</span>
+                    </div>
+                  );
+                })()}
+
                 {/* Theme Editor - Color + Icons */}
                 {isUnlocked && window.BKK.selectedCity && (() => {
                   const city = window.BKK.selectedCity;
@@ -15226,27 +15290,8 @@ const FouFouApp = () => {
                             if (areas.length === 0) {
                               areas.push({ id: 'center', label: 'Center', labelEn: 'Center', desc: 'City center', descEn: 'City center', lat: addCityFound.lat, lng: addCityFound.lng, radius: 3000, size: 'large', safety: 'safe' });
                             }
-                            const defaultInterests = [
-                              { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
-                              { id: 'cafes', label: 'קפה', labelEn: 'Coffee', icon: '☕' },
-                              { id: 'culture', label: 'תרבות', labelEn: 'Culture', icon: '🎭' },
-                              { id: 'history', label: 'היסטוריה', labelEn: 'History', icon: '🏛️' },
-                              { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
-                              { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
-                              { id: 'nightlife', label: 'לילה', labelEn: 'Nightlife', icon: '🌃' },
-                              { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
-                              { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
-                              { id: 'graffiti', label: 'גרפיטי', labelEn: 'Street Art', icon: '🎨' },
-                              { id: 'beaches', label: 'חופים', labelEn: 'Beaches', icon: '🏖️' },
-                              { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏗️' }
-                            ];
-                            const defaultPlaceTypes = {
-                              food: ['restaurant', 'meal_takeaway'], cafes: ['cafe', 'coffee_shop'],
-                              culture: ['performing_arts_theater', 'cultural_center', 'museum'], history: ['historical_landmark', 'museum'],
-                              parks: ['park', 'national_park'], shopping: ['shopping_mall', 'store'],
-                              nightlife: ['bar', 'night_club'], galleries: ['art_gallery', 'museum'],
-                              markets: ['market'], graffiti: ['art_gallery'], beaches: ['beach'], architecture: ['historical_landmark']
-                            };
+                            const defaultInterests = [];
+                            const defaultPlaceTypes = {};
                             let allCityRadius = 15000;
                             if (addCityFound.viewport) {
                               const vp = addCityFound.viewport;

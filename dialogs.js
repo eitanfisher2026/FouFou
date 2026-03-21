@@ -2736,27 +2736,9 @@
                             if (areas.length === 0) {
                               areas.push({ id: 'center', label: 'Center', labelEn: 'Center', desc: 'City center', descEn: 'City center', lat: addCityFound.lat, lng: addCityFound.lng, radius: 3000, size: 'large', safety: 'safe' });
                             }
-                            const defaultInterests = [
-                              { id: 'food', label: 'אוכל', labelEn: 'Food', icon: '🍜' },
-                              { id: 'cafes', label: 'קפה', labelEn: 'Coffee', icon: '☕' },
-                              { id: 'culture', label: 'תרבות', labelEn: 'Culture', icon: '🎭' },
-                              { id: 'history', label: 'היסטוריה', labelEn: 'History', icon: '🏛️' },
-                              { id: 'parks', label: 'פארקים', labelEn: 'Parks', icon: '🌳' },
-                              { id: 'shopping', label: 'קניות', labelEn: 'Shopping', icon: '🛍️' },
-                              { id: 'nightlife', label: 'לילה', labelEn: 'Nightlife', icon: '🌃' },
-                              { id: 'galleries', label: 'גלריות', labelEn: 'Galleries', icon: '🖼️' },
-                              { id: 'markets', label: 'שווקים', labelEn: 'Markets', icon: '🏪' },
-                              { id: 'graffiti', label: 'גרפיטי', labelEn: 'Street Art', icon: '🎨' },
-                              { id: 'beaches', label: 'חופים', labelEn: 'Beaches', icon: '🏖️' },
-                              { id: 'architecture', label: 'ארכיטקטורה', labelEn: 'Architecture', icon: '🏗️' }
-                            ];
-                            const defaultPlaceTypes = {
-                              food: ['restaurant', 'meal_takeaway'], cafes: ['cafe', 'coffee_shop'],
-                              culture: ['performing_arts_theater', 'cultural_center', 'museum'], history: ['historical_landmark', 'museum'],
-                              parks: ['park', 'national_park'], shopping: ['shopping_mall', 'store'],
-                              nightlife: ['bar', 'night_club'], galleries: ['art_gallery', 'museum'],
-                              markets: ['market'], graffiti: ['art_gallery'], beaches: ['beach'], architecture: ['historical_landmark']
-                            };
+                            // Interests start empty — use Settings → "העתק תחומים מ:" to copy from an existing city
+                            const defaultInterests = [];
+                            const defaultPlaceTypes = {};
                             let allCityRadius = 15000;
                             if (addCityFound.viewport) {
                               const vp = addCityFound.viewport;
