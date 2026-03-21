@@ -11525,6 +11525,58 @@ const FouFouApp = () => {
                           🗑️ Delete old accessLog data
                         </button>
 
+                        {/* Geo Cleanup — remove locations outside this city's bounds */}
+                        <div className="mt-3 border-t border-red-300 pt-3">
+                          <p className="text-xs font-bold text-red-800 mb-2">🗺️ Geo Cleanup — wrong-city locations</p>
+                          <button
+                            onClick={async () => {
+                              const city = window.BKK.selectedCity;
+                              const cityId = selectedCityId;
+                              const center = city.center;
+                              const maxRadius = (city.allCityRadius || 20000) * 1.5;
+                              if (!center?.lat || !center?.lng) { showToast('No city center coords', 'error'); return; }
+                              const outliers = customLocations.filter(loc => {
+                                if (!loc.lat || !loc.lng) return false;
+                                const R = 6371e3;
+                                const r1 = center.lat * Math.PI / 180;
+                                const r2 = loc.lat * Math.PI / 180;
+                                const dLat = (loc.lat - center.lat) * Math.PI / 180;
+                                const dLng = (loc.lng - center.lng) * Math.PI / 180;
+                                const a = Math.sin(dLat/2)**2 + Math.cos(r1)*Math.cos(r2)*Math.sin(dLng/2)**2;
+                                const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                                return dist > maxRadius;
+                              });
+                              const noName = customLocations.filter(loc => loc.name?.startsWith('(no name)'));
+                              const seen = new Set();
+                              const toDelete = [...outliers, ...noName].filter(l => { if (seen.has(l.firebaseId)) return false; seen.add(l.firebaseId); return true; });
+                              if (toDelete.length === 0) { showToast('No out-of-city locations found!', 'success'); return; }
+                              const preview = toDelete.slice(0, 5).map(l => `• ${l.name} (${l.lat?.toFixed(3)}, ${l.lng?.toFixed(3)})`).join('\n');
+                              const msg = `Found ${toDelete.length} locations outside ${city.nameEn}:\n${preview}${toDelete.length > 5 ? `\n... +${toDelete.length-5} more` : ''}\n\nMax radius: ${(maxRadius/1000).toFixed(1)}km\n\nDelete all ${toDelete.length}?`;
+                              if (!window.confirm(msg)) return;
+                              try {
+                                showToast(`Deleting ${toDelete.length} locations...`, 'info');
+                                const batch = {};
+                                toDelete.forEach(loc => {
+                                  if (loc.firebaseId) {
+                                    batch[`cities/${cityId}/locations/${loc.firebaseId}`] = null;
+                                    const pk = loc.name?.replace(/[.#$\/\[\]]/g, '_');
+                                    if (pk && !pk.startsWith('(no name)')) batch[`cities/${cityId}/reviews/${pk}`] = null;
+                                  }
+                                });
+                                if (database && Object.keys(batch).length > 0) await database.ref().update(batch);
+                                setCustomLocations(prev => prev.filter(l => !toDelete.find(d => d.firebaseId === l.firebaseId)));
+                                showToast(`Deleted ${toDelete.length} wrong-city locations`, 'success', 'sticky');
+                              } catch(e) { showToast(`Cleanup failed: ${e.message}`, 'error'); }
+                            }}
+                            className="w-full bg-red-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-red-800 transition"
+                          >
+                            🗺️ Delete locations outside city bounds
+                          </button>
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            Removes favorites outside this city's geographic radius (allCityRadius × 1.5). Also removes (no name) entries.
+                          </p>
+                        </div>
+
                         {/* URL Health Check */}
                         <div className="mt-3 border-t border-gray-200 pt-3">
                           <p className="text-xs font-bold text-blue-700 mb-2">🔗 URL Health Check</p>
