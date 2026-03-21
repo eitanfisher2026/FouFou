@@ -4212,7 +4212,7 @@ const FouFouApp = () => {
       setNewLocation(prev => ({ ...prev, googleRating: newRating, googleRatingCount: newCount }));
       showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
     } catch (e) {
-      console.error('[RATING] Single refresh error:', e);
+      console.error('[RATING-SINGLE] ERROR:', e.message, e.stack);
       showToast(t('toast.updateError') || 'שגיאה', 'error');
     }
   };
@@ -12998,7 +12998,11 @@ const FouFouApp = () => {
                             <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
                           <button
-                            onClick={() => { const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name); if (cl) refreshSingleGoogleRating(cl); }}
+                            onClick={() => {
+                              const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
+                              if (cl) refreshSingleGoogleRating(cl);
+                              else console.warn('[RATING-BTN] No loc found!');
+                            }}
                             style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
                           >⭐ {t('settings.refreshRatings') || 'רענן'}</button>
