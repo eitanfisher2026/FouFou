@@ -10690,9 +10690,11 @@ const FouFouApp = () => {
                           <>
                             <button onClick={() => {
                               setMapEditMode(false);
-                              mapMarkersRef.current.forEach(m => m.dragging.disable());
+                              setShowMapFullscreen(false);
+                              mapMarkersRef.current.forEach(m => { try { m.dragging.disable(); } catch(e) {} });
                               setFormData(prev => { const n = {...prev}; delete n._selectedMapArea; return n; });
                               setCityModified(true); setCityEditCounter(c => c + 1); setMapVersion(v => v + 1);
+                              if (showSettingsMap) setTimeout(() => window._initSettingsMap?.(), 100);
                               showToast(t('general.mapSaved'), 'success');
                             }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#16a34a', border: 'none', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                               ✅ {t('general.confirm')}
@@ -10731,14 +10733,14 @@ const FouFouApp = () => {
                     <div style={{ flex: 1, position: 'relative' }}>
                       <div id="settings-fullscreen-map" style={{ position: 'absolute', inset: 0 }}></div>
                     </div>
-                    {/* Init fullscreen map */}
-                    {(() => {
-                      setTimeout(() => {
+                    {/* Init fullscreen map — via useEffect to run only once on mount */}
+                    {useEffect(() => {
+                      const timer = setTimeout(() => {
                         const container = document.getElementById('settings-fullscreen-map');
                         if (!container || !window.L) return;
-                        if (container._leaflet_id) return; // already initialized
-                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); } } catch(e) {}
-                        container._leaflet_id = null;
+                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); window._settingsMap = null; } } catch(e) {}
+                        container.innerHTML = '';
+                        delete container._leaflet_id;
                         const city = window.BKK.selectedCity;
                         if (!city) return;
                         const coords = window.BKK.areaCoordinates || {};
@@ -10757,16 +10759,12 @@ const FouFouApp = () => {
                           allCircles.push(circle);
                           const marker = L.marker([c.lat, c.lng], { draggable: false, title: tLabel(area) }).addTo(map);
                           marker.bindTooltip(tLabel(area), { permanent: true, direction: 'top', className: 'area-label-tooltip', offset: [0, -10] });
-                          marker._areaId = area.id;
-                          marker._circle = circle;
-                          marker._area = area;
-                          marker._coords = c;
+                          marker._areaId = area.id; marker._circle = circle; marker._area = area; marker._coords = c;
                           marker.on('dragend', () => {
                             const pos = marker.getLatLng();
                             const newLat = Math.round(pos.lat * 10000) / 10000;
                             const newLng = Math.round(pos.lng * 10000) / 10000;
-                            area.lat = newLat; area.lng = newLng;
-                            c.lat = newLat; c.lng = newLng;
+                            area.lat = newLat; area.lng = newLng; c.lat = newLat; c.lng = newLng;
                             circle.setLatLng(pos);
                           });
                           mapMarkersRef.current.push(marker);
@@ -10787,8 +10785,11 @@ const FouFouApp = () => {
                           setMapEditMode(true);
                         }, 300);
                       }, 50);
-                      return null;
-                    })()}
+                      return () => {
+                        clearTimeout(timer);
+                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); window._settingsMap = null; } } catch(e) {}
+                      };
+                    }, []) /* empty deps — run once on mount, cleanup on unmount */ || null}
                   </div>
                 )}
 
