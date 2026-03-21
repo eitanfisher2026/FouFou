@@ -4568,7 +4568,11 @@
         uploadedImage: editingLocation.uploadedImage || null,
         imageUrls: editingLocation.imageUrls || [],
         locked: editingLocation.locked || false,
-        areas: editingLocation.areas || (editingLocation.area ? [editingLocation.area] : [])
+        areas: editingLocation.areas || (editingLocation.area ? [editingLocation.area] : []),
+        googleRating: editingLocation.googleRating || null,
+        googleRatingCount: editingLocation.googleRatingCount || 0,
+        googlePlaceId: editingLocation.googlePlaceId || null,
+        googlePlace: editingLocation.googlePlace || false
       });
     }
   }, [showEditLocationDialog, editingLocation]);
