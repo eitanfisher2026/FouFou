@@ -3269,6 +3269,7 @@
     }
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
+    setCustomLocations([]); // Clear immediately — Firebase listener for new city will repopulate
     
     // Reset form data for new city, but preserve user settings
     const firstArea = window.BKK.areaOptions[0]?.id || '';
@@ -4580,7 +4581,7 @@
       if (allInterestOptions) allInterestOptions.forEach(o => { if (o && o.id) map[o.id] = o; });
       return map;
     } catch(e) { console.error('[MEMO] interestMap error:', e); return {}; }
-  }, [cityCustomInterests, allInterestOptions.length]);
+  }, [allInterestOptions]);
 
   const areaMap = useMemo(() => {
     try {
@@ -4592,7 +4593,10 @@
 
   // City-filtered custom locations and saved routes
   const cityCustomLocations = useMemo(() => {
-    return customLocations; // Already filtered per city by Firebase subscription
+    // Filter by cityId — every location loaded from Firebase has cityId stamped on it.
+    // Safety net against race conditions when switching cities: even if stale locations
+    // linger in customLocations[] for a moment, they will never surface in the wrong city.
+    return customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId);
   }, [customLocations, selectedCityId]);
 
   const citySavedRoutes = useMemo(() => {

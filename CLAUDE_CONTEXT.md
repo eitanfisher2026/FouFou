@@ -1191,6 +1191,27 @@ What I did before:
 
 ---
 
+## Major Changes This Session (v3.9.97 -> v3.9.98)
+
+### v3.9.98 — City switch: stale data isolation fixes
+
+**Problem 1: cityCustomLocations showed favorites from previous city**
+- `cityCustomLocations` useMemo was returning `customLocations` as-is, trusting Firebase listener alone to filter per city.
+- When switching cities, the old city's locations stayed in state until the new Firebase subscription responded (~100-500ms), causing wrong count in hamburger and wrong entries in favorites list.
+- **Fix:** `switchCity()` now calls `setCustomLocations([])` immediately on city switch, before `setSelectedCityId`. Firebase listener for new city will repopulate.
+- **Fix:** `cityCustomLocations` useMemo now actively filters: `customLocations.filter(loc => (loc.cityId || 'bangkok') === selectedCityId)`. This is a permanent safety net — even if a future code path forgets to clear, wrong-city locations can never surface.
+
+**Problem 2: interestMap not updating reliably on city switch**
+- `interestMap` useMemo had dependency `[cityCustomInterests, allInterestOptions.length]` — using `.length` means if two cities have the same number of interests, the map would NOT recompute, serving stale interest labels/icons from the previous city.
+- **Fix:** Dependency changed to `[allInterestOptions]` — recomputes whenever the array reference changes (which happens on every city switch via `window.BKK.selectCity` + re-read of `window.BKK.interestOptions`).
+
+**Root cause of "ללא תחום 224" section in Singapore favorites view:**
+- Bangkok locations (with interest IDs like `temples`, `parks`, `canals`) were leaking into Singapore's view because `cityCustomLocations` wasn't filtering. Their interest IDs didn't exist in Singapore's `interestMap`, so they fell into `ungrouped` → displayed as "ללא תחום". Fixed by the two changes above.
+
+**Note — interestOptions re-read on city switch:**
+- `interestOptions` and `uncoveredInterests` are plain `const` reads from `window.BKK.*` (line ~3248). They are NOT in a useMemo/useEffect.
+- They re-read correctly because React re-renders when `selectedCityId` state changes, and at that point `window.BKK.selectCity()` has already been called, so `window.BKK.interestOptions` already holds the new city's interests. This is correct behavior — no change needed.
+
 ## Major Changes This Session (v3.9.14 -> v3.9.16)
 
 ### v3.9.26 — Image lost when dedup dialog appears in QuickCapture
