@@ -1449,6 +1449,7 @@
   const [cityModified, setCityModified] = useState(false);
   const [cityEditCounter, setCityEditCounter] = useState(0); // Force re-render on city object mutation
   const [showSettingsMap, setShowSettingsMap] = useState(false);
+  const [showMapFullscreen, setShowMapFullscreen] = useState(false);
   const [mapEditMode, setMapEditMode] = useState(false);
   const mapMarkersRef = React.useRef([]);
   const mapOriginalPositions = React.useRef({});

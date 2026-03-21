@@ -1700,6 +1700,7 @@ const FouFouApp = () => {
   const [cityModified, setCityModified] = useState(false);
   const [cityEditCounter, setCityEditCounter] = useState(0); // Force re-render on city object mutation
   const [showSettingsMap, setShowSettingsMap] = useState(false);
+  const [showMapFullscreen, setShowMapFullscreen] = useState(false);
   const [mapEditMode, setMapEditMode] = useState(false);
   const mapMarkersRef = React.useRef([]);
   const mapOriginalPositions = React.useRef({});
@@ -10669,10 +10670,138 @@ const FouFouApp = () => {
                   return null;
                 })()}
 
+                {/* Fullscreen map modal */}
+                {showMapFullscreen && (
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'white', display: 'flex', flexDirection: 'column' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: mapEditMode ? '#ef4444' : '#3b82f6', color: 'white', flexShrink: 0 }}>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                        🗺️ {tLabel(window.BKK.selectedCity)} — {t('general.editMap')}
+                        {mapEditMode && <span style={{ marginRight: '8px', fontSize: '11px', opacity: 0.9 }}> · {t('general.dragToMove') || 'גרור כדי להזיז'}</span>}
+                      </span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {!mapEditMode ? (
+                          <button onClick={() => {
+                            setMapEditMode(true);
+                            mapOriginalPositions.current = {};
+                            mapMarkersRef.current.forEach(m => {
+                              const ll = m.getLatLng();
+                              mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
+                              m.dragging.enable();
+                            });
+                            setFormData(prev => ({...prev, _selectedMapArea: null}));
+                          }} style={{ padding: '4px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                            ✏️ {t('general.editMap')}
+                          </button>
+                        ) : (
+                          <>
+                            <button onClick={() => {
+                              setMapEditMode(false);
+                              mapMarkersRef.current.forEach(m => m.dragging.disable());
+                              setFormData(prev => { const n = {...prev}; delete n._selectedMapArea; return n; });
+                              setCityModified(true); setCityEditCounter(c => c + 1); setMapVersion(v => v + 1);
+                              showToast(t('general.mapSaved'), 'success');
+                            }} style={{ padding: '4px 12px', borderRadius: '6px', background: '#16a34a', border: 'none', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                              ✅ {t('general.confirm')}
+                            </button>
+                            <button onClick={() => {
+                              setMapEditMode(false);
+                              const coords = window.BKK.areaCoordinates || {};
+                              mapMarkersRef.current.forEach(m => {
+                                const orig = mapOriginalPositions.current[m._areaId];
+                                if (orig) {
+                                  m.setLatLng([orig.lat, orig.lng]);
+                                  m._circle?.setLatLng([orig.lat, orig.lng]);
+                                  m._circle?.setRadius(orig.radius);
+                                  if (m._area) { m._area.lat = orig.lat; m._area.lng = orig.lng; }
+                                  if (coords[m._areaId]) { coords[m._areaId].lat = orig.lat; coords[m._areaId].lng = orig.lng; coords[m._areaId].radius = orig.radius; }
+                                }
+                                m.dragging.disable();
+                              });
+                              setFormData(prev => { const n = {...prev}; delete n._selectedMapArea; return n; });
+                            }} style={{ padding: '4px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                              ↩️ {t('general.cancel')}
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => {
+                          setShowMapFullscreen(false);
+                          setMapEditMode(false);
+                          mapMarkersRef.current.forEach(m => { try { m.dragging.disable(); } catch(e) {} });
+                          if (showSettingsMap) setTimeout(() => window._initSettingsMap?.(), 100);
+                        }} style={{ padding: '4px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    {/* Map fills remaining space */}
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <div id="settings-fullscreen-map" style={{ position: 'absolute', inset: 0 }}></div>
+                    </div>
+                    {/* Init fullscreen map */}
+                    {(() => {
+                      setTimeout(() => {
+                        const container = document.getElementById('settings-fullscreen-map');
+                        if (!container || !window.L) return;
+                        if (container._leaflet_id) return; // already initialized
+                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); } } catch(e) {}
+                        container._leaflet_id = null;
+                        const city = window.BKK.selectedCity;
+                        if (!city) return;
+                        const coords = window.BKK.areaCoordinates || {};
+                        const areas = city.areas || [];
+                        const cityCenter = city.center || { lat: 0, lng: 0 };
+                        const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
+                        L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
+                        const colorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
+                        const allCircles = [];
+                        mapMarkersRef.current = [];
+                        areas.forEach((area, i) => {
+                          const c = coords[area.id];
+                          if (!c) return;
+                          const color = colorPalette[i % colorPalette.length];
+                          const circle = L.circle([c.lat, c.lng], { radius: c.radius, color, fillColor: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
+                          allCircles.push(circle);
+                          const marker = L.marker([c.lat, c.lng], { draggable: false, title: tLabel(area) }).addTo(map);
+                          marker.bindTooltip(tLabel(area), { permanent: true, direction: 'top', className: 'area-label-tooltip', offset: [0, -10] });
+                          marker._areaId = area.id;
+                          marker._circle = circle;
+                          marker._area = area;
+                          marker._coords = c;
+                          marker.on('dragend', () => {
+                            const pos = marker.getLatLng();
+                            const newLat = Math.round(pos.lat * 10000) / 10000;
+                            const newLng = Math.round(pos.lng * 10000) / 10000;
+                            area.lat = newLat; area.lng = newLng;
+                            c.lat = newLat; c.lng = newLng;
+                            circle.setLatLng(pos);
+                          });
+                          mapMarkersRef.current.push(marker);
+                        });
+                        if (allCircles.length > 0) {
+                          const group = L.featureGroup(allCircles);
+                          map.fitBounds(group.getBounds().pad(0.1));
+                        }
+                        window._settingsMap = map;
+                        setTimeout(() => map.invalidateSize(), 200);
+                      }, 50);
+                      return null;
+                    })()}
+                  </div>
+                )}
+
                 {/* All areas map */}
                 {showSettingsMap && (
                   <div style={{ marginBottom: '8px' }}>
-                    <div id="settings-all-areas-map" style={{ height: '450px', borderRadius: '8px', border: `2px solid ${mapEditMode ? '#ef4444' : '#3b82f6'}`, transition: 'border-color 0.3s' }}></div>
+                    <div style={{ position: 'relative' }}>
+                      <div id="settings-all-areas-map" style={{ height: '450px', borderRadius: '8px', border: `2px solid ${mapEditMode ? '#ef4444' : '#3b82f6'}`, transition: 'border-color 0.3s' }}></div>
+                      {/* Fullscreen button */}
+                      <button
+                        onClick={() => setShowMapFullscreen(true)}
+                        title="מסך מלא"
+                        style={{ position: 'absolute', top: '8px', left: '8px', zIndex: 1000, background: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '4px 8px', fontSize: '14px', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.2)', lineHeight: 1 }}
+                      >⛶</button>
+                    </div>
                     <div className="flex gap-2 mt-2 justify-center">
                       {!mapEditMode ? (
                         <button onClick={() => {
