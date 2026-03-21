@@ -4058,13 +4058,20 @@ const FouFouApp = () => {
       
       if (placeInfo.googlePlaceId) {
         setNewLocation(prev => {
-          return {
+          const updated = {
             ...prev,
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
+          setEditingLocation(e => e ? { ...e,
+            googlePlaceId: placeInfo.googlePlaceId,
+            googlePlace: true,
+            ...(placeInfo.address && !e.address ? { address: placeInfo.address } : {}),
+            ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
+          } : e);
+          return updated;
         });
 
         if (placeInfo.rating && isFirebaseAvailable && database) {
@@ -4082,6 +4089,7 @@ const FouFouApp = () => {
                 setCustomLocations(prev => prev.map(l =>
                   l.firebaseId === existingLoc.firebaseId ? { ...l, ...updates } : l
                 ));
+                setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
                 addDebugLog('API', `Auto-saved Google rating for ${existingLoc.name}: ⭐${placeInfo.rating}`);
               })
           }

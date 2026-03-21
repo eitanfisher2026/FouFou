@@ -4076,13 +4076,21 @@
         setNewLocation(prev => {
           // Do NOT touch mapsUrl — getGoogleMapsUrl handles legacy URLs on-the-fly
           // Only update data fields: placeId, rating, address
-          return {
+          const updated = {
             ...prev,
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
+          // Sync editingLocation so it knows about the auto-saved fields
+          setEditingLocation(e => e ? { ...e,
+            googlePlaceId: placeInfo.googlePlaceId,
+            googlePlace: true,
+            ...(placeInfo.address && !e.address ? { address: placeInfo.address } : {}),
+            ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
+          } : e);
+          return updated;
         });
 
         // Auto-save rating + placeId to Firebase immediately — no need to wait for "עדכן"
@@ -4099,9 +4107,11 @@
             if (placeInfo.address && !existingLoc.address) updates.address = placeInfo.address;
             database.ref(`cities/${selectedCityId}/locations/${existingLoc.firebaseId}`).update(updates)
               .then(() => {
+                // Update both customLocations AND editingLocation so UI reflects immediately
                 setCustomLocations(prev => prev.map(l =>
                   l.firebaseId === existingLoc.firebaseId ? { ...l, ...updates } : l
                 ));
+                setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
                 addDebugLog('API', `Auto-saved Google rating for ${existingLoc.name}: ⭐${placeInfo.rating}`);
               })
               .catch(e => console.warn('[API] Failed to auto-save Google rating:', e));
