@@ -541,11 +541,8 @@
                           )}
                           <button
                             onClick={() => {
-                              console.log('[RATING-BTN] Clicked. editingLocation:', editingLocation?.name, editingLocation?.firebaseId);
                               const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
-                              console.log('[RATING-BTN] Found loc:', cl?.name, cl?.firebaseId);
                               if (cl) refreshSingleGoogleRating(cl);
-                              else console.warn('[RATING-BTN] No loc found!');
                             }}
                             style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
@@ -2247,7 +2244,7 @@
                 <button
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
                   style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                >⭐ {t('reviews.rate')}</button>
+                >🌟 {t('reviews.rate')}</button>
                 {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) && (
                   <button
                     onClick={() => { close(); handleEditLocation(loc); }}

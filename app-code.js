@@ -4212,7 +4212,7 @@ const FouFouApp = () => {
       setNewLocation(prev => ({ ...prev, googleRating: newRating, googleRatingCount: newCount }));
       showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
     } catch (e) {
-      console.error('[RATING-SINGLE] ERROR:', e.message, e.stack);
+      console.error('[RATING] Single refresh error:', e.message);
       showToast(t('toast.updateError') || 'שגיאה', 'error');
     }
   };
@@ -9175,14 +9175,15 @@ const FouFouApp = () => {
                                       const gR = cl?.googleRating || stop.googleRating;
                                       const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
                                       return (
-                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
-                                          <span
-                                            onClick={ra ? (e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); } : undefined}
-                                            style={{ color: ra ? '#8b5cf6' : '#9ca3af', cursor: ra ? 'pointer' : 'default' }}
-                                          >
-                                            🌟 {ra ? `${ra.avg.toFixed(1)} (${ra.count})` : t('reviews.notYetRated')}
-                                          </span>
+                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {ra ? (
+                                            <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); }}
+                                              style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>
+                                          ) : gR ? (
+                                            <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>
+                                          ) : (
+                                            <span style={{ color: '#9ca3af', fontSize: '9px' }}>{t('reviews.notYetRated')}</span>
+                                          )}
                                         </div>
                                       );
                                     })()}
@@ -9946,8 +9947,8 @@ const FouFouApp = () => {
                                     style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                       ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                     }}
-                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
-                                  >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                                    title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
+                                  >{ra ? `🌟${ra.avg.toFixed(1)}` : '☆'}</button>
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
                                   className="text-xs px-1 py-0.5 rounded"
@@ -13005,7 +13006,6 @@ const FouFouApp = () => {
                             onClick={() => {
                               const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
                               if (cl) refreshSingleGoogleRating(cl);
-                              else console.warn('[RATING-BTN] No loc found!');
                             }}
                             style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
@@ -14680,7 +14680,7 @@ const FouFouApp = () => {
                 <button
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
                   style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                >⭐ {t('reviews.rate')}</button>
+                >🌟 {t('reviews.rate')}</button>
                 {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) && (
                   <button
                     onClick={() => { close(); handleEditLocation(loc); }}

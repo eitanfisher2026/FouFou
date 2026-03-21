@@ -4199,10 +4199,7 @@
 
   // Refresh Google rating for a single place — used by the rating button in edit dialog
   const refreshSingleGoogleRating = async (loc) => {
-    console.log('[RATING-SINGLE] Called with:', { name: loc?.name, firebaseId: loc?.firebaseId, googlePlaceId: loc?.googlePlaceId, lat: loc?.lat, lng: loc?.lng });
-    console.log('[RATING-SINGLE] Checks:', { hasApiKey: !!GOOGLE_PLACES_API_KEY, isFirebaseAvailable, hasDatabase: !!database, hasFirebaseId: !!loc?.firebaseId });
     if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database || !loc?.firebaseId) {
-      console.warn('[RATING-SINGLE] Aborting — missing:', { GOOGLE_PLACES_API_KEY: !!GOOGLE_PLACES_API_KEY, isFirebaseAvailable, database: !!database, firebaseId: loc?.firebaseId });
       showToast('Google API or Firebase not available', 'error');
       return;
     }
@@ -4239,19 +4236,16 @@
           }
         }
       }
-      console.log('[RATING-SINGLE] Result:', { newRating, newCount, foundPlaceId });
       if (!newRating) { showToast(t('settings.noPlacesToRefresh') || 'לא נמצא דירוג', 'warning'); return; }
       const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now(), ...(foundPlaceId ? { googlePlaceId: foundPlaceId } : {}) };
-      console.log('[RATING-SINGLE] Saving to Firebase:', updates);
       await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
-      console.log('[RATING-SINGLE] Firebase save done');
       // Update local state immediately
       setCustomLocations(prev => prev.map(l => l.firebaseId === loc.firebaseId ? { ...l, ...updates } : l));
       setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
       setNewLocation(prev => ({ ...prev, googleRating: newRating, googleRatingCount: newCount }));
       showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
     } catch (e) {
-      console.error('[RATING-SINGLE] ERROR:', e.message, e.stack);
+      console.error('[RATING] Single refresh error:', e.message);
       showToast(t('toast.updateError') || 'שגיאה', 'error');
     }
   };

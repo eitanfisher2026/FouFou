@@ -1486,14 +1486,15 @@
                                       const gR = cl?.googleRating || stop.googleRating;
                                       const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
                                       return (
-                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
-                                          <span
-                                            onClick={ra ? (e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); } : undefined}
-                                            style={{ color: ra ? '#8b5cf6' : '#9ca3af', cursor: ra ? 'pointer' : 'default' }}
-                                          >
-                                            🌟 {ra ? `${ra.avg.toFixed(1)} (${ra.count})` : t('reviews.notYetRated')}
-                                          </span>
+                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          {ra ? (
+                                            <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); }}
+                                              style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>
+                                          ) : gR ? (
+                                            <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>
+                                          ) : (
+                                            <span style={{ color: '#9ca3af', fontSize: '9px' }}>{t('reviews.notYetRated')}</span>
+                                          )}
                                         </div>
                                       );
                                     })()}
@@ -2261,8 +2262,8 @@
                                     style={{ fontSize: '10px', padding: '0 3px', borderRadius: '4px', cursor: 'pointer', flexShrink: 0, fontWeight: 'bold', minWidth: '28px', textAlign: 'center',
                                       ...(ra ? { color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a' } : { color: '#d1d5db', background: 'none', border: '1px solid #e5e7eb' })
                                     }}
-                                    title={ra ? `⭐ ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
-                                  >{ra ? `⭐${ra.avg.toFixed(1)}` : '☆'}</button>
+                                    title={ra ? `🌟 ${ra.avg.toFixed(1)} (${ra.count})` : (t('reviews.rate'))}
+                                  >{ra ? `🌟${ra.avg.toFixed(1)}` : '☆'}</button>
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
                                   className="text-xs px-1 py-0.5 rounded"
