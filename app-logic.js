@@ -4076,22 +4076,21 @@
         setNewLocation(prev => {
           // Do NOT touch mapsUrl — getGoogleMapsUrl handles legacy URLs on-the-fly
           // Only update data fields: placeId, rating, address
-          const updated = {
+          return {
             ...prev,
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
-          // Sync editingLocation so it knows about the auto-saved fields
-          setEditingLocation(e => e ? { ...e,
-            googlePlaceId: placeInfo.googlePlaceId,
-            googlePlace: true,
-            ...(placeInfo.address && !e.address ? { address: placeInfo.address } : {}),
-            ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
-          } : e);
-          return updated;
         });
+        // Sync editingLocation OUTSIDE setNewLocation updater (React rule)
+        const infoUpdates = {
+          googlePlaceId: placeInfo.googlePlaceId,
+          googlePlace: true,
+          ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
+        };
+        setEditingLocation(e => e ? { ...e, ...infoUpdates } : e);
 
         // Auto-save rating + placeId to Firebase immediately — no need to wait for "עדכן"
         // This way single-place Google fetch is complete without running full batch refresh

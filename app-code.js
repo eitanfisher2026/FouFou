@@ -4058,21 +4058,20 @@ const FouFouApp = () => {
       
       if (placeInfo.googlePlaceId) {
         setNewLocation(prev => {
-          const updated = {
+          return {
             ...prev,
             googlePlaceId: placeInfo.googlePlaceId,
             googlePlace: true,
             ...(placeInfo.address && !prev.address ? { address: placeInfo.address } : {}),
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
-          setEditingLocation(e => e ? { ...e,
-            googlePlaceId: placeInfo.googlePlaceId,
-            googlePlace: true,
-            ...(placeInfo.address && !e.address ? { address: placeInfo.address } : {}),
-            ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
-          } : e);
-          return updated;
         });
+        const infoUpdates = {
+          googlePlaceId: placeInfo.googlePlaceId,
+          googlePlace: true,
+          ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
+        };
+        setEditingLocation(e => e ? { ...e, ...infoUpdates } : e);
 
         if (placeInfo.rating && isFirebaseAvailable && database) {
           const existingLoc = customLocations.find(l => l.name === location.name);
