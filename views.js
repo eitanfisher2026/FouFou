@@ -2781,15 +2781,21 @@
                                 customCities[targetCity.id].uncoveredInterests = targetCity.uncoveredInterests;
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
-                              // Path B: built-in city (bangkok, singapore etc) — save overrides separately
-                              // These persist across version upgrades and are applied on startup in config.js
+                              // Path B: built-in city — save overrides to BOTH localStorage (fast local) and Firebase (cross-device)
                               const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
                               overrides[targetCity.id] = {
                                 interests: targetCity.interests,
                                 uncoveredInterests: targetCity.uncoveredInterests
                               };
                               localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
-                            } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
+                              // Also persist to Firebase so all devices stay in sync
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/cityOverrides/${targetCity.id}/interests`).set(targetCity.interests)
+                                  .catch(e => console.error('[CITY] Firebase interests save error:', e));
+                                database.ref(`settings/cityOverrides/${targetCity.id}/uncoveredInterests`).set(targetCity.uncoveredInterests || [])
+                                  .catch(e => console.error('[CITY] Firebase uncoveredInterests save error:', e));
+                              }
+                            } catch(e) { console.error('[CITY] Failed to save interests:', e); }
                             // Reload city into window.BKK so interestOptions updates immediately
                             window.BKK.selectCity(targetCity.id);
                             // Export updated city file (for next session)

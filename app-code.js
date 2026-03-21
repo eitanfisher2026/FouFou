@@ -3136,10 +3136,29 @@ const FouFouApp = () => {
           if (s.cityOverrides) {
             window.BKK._cityOverrides = s.cityOverrides;
             const cityId = window.BKK.selectedCityId;
-            if (cityId && s.cityOverrides[cityId]) {
-              const co = s.cityOverrides[cityId];
-              if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
-              if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
+            Object.keys(s.cityOverrides).forEach(cid => {
+              const co = s.cityOverrides[cid];
+              if (!window.BKK.cities[cid]) return;
+              if (cid === cityId) {
+                if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
+                if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
+              }
+              if (co.interests && co.interests.length > 0) {
+                window.BKK.cities[cid].interests = co.interests;
+                if (cid === cityId) window.BKK.interestOptions = co.interests;
+                try {
+                  const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+                  lsOverrides[cid] = { interests: co.interests, uncoveredInterests: co.uncoveredInterests || lsOverrides[cid]?.uncoveredInterests || [] };
+                  localStorage.setItem('city_interests_overrides', JSON.stringify(lsOverrides));
+                } catch(e) {}
+              }
+              if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
+                window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
+                if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
+              }
+            });
+            if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
+              setSelectedCityId(id => id); // trigger re-render
             }
           }
           
@@ -3227,15 +3246,24 @@ const FouFouApp = () => {
       if (s.cityOverrides) {
         window.BKK._cityOverrides = s.cityOverrides;
         const cityId = window.BKK.selectedCityId;
-        if (cityId && s.cityOverrides[cityId]) {
-          const co = s.cityOverrides[cityId];
-          if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
-          if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
-          const city = window.BKK.selectedCity;
-          if (city) {
-            if (co.dayStartHour != null) city.dayStartHour = co.dayStartHour;
-            if (co.nightStartHour != null) city.nightStartHour = co.nightStartHour;
+        Object.keys(s.cityOverrides).forEach(cid => {
+          const co = s.cityOverrides[cid];
+          if (!window.BKK.cities[cid]) return;
+          if (cid === cityId) {
+            if (co.dayStartHour != null) { window.BKK.dayStartHour = co.dayStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.dayStartHour = co.dayStartHour); }
+            if (co.nightStartHour != null) { window.BKK.nightStartHour = co.nightStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.nightStartHour = co.nightStartHour); }
           }
+          if (co.interests && co.interests.length > 0) {
+            window.BKK.cities[cid].interests = co.interests;
+            if (cid === cityId) window.BKK.interestOptions = co.interests;
+          }
+          if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
+            window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
+            if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
+          }
+        });
+        if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
+          setSelectedCityId(id => id);
         }
       }
       
@@ -4436,7 +4464,11 @@ const FouFouApp = () => {
   }, [customInterests, selectedCityId]);
 
   const allInterestOptions = useMemo(() => {
-    return [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])].map(opt => {
+    return [
+      ...interestOptions,
+      ...uncoveredInterests.map(opt => ({ ...opt, uncovered: true })), // stamp flag for hamburger count
+      ...(cityCustomInterests || [])
+    ].map(opt => {
       const config = interestConfig[opt.id];
       if (!config) return opt;
       return {
@@ -7385,7 +7417,7 @@ const FouFouApp = () => {
     let locationToAdd = {
       id: newId,
       name: locData.name.trim(),
-      description: (locData.description || '').trim() || (locData.notes || '').trim() || t('general.addedByUser'),
+      description: (locData.description || '').trim(),
       notes: (locData.notes || '').trim(),
       area: finalAreas[0],
       areas: finalAreas,
@@ -10523,7 +10555,13 @@ const FouFouApp = () => {
                                 uncoveredInterests: targetCity.uncoveredInterests
                               };
                               localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
-                            } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/cityOverrides/${targetCity.id}/interests`).set(targetCity.interests)
+                                  .catch(e => console.error('[CITY] Firebase interests save error:', e));
+                                database.ref(`settings/cityOverrides/${targetCity.id}/uncoveredInterests`).set(targetCity.uncoveredInterests || [])
+                                  .catch(e => console.error('[CITY] Firebase uncoveredInterests save error:', e));
+                              }
+                            } catch(e) { console.error('[CITY] Failed to save interests:', e); }
                             window.BKK.selectCity(targetCity.id);
                             window.BKK.exportCityFile(targetCity);
                             setCityModified(false);

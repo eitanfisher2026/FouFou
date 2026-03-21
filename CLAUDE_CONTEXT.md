@@ -671,22 +671,56 @@ Everything defined in `window.BKK.mapConfig` in `config.js`:
 
 ---
 
-## localStorage Keys
+## localStorage — Policy and Keys
 
-| Key | Purpose |
-|-----|---------|
-| `foufou_preferences` | form defaults |
-| `foufou_route_type` | circular/linear |
-| `foufou_right_col_width` | desktop split |
-| `foufou_active_trail` | active trail session |
-| `foufou_fab_pos` | FAB position |
-| `foufou_visitor_id/name` | analytics |
-| `city_explorer_lang` | UI language |
-| `city_explorer_city` | last city |
-| `locations_migrated_v2` | migration flag |
-| `cleanup_inprogress_done` | cleanup flag |
-| `city_active_states` | active/inactive cities |
-| `custom_cities` | user-added cities |
+### POLICY: Minimum Necessary, Fast-Access Only
+
+> **Rule: localStorage stores ONLY data needed before Firebase loads, or that must stay local by design.**
+>
+> On every page load, Firebase takes ~200-500ms to respond. localStorage provides instant state so the user sees a consistent UI immediately (correct city, language, active trail) without waiting.
+>
+> **DO NOT add new localStorage keys for:**
+> - Data that already lives in Firebase (locations, routes, interest status)
+> - Large objects that can be reloaded from Firebase (>50KB)
+> - Data that must be consistent across devices → use Firebase instead
+>
+> **OK to add localStorage keys for:**
+> - UI micro-state (position, width, toggle) — low stakes, device-specific
+> - Data needed at startup BEFORE Firebase responds (city, language)
+> - Analytics throttle timers (must be local by design)
+> - One-time migration/cleanup flags
+> - Offline fallbacks that are also synced to Firebase (like `city_interests_overrides`)
+
+### All Keys
+
+| Key | Category | Why localStorage (not Firebase) |
+|-----|----------|---------------------------------|
+| `city_explorer_city` | startup | Needed to load correct city before Firebase |
+| `city_explorer_lang` | startup | Needed to render correct language before Firebase |
+| `city_active_states` | startup | Which cities are active — needed at render time |
+| `city_interests_overrides` | startup+sync | Fast local copy; synced FROM Firebase on load, TO Firebase on save |
+| `custom_cities` | startup | Cities created via UI not yet in zip — needed before Firebase |
+| `foufou_preferences` | startup | Wizard defaults (area, hours) — shown before Firebase |
+| `foufou_route_type` | startup | circular/linear — shown before Firebase |
+| `foufou_time_filter` | startup | Time filter — shown before Firebase |
+| `foufou_active_trail` | session | Active trail during walk — large, needed offline, instant restore |
+| `foufou_visitor_id/name` | analytics | Anonymous analytics ID — intentionally NOT in Firebase |
+| `foufou_last_log_time` | analytics | Throttle for hourly analytics log — must be local |
+| `foufou_last_seen_feedback` | badge | Feedback badge timestamp |
+| `locations_migrated_v2` | migration | One-time migration flag |
+| `cleanup_inprogress_done` | migration | One-time cleanup flag |
+| `foufou_fab_pos` | UI micro | FAB button position — device-specific |
+| `foufou_right_col_width` | UI micro | Desktop split width — device-specific |
+| `foufou_tts_voice` | UI micro | TTS voice preference — device-specific |
+| `foufou_hint_*` | UI micro | Whether a hint section is expanded |
+| `foufou_interests_*` | UI micro | Interests per mode (circular/linear) — session UX |
+| `foufou_debug_*` | admin | Debug mode/categories/sessions — admin-only, local is fine |
+
+### city_interests_overrides — Special Sync Pattern
+The only key that syncs bidirectionally:
+- **Write:** saved to localStorage AND `settings/cityOverrides/{cityId}/interests` in Firebase
+- **Read on startup:** localStorage provides instant load; Firebase overwrites with canonical version
+- **Result:** cross-device consistency (phone gets same interests as desktop)
 
 ---
 
