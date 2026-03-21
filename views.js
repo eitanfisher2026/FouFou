@@ -275,7 +275,6 @@
                 if (aStatus === 'hidden') return false;
                 if (aStatus === 'draft' && !isUnlocked) return false;
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
-                if (!isInterestValid(o.id)) return false;
                 const status = interestStatus[o.id];
                 if (o.uncovered) return status === true;
                 if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
@@ -3066,63 +3065,7 @@
                     <div style={{ flex: 1, position: 'relative' }}>
                       <div id="settings-fullscreen-map" style={{ position: 'absolute', inset: 0 }}></div>
                     </div>
-                    {/* Init fullscreen map — via useEffect to run only once on mount */}
-                    {useEffect(() => {
-                      const timer = setTimeout(() => {
-                        const container = document.getElementById('settings-fullscreen-map');
-                        if (!container || !window.L) return;
-                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); window._settingsMap = null; } } catch(e) {}
-                        container.innerHTML = '';
-                        delete container._leaflet_id;
-                        const city = window.BKK.selectedCity;
-                        if (!city) return;
-                        const coords = window.BKK.areaCoordinates || {};
-                        const areas = city.areas || [];
-                        const cityCenter = city.center || { lat: 0, lng: 0 };
-                        const map = L.map(container).setView([cityCenter.lat, cityCenter.lng], 12);
-                        L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
-                        const colorPalette = ['#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#8b5cf6', '#06b6d4', '#f97316', '#a855f7', '#14b8a6', '#e11d48', '#84cc16', '#0ea5e9', '#d946ef', '#f43f5e'];
-                        const allCircles = [];
-                        mapMarkersRef.current = [];
-                        areas.forEach((area, i) => {
-                          const c = coords[area.id];
-                          if (!c) return;
-                          const color = colorPalette[i % colorPalette.length];
-                          const circle = L.circle([c.lat, c.lng], { radius: c.radius, color, fillColor: color, fillOpacity: 0.15, weight: 2 }).addTo(map);
-                          allCircles.push(circle);
-                          const marker = L.marker([c.lat, c.lng], { draggable: false, title: tLabel(area) }).addTo(map);
-                          marker.bindTooltip(tLabel(area), { permanent: true, direction: 'top', className: 'area-label-tooltip', offset: [0, -10] });
-                          marker._areaId = area.id; marker._circle = circle; marker._area = area; marker._coords = c;
-                          marker.on('dragend', () => {
-                            const pos = marker.getLatLng();
-                            const newLat = Math.round(pos.lat * 10000) / 10000;
-                            const newLng = Math.round(pos.lng * 10000) / 10000;
-                            area.lat = newLat; area.lng = newLng; c.lat = newLat; c.lng = newLng;
-                            circle.setLatLng(pos);
-                          });
-                          mapMarkersRef.current.push(marker);
-                        });
-                        if (allCircles.length > 0) {
-                          const group = L.featureGroup(allCircles);
-                          map.fitBounds(group.getBounds().pad(0.1));
-                        }
-                        window._settingsMap = map;
-                        setTimeout(() => {
-                          map.invalidateSize();
-                          mapOriginalPositions.current = {};
-                          mapMarkersRef.current.forEach(m => {
-                            const ll = m.getLatLng();
-                            mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
-                            m.dragging.enable();
-                          });
-                          setMapEditMode(true);
-                        }, 300);
-                      }, 50);
-                      return () => {
-                        clearTimeout(timer);
-                        try { if (window._settingsMap) { window._settingsMap.off(); window._settingsMap.remove(); window._settingsMap = null; } } catch(e) {}
-                      };
-                    }, []) /* empty deps — run once on mount, cleanup on unmount */ || null}
+                    {/* Fullscreen map is initialized via useEffect in app-logic.js (showMapFullscreen dep) */}
                   </div>
                 )}
 
