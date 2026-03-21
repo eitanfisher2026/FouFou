@@ -2557,7 +2557,12 @@
       console.log('[DATA] Loading locations for city:', selectedCityId);
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
+      let lastSnapshotKey = null; // guard against double-fire
       const onValue = locationsRef.on('value', (snapshot) => {
+        // Deduplicate: Firebase sometimes fires twice with identical data
+        const snapshotKey = snapshot.key + ':' + Object.keys(snapshot.val() || {}).length;
+        if (snapshotKey === lastSnapshotKey) return;
+        lastSnapshotKey = snapshotKey;
         const data = snapshot.val();
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
@@ -6843,16 +6848,31 @@
     const uid = authUser.uid;
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
 
+    // Optimistic update — show immediately before Firebase confirms
+    const placeKey = reviewDialog.placeKey;
+    const optimisticRating = reviewDialog.myRating;
+    setReviewAverages(prev => {
+      const existing = prev[placeKey];
+      if (existing) {
+        // Approximate: replace this user's previous rating if any
+        const newAvg = (existing.avg * existing.count - (existing._myPrev || 0) + optimisticRating) / existing.count;
+        return { ...prev, [placeKey]: { ...existing, avg: newAvg, _myPrev: optimisticRating } };
+      }
+      return { ...prev, [placeKey]: { avg: optimisticRating, count: 1 } };
+    });
+    setReviewDialog(null); // close immediately
+
     try {
       if (database) {
-        const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
+        const path = `cities/${cityId}/reviews/${placeKey}/${uid}`;
         await database.ref(path).set({
-          rating: reviewDialog.myRating,
+          rating: optimisticRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
           timestamp: Date.now()
         });
         showToast(t('reviews.saved'), 'success');
+        // Refresh with real data from Firebase
         loadReviewAverages([reviewDialog.place?.name || '']);
       } else {
         showToast('No database connection', 'error');
@@ -6861,7 +6881,6 @@
       console.error('[REVIEWS] Save error:', e.message, e.code);
       showToast(t('reviews.saveError') + ': ' + (e.message || ''), 'error');
     }
-    setReviewDialog(null);
   };
   
   const deleteMyReview = async () => {
@@ -7038,6 +7057,8 @@
   const saveQuickAddPlace = async (enriched, rating) => {
     if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
+    // Guard: prevent duplicate save if already in progress for this place
+    if (addingPlaceIds.includes(placeId)) return;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
     if (isFirebaseAvailable && database) {

@@ -69,6 +69,7 @@ const QuickAddPlaceDialog = ({
   const [qaRatingText, setQaRatingText] = React.useState("");
   const [qaImage, setQaImage] = React.useState(place.uploadedImage || null);
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
+  const [isSaving, setIsSaving] = React.useState(false);
   const qaStopRecRef = React.useRef(null);
 
   // Bug fix: when dialog opens with pre-selected interests (from lastCaptureInterestsRef),
@@ -114,6 +115,8 @@ const QuickAddPlaceDialog = ({
   };
 
   const handleSave = () => {
+    if (isSaving) return; // guard against double-click
+    setIsSaving(true);
     const enriched = {
       ...place,
       name: qaName.trim() || place.name,
@@ -153,7 +156,7 @@ const QuickAddPlaceDialog = ({
   const headerTitle = captureMode
     ? `📸 ${t("trail.capturePlace")}`
     : `⭐ ${t("trail.addToFavorites")}`;
-  const saveDisabled = captureMode && !qaImage;
+  const saveDisabled = isSaving || (captureMode && !qaImage);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2" style={{ zIndex: 10300 }}>
@@ -2717,7 +2720,11 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
+      let lastSnapshotKey = null; // guard against double-fire
       const onValue = locationsRef.on('value', (snapshot) => {
+        const snapshotKey = snapshot.key + ':' + Object.keys(snapshot.val() || {}).length;
+        if (snapshotKey === lastSnapshotKey) return;
+        lastSnapshotKey = snapshotKey;
         const data = snapshot.val();
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
@@ -6436,11 +6443,23 @@ const FouFouApp = () => {
     const uid = authUser.uid;
     const userName = authUser.displayName || window.BKK.visitorName || uid.slice(0, 8);
 
+    const placeKey = reviewDialog.placeKey;
+    const optimisticRating = reviewDialog.myRating;
+    setReviewAverages(prev => {
+      const existing = prev[placeKey];
+      if (existing) {
+        const newAvg = (existing.avg * existing.count - (existing._myPrev || 0) + optimisticRating) / existing.count;
+        return { ...prev, [placeKey]: { ...existing, avg: newAvg, _myPrev: optimisticRating } };
+      }
+      return { ...prev, [placeKey]: { avg: optimisticRating, count: 1 } };
+    });
+    setReviewDialog(null); // close immediately
+
     try {
       if (database) {
-        const path = `cities/${cityId}/reviews/${reviewDialog.placeKey}/${uid}`;
+        const path = `cities/${cityId}/reviews/${placeKey}/${uid}`;
         await database.ref(path).set({
-          rating: reviewDialog.myRating,
+          rating: optimisticRating,
           text: reviewDialog.myText.trim(),
           userName: userName,
           timestamp: Date.now()
@@ -6454,7 +6473,6 @@ const FouFouApp = () => {
       console.error('[REVIEWS] Save error:', e.message, e.code);
       showToast(t('reviews.saveError') + ': ' + (e.message || ''), 'error');
     }
-    setReviewDialog(null);
   };
   
   const deleteMyReview = async () => {
@@ -6618,6 +6636,7 @@ const FouFouApp = () => {
   const saveQuickAddPlace = async (enriched, rating) => {
     if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
+    if (addingPlaceIds.includes(placeId)) return;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
     if (isFirebaseAvailable && database) {

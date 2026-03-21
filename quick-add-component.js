@@ -26,6 +26,7 @@ const QuickAddPlaceDialog = ({
   const [qaRatingText, setQaRatingText] = React.useState("");
   const [qaImage, setQaImage] = React.useState(place.uploadedImage || null);
   const [qaRecordingField, setQaRecordingField] = React.useState(null);
+  const [isSaving, setIsSaving] = React.useState(false);
   const qaStopRecRef = React.useRef(null);
 
   // Bug fix: when dialog opens with pre-selected interests (from lastCaptureInterestsRef),
@@ -71,6 +72,8 @@ const QuickAddPlaceDialog = ({
   };
 
   const handleSave = () => {
+    if (isSaving) return; // guard against double-click
+    setIsSaving(true);
     const enriched = {
       ...place,
       name: qaName.trim() || place.name,
@@ -110,7 +113,7 @@ const QuickAddPlaceDialog = ({
   const headerTitle = captureMode
     ? `📸 ${t("trail.capturePlace")}`
     : `⭐ ${t("trail.addToFavorites")}`;
-  const saveDisabled = captureMode && !qaImage;
+  const saveDisabled = isSaving || (captureMode && !qaImage);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2" style={{ zIndex: 10300 }}>
