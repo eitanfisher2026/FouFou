@@ -914,7 +914,9 @@
                       style={{
                         padding: '4px 10px', borderRadius: '20px', border: 'none', cursor: 'pointer',
                         fontSize: '16px', lineHeight: 1,
-                        background: interestTimeFilter === opt.key ? '#1f2937' : '#f3f4f6',
+                        background: interestTimeFilter === opt.key
+                          ? (opt.key === 'day' ? '#bfdbfe' : opt.key === 'night' ? '#1f2937' : '#c4b5fd')
+                          : '#f3f4f6',
                         boxShadow: interestTimeFilter === opt.key ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
                         transition: 'all 0.15s'
                       }}
@@ -1486,12 +1488,11 @@
                                       const gR = cl?.googleRating || stop.googleRating;
                                       const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
                                       return (
-                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
                                           {ra ? (
                                             <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); }}
                                               style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>
-                                          ) : gR ? (
-                                            <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>
                                           ) : (
                                             <span style={{ color: '#9ca3af', fontSize: '9px' }}>{t('reviews.notYetRated')}</span>
                                           )}
@@ -4128,7 +4129,7 @@
         {/* Footer — minimal during active trail */}
         {activeTrail ? (
           <div className="text-center py-2 mt-2">
-            <span style={{ fontSize: '9px', color: '#d1d5db' }}>🐾 FouFou v{window.BKK.VERSION}</span>
+            <span style={{ fontSize: '11px', color: '#d1d5db' }}>🐾 FouFou v{window.BKK.VERSION}</span>
           </div>
         ) : (
         <div className="text-center py-3 mt-4 border-t border-gray-200">
