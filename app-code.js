@@ -831,6 +831,8 @@ const FouFouApp = () => {
   const fabDragRef = React.useRef({ dragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0, moved: false });
   const lastCaptureInterestsRef = React.useRef([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingField, setRecordingField] = useState(null); // 'description' | 'notes' | null
+  const [interimText, setInterimText] = useState(''); // live speech preview
   const stopRecordingRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -13220,22 +13222,26 @@ const FouFouApp = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            if (isRecording) {
+                            if (isRecording && recordingField === 'description') {
                               if (stopRecordingRef.current) stopRecordingRef.current();
                               stopRecordingRef.current = null;
-                              setIsRecording(false);
+                              setIsRecording(false); setRecordingField(null); setInterimText('');
                             } else {
-                              setIsRecording(true);
+                              if (stopRecordingRef.current) stopRecordingRef.current();
+                              setIsRecording(true); setRecordingField('description'); setInterimText('');
                               const stop = window.BKK.startSpeechToText({
                                 maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
                                 onResult: (text, isFinal) => {
                                   if (isFinal) {
+                                    setInterimText('');
                                     setNewLocation(prev => ({...prev, description: (prev.description ? prev.description + ' ' : '') + text}));
+                                  } else {
+                                    setInterimText(text);
                                   }
                                 },
-                                onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
+                                onEnd: () => { setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null; },
                                 onError: (error) => {
-                                  setIsRecording(false); stopRecordingRef.current = null;
+                                  setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null;
                                   if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
                                 }
                               });
@@ -13244,17 +13250,24 @@ const FouFouApp = () => {
                           }}
                           style={{
                             width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: isRecording ? '#ef4444' : '#f3f4f6', color: isRecording ? 'white' : '#6b7280',
+                            background: (isRecording && recordingField === 'description') ? '#ef4444' : '#f3f4f6',
+                            color: (isRecording && recordingField === 'description') ? 'white' : '#6b7280',
                             fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
-                            boxShadow: isRecording ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+                            animation: (isRecording && recordingField === 'description') ? 'pulse 1s ease-in-out infinite' : 'none',
+                            boxShadow: (isRecording && recordingField === 'description') ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
                           }}
-                          title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
+                          title={(isRecording && recordingField === 'description') ? t('speech.stopRecording') : t('speech.startRecording')}
                         >
-                          {isRecording ? '⏹️' : '🎤'}
+                          {(isRecording && recordingField === 'description') ? '⏹️' : '🎤'}
                         </button>
                       )}
                     </div>
+                    {/* Live interim text while recording description */}
+                    {isRecording && recordingField === 'description' && interimText && (
+                      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                        🎤 {interimText}
+                      </div>
+                    )}
                   </div>
                   {/* Ratings row — Google + FouFou */}
                   {(() => {
@@ -13310,22 +13323,26 @@ const FouFouApp = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            if (isRecording) {
+                            if (isRecording && recordingField === 'notes') {
                               if (stopRecordingRef.current) stopRecordingRef.current();
                               stopRecordingRef.current = null;
-                              setIsRecording(false);
+                              setIsRecording(false); setRecordingField(null); setInterimText('');
                             } else {
-                              setIsRecording(true);
+                              if (stopRecordingRef.current) stopRecordingRef.current();
+                              setIsRecording(true); setRecordingField('notes'); setInterimText('');
                               const stop = window.BKK.startSpeechToText({
                                 maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
                                 onResult: (text, isFinal) => {
                                   if (isFinal) {
+                                    setInterimText('');
                                     setNewLocation(prev => ({...prev, notes: (prev.notes ? prev.notes + ' ' : '') + text}));
+                                  } else {
+                                    setInterimText(text);
                                   }
                                 },
-                                onEnd: () => { setIsRecording(false); stopRecordingRef.current = null; },
+                                onEnd: () => { setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null; },
                                 onError: (error) => {
-                                  setIsRecording(false); stopRecordingRef.current = null;
+                                  setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null;
                                   if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
                                 }
                               });
@@ -13334,17 +13351,24 @@ const FouFouApp = () => {
                           }}
                           style={{
                             width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: isRecording ? '#ef4444' : '#f3f4f6', color: isRecording ? 'white' : '#6b7280',
+                            background: (isRecording && recordingField === 'notes') ? '#ef4444' : '#f3f4f6',
+                            color: (isRecording && recordingField === 'notes') ? 'white' : '#6b7280',
                             fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            animation: isRecording ? 'pulse 1s ease-in-out infinite' : 'none',
-                            boxShadow: isRecording ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
+                            animation: (isRecording && recordingField === 'notes') ? 'pulse 1s ease-in-out infinite' : 'none',
+                            boxShadow: (isRecording && recordingField === 'notes') ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
                           }}
-                          title={isRecording ? t('speech.stopRecording') : t('speech.startRecording')}
+                          title={(isRecording && recordingField === 'notes') ? t('speech.stopRecording') : t('speech.startRecording')}
                         >
-                          {isRecording ? '⏹️' : '🎤'}
+                          {(isRecording && recordingField === 'notes') ? '⏹️' : '🎤'}
                         </button>
                       )}
                     </div>
+                    {/* Live interim text while recording notes */}
+                    {isRecording && recordingField === 'notes' && interimText && (
+                      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                        🎤 {interimText}
+                      </div>
+                    )}
                   </div>
                 </div>
 

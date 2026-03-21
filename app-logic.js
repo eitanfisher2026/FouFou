@@ -474,6 +474,8 @@
   // Used to pre-select the same interest(s) on next capture. Empty on first capture.
   const lastCaptureInterestsRef = React.useRef([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingField, setRecordingField] = useState(null); // 'description' | 'notes' | null
+  const [interimText, setInterimText] = useState(''); // live speech preview
   const stopRecordingRef = React.useRef(null);
 
   // Detect return from Google Maps — check localStorage for activeTrail
