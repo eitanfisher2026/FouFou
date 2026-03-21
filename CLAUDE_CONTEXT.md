@@ -92,22 +92,47 @@ node -e "const window={BKK:{}}; const localStorage={getItem:()=>null}; eval(requ
 ## Version Bump + Package — MANDATORY FOR EVERY ZIP
 
 > **VERSIONING RULES — read before every zip:**
-> 1. Every zip gets a new version number. No exceptions, even for "small" changes.
-> 2. Version format is always `X.Y.Z` — three numbers, no letters, no suffixes (not "b", not "fix", not "v2").
->    WRONG: 3.9.14b, 3.9.14-fix, 3.9.14v2
->    CORRECT: 3.9.15
-> 3. Before packaging, check if CLAUDE_CONTEXT.md needs updating:
->    - Did you add a new function? -> add it to the shared functions table
->    - Did you fix a regression? -> add it to the Known Regressions section
->    - Did you change a key algorithm? -> update the relevant section
->    - Did you add new i18n keys? -> note it in the session changes
-> 4. The zip filename must match the version: `github-upload-v3_9_15.zip`
+>
+> ### פורמט: `X.Y.Z` — שלושה מספרים בלבד
+> אסור: אותיות, סיומות, suffixes.
+> WRONG: `3.10.1b`, `3.10.1-fix` — CORRECT: `3.10.2`
+>
+> ### מה מבדיל X / Y / Z?
+>
+> **Z — Patch** (ברירת המחדל — הרוב המוחלט של הזיפים)
+> - תיקון באג, שיפור UI קטן, הוספת i18n keys
+> - refactor ללא שינוי התנהגות, תיקון טקסטים/צבעים/סדר שדות
+> - **אם יש ספק — תמיד patch**
+> - דוגמה: `3.10.1` → `3.10.2`
+>
+> **Y — Minor** (פיצ'ר חדש שלם / שינוי התנהגות שמשתמש רגיל שם לב אליו)
+> - פיצ'ר חדש שמשתמש (לא רק admin) שם לב אליו
+> - שינוי אלגוריתם מרכזי (scoring, routing, dedup)
+> - הוספת עיר חדשה לקובץ המקור (city-*.js)
+> - שינוי מבנה Firebase שדורש migration
+> - patch מתאפס: `3.10.5` → `3.11.0`
+>
+> **X — Major** (שינוי ארכיטקטורה שבוצע בפועל — נדיר מאוד)
+> - שינוי build pipeline — קבצי source חדשים / הסרת קיימים
+> - החלפת ספרייה מרכזית (React, Firebase, Leaflet)
+> - שינוי מבנה Firebase שדורש שכתוב של חלקים גדולים
+> - אייתן מחליט עליו במפורש — **קלוד לא מחליט לבד על major**
+> - Y ו-Z מתאפסים: `3.10.5` → `4.0.0`
+>
+> ### כלל הזהב
+> ספק בין patch לminor → **patch**
+> ספק בין minor לmajor → **minor**
+> Major = החלטה מפורשת של אייתן בלבד
+>
+> ### לפני כל zip — checkלוסט
+> - האם CLAUDE_CONTEXT.md מעודכן? (פונקציות, regressions, אלגוריתמים, i18n)
+> - שם הzip תואם גרסה: `github-upload-v3_10_2.zip`
 
-## Version Bump + Package — MANDATORY FOR EVERY ZIP
+## Version Bump + Package — פקודות
 
 ```bash
-# 1. Bump patch in config.js  (e.g. 3.9.14 -> 3.9.15)
-sed -i "s/VERSION = '3\.9\.14'/VERSION = '3.9.15'/" config.js
+# 1. Bump version in config.js  (e.g. 3.10.1 -> 3.10.2)
+sed -i "s/VERSION = '3\.10\.1'/VERSION = '3.10.2'/" config.js
 
 # 2. Sync version.json
 python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1); open('version.json','w').write('{\"version\": \"'+v+'\"}')"
@@ -116,7 +141,7 @@ python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*
 python3 build.py
 
 # 4. Package
-zip github-upload-v3_9_15.zip \
+zip github-upload-v3_10_2.zip \
   index.html app-data.js app-code.js \
   i18n.js config.js utils.js app-logic.js views.js dialogs.js \
   quick-add-component.js \

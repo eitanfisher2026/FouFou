@@ -10421,34 +10421,44 @@ const FouFouApp = () => {
                           const sourceCity = window.BKK.cities[sourceCityId];
                           if (!sourceCity) { showToast('Source city not found', 'error'); return; }
 
-                          const toCopy = (sourceCity.interests || []).filter(i => !i.cityId && i.scope !== 'local');
-                          const skipped = (sourceCity.interests || []).length - toCopy.length;
+                          const isGlobal = i => !i.cityId && i.scope !== 'local';
+                          const isFromSource = i => i.cityId === sourceCityId;
 
-                          const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?
-` +
-                            (skipped > 0 ? `(${skipped} תחומים ספציפיים ל-${tLabel(sourceCity)} לא יועתקו)
-` : '') +
-                            `
-התחומים הנוכחיים של ${tLabel(targetCity)} (${targetCity.interests?.length || 0}) יימחקו ויוחלפו.
+                          const builtIn   = (sourceCity.interests || []).filter(isGlobal);
+                          const uncovered = (sourceCity.uncoveredInterests || []).filter(isGlobal);
+                          const fromFirebase = (customInterests || []).filter(i => isGlobal(i) || isFromSource(i));
 
-להמשיך?`;
+                          const seen = new Set();
+                          const toCopy = [...builtIn, ...uncovered, ...fromFirebase].filter(i => {
+                            if (seen.has(i.id)) return false;
+                            seen.add(i.id);
+                            return true;
+                          });
+
+                          const skippedBuiltIn = (sourceCity.interests || []).length - builtIn.length;
+                          const currentCount = (targetCity.interests?.length || 0) + (targetCity.uncoveredInterests?.length || 0);
+
+                          const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?\n` +
+                            `  • ${builtIn.length} תחומים רגילים\n` +
+                            `  • ${uncovered.length} תחומים ללא כיסוי גוגל\n` +
+                            `  • ${fromFirebase.length} תחומים מ-Firebase\n` +
+                            (skippedBuiltIn > 0 ? `  (${skippedBuiltIn} ספציפיים ל-${tLabel(sourceCity)} לא יועתקו)\n` : '') +
+                            `\nהתחומים הנוכחיים של ${tLabel(targetCity)} (${currentCount}) יימחקו ויוחלפו.\n\nלהמשיך?`;
 
                           showConfirm(msg, () => {
-                            targetCity.interests = toCopy.map(i => {
-                              const copy = { ...i };
-                              delete copy.cityId;
-                              return copy;
-                            });
+                            targetCity.interests = builtIn.map(i => { const c = { ...i }; delete c.cityId; return c; });
+                            targetCity.uncoveredInterests = uncovered.map(i => { const c = { ...i }; delete c.cityId; return c; });
                             try {
                               const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
                               if (customCities[targetCity.id]) {
                                 customCities[targetCity.id].interests = targetCity.interests;
+                                customCities[targetCity.id].uncoveredInterests = targetCity.uncoveredInterests;
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
                             } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
                             window.BKK.exportCityFile(targetCity);
                             setCityModified(false);
-                            setFormData(prev => ({ ...prev })); // force re-render
+                            setFormData(prev => ({ ...prev }));
                             showToast(`✅ הועתקו ${toCopy.length} תחומים מ-${tLabel(sourceCity)}`, 'success');
                           });
                         }}
