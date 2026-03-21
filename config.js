@@ -57,7 +57,7 @@ window.BKK.mapConfig = {
 })();
 
 // App Version
-window.BKK.VERSION = '3.10.3';
+window.BKK.VERSION = '3.10.6';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
@@ -449,6 +449,19 @@ window.BKK.selectCity = function(cityId) {
       }
     });
   } catch(e) {}
+
+  // Apply interests overrides for built-in cities (saved after "copy interests" operation)
+  try {
+    var interestOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+    Object.keys(interestOverrides).forEach(function(cityId) {
+      if (window.BKK.cities[cityId]) {
+        var ov = interestOverrides[cityId];
+        if (ov.interests) window.BKK.cities[cityId].interests = ov.interests;
+        if (ov.uncoveredInterests) window.BKK.cities[cityId].uncoveredInterests = ov.uncoveredInterests;
+        console.log('[CONFIG] Applied interests override for ' + cityId + ': ' + (ov.interests || []).length + ' interests');
+      }
+    });
+  } catch(e) { console.error('[CONFIG] Error loading interests overrides:', e); }
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}

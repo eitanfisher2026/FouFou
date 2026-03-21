@@ -268,5 +268,6 @@ window.BKK.cityData.malaga = {
     "color": "#c60b1e",
     "iconLeft": "🏖️",
     "iconRight": "🌞"
-  }
+  },
+  "systemRoutes": []
 };

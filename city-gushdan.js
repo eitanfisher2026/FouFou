@@ -7,7 +7,11 @@ window.BKK.cityData.gushdan = {
   "country": "Israel",
   "icon": "🏖️",
   "secondaryIcon": "☀️",
-  "theme": { "color": "#2980b9", "iconLeft": "🏖️", "iconRight": "🌆" },
+  "theme": {
+    "color": "#2980b9",
+    "iconLeft": "🏖️",
+    "iconRight": "🌆"
+  },
   "active": true,
   "distanceMultiplier": 1.2,
   "dayStartHour": 7,
@@ -291,5 +295,6 @@ window.BKK.cityData.gushdan = {
     "shopping": "קניונים וחנויות",
     "culture": "תיאטרון, מוזיקה, מופעים",
     "history": "אתרים היסטוריים ומוזיאונים"
-  }
+  },
+  "systemRoutes": []
 };

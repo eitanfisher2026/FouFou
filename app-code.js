@@ -10456,6 +10456,12 @@ const FouFouApp = () => {
                                 customCities[targetCity.id].uncoveredInterests = targetCity.uncoveredInterests;
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
+                              const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+                              overrides[targetCity.id] = {
+                                interests: targetCity.interests,
+                                uncoveredInterests: targetCity.uncoveredInterests
+                              };
+                              localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
                             } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
                             window.BKK.selectCity(targetCity.id);
                             window.BKK.exportCityFile(targetCity);
@@ -10680,20 +10686,7 @@ const FouFouApp = () => {
                         {mapEditMode && <span style={{ marginRight: '8px', fontSize: '11px', opacity: 0.9 }}> · {t('general.dragToMove') || 'גרור כדי להזיז'}</span>}
                       </span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {!mapEditMode ? (
-                          <button onClick={() => {
-                            setMapEditMode(true);
-                            mapOriginalPositions.current = {};
-                            mapMarkersRef.current.forEach(m => {
-                              const ll = m.getLatLng();
-                              mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
-                              m.dragging.enable();
-                            });
-                            setFormData(prev => ({...prev, _selectedMapArea: null}));
-                          }} style={{ padding: '4px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                            ✏️ {t('general.editMap')}
-                          </button>
-                        ) : (
+                        {(
                           <>
                             <button onClick={() => {
                               setMapEditMode(false);
@@ -10783,7 +10776,16 @@ const FouFouApp = () => {
                           map.fitBounds(group.getBounds().pad(0.1));
                         }
                         window._settingsMap = map;
-                        setTimeout(() => map.invalidateSize(), 200);
+                        setTimeout(() => {
+                          map.invalidateSize();
+                          mapOriginalPositions.current = {};
+                          mapMarkersRef.current.forEach(m => {
+                            const ll = m.getLatLng();
+                            mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
+                            m.dragging.enable();
+                          });
+                          setMapEditMode(true);
+                        }, 300);
                       }, 50);
                       return null;
                     })()}
@@ -15445,12 +15447,17 @@ const FouFouApp = () => {
                             const newCity = {
                               id: addCityFound.id, name: addCityFound.name, nameEn: addCityFound.name,
                               country: addCityFound.address?.split(',').pop()?.trim() || '',
-                              icon: '📍', secondaryIcon: '🏙️', active: false, distanceMultiplier: 1.2,
+                              icon: '📍', secondaryIcon: '🏙️',
+                              theme: { color: '#6366f1', iconLeft: '📍', iconRight: '🗺️' },
+                              active: false, distanceMultiplier: 1.2,
+                              dayStartHour: 7, nightStartHour: 18,
                               center: { lat: addCityFound.lat, lng: addCityFound.lng },
                               allCityRadius, areas, interests: defaultInterests,
                               interestToGooglePlaces: defaultPlaceTypes,
                               textSearchInterests: { graffiti: 'street art' },
-                              uncoveredInterests: [], interestTooltips: {}
+                              uncoveredInterests: [],
+                              interestTooltips: {},
+                              systemRoutes: []
                             };
                             setAddCityGenerated(newCity);
                             setAddCitySearchStatus('done');

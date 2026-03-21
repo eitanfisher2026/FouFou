@@ -2773,14 +2773,23 @@
                             // Update city file interests (built-in + uncovered) — strip source cityId
                             targetCity.interests = builtIn.map(i => { const c = { ...i }; delete c.cityId; return c; });
                             targetCity.uncoveredInterests = uncovered.map(i => { const c = { ...i }; delete c.cityId; return c; });
-                            // Save to localStorage
+                            // Save to localStorage — two paths:
                             try {
+                              // Path A: custom city (added via "הוסף עיר") — update custom_cities
                               const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
                               if (customCities[targetCity.id]) {
                                 customCities[targetCity.id].interests = targetCity.interests;
                                 customCities[targetCity.id].uncoveredInterests = targetCity.uncoveredInterests;
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
+                              // Path B: built-in city (bangkok, singapore etc) — save overrides separately
+                              // These persist across version upgrades and are applied on startup in config.js
+                              const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+                              overrides[targetCity.id] = {
+                                interests: targetCity.interests,
+                                uncoveredInterests: targetCity.uncoveredInterests
+                              };
+                              localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
                             } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
                             // Reload city into window.BKK so interestOptions updates immediately
                             window.BKK.selectCity(targetCity.id);
@@ -3009,20 +3018,7 @@
                         {mapEditMode && <span style={{ marginRight: '8px', fontSize: '11px', opacity: 0.9 }}> · {t('general.dragToMove') || 'גרור כדי להזיז'}</span>}
                       </span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {!mapEditMode ? (
-                          <button onClick={() => {
-                            setMapEditMode(true);
-                            mapOriginalPositions.current = {};
-                            mapMarkersRef.current.forEach(m => {
-                              const ll = m.getLatLng();
-                              mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
-                              m.dragging.enable();
-                            });
-                            setFormData(prev => ({...prev, _selectedMapArea: null}));
-                          }} style={{ padding: '4px 12px', borderRadius: '6px', background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                            ✏️ {t('general.editMap')}
-                          </button>
-                        ) : (
+                        {(
                           <>
                             <button onClick={() => {
                               setMapEditMode(false);
@@ -3113,7 +3109,17 @@
                           map.fitBounds(group.getBounds().pad(0.1));
                         }
                         window._settingsMap = map;
-                        setTimeout(() => map.invalidateSize(), 200);
+                        setTimeout(() => {
+                          map.invalidateSize();
+                          // Auto-enter edit mode on fullscreen open
+                          mapOriginalPositions.current = {};
+                          mapMarkersRef.current.forEach(m => {
+                            const ll = m.getLatLng();
+                            mapOriginalPositions.current[m._areaId] = { lat: ll.lat, lng: ll.lng, radius: m._circle?.getRadius() || 0 };
+                            m.dragging.enable();
+                          });
+                          setMapEditMode(true);
+                        }, 300);
                       }, 50);
                       return null;
                     })()}

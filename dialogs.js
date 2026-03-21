@@ -2751,12 +2751,17 @@
                             const newCity = {
                               id: addCityFound.id, name: addCityFound.name, nameEn: addCityFound.name,
                               country: addCityFound.address?.split(',').pop()?.trim() || '',
-                              icon: '📍', secondaryIcon: '🏙️', active: false, distanceMultiplier: 1.2,
+                              icon: '📍', secondaryIcon: '🏙️',
+                              theme: { color: '#6366f1', iconLeft: '📍', iconRight: '🗺️' },
+                              active: false, distanceMultiplier: 1.2,
+                              dayStartHour: 7, nightStartHour: 18,
                               center: { lat: addCityFound.lat, lng: addCityFound.lng },
                               allCityRadius, areas, interests: defaultInterests,
                               interestToGooglePlaces: defaultPlaceTypes,
                               textSearchInterests: { graffiti: 'street art' },
-                              uncoveredInterests: [], interestTooltips: {}
+                              uncoveredInterests: [],
+                              interestTooltips: {},
+                              systemRoutes: []
                             };
                             setAddCityGenerated(newCity);
                             setAddCitySearchStatus('done');
