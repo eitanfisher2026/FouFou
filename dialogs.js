@@ -535,10 +535,15 @@
                     // Always show — at minimum shows "rate" link
                     return (
                       <div style={{ padding: '4px 0' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
                           {gR && (
                             <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
+                          <button
+                            onClick={() => { const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name); if (cl) refreshSingleGoogleRating(cl); }}
+                            style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
+                          >⭐ {t('settings.refreshRatings') || 'רענן'}</button>
                           {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
                           {ra ? (
                             <button

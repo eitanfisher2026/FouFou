@@ -4066,33 +4066,7 @@ const FouFouApp = () => {
             ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
           };
         });
-        const infoUpdates = {
-          googlePlaceId: placeInfo.googlePlaceId,
-          googlePlace: true,
-          ...(placeInfo.rating ? { googleRating: placeInfo.rating, googleRatingCount: placeInfo.ratingCount || 0 } : {})
-        };
-        setEditingLocation(e => e ? { ...e, ...infoUpdates } : e);
 
-        if (placeInfo.rating && isFirebaseAvailable && database) {
-          const existingLoc = customLocations.find(l => l.name === location.name);
-          if (existingLoc?.firebaseId) {
-            const updates = {
-              googlePlaceId: placeInfo.googlePlaceId,
-              googleRating: placeInfo.rating,
-              googleRatingCount: placeInfo.ratingCount || 0,
-              googlePlace: true
-            };
-            if (placeInfo.address && !existingLoc.address) updates.address = placeInfo.address;
-            database.ref(`cities/${selectedCityId}/locations/${existingLoc.firebaseId}`).update(updates)
-              .then(() => {
-                setCustomLocations(prev => prev.map(l =>
-                  l.firebaseId === existingLoc.firebaseId ? { ...l, ...updates } : l
-                ));
-                setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
-                addDebugLog('API', `Auto-saved Google rating for ${existingLoc.name}: ⭐${placeInfo.rating}`);
-              })
-          }
-        }
       }
       
       addDebugLog('API', 'Fetched Google Place Info', { name: placeInfo.name, types: placeInfo.types });
@@ -4192,6 +4166,55 @@ const FouFouApp = () => {
     }
     
     setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
+  };
+
+  const refreshSingleGoogleRating = async (loc) => {
+    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database || !loc?.firebaseId) {
+      showToast('Google API or Firebase not available', 'error');
+      return;
+    }
+    showToast('⭐ ' + (t('settings.refreshRatings') || 'מרענן דירוג...'), 'info');
+    try {
+      let newRating = null, newCount = 0, foundPlaceId = null;
+      if (loc.googlePlaceId) {
+        const resp = await fetch(`https://places.googleapis.com/v1/places/${loc.googlePlaceId}`, {
+          method: 'GET',
+          headers: { 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'rating,userRatingCount' }
+        });
+        if (resp.ok) { const d = await resp.json(); newRating = d.rating || null; newCount = d.userRatingCount || 0; }
+      }
+      if (!newRating) {
+        const resp = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': 'places.id,places.rating,places.userRatingCount,places.location' },
+          body: JSON.stringify({ textQuery: loc.name + ' ' + (window.BKK.cityNameForSearch || 'Bangkok'), maxResultCount: 3,
+            locationBias: { circle: { center: { latitude: loc.lat, longitude: loc.lng }, radius: 500.0 } } })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.places?.length) {
+            const best = data.places.reduce((a, b) => {
+              const da = Math.abs((a.location?.latitude||0) - loc.lat) + Math.abs((a.location?.longitude||0) - loc.lng);
+              const db = Math.abs((b.location?.latitude||0) - loc.lat) + Math.abs((b.location?.longitude||0) - loc.lng);
+              return da < db ? a : b;
+            });
+            newRating = best.rating || null;
+            newCount = best.userRatingCount || 0;
+            if (best.id && !loc.googlePlaceId) foundPlaceId = best.id;
+          }
+        }
+      }
+      if (!newRating) { showToast(t('settings.noPlacesToRefresh') || 'לא נמצא דירוג', 'warning'); return; }
+      const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now(), ...(foundPlaceId ? { googlePlaceId: foundPlaceId } : {}) };
+      await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
+      setCustomLocations(prev => prev.map(l => l.firebaseId === loc.firebaseId ? { ...l, ...updates } : l));
+      setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
+      setNewLocation(prev => ({ ...prev, googleRating: newRating, googleRatingCount: newCount }));
+      showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
+    } catch (e) {
+      console.error('[RATING] Single refresh error:', e);
+      showToast(t('toast.updateError') || 'שגיאה', 'error');
+    }
   };
 
   const refreshAllGoogleRatings = async () => {
@@ -12970,10 +12993,15 @@ const FouFouApp = () => {
                     const gR = newLocation.googleRating;
                     return (
                       <div style={{ padding: '4px 0' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
                           {gR && (
                             <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
+                          <button
+                            onClick={() => { const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name); if (cl) refreshSingleGoogleRating(cl); }}
+                            style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
+                          >⭐ {t('settings.refreshRatings') || 'רענן'}</button>
                           {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
                           {ra ? (
                             <button
