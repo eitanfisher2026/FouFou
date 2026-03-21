@@ -10456,9 +10456,11 @@ const FouFouApp = () => {
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
                             } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
+                            window.BKK.selectCity(targetCity.id);
                             window.BKK.exportCityFile(targetCity);
                             setCityModified(false);
-                            setFormData(prev => ({ ...prev }));
+                            setSelectedCityId(prev => { return prev; }); // ping React to re-read window.BKK.interestOptions
+                            setFormData(prev => ({ ...prev, interests: [] })); // reset interest selection
                             showToast(`✅ הועתקו ${toCopy.length} תחומים מ-${tLabel(sourceCity)}`, 'success');
                           });
                         }}

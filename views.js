@@ -2782,10 +2782,13 @@
                                 localStorage.setItem('custom_cities', JSON.stringify(customCities));
                               }
                             } catch(e) { console.error('[CITY] Failed to save interests to localStorage:', e); }
-                            // Export updated city file
+                            // Reload city into window.BKK so interestOptions updates immediately
+                            window.BKK.selectCity(targetCity.id);
+                            // Export updated city file (for next session)
                             window.BKK.exportCityFile(targetCity);
                             setCityModified(false);
-                            setFormData(prev => ({ ...prev }));
+                            setSelectedCityId(prev => { return prev; }); // ping React to re-read window.BKK.interestOptions
+                            setFormData(prev => ({ ...prev, interests: [] })); // reset interest selection
                             showToast(`✅ הועתקו ${toCopy.length} תחומים מ-${tLabel(sourceCity)}`, 'success');
                             console.log(`[CITY] Copied ${toCopy.length} interests from ${sourceCityId} to ${targetCity.id} (built-in: ${builtIn.length}, uncovered: ${uncovered.length}, firebase: ${fromFirebase.length})`);
                           });
