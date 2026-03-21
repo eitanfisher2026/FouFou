@@ -2557,12 +2557,12 @@
       console.log('[DATA] Loading locations for city:', selectedCityId);
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
-      let lastSnapshotKey = null; // guard against double-fire
+      let lastSnapshotTs = 0; // guard against double-fire within same 200ms window
       const onValue = locationsRef.on('value', (snapshot) => {
-        // Deduplicate: Firebase sometimes fires twice with identical data
-        const snapshotKey = snapshot.key + ':' + Object.keys(snapshot.val() || {}).length;
-        if (snapshotKey === lastSnapshotKey) return;
-        lastSnapshotKey = snapshotKey;
+        // Deduplicate: Firebase sometimes fires twice rapidly — ignore if within 200ms
+        const now = Date.now();
+        if (now - lastSnapshotTs < 200) return;
+        lastSnapshotTs = now;
         const data = snapshot.val();
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
@@ -7955,6 +7955,11 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       const { firebaseId, ...locationData } = updatedLocation;
+      
+      // Optimistic local update — show change immediately without waiting for Firebase
+      setCustomLocations(prev => prev.map(loc =>
+        loc.id === updatedLocation.id ? { ...updatedLocation, firebaseId } : loc
+      ));
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)

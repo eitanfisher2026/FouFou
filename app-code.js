@@ -2720,11 +2720,11 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
-      let lastSnapshotKey = null; // guard against double-fire
+      let lastSnapshotTs = 0; // guard against double-fire within same 200ms window
       const onValue = locationsRef.on('value', (snapshot) => {
-        const snapshotKey = snapshot.key + ':' + Object.keys(snapshot.val() || {}).length;
-        if (snapshotKey === lastSnapshotKey) return;
-        lastSnapshotKey = snapshotKey;
+        const now = Date.now();
+        if (now - lastSnapshotTs < 200) return;
+        lastSnapshotTs = now;
         const data = snapshot.val();
         if (data) {
           const locationsArray = Object.keys(data).map(key => {
@@ -7457,6 +7457,10 @@ const FouFouApp = () => {
     
     if (isFirebaseAvailable && database) {
       const { firebaseId, ...locationData } = updatedLocation;
+      
+      setCustomLocations(prev => prev.map(loc =>
+        loc.id === updatedLocation.id ? { ...updatedLocation, firebaseId } : loc
+      ));
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
