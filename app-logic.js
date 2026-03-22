@@ -6168,26 +6168,53 @@
       
       console.log(`[FETCH_MORE] Need ${fetchCount} more for ${interest}`);
       
+      // Pre-compute: all custom interest IDs whose baseCategory === this interest
+      // e.g. if graffiti is built-in and custom_XYZ has baseCategory:'graffiti', locations tagged with custom_XYZ also qualify
+      const relatedCustomInterestIds = new Set(
+        allInterestOptions
+          .filter(opt => opt.custom && opt.baseCategory === interest)
+          .map(opt => opt.id)
+      );
+
       // LAYER 1: Unused custom locations for this interest
       const unusedCustom = customLocations.filter(loc => {
         if (loc.status === 'blacklist') return false;
         if (!isLocationValid(loc)) return false;
         if (!loc.interests || !loc.interests.some(li => {
-          if (li === interest) return true;
+          if (li === interest) return true;                          // direct match
+          if (relatedCustomInterestIds.has(li)) return true;        // custom sub-interest of this built-in
+          // Legacy: if interest itself is custom with baseCategory (old path)
           const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
           return ci && li === ci.baseCategory;
         })) return false;
         // Must be in area/radius
         if (isRadiusMode) {
-          if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
-          if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+          // Radius mode: filter by distance if both have coords; accept coord-less if in area
+          if (!formData.currentLat || !formData.currentLng) return false;
+          if (loc.lat && loc.lng) {
+            return calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) <= formData.radiusMeters;
+          }
+          // No coords on loc — include anyway (coord-less favorites still worth showing)
+          return true;
         } else {
+          // Area mode: primary check is area match, but also accept:
+          // 1. Locations whose coords fall in the selected area (may have been mis-assigned)
+          // 2. Locations with coords close to the area center (within area radius × 2)
           const locAreas = loc.areas || (loc.area ? [loc.area] : []);
-          if (!locAreas.includes(formData.area)) return false;
+          if (locAreas.includes(formData.area)) return true;
+          // Secondary: geo proximity to selected area center
+          if (loc.lat && loc.lng) {
+            const areaCoords = window.BKK.areaCoordinates?.[formData.area];
+            if (areaCoords?.lat && areaCoords?.lng) {
+              const dist = calcDistance(loc.lat, loc.lng, areaCoords.lat, areaCoords.lng);
+              const threshold = (areaCoords.radius || 2000) * 2;
+              if (dist <= threshold) return true;
+            }
+          }
+          return false;
         }
         // Not already in route
-        return !existingNames.includes((loc.name || '').toLowerCase().trim());
-      });
+      }).filter(loc => !existingNames.includes((loc.name || '').toLowerCase().trim()));
       
       if (unusedCustom.length > 0) {
         const toAdd = unusedCustom.slice(0, fetchCount);
@@ -6309,23 +6336,34 @@
         let placesForInterest = [];
         
         // LAYER 1: Unused custom locations
+        const relatedCIIds = new Set(
+          allInterestOptions.filter(opt => opt.custom && opt.baseCategory === interest).map(opt => opt.id)
+        );
         const unusedCustom = customLocations.filter(loc => {
           if (loc.status === 'blacklist') return false;
           if (!isLocationValid(loc)) return false;
           if (!loc.interests || !loc.interests.some(li => {
             if (li === interest) return true;
+            if (relatedCIIds.has(li)) return true;
             const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
             return ci && li === ci.baseCategory;
           })) return false;
           if (isRadiusMode) {
-            if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
-            if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+            if (!formData.currentLat || !formData.currentLng) return false;
+            if (loc.lat && loc.lng) return calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) <= formData.radiusMeters;
+            return true;
           } else {
             const locAreas = loc.areas || (loc.area ? [loc.area] : []);
-            if (!locAreas.includes(formData.area)) return false;
+            if (locAreas.includes(formData.area)) return true;
+            if (loc.lat && loc.lng) {
+              const areaCoords = window.BKK.areaCoordinates?.[formData.area];
+              if (areaCoords?.lat && areaCoords?.lng) {
+                return calcDistance(loc.lat, loc.lng, areaCoords.lat, areaCoords.lng) <= (areaCoords.radius || 2000) * 2;
+              }
+            }
+            return false;
           }
-          return !allUsedNames.includes(loc.name.toLowerCase().trim());
-        });
+        }).filter(loc => !allUsedNames.includes(loc.name.toLowerCase().trim()));
         
         if (unusedCustom.length > 0) {
           const toAdd = unusedCustom.slice(0, perInterest).map(p => ({ ...p, addedLater: true }));

@@ -5847,23 +5847,41 @@ const FouFouApp = () => {
       let placesToAdd = [];
       let source = '';
       
+      const relatedCustomInterestIds = new Set(
+        allInterestOptions
+          .filter(opt => opt.custom && opt.baseCategory === interest)
+          .map(opt => opt.id)
+      );
+
       const unusedCustom = customLocations.filter(loc => {
         if (loc.status === 'blacklist') return false;
         if (!isLocationValid(loc)) return false;
         if (!loc.interests || !loc.interests.some(li => {
-          if (li === interest) return true;
+          if (li === interest) return true;                          // direct match
+          if (relatedCustomInterestIds.has(li)) return true;        // custom sub-interest of this built-in
           const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
           return ci && li === ci.baseCategory;
         })) return false;
         if (isRadiusMode) {
-          if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
-          if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+          if (!formData.currentLat || !formData.currentLng) return false;
+          if (loc.lat && loc.lng) {
+            return calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) <= formData.radiusMeters;
+          }
+          return true;
         } else {
           const locAreas = loc.areas || (loc.area ? [loc.area] : []);
-          if (!locAreas.includes(formData.area)) return false;
+          if (locAreas.includes(formData.area)) return true;
+          if (loc.lat && loc.lng) {
+            const areaCoords = window.BKK.areaCoordinates?.[formData.area];
+            if (areaCoords?.lat && areaCoords?.lng) {
+              const dist = calcDistance(loc.lat, loc.lng, areaCoords.lat, areaCoords.lng);
+              const threshold = (areaCoords.radius || 2000) * 2;
+              if (dist <= threshold) return true;
+            }
+          }
+          return false;
         }
-        return !existingNames.includes((loc.name || '').toLowerCase().trim());
-      });
+      }).filter(loc => !existingNames.includes((loc.name || '').toLowerCase().trim()));
       
       if (unusedCustom.length > 0) {
         const toAdd = unusedCustom.slice(0, fetchCount);
@@ -5971,23 +5989,34 @@ const FouFouApp = () => {
         const allUsedNames = [...existingNames, ...allNewPlaces.map(p => p.name.toLowerCase().trim())];
         let placesForInterest = [];
         
+        const relatedCIIds = new Set(
+          allInterestOptions.filter(opt => opt.custom && opt.baseCategory === interest).map(opt => opt.id)
+        );
         const unusedCustom = customLocations.filter(loc => {
           if (loc.status === 'blacklist') return false;
           if (!isLocationValid(loc)) return false;
           if (!loc.interests || !loc.interests.some(li => {
             if (li === interest) return true;
+            if (relatedCIIds.has(li)) return true;
             const ci = allInterestOptions.find(opt => opt.id === interest && opt.custom && opt.baseCategory);
             return ci && li === ci.baseCategory;
           })) return false;
           if (isRadiusMode) {
-            if (!formData.currentLat || !formData.currentLng || !loc.lat || !loc.lng) return false;
-            if (calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) > formData.radiusMeters) return false;
+            if (!formData.currentLat || !formData.currentLng) return false;
+            if (loc.lat && loc.lng) return calcDistance(formData.currentLat, formData.currentLng, loc.lat, loc.lng) <= formData.radiusMeters;
+            return true;
           } else {
             const locAreas = loc.areas || (loc.area ? [loc.area] : []);
-            if (!locAreas.includes(formData.area)) return false;
+            if (locAreas.includes(formData.area)) return true;
+            if (loc.lat && loc.lng) {
+              const areaCoords = window.BKK.areaCoordinates?.[formData.area];
+              if (areaCoords?.lat && areaCoords?.lng) {
+                return calcDistance(loc.lat, loc.lng, areaCoords.lat, areaCoords.lng) <= (areaCoords.radius || 2000) * 2;
+              }
+            }
+            return false;
           }
-          return !allUsedNames.includes(loc.name.toLowerCase().trim());
-        });
+        }).filter(loc => !allUsedNames.includes(loc.name.toLowerCase().trim()));
         
         if (unusedCustom.length > 0) {
           const toAdd = unusedCustom.slice(0, perInterest).map(p => ({ ...p, addedLater: true }));
