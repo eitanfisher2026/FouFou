@@ -438,11 +438,41 @@ Skip: googleRatingUpdated within last 7 days
 // NEVER remove a type from config — let the retry mechanism work
 ```
 
-### Google Maps URLs
+### Google Maps URLs — Policy: ONE function, used everywhere
+
+**ABSOLUTE RULE: Never build a Google Maps URL manually. Always use `window.BKK.getGoogleMapsUrl(place)`.**
+
+This function handles all edge cases: broken/legacy URLs, invalid Place IDs, coord-only places, mobile deep links. Building URLs manually elsewhere *will* break on Android/iOS.
+
 ```js
-window.BKK.getGoogleMapsUrl(place)  // <- always use this, never build manually
-// Priority: googlePlaceId > name+coords > address > coords
-// NEVER put a Firebase key in query_place_id
+// CORRECT — everywhere in the codebase:
+const url = window.BKK.getGoogleMapsUrl(place);
+if (url && url !== '#') window.open(url, '_blank');
+
+// CORRECT — for <a> links:
+<a href={window.BKK.getGoogleMapsUrl(stop)} target="_blank">Google Maps</a>
+
+// WRONG — never do this:
+`https://www.google.com/maps/place/?q=place_id:${place.googlePlaceId}`  // broken on Android
+`https://maps.google.com/?q=${lat},${lng}`                              // no place context
+`place.mapsUrl`                                                          // may be broken/stale
+```
+
+Priority chain inside `getGoogleMapsUrl`:
+1. Stored `mapsUrl` — only if valid (not `goo.gl`, not `maps.app`, not legacy `place_id:` format)
+2. `googlePlaceId` → `?api=1&query=name&query_place_id=ChIJ...` (works in both browser and app)
+3. `name + coords` → `?api=1&query=name lat,lng`
+4. `address` → `?api=1&query=address`
+5. `coords only` → `?api=1&query=lat,lng`
+6. Nothing → `'#'`
+
+**Context matters for displaying the button:**
+- Route results stop name: always a link (`<a href={getGoogleMapsUrl(stop)}>`)
+- Active trail stop click: check first if it's a coord-only favorite (show FouFou card instead)
+- Stop detail modal: show "נווט" if `mapsUrl !== '#'` (includes coord-only); show "גוגל" button only if `googlePlaceId` is valid (real Google place)
+- Favorites list: small 🔗 icon link
+- Map popup (Leaflet): HTML string, same `getGoogleMapsUrl` call
+
 ```
 
 ---

@@ -1226,7 +1226,7 @@
                 </div>
                 {renderContextHint('hint_route')}
                 {/* Normal stop list grouped by interest */}
-                <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
+                <div className="max-h-96 overflow-y-auto" key={routeListKey} style={{ contain: 'content' }}>
                   {(() => {
                     // Build sequential letter map: only active stops get letters
                     const activeLetterMap = {};

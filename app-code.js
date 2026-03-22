@@ -662,6 +662,7 @@ const FouFouApp = () => {
   const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
+  const [routeListKey, setRouteListKey] = useState(0); // incremented to force re-render of route stop list after favorites change
   const [isGenerating, setIsGenerating] = useState(false);
   const [disabledStops, setDisabledStops] = useState([]); // Track disabled stop IDs
   const disabledStopsRef = React.useRef(disabledStops);
@@ -6422,12 +6423,16 @@ const FouFouApp = () => {
     
     if (isFirebaseAvailable && database) {
       if (locationToDelete && locationToDelete.firebaseId) {
+        setCustomLocations(prev => prev.filter(loc => loc.id !== locationId));
+        setRouteListKey(k => k + 1);
         database.ref(`cities/${selectedCityId}/locations/${locationToDelete.firebaseId}`).remove()
           .then(() => {
             showToast(t('places.placeDeleted'), 'success');
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting location:', error);
+            setCustomLocations(prev => [...prev, locationToDelete]);
+            setRouteListKey(k => k + 1);
             showToast(t('toast.deleteError'), 'error');
           });
         if (locationToDelete.name) {
@@ -6439,6 +6444,7 @@ const FouFouApp = () => {
     } else {
       const updated = customLocations.filter(loc => loc.id !== locationId);
       setCustomLocations(updated);
+      setRouteListKey(k => k + 1);
       showToast(t('places.placeDeleted'), 'success');
     }
   };
@@ -6774,6 +6780,7 @@ const FouFouApp = () => {
         const ref = await database.ref(`cities/${selectedCityId}/locations`).push(enriched);
         saved = { ...enriched, firebaseId: ref.key };
         setCustomLocations(prev => [...prev, saved]);
+        setRouteListKey(k => k + 1);
         addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
       } catch (error) {
         saveToPending(enriched);
@@ -7591,6 +7598,7 @@ const FouFouApp = () => {
       setCustomLocations(prev => prev.map(loc =>
         loc.id === updatedLocation.id ? { ...updatedLocation, firebaseId } : loc
       ));
+      setRouteListKey(k => k + 1);
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
@@ -9019,7 +9027,7 @@ const FouFouApp = () => {
                 </div>
                 {renderContextHint('hint_route')}
                 {/* Normal stop list grouped by interest */}
-                <div className="max-h-96 overflow-y-auto" style={{ contain: 'content' }}>
+                <div className="max-h-96 overflow-y-auto" key={routeListKey} style={{ contain: 'content' }}>
                   {(() => {
                     const activeLetterMap = {};
                     let letterIdx = 0;

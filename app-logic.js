@@ -281,6 +281,7 @@
   const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
+  const [routeListKey, setRouteListKey] = useState(0); // incremented to force re-render of route stop list after favorites change
   const [isGenerating, setIsGenerating] = useState(false);
   const [disabledStops, setDisabledStops] = useState([]); // Track disabled stop IDs
   const disabledStopsRef = React.useRef(disabledStops);
@@ -6825,6 +6826,9 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       if (locationToDelete && locationToDelete.firebaseId) {
+        // Optimistic local update — remove immediately, don't wait for Firebase listener
+        setCustomLocations(prev => prev.filter(loc => loc.id !== locationId));
+        setRouteListKey(k => k + 1);
         database.ref(`cities/${selectedCityId}/locations/${locationToDelete.firebaseId}`).remove()
           .then(() => {
             console.log('[FIREBASE] Location deleted from shared database');
@@ -6832,6 +6836,9 @@
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting location:', error);
+            // Revert on error
+            setCustomLocations(prev => [...prev, locationToDelete]);
+            setRouteListKey(k => k + 1);
             showToast(t('toast.deleteError'), 'error');
           });
         // Also delete all reviews for this location (by name key)
@@ -6845,6 +6852,7 @@
       // STATIC MODE: localStorage (local)
       const updated = customLocations.filter(loc => loc.id !== locationId);
       setCustomLocations(updated);
+      setRouteListKey(k => k + 1);
       showToast(t('places.placeDeleted'), 'success');
     }
   };
@@ -7209,6 +7217,7 @@
         saved = { ...enriched, firebaseId: ref.key };
         // Immediately update local state so the list refreshes without waiting for Firebase sync
         setCustomLocations(prev => [...prev, saved]);
+        setRouteListKey(k => k + 1);
         addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
       } catch (error) {
         saveToPending(enriched);
@@ -8102,6 +8111,7 @@
       setCustomLocations(prev => prev.map(loc =>
         loc.id === updatedLocation.id ? { ...updatedLocation, firebaseId } : loc
       ));
+      setRouteListKey(k => k + 1);
       
       if (firebaseId) {
         database.ref(`cities/${selectedCityId}/locations/${firebaseId}`).set(locationData)
