@@ -13542,7 +13542,7 @@ const FouFouApp = () => {
                           if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation);
                         }}
                       >
-                        🗺️ {t("general.openInGoogle")}
+                        🗺️ {window.BKK.isCoordOnlyPlace(newLocation) ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : t("general.openInGoogle")}
                       </a>
                     ) : (
                       <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
@@ -14934,7 +14934,8 @@ const FouFouApp = () => {
         const ra = reviewAverages[pk];
         const gR = loc?.googleRating;
         const hasImage = modalImage && modalImage !== '__placeholder__';
-        const mapsUrl = loc ? window.BKK.getGoogleMapsUrl(loc) : null;
+        const mapsUrl = loc ? window.BKK.getNavigateUrl(loc) : null;
+        const isCoordOnly = loc ? window.BKK.isCoordOnlyPlace(loc) : false;
         const interestLabels = (loc?.interests || []).map(id => {
           const opt = allInterestOptions.find(o => o.id === id);
           return opt ? (tLabel(opt) || opt.label) : null;
@@ -15051,15 +15052,19 @@ const FouFouApp = () => {
                     style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >✏️ {t('general.edit') || 'ערוך'}</button>
                 )}
-                {loc?.googlePlaceId && /^(ChIJ|EiI|GhIJ)/.test(loc.googlePlaceId) && (() => {
-                  const googleUrl = window.BKK.getGoogleMapsUrl(loc);
-                  return googleUrl ? (
+                {loc && (() => {
+                  const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
+                  if (!googleViewUrl) return null;
+                  const btnLabel = isCoordOnly
+                    ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל')
+                    : (t('general.openInGoogle') || 'פתח בגוגל');
+                  return (
                     <a
-                      href={googleUrl}
+                      href={googleViewUrl}
                       target="_blank" rel="noopener noreferrer"
                       style={{ flex: 1, minWidth: '80px', background: '#ecfdf5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🗺️ {window.BKK.i18n.currentLang === 'en' ? 'Google' : 'גוגל'}</a>
-                  ) : null;
+                    >🗺️ {btnLabel}</a>
+                  );
                 })()}
               </div>
             </div>

@@ -561,10 +561,11 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
     return url;
   }
   
-  // Coordinate-only
+  // Coordinate-only — use navigation destination URL (not search query)
+  // This opens Google Maps navigation directly to the point, works reliably on mobile
   if (hasCoords) {
-    const url = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-    _log('coords_only', url);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+    _log('coords_only_nav', url);
     return url;
   }
   
@@ -572,7 +573,83 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
   return '#';
 };
 
+/**
+ * Returns true if the place has no real Google representation —
+ * i.e. no valid googlePlaceId and no valid stored mapsUrl.
+ * Used to decide button label: "פתח מקום בגוגל" vs "פתח נקודה בגוגל"
+ * and URL type: search/place page vs navigation destination.
+ */
+window.BKK.isCoordOnlyPlace = (place) => {
+  if (!place) return true;
+  const isValidPid = (pid) => {
+    if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
+    if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
+    if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
+    return false;
+  };
+  if (isValidPid(place.googlePlaceId || place.placeId)) return false;
+  const url = place.mapsUrl || '';
+  if (url && url.includes('google.com/maps') && !url.includes('maps/place/?q=place_id') && !url.match(/\?q=[\d.]+,[\d.]+$/)) return false;
+  return true;
+};
+
 console.log('[UTILS] Loaded successfully');
+
+/**
+ * Returns true if a place has NO Google representation:
+ * - no valid googlePlaceId
+ * - no stored mapsUrl pointing to a real Google place
+ * - no address
+ * Only has coordinates (lat/lng).
+ * Used to decide label and URL type for navigate/open-in-google buttons.
+ */
+window.BKK.isCoordOnlyPlace = (place) => {
+  if (!place) return true;
+  const pid = place.googlePlaceId || place.placeId;
+  const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+  if (isValidPid) return false;
+  if (place.address?.trim()) return false;
+  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') &&
+      !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/) &&
+      !place.mapsUrl.includes('maps.app.goo.gl') &&
+      !place.mapsUrl.includes('goo.gl/')) return false;
+  return true;
+};
+
+/**
+ * Returns the best navigation URL for a place:
+ * - Has Google Place ID / stored mapsUrl → getGoogleMapsUrl (search/place URL)
+ * - Coord-only → direct navigation URL: maps/dir/?destination=lat,lng
+ */
+window.BKK.getNavigateUrl = (place) => {
+  if (!place) return '#';
+  if (!window.BKK.isCoordOnlyPlace(place)) {
+    return window.BKK.getGoogleMapsUrl(place);
+  }
+  // Coord-only: direct navigation
+  if (place.lat && place.lng) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+  }
+  return '#';
+};
+
+/**
+ * Returns the "open in Google" URL — only for places WITH a Google representation.
+ * For coord-only places, returns a map view URL (not a place search).
+ * Returns null if neither is available.
+ */
+window.BKK.getGoogleViewUrl = (place) => {
+  if (!place) return null;
+  if (!window.BKK.isCoordOnlyPlace(place)) {
+    const url = window.BKK.getGoogleMapsUrl(place);
+    return url !== '#' ? url : null;
+  }
+  // Coord-only: show point on map
+  if (place.lat && place.lng) {
+    return `https://www.google.com/maps?q=${place.lat},${place.lng}`;
+  }
+  return null;
+};
 
 // Build Google Maps direction URLs, splitting into multiple if exceeding maxPoints limit
 // maxPoints = total points including origin + destination (default 12 = 10 waypoints + origin + dest)

@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.10.17
+// FouFou app-data.js v3.10.18
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -290,6 +290,8 @@ general: {
   ok: 'אישור',
   openInGoogle: 'פתח בגוגל',
   openInGoogleNoCoords: 'פתח בגוגל (אין קואורדינטות)',
+  openPointInGoogle: 'פתח נקודה בגוגל',
+  openGooglePoint: 'פתח נקודה בגוגל',
   viewOnly: 'צפייה בלבד',
   deletePlace: 'מחק מקום',
   deleteInterest: 'מחק תחום',
@@ -1330,6 +1332,8 @@ general: {
   ok: 'OK',
   openInGoogle: 'Open in Google',
   openInGoogleNoCoords: 'Open in Google (no coords)',
+  openPointInGoogle: 'Show point in Google',
+  openGooglePoint: 'Open point in Google',
   viewOnly: 'View only',
   deletePlace: 'Delete place',
   deleteInterest: 'Delete interest',
@@ -3847,7 +3851,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.10.17';
+window.BKK.VERSION = '3.10.18';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4760,13 +4764,87 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
   }
   
   if (hasCoords) {
-    const url = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-    _log('coords_only', url);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+    _log('coords_only_nav', url);
     return url;
   }
   
   _log('FAILED');
   return '#';
+};
+
+/**
+ * Returns true if the place has no real Google representation —
+ * i.e. no valid googlePlaceId and no valid stored mapsUrl.
+ * Used to decide button label: "פתח מקום בגוגל" vs "פתח נקודה בגוגל"
+ * and URL type: search/place page vs navigation destination.
+ */
+window.BKK.isCoordOnlyPlace = (place) => {
+  if (!place) return true;
+  const isValidPid = (pid) => {
+    if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
+    if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
+    if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
+    return false;
+  };
+  if (isValidPid(place.googlePlaceId || place.placeId)) return false;
+  const url = place.mapsUrl || '';
+  if (url && url.includes('google.com/maps') && !url.includes('maps/place/?q=place_id') && !url.match(/\?q=[\d.]+,[\d.]+$/)) return false;
+  return true;
+};
+
+/**
+ * Returns true if a place has NO Google representation:
+ * - no valid googlePlaceId
+ * - no stored mapsUrl pointing to a real Google place
+ * - no address
+ * Only has coordinates (lat/lng).
+ * Used to decide label and URL type for navigate/open-in-google buttons.
+ */
+window.BKK.isCoordOnlyPlace = (place) => {
+  if (!place) return true;
+  const pid = place.googlePlaceId || place.placeId;
+  const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+  if (isValidPid) return false;
+  if (place.address?.trim()) return false;
+  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') &&
+      !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/) &&
+      !place.mapsUrl.includes('maps.app.goo.gl') &&
+      !place.mapsUrl.includes('goo.gl/')) return false;
+  return true;
+};
+
+/**
+ * Returns the best navigation URL for a place:
+ * - Has Google Place ID / stored mapsUrl → getGoogleMapsUrl (search/place URL)
+ * - Coord-only → direct navigation URL: maps/dir/?destination=lat,lng
+ */
+window.BKK.getNavigateUrl = (place) => {
+  if (!place) return '#';
+  if (!window.BKK.isCoordOnlyPlace(place)) {
+    return window.BKK.getGoogleMapsUrl(place);
+  }
+  if (place.lat && place.lng) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+  }
+  return '#';
+};
+
+/**
+ * Returns the "open in Google" URL — only for places WITH a Google representation.
+ * For coord-only places, returns a map view URL (not a place search).
+ * Returns null if neither is available.
+ */
+window.BKK.getGoogleViewUrl = (place) => {
+  if (!place) return null;
+  if (!window.BKK.isCoordOnlyPlace(place)) {
+    const url = window.BKK.getGoogleMapsUrl(place);
+    return url !== '#' ? url : null;
+  }
+  if (place.lat && place.lng) {
+    return `https://www.google.com/maps?q=${place.lat},${place.lng}`;
+  }
+  return null;
 };
 
 window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
