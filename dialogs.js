@@ -2272,13 +2272,16 @@
                     style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >✏️ {t('general.edit') || 'ערוך'}</button>
                 )}
-                {loc?.googlePlaceId && /^(ChIJ|EiI|GhIJ)/.test(loc.googlePlaceId) && (
-                  <a
-                    href={`https://www.google.com/maps/place/?q=place_id:${loc.googlePlaceId}`}
-                    target="_blank" rel="noopener noreferrer"
-                    style={{ flex: 1, minWidth: '80px', background: '#ecfdf5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                  >🔍 {window.BKK.i18n.currentLang === 'en' ? 'Google' : 'פתח בגוגל'}</a>
-                )}
+                {loc?.googlePlaceId && /^(ChIJ|EiI|GhIJ)/.test(loc.googlePlaceId) && (() => {
+                  const googleUrl = window.BKK.getGoogleMapsUrl(loc);
+                  return googleUrl ? (
+                    <a
+                      href={googleUrl}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ flex: 1, minWidth: '80px', background: '#ecfdf5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                    >🗺️ {window.BKK.i18n.currentLang === 'en' ? 'Google' : 'גוגל'}</a>
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>
