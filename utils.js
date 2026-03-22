@@ -644,9 +644,9 @@ window.BKK.getGoogleViewUrl = (place) => {
     const url = window.BKK.getGoogleMapsUrl(place);
     return url !== '#' ? url : null;
   }
-  // Coord-only: show point on map
+  // Coord-only: show exact pin on map (not a search — place/lat,lng format drops a red pin)
   if (place.lat && place.lng) {
-    return `https://www.google.com/maps?q=${place.lat},${place.lng}`;
+    return `https://www.google.com/maps/place/${place.lat},${place.lng}/@${place.lat},${place.lng},17z`;
   }
   return null;
 };

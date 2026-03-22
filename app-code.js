@@ -8352,7 +8352,7 @@ const FouFouApp = () => {
                             setShowImageModal(true);
                           }
                           else if (stop.lat && stop.lng) {
-                            const url = window.BKK.getGoogleMapsUrl(stop);
+                            const url = window.BKK.getNavigateUrl(stop);
                             if (url && url !== '#') window.open(url, '_blank');
                           }
                         }}
@@ -9165,7 +9165,7 @@ const FouFouApp = () => {
 {/* Action buttons removed from absolute position - trash moved inline */}
                                   
                                   <a
-                                    href={window.BKK.getGoogleMapsUrl(stop)}
+                                    href={window.BKK.getNavigateUrl(stop)}
                                     target="city_explorer_map"
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
@@ -9542,7 +9542,7 @@ const FouFouApp = () => {
                         onClick={() => {
                           if (!route?.optimized) { showToast(t('route.calcRoutePrevious'), 'warning'); return; }
                           if (activeStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
-                          const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
+                          const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getNavigateUrl(activeStops[0]) : '#');
                           if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
                           else if (isCircular) showToast(t('route.circularDesc'), 'info');
                           startActiveTrail(activeStops, formData.interests, formData.area);
@@ -10036,7 +10036,7 @@ const FouFouApp = () => {
                         </div>
                         <div className="p-1">
                           {locs.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
-                            const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                            const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                             const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                             return (
                               <div key={loc.id}
@@ -10100,7 +10100,7 @@ const FouFouApp = () => {
                       </div>
                       <div className="p-1">
                         {groupedPlaces.ungrouped.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
-                          const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                          const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                           const canEdit = true; // permissions handled in edit dialog
                           const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                           return (
@@ -12512,7 +12512,7 @@ const FouFouApp = () => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                      <button onClick={() => { const u = window.BKK.getGoogleMapsUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
+                      <button onClick={() => { const u = window.BKK.getNavigateUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>🗺️ {t('route.navigate') || 'נווט'}</button>
                       <button onClick={() => { setMapReturnPlace(null); setShowMapModal(false); setMapBottomSheet(null); handleEditLocation(loc); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>✏️ {t('places.detailsEdit') || 'ערוך'}</button>
@@ -13532,19 +13532,22 @@ const FouFouApp = () => {
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
                   {/* Row 1: Open in Google + Google Info + Lock toggle */}
                   <div className="flex gap-1.5 items-center">
-                    {newLocation.lat && newLocation.lng ? (
-                      <a
-                        href={window.BKK.getGoogleMapsUrl(newLocation)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
-                        onClick={() => {
-                          if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation);
-                        }}
-                      >
-                        🗺️ {window.BKK.isCoordOnlyPlace(newLocation) ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : t("general.openInGoogle")}
-                      </a>
-                    ) : (
+                    {newLocation.lat && newLocation.lng ? (() => {
+                      const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
+                      const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
+                      const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
+                      return (
+                        <a
+                          href={viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                          onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); }}
+                        >
+                          🗺️ {btnLabel}
+                        </a>
+                      );
+                    })() : (
                       <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>

@@ -509,7 +509,7 @@
                             setShowImageModal(true);
                           }
                           else if (stop.lat && stop.lng) {
-                            const url = window.BKK.getGoogleMapsUrl(stop);
+                            const url = window.BKK.getNavigateUrl(stop);
                             if (url && url !== '#') window.open(url, '_blank');
                           }
                         }}
@@ -1341,7 +1341,7 @@
 {/* Action buttons removed from absolute position - trash moved inline */}
                                   
                                   <a
-                                    href={window.BKK.getGoogleMapsUrl(stop)}
+                                    href={window.BKK.getNavigateUrl(stop)}
                                     target="city_explorer_map"
                                     rel={hasValidCoords ? "noopener noreferrer" : undefined}
                                     className={`block hover:bg-gray-100 transition ${window.BKK.i18n.isRTL() ? 'pr-2' : 'pl-2'}`}
@@ -1722,7 +1722,7 @@
                         onClick={() => {
                           if (!route?.optimized) { showToast(t('route.calcRoutePrevious'), 'warning'); return; }
                           if (activeStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
-                          const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getGoogleMapsUrl(activeStops[0]) : '#');
+                          const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getNavigateUrl(activeStops[0]) : '#');
                           if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
                           else if (isCircular) showToast(t('route.circularDesc'), 'info');
                           startActiveTrail(activeStops, formData.interests, formData.area);
@@ -2218,7 +2218,7 @@
                         </div>
                         <div className="p-1">
                           {locs.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
-                            const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                            const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                             const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                             return (
                               <div key={loc.id}
@@ -2282,7 +2282,7 @@
                       </div>
                       <div className="p-1">
                         {groupedPlaces.ungrouped.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
-                          const mapUrl = (() => { const u = window.BKK.getGoogleMapsUrl(loc); return u === '#' ? null : u; })();
+                          const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                           const canEdit = true; // permissions handled in edit dialog
                           const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                           return (
@@ -4746,7 +4746,7 @@
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                      <button onClick={() => { const u = window.BKK.getGoogleMapsUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
+                      <button onClick={() => { const u = window.BKK.getNavigateUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>🗺️ {t('route.navigate') || 'נווט'}</button>
                       <button onClick={() => { setMapReturnPlace(null); setShowMapModal(false); setMapBottomSheet(null); handleEditLocation(loc); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>✏️ {t('places.detailsEdit') || 'ערוך'}</button>

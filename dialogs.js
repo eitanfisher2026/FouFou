@@ -726,19 +726,22 @@
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
                   {/* Row 1: Open in Google + Google Info + Lock toggle */}
                   <div className="flex gap-1.5 items-center">
-                    {newLocation.lat && newLocation.lng ? (
-                      <a
-                        href={window.BKK.getGoogleMapsUrl(newLocation)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
-                        onClick={() => {
-                          if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation);
-                        }}
-                      >
-                        🗺️ {window.BKK.isCoordOnlyPlace(newLocation) ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : t("general.openInGoogle")}
-                      </a>
-                    ) : (
+                    {newLocation.lat && newLocation.lng ? (() => {
+                      const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
+                      const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
+                      const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
+                      return (
+                        <a
+                          href={viewUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                          onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); }}
+                        >
+                          🗺️ {btnLabel}
+                        </a>
+                      );
+                    })() : (
                       <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
