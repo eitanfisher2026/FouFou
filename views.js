@@ -2763,7 +2763,8 @@
 
                           const builtIn   = (sourceCity.interests || []).filter(i => !isLocal(i));
                           const uncovered = (sourceCity.uncoveredInterests || []).filter(i => !isLocal(i));
-                          const fromFirebase = (customInterests || []).filter(i => !isLocal(i) || isFromSource(i));
+                          // Only truly global Firebase interests (no cityId, no scope='local' anywhere)
+                          const fromFirebase = (customInterests || []).filter(i => !isLocal(i));
 
                           // Dedupe by id across all three sources
                           const seen = new Set();
@@ -2773,7 +2774,10 @@
                             return true;
                           });
 
-                          const skippedBuiltIn = (sourceCity.interests || []).filter(i => isLocal(i)).length;
+                          // Count skipped: local from city file + local from Firebase
+                          const skippedFile = (sourceCity.interests || []).filter(i => isLocal(i)).length;
+                          const skippedFirebase = (customInterests || []).filter(i => isLocal(i)).length;
+                          const skippedBuiltIn = skippedFile + skippedFirebase;
                           const currentCount = (targetCity.interests?.length || 0) + (targetCity.uncoveredInterests?.length || 0);
 
                           const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?\n` +
