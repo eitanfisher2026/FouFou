@@ -4108,7 +4108,9 @@
                     {i.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>tag</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {allVisible ? (
-                      <span title="חשוף בכל הערים" style={{ fontSize: '16px', flexShrink: 0, cursor: 'default' }}>🌍</span>
+                      <button onClick={() => toggleCityForInterest(i.id, selectedCityId)}
+                        title="חשוף בכל הערים — לחץ להסתיר מעיר זו"
+                        style={{ fontSize: '16px', flexShrink: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0, lineHeight: 1 }}>🌍</button>
                     ) : (
                       <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
                         {allCities.map(city => {
