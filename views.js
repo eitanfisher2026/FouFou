@@ -895,7 +895,7 @@
                       style={{ padding: '4px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
                     >
                       {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).map(city => (
-                        <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
+                        <option key={city.id} value={city.id}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</option>
                       ))}
                     </select>
                   </div>
@@ -2643,7 +2643,7 @@
                     style={{ padding: '6px 10px', borderRadius: '8px', border: '2px solid #e11d48', fontSize: '13px', fontWeight: 'bold', color: '#e11d48', background: '#fef2f2', cursor: 'pointer', minWidth: '140px' }}
                   >
                     {Object.values(window.BKK.cities || {}).map(city => (
-                      <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
+                      <option key={city.id} value={city.id}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</option>
                     ))}
                   </select>
                   <button onClick={() => setShowAddCityDialog(true)}
@@ -2660,22 +2660,24 @@
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: isActive ? '#ecfdf5' : '#fef2f2', borderRadius: '8px', border: `1px solid ${isActive ? '#a7f3d0' : '#fecaca'}`, flexWrap: 'wrap' }}>
                       {isUnlocked ? (
                         <React.Fragment>
-                          {/* City icon — shows current, click to upload file or pick emoji */}
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                            <div style={{ width: '42px', height: '42px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', overflow: 'hidden' }}>
-                              {city.icon?.startsWith?.('data:') ? <img src={city.icon} alt="" style={{ width: '36px', height: '36px', objectFit: 'contain' }} /> : (city.icon || '📍')}
+                          {/* City icon — shows current, upload or emoji */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '52px' }}>
+                            <div style={{ width: '44px', height: '44px', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', overflow: 'hidden' }}>
+                              {city.icon?.startsWith?.('data:') ? <img src={city.icon} alt="" style={{ width: '38px', height: '38px', objectFit: 'contain' }} /> : (city.icon || '📍')}
                             </div>
-                            <label style={{ fontSize: '9px', padding: '1px 4px', border: '1px dashed #6b7280', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                              📁 File
-                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0]; if (!file) return;
-                                const compressed = await window.BKK.compressIcon(file, 80);
-                                if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
-                              }} />
-                            </label>
-                            <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
-                              style={{ fontSize: '9px', padding: '1px 4px', border: '1px dashed #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }}
-                            >✨</button>
+                            <div style={{ display: 'flex', gap: '3px' }}>
+                              <label style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontWeight: 'bold' }} title="העלה קובץ">
+                                📁
+                                <input type="file" accept="image/*,image/jpeg,image/jfif" className="hidden" onChange={async (e) => {
+                                  const file = e.target.files?.[0]; if (!file) return;
+                                  const compressed = await window.BKK.compressIcon(file, 80);
+                                  if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                                }} />
+                              </label>
+                              <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                                style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
+                              >✨</button>
+                            </div>
                           </div>
                           <input type="text" value={city.name || ''}
                             onChange={(e) => { city.name = e.target.value; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].name = e.target.value; setCityModified(true); setCityEditCounter(c => c + 1); }}
@@ -2689,7 +2691,7 @@
                           />
                         </React.Fragment>
                       ) : (
-                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{city.icon} {tLabel(city)}</span>
+                        <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</span>
                       )}
                       <span style={{ fontSize: '10px', color: '#6b7280' }}>{city.areas?.length || 0} {t('general.areas')} · {city.interests?.length || 0} {t('nav.myInterests')}</span>
                           <button onClick={() => {
@@ -2736,40 +2738,44 @@
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
-                      {/* iconLeft — text input + emoji picker + file upload */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                        <div style={{ width: '36px', height: '30px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', overflow: 'hidden' }}>
-                          {theme.iconLeft?.startsWith?.('data:') ? <img src={theme.iconLeft} alt="" style={{ width: '28px', height: '28px', objectFit: 'contain' }} /> : (theme.iconLeft || '◀')}
+                      {/* iconLeft */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                        <div style={{ width: '36px', height: '36px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden' }}>
+                          {theme.iconLeft?.startsWith?.('data:') ? <img src={theme.iconLeft} alt="" style={{ width: '30px', height: '30px', objectFit: 'contain' }} /> : (theme.iconLeft || '◀')}
                         </div>
-                        <label style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #6b7280', borderRadius: '3px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }}>
-                          📁<input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                            const file = e.target.files?.[0]; if (!file) return;
-                            const compressed = await window.BKK.compressIcon(file, 64);
-                            if (compressed) { city.theme.iconLeft = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
-                          }} />
-                        </label>
-                        <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
-                          style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
-                        >✨</button>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          <label style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }} title="העלה קובץ">
+                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              const compressed = await window.BKK.compressIcon(file, 64);
+                              if (compressed) { city.theme.iconLeft = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                            }} />
+                          </label>
+                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                            style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
+                          >✨</button>
+                        </div>
                       </div>
                       <div style={{ width: '60px', height: '22px', borderRadius: '6px', background: theme.color || '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ color: 'white', fontSize: '9px', fontWeight: 'bold' }}>{tLabel(city)}</span>
                       </div>
-                      {/* iconRight — text input + emoji picker + file upload */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                        <div style={{ width: '36px', height: '30px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', overflow: 'hidden' }}>
-                          {theme.iconRight?.startsWith?.('data:') ? <img src={theme.iconRight} alt="" style={{ width: '28px', height: '28px', objectFit: 'contain' }} /> : (theme.iconRight || '▶')}
+                      {/* iconRight */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                        <div style={{ width: '36px', height: '36px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', overflow: 'hidden' }}>
+                          {theme.iconRight?.startsWith?.('data:') ? <img src={theme.iconRight} alt="" style={{ width: '30px', height: '30px', objectFit: 'contain' }} /> : (theme.iconRight || '▶')}
                         </div>
-                        <label style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #6b7280', borderRadius: '3px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }}>
-                          📁<input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                            const file = e.target.files?.[0]; if (!file) return;
-                            const compressed = await window.BKK.compressIcon(file, 64);
-                            if (compressed) { city.theme.iconRight = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
-                          }} />
-                        </label>
-                        <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
-                          style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
-                        >✨</button>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          <label style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }} title="העלה קובץ">
+                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              const compressed = await window.BKK.compressIcon(file, 64);
+                              if (compressed) { city.theme.iconRight = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                            }} />
+                          </label>
+                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                            style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
+                          >✨</button>
+                        </div>
                       </div>
                     </div>
                   );
