@@ -2447,7 +2447,8 @@
                       <span className="text-lg flex-shrink-0">{interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-5 h-5 object-contain" /> : interest.icon}</span>
                       <span className={`font-medium text-sm truncate ${isHidden ? 'text-red-400 line-through' : isDraft ? 'text-amber-700' : !effectiveActive ? 'text-gray-500' : ''}`}>{tLabel(interest)}</span>
                       {favCount > 0 && <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>({favCount})</span>}
-                      {!isValid && <span className="text-red-500 text-xs flex-shrink-0" title={t("interests.missingSearchConfig")}>⚠️</span>}
+                      {interestConfig[interest.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
+                      {!isValid && !interestConfig[interest.id]?.noGoogleSearch && <span className="text-red-500 text-xs flex-shrink-0" title={t("interests.missingSearchConfig")}>⚠️</span>}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       {/* Map button — show favorites filtered to this interest */}
@@ -4164,7 +4165,7 @@
                   <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isDraft ? '#fde68a' : '#e5e7eb', background: isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
                     <span style={{ flexShrink: 0 }}>{icon}</span>
                     <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{tLabel(i) || i.label}</span>
-                    {i.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
+                    {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {allVisible ? (
                       <button onClick={() => toggleCityForInterest(i.id, selectedCityId)}
@@ -4247,7 +4248,7 @@
                   </div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <span>עיר: 🟢 חשוף · ⚫ מוסתר (לחץ על אייקון עיר לשינוי)</span>
-                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל</span>
+                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל (מוגדר בהגדרות תחום)</span>
                   </div>
                   <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
                     {/* Exposed section */}

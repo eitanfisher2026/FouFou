@@ -247,14 +247,14 @@ window.BKK.cityData.bangkok = {
       "icon": "🌳",
       "group": "outdoors"
     },
-    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
-    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
-    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
-    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
-    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
-    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
-    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
+    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa"},
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
+    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping"},
+    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences"},
+    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical"},
+    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation"},
+    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport"},
+    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business"}
   ],
   "interestToGooglePlaces": {
     "temples": [

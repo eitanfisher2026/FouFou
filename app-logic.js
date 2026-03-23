@@ -6814,34 +6814,29 @@
   };
 
   // Check if interest has valid search config
+  // Check if interest has valid search config
+  // RULE: behavior (noGoogleSearch, types, textSearch) comes from interestConfig (Firebase) only
+  // City files only indicate availability — NOT behavior
   const isInterestValid = (interestId) => {
-    // 1. Manual (privateOnly) interests are ALWAYS valid - no search config needed
-    const interestObj = allInterestOptions.find(o => o.id === interestId);
-    // noGoogleSearch interests: valid for tagging, never searched in Google
-    if (interestObj?.noGoogleSearch) return false;
-    if (interestObj?.privateOnly) return true;
-    const rawCustom = customInterests.find(o => o.id === interestId);
-    if (rawCustom?.noGoogleSearch) return false;
-    if (rawCustom?.privateOnly) return true;
-    
-    // 2. Non-manual interests need search config (types or textSearch)
-    // Check custom interestConfig
     const config = interestConfig[interestId];
-    if (config) {
-      if (config.textSearch && config.textSearch.trim()) return true;
-      // types can be array or comma-separated string
-      if (config.types) {
-        const typesArr = Array.isArray(config.types) ? config.types : config.types.toString().split(',').map(s=>s.trim()).filter(Boolean);
-        if (typesArr.length > 0) return true;
-      }
+    // noGoogleSearch = internal interest, no Google search ever
+    if (config?.noGoogleSearch) return false;
+    // privateOnly = manual tagging only, always valid
+    const interestObj = allInterestOptions.find(o => o.id === interestId);
+    if (interestObj?.privateOnly || config?.privateOnly) return true;
+    const rawCustom = customInterests.find(o => o.id === interestId);
+    if (rawCustom?.privateOnly) return true;
+    // Has search config in Firebase?
+    if (config?.textSearch?.trim()) return true;
+    if (config?.types) {
+      const typesArr = Array.isArray(config.types) ? config.types : config.types.toString().split(',').map(s=>s.trim()).filter(Boolean);
+      if (typesArr.length > 0) return true;
     }
-    
-    // Check city's built-in search config (current city)
+    // Has search config in city file (built-in)?
     const cityPlaces = window.BKK.interestToGooglePlaces || {};
     const cityTextSearch = window.BKK.textSearchInterests || {};
-    if (cityPlaces[interestId] && cityPlaces[interestId].length > 0) return true;
+    if (cityPlaces[interestId]?.length > 0) return true;
     if (cityTextSearch[interestId]) return true;
-
     return false;
   };
 

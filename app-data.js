@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.24
+// FouFou app-data.js v3.11.25
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2454,14 +2454,14 @@ window.BKK.cityData.bangkok = {
       "icon": "🌳",
       "group": "outdoors"
     },
-    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
-    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
-    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
-    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
-    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
-    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
-    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
+    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa"},
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
+    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping"},
+    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences"},
+    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical"},
+    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation"},
+    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport"},
+    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business"}
   ],
   "interestToGooglePlaces": {
     "temples": [
@@ -3065,9 +3065,9 @@ window.BKK.cityData.gushdan = {
       "labelEn": "History",
       "icon": "🏚️"
     },
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
-    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness", "noGoogleSearch": true},
-    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking", "noGoogleSearch": true}
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
+    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness"},
+    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking"}
   ],
   "interestToGooglePlaces": {
     "food": [
@@ -3712,7 +3712,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.24';
+window.BKK.VERSION = '3.11.25';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
