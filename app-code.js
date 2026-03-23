@@ -5483,7 +5483,7 @@ const FouFouApp = () => {
 
       const fetchResults = await Promise.all(searchInterests.map(async interest => {
         const interestObj = allInterestOptions.find(o => o.id === interest);
-        if (interestObj?.privateOnly) {
+        if (interestObj?.privateOnly || interestConfig?.[interest]?.noGoogleSearch) {
           return { interest, places: [] };
         }
         try {
@@ -5940,7 +5940,7 @@ const FouFouApp = () => {
       
       if (placesToAdd.length < fetchCount) {
         const interestObjFM = allInterestOptions.find(o => o.id === interest);
-        const isPrivate = interestObjFM?.privateOnly || false;
+        const isPrivate = interestObjFM?.privateOnly || interestConfig?.[interest]?.noGoogleSearch || false;
         
         if (isPrivate) {
         } else {
@@ -6074,7 +6074,7 @@ const FouFouApp = () => {
         
         if (placesForInterest.length < perInterest) {
           const interestObjFA = allInterestOptions.find(o => o.id === interest);
-          const isPrivateAll = interestObjFA?.privateOnly || false;
+          const isPrivateAll = interestObjFA?.privateOnly || interestConfig?.[interestId]?.noGoogleSearch || false;
           
           if (!isPrivateAll) {
           const needed = perInterest - placesForInterest.length;
@@ -11803,25 +11803,7 @@ const FouFouApp = () => {
                         >
                           ✅ Mark migration done (skip re-run)
                         </button>
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm('נקה types מתחומי noGoogleSearch ב-interestConfig?')) return;
-                            const noGoogleIds = allInterestOptions.filter(i => i.noGoogleSearch).map(i => i.id);
-                            let fixed = 0;
-                            for (const id of noGoogleIds) {
-                              const snap = await database.ref(`settings/interestConfig/${id}`).once('value');
-                              const cfg = snap.val();
-                              if (cfg?.types) {
-                                await database.ref(`settings/interestConfig/${id}/types`).remove();
-                                fixed++;
-                              }
-                            }
-                            showToast(`✅ נוקו types מ-${fixed} תחומים ידניים`, 'success');
-                          }}
-                          className="w-full bg-purple-600 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
-                        >
-                          🏷️ נקה types מתחומים פנימיים (noGoogleSearch)
-                        </button>
+
                         <button
                           onClick={async () => {
                             if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
@@ -14115,15 +14097,21 @@ const FouFouApp = () => {
                   {/* Manual/Google toggle */}
                   <div className="flex items-center gap-2 mb-3 pb-2" style={{ borderBottom: '1px solid #bfdbfe' }}>
                     <button type="button"
-                      onClick={() => setNewInterest({...newInterest, privateOnly: !newInterest.privateOnly})}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newInterest.privateOnly ? 'border-purple-500 bg-purple-500 text-white shadow-md' : 'border-green-500 bg-green-500 text-white shadow-md'}`}
+                      onClick={() => setNewInterest({...newInterest, noGoogleSearch: !newInterest.noGoogleSearch, privateOnly: false})}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${
+                        newInterest.noGoogleSearch ? 'border-gray-500 bg-gray-500 text-white shadow-md'
+                        : 'border-green-500 bg-green-500 text-white shadow-md'
+                      }`}
                     >
-                      {newInterest.privateOnly ? '✏️' : '🌐'} {newInterest.privateOnly ? t("interests.privateInterest") : t("interests.searchesGoogle")}
+                      {newInterest.noGoogleSearch ? '🏠' : '🌐'}
+                      {newInterest.noGoogleSearch ? 'פנימי' : t("interests.searchesGoogle")}
                     </button>
-                    <span className="text-[9px] text-gray-500">{newInterest.privateOnly ? t("interests.myPlacesOnly") : t("interests.searchesGoogle")}</span>
+                    <span className="text-[9px] text-gray-500">
+                      {newInterest.noGoogleSearch ? 'ללא חיפוש גוגל — תיוג ידני בלבד' : t("interests.searchesGoogle")}
+                    </span>
                   </div>
                   
-                  <div style={{ opacity: newInterest.privateOnly ? 0.3 : 1, pointerEvents: newInterest.privateOnly ? 'none' : 'auto' }}>
+                  <div style={{ opacity: (newInterest.privateOnly || newInterest.noGoogleSearch) ? 0.3 : 1, pointerEvents: (newInterest.privateOnly || newInterest.noGoogleSearch) ? 'none' : 'auto' }}>
                   
                   <div className="mb-2">
                     <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t("general.searchMode")}:`}</label>
@@ -14578,10 +14566,17 @@ const FouFouApp = () => {
                         window._savingInterest = true;
                         
                         const searchConfig = {};
-                        if (newInterest.searchMode === 'text' && newInterest.textSearch) {
-                          searchConfig.textSearch = newInterest.textSearch.trim();
-                        } else if (newInterest.types) {
-                          searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                        if (newInterest.noGoogleSearch) {
+                          searchConfig.noGoogleSearch = true;
+                        } else if (newInterest.privateOnly) {
+                          searchConfig.privateOnly = true;
+                        } else {
+                          searchConfig.noGoogleSearch = null;
+                          if (newInterest.searchMode === 'text' && newInterest.textSearch) {
+                            searchConfig.textSearch = newInterest.textSearch.trim();
+                          } else if (newInterest.types) {
+                            searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                          }
                         }
                         if (newInterest.blacklist) {
                           searchConfig.blacklist = newInterest.blacklist.split(',').map(t => t.trim().toLowerCase()).filter(t => t);

@@ -5740,8 +5740,8 @@
       // Step B: fire all Google API calls in parallel
       const fetchResults = await Promise.all(searchInterests.map(async interest => {
         const interestObj = allInterestOptions.find(o => o.id === interest);
-        if (interestObj?.privateOnly) {
-          console.log(`[ROUTE] Skipping API for private interest: ${interest}`);
+        if (interestObj?.privateOnly || interestConfig?.[interest]?.noGoogleSearch) {
+          console.log(`[ROUTE] Skipping API for internal/private interest: ${interest}`);
           return { interest, places: [] };
         }
         try {
@@ -6289,7 +6289,7 @@
       if (placesToAdd.length < fetchCount) {
         // Check privateOnly
         const interestObjFM = allInterestOptions.find(o => o.id === interest);
-        const isPrivate = interestObjFM?.privateOnly || false;
+        const isPrivate = interestObjFM?.privateOnly || interestConfig?.[interest]?.noGoogleSearch || false;
         
         if (isPrivate) {
           console.log(`[FETCH_MORE] Private interest ${interest} - skipping API call`);
@@ -6434,7 +6434,7 @@
         if (placesForInterest.length < perInterest) {
           // Check privateOnly
           const interestObjFA = allInterestOptions.find(o => o.id === interest);
-          const isPrivateAll = interestObjFA?.privateOnly || false;
+          const isPrivateAll = interestObjFA?.privateOnly || interestConfig?.[interestId]?.noGoogleSearch || false;
           
           if (!isPrivateAll) {
           const needed = perInterest - placesForInterest.length;

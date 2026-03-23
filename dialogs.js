@@ -1154,15 +1154,21 @@
                   {/* Manual/Google toggle */}
                   <div className="flex items-center gap-2 mb-3 pb-2" style={{ borderBottom: '1px solid #bfdbfe' }}>
                     <button type="button"
-                      onClick={() => setNewInterest({...newInterest, privateOnly: !newInterest.privateOnly})}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${newInterest.privateOnly ? 'border-purple-500 bg-purple-500 text-white shadow-md' : 'border-green-500 bg-green-500 text-white shadow-md'}`}
+                      onClick={() => setNewInterest({...newInterest, noGoogleSearch: !newInterest.noGoogleSearch, privateOnly: false})}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${
+                        newInterest.noGoogleSearch ? 'border-gray-500 bg-gray-500 text-white shadow-md'
+                        : 'border-green-500 bg-green-500 text-white shadow-md'
+                      }`}
                     >
-                      {newInterest.privateOnly ? '✏️' : '🌐'} {newInterest.privateOnly ? t("interests.privateInterest") : t("interests.searchesGoogle")}
+                      {newInterest.noGoogleSearch ? '🏠' : '🌐'}
+                      {newInterest.noGoogleSearch ? 'פנימי' : t("interests.searchesGoogle")}
                     </button>
-                    <span className="text-[9px] text-gray-500">{newInterest.privateOnly ? t("interests.myPlacesOnly") : t("interests.searchesGoogle")}</span>
+                    <span className="text-[9px] text-gray-500">
+                      {newInterest.noGoogleSearch ? 'ללא חיפוש גוגל — תיוג ידני בלבד' : t("interests.searchesGoogle")}
+                    </span>
                   </div>
                   
-                  <div style={{ opacity: newInterest.privateOnly ? 0.3 : 1, pointerEvents: newInterest.privateOnly ? 'none' : 'auto' }}>
+                  <div style={{ opacity: (newInterest.privateOnly || newInterest.noGoogleSearch) ? 0.3 : 1, pointerEvents: (newInterest.privateOnly || newInterest.noGoogleSearch) ? 'none' : 'auto' }}>
                   
                   <div className="mb-2">
                     <label className="block text-[10px] text-gray-600 mb-1" style={{ direction: 'ltr' }}>{`${t("general.searchMode")}:`}</label>
@@ -1621,10 +1627,19 @@
                         window._savingInterest = true;
                         
                         const searchConfig = {};
-                        if (newInterest.searchMode === 'text' && newInterest.textSearch) {
-                          searchConfig.textSearch = newInterest.textSearch.trim();
-                        } else if (newInterest.types) {
-                          searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                        if (newInterest.noGoogleSearch) {
+                          // Internal interest — no Google search
+                          searchConfig.noGoogleSearch = true;
+                        } else if (newInterest.privateOnly) {
+                          searchConfig.privateOnly = true;
+                        } else {
+                          // Google search interest — clear noGoogleSearch flag if previously set
+                          searchConfig.noGoogleSearch = null;
+                          if (newInterest.searchMode === 'text' && newInterest.textSearch) {
+                            searchConfig.textSearch = newInterest.textSearch.trim();
+                          } else if (newInterest.types) {
+                            searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                          }
                         }
                         if (newInterest.blacklist) {
                           searchConfig.blacklist = newInterest.blacklist.split(',').map(t => t.trim().toLowerCase()).filter(t => t);

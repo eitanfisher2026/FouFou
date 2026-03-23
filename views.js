@@ -3966,25 +3966,7 @@
                         >
                           ✅ Mark migration done (skip re-run)
                         </button>
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm('נקה types מתחומי noGoogleSearch ב-interestConfig?')) return;
-                            const noGoogleIds = allInterestOptions.filter(i => i.noGoogleSearch).map(i => i.id);
-                            let fixed = 0;
-                            for (const id of noGoogleIds) {
-                              const snap = await database.ref(`settings/interestConfig/${id}`).once('value');
-                              const cfg = snap.val();
-                              if (cfg?.types) {
-                                await database.ref(`settings/interestConfig/${id}/types`).remove();
-                                fixed++;
-                              }
-                            }
-                            showToast(`✅ נוקו types מ-${fixed} תחומים ידניים`, 'success');
-                          }}
-                          className="w-full bg-purple-600 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-purple-700 transition"
-                        >
-                          🏷️ נקה types מתחומים פנימיים (noGoogleSearch)
-                        </button>
+
                         <button
                           onClick={async () => {
                             if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
