@@ -2041,30 +2041,22 @@
               {/* Row 1: Group by + Search */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '6px', flexWrap: 'wrap' }}>
                 <div className="flex items-center gap-2">
-                  {/* Group by toggle */}
-                  <div className="flex bg-gray-200 rounded-lg p-0.5">
-                    <button
-                      onClick={() => setPlacesGroupBy('interest')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${placesGroupBy === 'interest' ? 'bg-white shadow text-purple-700' : 'text-gray-500'}`}
-                    >
-                      {t("places.byInterest")}
-                    </button>
-                    <button
-                      onClick={() => setPlacesGroupBy('area')}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${placesGroupBy === 'area' ? 'bg-white shadow text-purple-700' : 'text-gray-500'}`}
-                    >
-                      {t("places.byArea")}
-                    </button>
-                  </div>
-                  {/* Sort by selector */}
+                  {/* Unified group+sort dropdown */}
                   <select
-                    value={placesSortBy}
-                    onChange={e => setPlacesSortBy(e.target.value)}
-                    style={{ padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '10px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
+                    value={`${placesGroupBy}__${placesSortBy}`}
+                    onChange={e => {
+                      const [group, sort] = e.target.value.split('__');
+                      setPlacesGroupBy(group);
+                      setPlacesSortBy(sort);
+                    }}
+                    style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
                   >
-                    <option value="updatedAt">🕐 {t('places.sortByUpdated') || 'עודכן לאחרונה'}</option>
-                    <option value="addedAt">📅 {t('places.sortByAdded') || 'נוסף לאחרונה'}</option>
-                    <option value="name">🔤 {t('places.sortByName') || 'שם'}</option>
+                    <option value="interest__updatedAt">🏷️ {t('places.byInterest')} · {t('places.sortByUpdated') || 'עודכן'}</option>
+                    <option value="interest__addedAt">🏷️ {t('places.byInterest')} · {t('places.sortByAdded') || 'נוסף'}</option>
+                    <option value="interest__name">🏷️ {t('places.byInterest')} · {t('places.sortByName') || 'שם'}</option>
+                    <option value="area__updatedAt">📍 {t('places.byArea')} · {t('places.sortByUpdated') || 'עודכן'}</option>
+                    <option value="area__addedAt">📍 {t('places.byArea')} · {t('places.sortByAdded') || 'נוסף'}</option>
+                    <option value="area__name">📍 {t('places.byArea')} · {t('places.sortByName') || 'שם'}</option>
                   </select>
                   {/* Favorites map button */}
                   <button
@@ -3855,7 +3847,8 @@
                         const link = document.createElement('a');
                         link.href = url;
                         const dateStr = new Date().toISOString().split('T')[0];
-                        link.download = `bangkok-data-${dateStr}.json`;
+                        const cityNameEn = (window.BKK.selectedCity?.nameEn || window.BKK.selectedCity?.name || selectedCityId || 'city').toLowerCase().replace(/\s+/g, '-');
+                        link.download = `foufou-${cityNameEn}-${dateStr}.json`;
                         link.click();
                         URL.revokeObjectURL(url);
                         

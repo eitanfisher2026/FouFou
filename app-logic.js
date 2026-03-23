@@ -4785,7 +4785,7 @@
           if (tb === 0) return -1;
           return tb - ta; // newest first
         }
-        if (placesSortBy === 'name') return a.name.localeCompare(b.name, 'he');
+        if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
         if (placesGroupBy === 'interest') {
           const aArea = tLabel(areaMap[(a.areas || [a.area])[0]]) || '';
           const bArea = tLabel(areaMap[(b.areas || [b.area])[0]]) || '';
