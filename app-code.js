@@ -11914,12 +11914,13 @@ const FouFouApp = () => {
               const openInterestDialogFromSettings = (interest) => {
                 const cfg = interestConfig[interest.id] || {};
                 const isFromCustom = customInterests.some(ci => ci.id === interest.id);
+                const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id, label: interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
                   icon: interest.icon || '📍', searchMode: cfg.textSearch ? 'text' : 'types',
-                  types: (cfg.types || []).join(', '), textSearch: cfg.textSearch || '',
-                  blacklist: (cfg.blacklist || []).join(', '), nameKeywords: (cfg.nameKeywords || []).join(', '),
+                  types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
+                  blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
                   minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
                   lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
                   privateOnly: interest.privateOnly || false, locked: interest.locked || false,
@@ -11932,7 +11933,7 @@ const FouFouApp = () => {
                   minGap: cfg.minGap != null ? cfg.minGap : 1,
                   bestTime: cfg.bestTime || interest.bestTime || 'anytime',
                   group: cfg.group || interest.group || '',
-                  dedupRelated: cfg.dedupRelated || interest.dedupRelated || [],
+                  dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
                   defaultEnabled: cfg.defaultEnabled !== undefined ? cfg.defaultEnabled : true,
                   noGoogleSearch: interest.noGoogleSearch || false,
                   color: cfg.color || interest.color || '',
