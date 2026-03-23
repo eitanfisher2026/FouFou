@@ -1386,26 +1386,39 @@
                 </div>
 
                 {/* Related interests for dedup */}
-                {isUnlocked && (
-                <div style={{ padding: '8px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#7c3aed', marginBottom: '4px' }}>🔗 {t('interests.dedupRelated')}</div>
-                  <div style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '6px' }}>{t('interests.dedupRelatedDesc')}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {allInterestOptions.filter(o => o.id !== (editingCustomInterest?.id || newInterest.id) && interestStatus[o.id] !== false).map(o => {
-                      const sel = (newInterest.dedupRelated || []).includes(o.id);
-                      return (
-                        <button key={o.id} type="button"
-                          onClick={() => {
-                            const cur = newInterest.dedupRelated || [];
-                            setNewInterest({...newInterest, dedupRelated: sel ? cur.filter(x => x !== o.id) : [...cur, o.id]});
-                          }}
-                          style={{ padding: '2px 6px', fontSize: '9px', fontWeight: 'bold', borderRadius: '6px', border: sel ? '2px solid #8b5cf6' : '1px solid #e5e7eb', background: sel ? '#ede9fe' : 'white', color: sel ? '#6d28d9' : '#9ca3af', cursor: 'pointer' }}
-                        >{o.icon?.startsWith?.('data:') ? '📍' : (o.icon || '📍')} {tLabel(o)}</button>
-                      );
-                    })}
-                  </div>
-                </div>
-                )}
+                {isUnlocked && (() => {
+                  const options = allInterestOptions.filter(o => o.id !== (editingCustomInterest?.id || newInterest.id));
+                  const selected = newInterest.dedupRelated || [];
+                  const toggleDedup = (id) => {
+                    const cur = newInterest.dedupRelated || [];
+                    setNewInterest({...newInterest, dedupRelated: cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]});
+                  };
+                  return (
+                    <div style={{ padding: '8px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#7c3aed', marginBottom: '4px' }}>🔗 {t('interests.dedupRelated')}</div>
+                      <div style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '6px' }}>{t('interests.dedupRelatedDesc')}</div>
+                      <button type="button" onClick={() => setShowDedupDropdown(v => !v)}
+                        style={{ width: '100%', padding: '5px 8px', borderRadius: '7px', border: '1px solid #d8b4fe', background: '#f5f3ff', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#6d28d9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{selected.length === 0 ? '— ללא קישורים' : `${selected.length} מקושרים`}</span>
+                        <span style={{ fontSize: '9px' }}>{showDedupDropdown ? '▲' : '▼'}</span>
+                      </button>
+                      {showDedupDropdown && (
+                        <div style={{ marginTop: '4px', border: '1px solid #e9d5ff', borderRadius: '7px', background: 'white', maxHeight: '160px', overflowY: 'auto', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                          {options.map(o => {
+                            const isSel = selected.includes(o.id);
+                            return (
+                              <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '4px 8px', cursor: 'pointer', background: isSel ? '#faf5ff' : 'white', borderBottom: '1px solid #f3e8ff' }}>
+                                <input type="checkbox" checked={isSel} onChange={() => toggleDedup(o.id)} style={{ cursor: 'pointer', width: '13px', height: '13px', flexShrink: 0 }} />
+                                <span style={{ fontSize: '13px', flexShrink: 0 }}>{o.icon?.startsWith?.('data:') ? '📍' : (o.icon || '📍')}</span>
+                                <span style={{ fontSize: '11px', fontWeight: isSel ? 'bold' : 'normal', color: isSel ? '#6d28d9' : '#374151' }}>{tLabel(o) || o.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
 
                                 {/* Counter for auto-naming — only in edit mode + admin */}

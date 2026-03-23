@@ -626,6 +626,7 @@
   // Interest search configuration (editable)
   const [interestConfig, setInterestConfig] = useState({});
   const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
+  const [showDedupDropdown, setShowDedupDropdown] = useState(false); // dedupRelated dropdown in interest dialog
 
   // System parameters — configurable scoring/optimization values
   if (!window.BKK._defaultSystemParams) {
