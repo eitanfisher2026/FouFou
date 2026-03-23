@@ -12539,6 +12539,17 @@ const FouFouApp = () => {
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button onClick={() => { const u = window.BKK.getNavigateUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>🗺️ {t('route.navigate') || 'נווט'}</button>
+                      {(() => {
+                        const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
+                        if (!googleViewUrl) return null;
+                        const isCoordOnly = window.BKK.isCoordOnlyPlace(loc);
+                        const btnLabel = isCoordOnly ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : (t('general.openInGoogle') || 'פתח בגוגל');
+                        return (
+                          <a href={googleViewUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #6ee7b7', background: '#ecfdf5', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#065f46', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >🔍 {btnLabel}</a>
+                        );
+                      })()}
                       <button onClick={() => { setMapReturnPlace(null); setShowMapModal(false); setMapBottomSheet(null); handleEditLocation(loc); }}
                         style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>✏️ {t('places.detailsEdit') || 'ערוך'}</button>
                       <button onClick={() => setMapBottomSheet(null)}
