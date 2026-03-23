@@ -222,7 +222,7 @@
             }}
             title={t("general.menu")}
           >☰</button>
-          <span style={{ fontSize: '14px' }}>{theme.iconLeft || window.BKK.selectedCity?.secondaryIcon || '🏙️'}</span>
+          <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>{theme.iconLeft?.startsWith?.('data:') ? <img src={theme.iconLeft} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', verticalAlign: 'middle' }} /> : (theme.iconLeft || window.BKK.selectedCity?.secondaryIcon || '🏙️')}</span>
           <h1 style={{ 
             fontSize: '16px', 
             fontWeight: '800', 
@@ -231,7 +231,7 @@
             margin: 0,
             textShadow: '0 1px 3px rgba(0,0,0,0.2)'
           }}>{tLabel(window.BKK.selectedCity) || 'FouFou'}</h1>
-          <span style={{ fontSize: '14px' }}>{theme.iconRight || window.BKK.selectedCity?.icon || '🗺️'}</span>
+          <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>{theme.iconRight?.startsWith?.('data:') ? <img src={theme.iconRight} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', verticalAlign: 'middle' }} /> : (theme.iconRight || window.BKK.selectedCity?.icon || '🗺️')}</span>
           <span style={{ 
             fontSize: '8px', 
             color: 'rgba(255,255,255,0.5)',
