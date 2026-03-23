@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.11.19` (Mar 23, 2026)
+- **גרסה:** `3.11.20` (Mar 23, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -530,11 +530,23 @@ Android and iOS remove GPS data from images when they are saved to the device ga
 EXIF GPS extraction only works reliably from a **fresh camera capture** (`openCamera()`).
 Gallery uploads: compress image only, ignore any GPS.
 
-### Icon compression (different from photos)
+### Icon compression — `compressIcon` (different from photos)
 ```js
-window.BKK.compressIcon(input, 64)  // PNG/WebP, 64x64 max, preserves transparency
-// Do NOT use compressImage for icons
+window.BKK.compressIcon(input, maxSize = 64, maxKB = 15)
+// maxSize: max dimension in pixels (64 for interest icons, 80 for city icon)
+// maxKB: hard limit on output size — quality loop enforced
+// Uses quality loop [0.85, 0.7, 0.55, 0.4, 0.25] then canvas shrink if needed
+// Outputs WebP (or PNG fallback)
+// DO NOT use compressImage for icons
 ```
+
+**RULE: ALL icon uploads (interest, city main, city side icons) MUST go through `compressIcon`.**
+Never save a raw File or uncompressed data URL as an icon to Firebase or city files.
+
+**RULE: Never save data: URLs to city JS files.**
+`exportCityFile` strips all `data:` from `city.icon`, `theme.iconLeft`, `theme.iconRight` before export.
+Theme icons with data URLs are stored in `settings/cityOverrides/{cityId}/theme` in Firebase instead.
+City files contain only emoji or empty strings for icon fields.
 
 ---
 

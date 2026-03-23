@@ -3162,6 +3162,11 @@ const FouFouApp = () => {
                 if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
                 if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
               }
+              if (co.theme) {
+                if (!window.BKK.cities[cid].theme) window.BKK.cities[cid].theme = {};
+                if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
+                if (co.theme.iconRight !== undefined) window.BKK.cities[cid].theme.iconRight = co.theme.iconRight;
+              }
               if (co.interests && co.interests.length > 0) {
                 window.BKK.cities[cid].interests = co.interests;
                 if (cid === cityId) window.BKK.interestOptions = co.interests;
@@ -10616,7 +10621,11 @@ const FouFouApp = () => {
                             📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) { city.theme.iconLeft = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                              if (compressed) {
+                                  city.theme.iconLeft = compressed;
+                                  setCityModified(true); setCityEditCounter(c => c + 1);
+                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconLeft: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
@@ -10637,7 +10646,11 @@ const FouFouApp = () => {
                             📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) { city.theme.iconRight = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                              if (compressed) {
+                                  city.theme.iconRight = compressed;
+                                  setCityModified(true); setCityEditCounter(c => c + 1);
+                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconRight: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}

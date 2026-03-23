@@ -1094,13 +1094,13 @@ window.BKK.openCamera = () => {
 
 
 // Compress icon to small PNG (64x64 max, preserves transparency)
-window.BKK.compressIcon = (input, maxSize = 64) => {
+window.BKK.compressIcon = (input, maxSize = 64, maxKB = 15) => {
+  // RULE: icons max 64px AND max 15KB. Enforced by quality loop + canvas shrink.
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       let w = img.width;
       let h = img.height;
-      // Scale to fit in maxSize box
       if (w > maxSize || h > maxSize) {
         const scale = maxSize / Math.max(w, h);
         w = Math.round(w * scale);
@@ -1110,15 +1110,29 @@ window.BKK.compressIcon = (input, maxSize = 64) => {
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, w, h); // transparent background
+      ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
-      // Try WebP first (smaller), fall back to PNG (transparency)
-      let result = canvas.toDataURL('image/webp', 0.85);
-      if (!result || result.length < 10 || result.startsWith('data:image/png')) {
-        // Browser doesn't support WebP, use PNG
-        result = canvas.toDataURL('image/png');
+      // maxBytes: base64 is ~4/3 of binary size
+      const maxBytes = maxKB * 1024 * (4 / 3);
+      let result = null;
+      for (const q of [0.85, 0.7, 0.55, 0.4, 0.25]) {
+        result = canvas.toDataURL('image/webp', q);
+        if (!result || result.startsWith('data:image/png')) {
+          result = canvas.toDataURL('image/png');
+          break;
+        }
+        if (result.length <= maxBytes) break;
       }
-      resolve(result);
+      // Last resort: shrink canvas by 50%
+      if (result && result.length > maxBytes && w > 16) {
+        canvas.width = Math.max(16, Math.round(w * 0.5));
+        canvas.height = Math.max(16, Math.round(h * 0.5));
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        result = canvas.toDataURL('image/webp', 0.5);
+        if (!result || result.startsWith('data:image/png')) result = canvas.toDataURL('image/png');
+      }
+      resolve(result || null);
     };
     img.onerror = () => resolve(typeof input === 'string' ? input : null);
     if (typeof input === 'string') {

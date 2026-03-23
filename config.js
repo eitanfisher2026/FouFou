@@ -57,7 +57,7 @@ window.BKK.mapConfig = {
 })();
 
 // App Version
-window.BKK.VERSION = '3.11.19';
+window.BKK.VERSION = '3.11.20';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
@@ -162,10 +162,18 @@ window.BKK.unloadCity = function(cityId) {
  */
 window.BKK.exportCityFile = function(city) {
   var cityId = city.id;
+  // Strip data: URLs before saving to file — they belong in Firebase/theme, not in city files
+  // Data URLs make city files huge and cause display bugs
+  var cleanCity = JSON.parse(JSON.stringify(city));
+  if (cleanCity.icon && cleanCity.icon.startsWith('data:')) cleanCity.icon = '📍';
+  if (cleanCity.theme) {
+    if (cleanCity.theme.iconLeft && cleanCity.theme.iconLeft.startsWith('data:')) cleanCity.theme.iconLeft = '';
+    if (cleanCity.theme.iconRight && cleanCity.theme.iconRight.startsWith('data:')) cleanCity.theme.iconRight = '';
+  }
   var lines = [];
   lines.push('// City data: ' + city.nameEn);
   lines.push('window.BKK.cityData = window.BKK.cityData || {};');
-  lines.push('window.BKK.cityData.' + cityId + ' = ' + JSON.stringify(city, null, 2) + ';');
+  lines.push('window.BKK.cityData.' + cityId + ' = ' + JSON.stringify(cleanCity, null, 2) + ';');
   
   var content = lines.join('\n') + '\n';
   var blob = new Blob([content], { type: 'text/javascript' });

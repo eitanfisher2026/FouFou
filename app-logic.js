@@ -3062,7 +3062,12 @@
                 if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
                 if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
               }
-              // Apply interests overrides (set by "copy interests" — cross-device sync)
+              // Apply theme icons (iconLeft/iconRight stored as data URLs in Firebase)
+              if (co.theme) {
+                if (!window.BKK.cities[cid].theme) window.BKK.cities[cid].theme = {};
+                if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
+                if (co.theme.iconRight !== undefined) window.BKK.cities[cid].theme.iconRight = co.theme.iconRight;
+              }
               if (co.interests && co.interests.length > 0) {
                 window.BKK.cities[cid].interests = co.interests;
                 if (cid === cityId) window.BKK.interestOptions = co.interests;

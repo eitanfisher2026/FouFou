@@ -2758,7 +2758,11 @@
                             📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) { city.theme.iconLeft = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                              if (compressed) {
+                                  city.theme.iconLeft = compressed;
+                                  setCityModified(true); setCityEditCounter(c => c + 1);
+                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconLeft: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
@@ -2779,7 +2783,11 @@
                             📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
                               const file = e.target.files?.[0]; if (!file) return;
                               const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) { city.theme.iconRight = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                              if (compressed) {
+                                  city.theme.iconRight = compressed;
+                                  setCityModified(true); setCityEditCounter(c => c + 1);
+                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconRight: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
