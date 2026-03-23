@@ -597,6 +597,9 @@
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
+  const [placesSortBy, setPlacesSortBy] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('foufou_preferences') || '{}').placesSortBy || 'updatedAt'; } catch(e) { return 'updatedAt'; }
+  }); // 'updatedAt' | 'addedAt' | 'interest' | 'area'
   const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
   const [editingRoute, setEditingRoute] = useState(null);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
@@ -4585,8 +4588,9 @@
     if (!isDataLoaded) return;
     // Strip admin-controlled settings before saving — these come from Firebase, not localStorage
     const { maxStops, fetchMoreCount, _selectedMapArea, ...userPrefs } = formData;
+    userPrefs.placesSortBy = placesSortBy;
     localStorage.setItem('foufou_preferences', JSON.stringify(userPrefs));
-  }, [formData, isDataLoaded]);
+  }, [formData, isDataLoaded, placesSortBy]);
 
   // Version check - auto-check on load + manual check
   const checkForUpdates = async (silent = false) => {
@@ -4764,8 +4768,24 @@
           return (tLabel(areaMap[a]) || a).localeCompare(tLabel(areaMap[b]) || b);
         }
       });
-      
+
+      // Date sort helper — newest first, missing dates go last
+      const getTs = (loc) => {
+        const d = placesSortBy === 'addedAt' ? (loc.addedAt) : (loc.updatedAt || loc.addedAt);
+        if (!d) return 0;
+        return new Date(d).getTime() || 0;
+      };
+      const isDateSort = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt';
+
       const sortWithin = (locs) => [...locs].sort((a, b) => {
+        if (isDateSort) {
+          const ta = getTs(a), tb = getTs(b);
+          if (ta === 0 && tb === 0) return a.name.localeCompare(b.name, 'he');
+          if (ta === 0) return 1;  // no date → end
+          if (tb === 0) return -1;
+          return tb - ta; // newest first
+        }
+        if (placesSortBy === 'name') return a.name.localeCompare(b.name, 'he');
         if (placesGroupBy === 'interest') {
           const aArea = tLabel(areaMap[(a.areas || [a.area])[0]]) || '';
           const bArea = tLabel(areaMap[(b.areas || [b.area])[0]]) || '';
@@ -4784,7 +4804,7 @@
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [], draftsLocations: [], readyLocations: [], draftsCount: 0, readyCount: 0, blacklistCount: 0 };
     }
-  }, [cityCustomLocations, placesGroupBy, placesTab, interestMap, areaMap, searchQuery]);
+  }, [cityCustomLocations, placesGroupBy, placesSortBy, placesTab, interestMap, areaMap, searchQuery]);
 
   // Flat navigation list for prev/next in edit dialog
   const flatNavList = useMemo(() => {
@@ -7222,6 +7242,7 @@
       custom: true,
       status: 'active',
       addedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       addedBy: authUser?.uid || null,
       fromGoogle: true,
       googleRating: place.rating || null,
@@ -7435,6 +7456,7 @@
             ratingCount: loc.ratingCount || null,
             fromGoogle: loc.fromGoogle || false,
             addedAt: loc.addedAt || new Date().toISOString(),
+            updatedAt: loc.updatedAt || loc.addedAt || new Date().toISOString(),
             addedBy: authUser?.uid || null,
             importBatch: currentImportBatch
           };
@@ -7575,6 +7597,7 @@
           ratingCount: loc.ratingCount || null,
           fromGoogle: loc.fromGoogle || false,
           addedAt: loc.addedAt || new Date().toISOString(),
+            updatedAt: loc.updatedAt || loc.addedAt || new Date().toISOString(),
           importBatch: currentImportBatch
         };
         
@@ -7974,6 +7997,7 @@
       googleRating: locData.googleRating || null,
       googleRatingCount: locData.googleRatingCount || 0,
       addedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       addedBy: authUser?.uid || null,
       cityId: selectedCityId
     };
@@ -8136,8 +8160,9 @@
       areas: finalAreas,
       custom: true, 
       id: editingLocation.id,
-      outsideArea: outsideArea, // Flag for outside area
-      missingCoordinates: !hasCoordinates // Flag for missing coordinates
+      outsideArea: outsideArea,
+      missingCoordinates: !hasCoordinates,
+      updatedAt: new Date().toISOString() // Stamp update time
     });
     
     // Update in Firebase (or localStorage fallback)

@@ -807,10 +807,35 @@
 
                   {/* Metadata row — addedBy + addedAt (visible to all users) */}
                   {showEditLocationDialog && editingLocation && (editingLocation.addedBy || editingLocation.addedAt) && (
-                    <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {editingLocation.addedBy && <span>👤 {userNamesMap[editingLocation.addedBy] || editingLocation.addedBy.slice(0,8)}</span>}
-                      {editingLocation.addedAt && <span>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
+                      {editingLocation.addedAt && <span title={t('places.addedAt') || 'נוסף'}>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
+                      {editingLocation.updatedAt && editingLocation.updatedAt !== editingLocation.addedAt && (
+                        <span title={t('places.updatedAt') || 'עודכן'}>✏️ {new Date(editingLocation.updatedAt).toLocaleDateString()}</span>
+                      )}
                       {editingLocation.fromGoogle && <span>🔍 Google</span>}
+                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                        <span
+                          title="googlePlaceId — לחץ להעתקה"
+                          onClick={() => navigator.clipboard?.writeText(editingLocation.googlePlaceId).then(() => showToast('📋 Place ID הועתק', 'success')).catch(() => {})}
+                          style={{ cursor: 'pointer', color: '#6366f1', fontFamily: 'monospace', fontSize: '9px', background: '#eef2ff', padding: '1px 4px', borderRadius: '4px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >🆔 {editingLocation.googlePlaceId.slice(0, 20)}…</span>
+                      )}
+                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                        <button
+                          title="מחק googlePlaceId"
+                          onClick={() => {
+                            if (!window.confirm('למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.')) return;
+                            setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
+                            if (editingLocation.firebaseId && isFirebaseAvailable && database) {
+                              database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
+                              setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
+                              showToast('✅ Place ID נמחק', 'success');
+                            }
+                          }}
+                          style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
+                        >✕ ID</button>
+                      )}
                     </div>
                   )}
 

@@ -2056,6 +2056,16 @@
                       {t("places.byArea")}
                     </button>
                   </div>
+                  {/* Sort by selector */}
+                  <select
+                    value={placesSortBy}
+                    onChange={e => setPlacesSortBy(e.target.value)}
+                    style={{ padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '10px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    <option value="updatedAt">🕐 {t('places.sortByUpdated') || 'עודכן לאחרונה'}</option>
+                    <option value="addedAt">📅 {t('places.sortByAdded') || 'נוסף לאחרונה'}</option>
+                    <option value="name">🔤 {t('places.sortByName') || 'שם'}</option>
+                  </select>
                   {/* Favorites map button */}
                   <button
                     onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); }}

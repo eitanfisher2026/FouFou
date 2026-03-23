@@ -932,6 +932,9 @@ const FouFouApp = () => {
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
+  const [placesSortBy, setPlacesSortBy] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('foufou_preferences') || '{}').placesSortBy || 'updatedAt'; } catch(e) { return 'updatedAt'; }
+  }); // 'updatedAt' | 'addedAt' | 'interest' | 'area'
   const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
   const [editingRoute, setEditingRoute] = useState(null);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
@@ -4505,8 +4508,9 @@ const FouFouApp = () => {
   useEffect(() => {
     if (!isDataLoaded) return;
     const { maxStops, fetchMoreCount, _selectedMapArea, ...userPrefs } = formData;
+    userPrefs.placesSortBy = placesSortBy;
     localStorage.setItem('foufou_preferences', JSON.stringify(userPrefs));
-  }, [formData, isDataLoaded]);
+  }, [formData, isDataLoaded, placesSortBy]);
 
   const checkForUpdates = async (silent = false) => {
     try {
@@ -4661,8 +4665,23 @@ const FouFouApp = () => {
           return (tLabel(areaMap[a]) || a).localeCompare(tLabel(areaMap[b]) || b);
         }
       });
-      
+
+      const getTs = (loc) => {
+        const d = placesSortBy === 'addedAt' ? (loc.addedAt) : (loc.updatedAt || loc.addedAt);
+        if (!d) return 0;
+        return new Date(d).getTime() || 0;
+      };
+      const isDateSort = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt';
+
       const sortWithin = (locs) => [...locs].sort((a, b) => {
+        if (isDateSort) {
+          const ta = getTs(a), tb = getTs(b);
+          if (ta === 0 && tb === 0) return a.name.localeCompare(b.name, 'he');
+          if (ta === 0) return 1;  // no date → end
+          if (tb === 0) return -1;
+          return tb - ta; // newest first
+        }
+        if (placesSortBy === 'name') return a.name.localeCompare(b.name, 'he');
         if (placesGroupBy === 'interest') {
           const aArea = tLabel(areaMap[(a.areas || [a.area])[0]]) || '';
           const bArea = tLabel(areaMap[(b.areas || [b.area])[0]]) || '';
@@ -4681,7 +4700,7 @@ const FouFouApp = () => {
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [], draftsLocations: [], readyLocations: [], draftsCount: 0, readyCount: 0, blacklistCount: 0 };
     }
-  }, [cityCustomLocations, placesGroupBy, placesTab, interestMap, areaMap, searchQuery]);
+  }, [cityCustomLocations, placesGroupBy, placesSortBy, placesTab, interestMap, areaMap, searchQuery]);
 
   const flatNavList = useMemo(() => {
     return [...groupedPlaces.sortedKeys.flatMap(k => groupedPlaces.groups[k] || []), ...groupedPlaces.ungrouped];
@@ -6783,6 +6802,7 @@ const FouFouApp = () => {
       custom: true,
       status: 'active',
       addedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       addedBy: authUser?.uid || null,
       fromGoogle: true,
       googleRating: place.rating || null,
@@ -6977,6 +6997,7 @@ const FouFouApp = () => {
             ratingCount: loc.ratingCount || null,
             fromGoogle: loc.fromGoogle || false,
             addedAt: loc.addedAt || new Date().toISOString(),
+            updatedAt: loc.updatedAt || loc.addedAt || new Date().toISOString(),
             addedBy: authUser?.uid || null,
             importBatch: currentImportBatch
           };
@@ -7109,6 +7130,7 @@ const FouFouApp = () => {
           ratingCount: loc.ratingCount || null,
           fromGoogle: loc.fromGoogle || false,
           addedAt: loc.addedAt || new Date().toISOString(),
+            updatedAt: loc.updatedAt || loc.addedAt || new Date().toISOString(),
           importBatch: currentImportBatch
         };
         
@@ -7475,6 +7497,7 @@ const FouFouApp = () => {
       googleRating: locData.googleRating || null,
       googleRatingCount: locData.googleRatingCount || 0,
       addedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       addedBy: authUser?.uid || null,
       cityId: selectedCityId
     };
@@ -7617,8 +7640,9 @@ const FouFouApp = () => {
       areas: finalAreas,
       custom: true, 
       id: editingLocation.id,
-      outsideArea: outsideArea, // Flag for outside area
-      missingCoordinates: !hasCoordinates // Flag for missing coordinates
+      outsideArea: outsideArea,
+      missingCoordinates: !hasCoordinates,
+      updatedAt: new Date().toISOString() // Stamp update time
     });
     
     if (isFirebaseAvailable && database) {
@@ -9874,6 +9898,16 @@ const FouFouApp = () => {
                       {t("places.byArea")}
                     </button>
                   </div>
+                  {/* Sort by selector */}
+                  <select
+                    value={placesSortBy}
+                    onChange={e => setPlacesSortBy(e.target.value)}
+                    style={{ padding: '2px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '10px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    <option value="updatedAt">🕐 {t('places.sortByUpdated') || 'עודכן לאחרונה'}</option>
+                    <option value="addedAt">📅 {t('places.sortByAdded') || 'נוסף לאחרונה'}</option>
+                    <option value="name">🔤 {t('places.sortByName') || 'שם'}</option>
+                  </select>
                   {/* Favorites map button */}
                   <button
                     onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); }}
@@ -13613,10 +13647,35 @@ const FouFouApp = () => {
 
                   {/* Metadata row — addedBy + addedAt (visible to all users) */}
                   {showEditLocationDialog && editingLocation && (editingLocation.addedBy || editingLocation.addedAt) && (
-                    <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {editingLocation.addedBy && <span>👤 {userNamesMap[editingLocation.addedBy] || editingLocation.addedBy.slice(0,8)}</span>}
-                      {editingLocation.addedAt && <span>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
+                      {editingLocation.addedAt && <span title={t('places.addedAt') || 'נוסף'}>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
+                      {editingLocation.updatedAt && editingLocation.updatedAt !== editingLocation.addedAt && (
+                        <span title={t('places.updatedAt') || 'עודכן'}>✏️ {new Date(editingLocation.updatedAt).toLocaleDateString()}</span>
+                      )}
                       {editingLocation.fromGoogle && <span>🔍 Google</span>}
+                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                        <span
+                          title="googlePlaceId — לחץ להעתקה"
+                          onClick={() => navigator.clipboard?.writeText(editingLocation.googlePlaceId).then(() => showToast('📋 Place ID הועתק', 'success')).catch(() => {})}
+                          style={{ cursor: 'pointer', color: '#6366f1', fontFamily: 'monospace', fontSize: '9px', background: '#eef2ff', padding: '1px 4px', borderRadius: '4px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >🆔 {editingLocation.googlePlaceId.slice(0, 20)}…</span>
+                      )}
+                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                        <button
+                          title="מחק googlePlaceId"
+                          onClick={() => {
+                            if (!window.confirm('למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.')) return;
+                            setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
+                            if (editingLocation.firebaseId && isFirebaseAvailable && database) {
+                              database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
+                              setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
+                              showToast('✅ Place ID נמחק', 'success');
+                            }
+                          }}
+                          style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
+                        >✕ ID</button>
+                      )}
                     </div>
                   )}
 
