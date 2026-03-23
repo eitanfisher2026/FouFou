@@ -2763,15 +2763,15 @@
       parks: { types: ['park', 'national_park'], blacklist: ['hotel', 'parking', 'car park', 'garage', 'water park'] },
       rooftop: { types: ['bar', 'restaurant'], blacklist: ['parking', 'car park', 'garage'] },
       entertainment: { types: ['movie_theater', 'amusement_park', 'performing_arts_theater'], blacklist: ['hotel', 'mall'] },
-      // Uncovered interests (inactive by default)
-      massage_spa: { types: ['spa', 'massage'], blacklist: ['cannabis', 'weed', 'kratom', 'hotel'] },
-      fitness: { types: ['gym', 'fitness_center', 'sports_club'], blacklist: ['hotel', 'hostel', 'physiotherapy'] },
-      shopping_special: { types: ['clothing_store', 'jewelry_store', 'shoe_store'], blacklist: ['market', 'wholesale', 'pawn'] },
-      learning: { types: ['school', 'university'], blacklist: ['kindergarten', 'nursery', 'daycare', 'driving school'] },
-      health: { types: ['pharmacy', 'hospital', 'doctor'], blacklist: ['veterinary', 'pet'] },
-      accommodation: { types: ['hotel', 'lodging'], blacklist: [] },
-      transport: { types: ['car_rental', 'transit_station'], blacklist: [] },
-      business: { types: ['coworking_space'], blacklist: ['hotel', 'hostel'] },
+      // noGoogleSearch interests — no Google search, tagging only
+      massage_spa: { blacklist: [] },
+      fitness: { blacklist: [] },
+      shopping_special: { blacklist: [] },
+      learning: { blacklist: [] },
+      health: { blacklist: [] },
+      accommodation: { blacklist: [] },
+      transport: { blacklist: [] },
+      business: { blacklist: [] },
     };
     
     if (isFirebaseAvailable && database) {
@@ -6836,12 +6836,12 @@
       }
     }
     
-    // Check city's built-in search config
+    // Check city's built-in search config (current city)
     const cityPlaces = window.BKK.interestToGooglePlaces || {};
     const cityTextSearch = window.BKK.textSearchInterests || {};
     if (cityPlaces[interestId] && cityPlaces[interestId].length > 0) return true;
     if (cityTextSearch[interestId]) return true;
-    
+
     return false;
   };
 
