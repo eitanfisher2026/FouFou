@@ -14280,13 +14280,12 @@ const FouFouApp = () => {
 
                                 {/* Counter for auto-naming — only in edit mode + admin */}
                 {/* Admin: Status + Default + Place count */}
-                {/* City exposure — admin only, dropdown with checkboxes */}
+                {/* City exposure — admin only, uses <details> to avoid useState in IIFE */}
                 {isAdmin && editingCustomInterest && (() => {
                   const interestId = editingCustomInterest.id;
                   const allCities = Object.values(window.BKK.cities || {});
                   const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId));
                   const visibleCount = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId)).length;
-                  const [showCityDropdown, setShowCityDropdown] = React.useState(false);
                   const toggleCity = (cityId) => {
                     const cur = cityHiddenInterests[cityId] || new Set();
                     const next = new Set(cur);
@@ -14299,29 +14298,24 @@ const FouFouApp = () => {
                     }
                   };
                   return (
-                    <div style={{ marginBottom: '8px', position: 'relative' }}>
-                      <button
-                        onClick={() => setShowCityDropdown(v => !v)}
-                        style={{ width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                      >
+                    <details style={{ marginBottom: '8px' }}>
+                      <summary style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span>{allVisible ? '🌍 חשוף בכל הערים' : `🏙️ חשוף ב-${visibleCount}/${allCities.length} ערים`}</span>
-                        <span>{showCityDropdown ? '▲' : '▼'}</span>
-                      </button>
-                      {showCityDropdown && (
-                        <div style={{ position: 'absolute', zIndex: 100, background: 'white', border: '1px solid #d1d5db', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '8px', width: '100%', top: '100%', marginTop: '2px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                          {allCities.map(city => {
-                            const isVisible = !(cityHiddenInterests[city.id] || new Set()).has(interestId);
-                            return (
-                              <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px', background: isVisible ? '#f0fdf4' : '#fafafa' }}>
-                                <input type="checkbox" checked={isVisible} onChange={() => toggleCity(city.id)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
-                                <span style={{ fontSize: '14px' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
-                                <span style={{ fontSize: '12px', fontWeight: isVisible ? 'bold' : 'normal', color: isVisible ? '#166534' : '#9ca3af' }}>{tLabel(city)}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                        <span style={{ fontSize: '10px', color: '#9ca3af' }}>▼</span>
+                      </summary>
+                      <div style={{ border: '1px solid #d1d5db', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '8px', background: 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                        {allCities.map(city => {
+                          const isVisible = !(cityHiddenInterests[city.id] || new Set()).has(interestId);
+                          return (
+                            <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px', background: isVisible ? '#f0fdf4' : '#fafafa' }}>
+                              <input type="checkbox" checked={isVisible} onChange={() => toggleCity(city.id)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+                              <span style={{ fontSize: '14px' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                              <span style={{ fontSize: '12px', fontWeight: isVisible ? 'bold' : 'normal', color: isVisible ? '#166534' : '#9ca3af' }}>{tLabel(city)}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
                   );
                 })()}
                 {editingCustomInterest && isUnlocked && (() => {
