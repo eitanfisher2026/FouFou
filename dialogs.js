@@ -1410,6 +1410,50 @@
 
                                 {/* Counter for auto-naming — only in edit mode + admin */}
                 {/* Admin: Status + Default + Place count */}
+                {/* City exposure — admin only, dropdown with checkboxes */}
+                {isAdmin && editingCustomInterest && (() => {
+                  const interestId = editingCustomInterest.id;
+                  const allCities = Object.values(window.BKK.cities || {});
+                  const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId));
+                  const visibleCount = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId)).length;
+                  const [showCityDropdown, setShowCityDropdown] = React.useState(false);
+                  const toggleCity = (cityId) => {
+                    const cur = cityHiddenInterests[cityId] || new Set();
+                    const next = new Set(cur);
+                    if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
+                    const arr = [...next];
+                    setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
+                    if (isFirebaseAvailable && database) {
+                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
+                        .catch(e => console.error('[CITY] toggle error:', e));
+                    }
+                  };
+                  return (
+                    <div style={{ marginBottom: '8px', position: 'relative' }}>
+                      <button
+                        onClick={() => setShowCityDropdown(v => !v)}
+                        style={{ width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <span>{allVisible ? '🌍 חשוף בכל הערים' : `🏙️ חשוף ב-${visibleCount}/${allCities.length} ערים`}</span>
+                        <span>{showCityDropdown ? '▲' : '▼'}</span>
+                      </button>
+                      {showCityDropdown && (
+                        <div style={{ position: 'absolute', zIndex: 100, background: 'white', border: '1px solid #d1d5db', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '8px', width: '100%', top: '100%', marginTop: '2px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                          {allCities.map(city => {
+                            const isVisible = !(cityHiddenInterests[city.id] || new Set()).has(interestId);
+                            return (
+                              <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px', background: isVisible ? '#f0fdf4' : '#fafafa' }}>
+                                <input type="checkbox" checked={isVisible} onChange={() => toggleCity(city.id)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+                                <span style={{ fontSize: '14px' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                                <span style={{ fontSize: '12px', fontWeight: isVisible ? 'bold' : 'normal', color: isVisible ? '#166534' : '#9ca3af' }}>{tLabel(city)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {editingCustomInterest && isUnlocked && (() => {
                   const interestId = editingCustomInterest.id;
                   const cfg = interestConfig[interestId] || {};
@@ -1714,7 +1758,20 @@
                           });
                           
                           // Enable the new interest in interestStatus
-                          setInterestStatus(prev => ({ ...prev, [interestId]: true }));
+                          setInterestStatus(prev => ({ ...prev, [interestId]: newInterest.defaultEnabled !== false }));
+                          
+                          // Hide new interest in all cities except current by default
+                          const otherCityIds = Object.keys(window.BKK.cities || {}).filter(cid => cid !== selectedCityId);
+                          otherCityIds.forEach(cid => {
+                            const cur = cityHiddenInterests[cid] || new Set();
+                            const next = new Set(cur);
+                            next.add(interestId);
+                            setCityHiddenInterests(prev => ({ ...prev, [cid]: next }));
+                            if (isFirebaseAvailable && database) {
+                              database.ref(`settings/cityHiddenInterests/${cid}`).set([...next])
+                                .catch(e => console.error('[INTEREST] hide in city error:', e));
+                            }
+                          });
                           
                           // Save in background
                           if (isFirebaseAvailable && database) {

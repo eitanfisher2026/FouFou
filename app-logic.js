@@ -702,7 +702,7 @@
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapVersion, setMapVersion] = useState(0); // Increment to force map re-render
-  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', or 'sysparams'
+  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', or 'sysparams'
   const [editingParamKey, setEditingParamKey] = useState(null); // key of param being edited inline
   const [editingParamVal, setEditingParamVal] = useState('');
   const [editingArea, setEditingArea] = useState(null); // area being edited on map

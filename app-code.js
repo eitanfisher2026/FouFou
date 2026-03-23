@@ -1019,7 +1019,7 @@ const FouFouApp = () => {
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapVersion, setMapVersion] = useState(0); // Increment to force map re-render
-  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', or 'sysparams'
+  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', or 'sysparams'
   const [editingParamKey, setEditingParamKey] = useState(null); // key of param being edited inline
   const [editingParamVal, setEditingParamVal] = useState('');
   const [editingArea, setEditingArea] = useState(null); // area being edited on map
@@ -10453,6 +10453,14 @@ const FouFouApp = () => {
               >{`🌍 ${t('settings.citiesAndAreas')}`}</button>
               {isAdmin && (
               <button
+                onClick={() => setSettingsTab('interests')}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                  settingsTab === 'interests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >🏷️ תחומים</button>
+              )}
+              {isAdmin && (
+              <button
                 onClick={() => setSettingsTab('sysparams')}
                 className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -10554,66 +10562,7 @@ const FouFouApp = () => {
                   );
                 })()}
 
-                {/* City Interest Visibility button — opens inline panel */}
-                {isAdmin && window.BKK.selectedCity && (() => {
-                  const cityId = selectedCityId;
-                  const allAvailable = allInterestOptions.filter(o => (o.adminStatus || 'active') !== 'hidden');
-                  if (allAvailable.length === 0) return null;
-                  const hidden = cityHiddenInterests[cityId] || new Set();
-                  const visibleCount = allAvailable.length - hidden.size;
-                  const toggleHidden = (interestId) => {
-                    const next = new Set(hidden);
-                    if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
-                    const arr = [...next];
-                    setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
-                    if (isFirebaseAvailable && database) {
-                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
-                        .catch(e => console.error('[CITY] cityHiddenInterests save error:', e));
-                    }
-                  };
-                  const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-                  const visible = sortAlpha(allAvailable.filter(i => !hidden.has(i.id)));
-                  const hiddenList = sortAlpha(allAvailable.filter(i => hidden.has(i.id)));
-                  const renderRow = (i, isVisible) => {
-                    const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
-                    return (
-                      <div key={i.id} className="flex items-center gap-2 p-1.5 rounded border border-gray-100 bg-white hover:bg-gray-50" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                        <span className="flex-shrink-0">{icon}</span>
-                        <span className="flex-1 text-sm font-medium" style={{ textDecoration: isVisible ? 'none' : 'line-through', color: isVisible ? '#111827' : '#9ca3af' }}>{tLabel(i) || i.label}</span>
-                        {i.noGoogleSearch && <span style={{ fontSize: '9px', color: '#6b7280', background: '#f3f4f6', padding: '1px 4px', borderRadius: '3px' }}>tag</span>}
-                        <button onClick={() => toggleHidden(i.id)}
-                          style={{ padding: '2px 8px', fontSize: '10px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', fontWeight: 'bold', flexShrink: 0,
-                            background: isVisible ? '#fee2e2' : '#ecfdf5', color: isVisible ? '#b91c1c' : '#065f46',
-                            borderColor: isVisible ? '#fca5a5' : '#6ee7b7' }}
-                        >{isVisible ? '🙈 הסתר' : '👁️ הצג'}</button>
-                      </div>
-                    );
-                  };
-                  return (
-                    <div style={{ marginBottom: '8px', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
-                      <div style={{ padding: '8px 10px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534' }}>🏷️ תחומים חשופים לעיר</span>
-                        <span style={{ fontSize: '11px', color: '#16a34a' }}>{visibleCount} חשופים · {hidden.size} מוסתרים</span>
-                      </div>
-                      <div style={{ padding: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-                        {visible.length > 0 && (
-                          <div className="space-y-1 mb-3">
-                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#16a34a', marginBottom: '4px' }}>✅ חשופים ({visible.length})</div>
-                            {visible.map(i => renderRow(i, true))}
-                          </div>
-                        )}
-                        {hiddenList.length > 0 && (
-                          <div className="space-y-1">
-                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#dc2626', marginBottom: '4px' }}>🙈 מוסתרים ({hiddenList.length})</div>
-                            {hiddenList.map(i => renderRow(i, false))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Theme Editor - Color + Icons */}
+                                {/* Theme Editor - Color + Icons */}
                 {isUnlocked && window.BKK.selectedCity && (() => {
                   const city = window.BKK.selectedCity;
                   if (!city.theme) city.theme = { color: '#e11d48', iconLeft: '🏙️', iconRight: '🗺️' };
@@ -11948,6 +11897,109 @@ const FouFouApp = () => {
             </div>
             
             </div>)}
+
+            {/* ===== INTERESTS TAB ===== */}
+            {settingsTab === 'interests' && isAdmin && (() => {
+              const allCities = Object.values(window.BKK.cities || {});
+              const allInterestsSorted = [...allInterestOptions].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
+              const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
+              const visible = allInterestsSorted.filter(i => getAStatus(i) !== 'hidden');
+              const draftCount = visible.filter(i => getAStatus(i) === 'draft').length;
+              const openInterestDialogFromSettings = (interest) => {
+                const cfg = interestConfig[interest.id] || {};
+                const isFromCustom = customInterests.some(ci => ci.id === interest.id);
+                setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
+                setNewInterest({
+                  id: interest.id, label: interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
+                  icon: interest.icon || '📍', searchMode: cfg.textSearch ? 'text' : 'types',
+                  types: (cfg.types || []).join(', '), textSearch: cfg.textSearch || '',
+                  blacklist: (cfg.blacklist || []).join(', '), nameKeywords: (cfg.nameKeywords || []).join(', '),
+                  minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
+                  lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
+                  privateOnly: interest.privateOnly || false, locked: interest.locked || false,
+                  builtIn: !isFromCustom, scope: 'global', cityId: '',
+                  category: cfg.category || interest.category || 'attraction',
+                  weight: cfg.weight || interest.weight || 3,
+                  minStops: cfg.minStops != null ? cfg.minStops : (interest.minStops != null ? interest.minStops : 1),
+                  maxStops: cfg.maxStops || interest.maxStops || 10,
+                  routeSlot: cfg.routeSlot || interest.routeSlot || 'any',
+                  minGap: cfg.minGap != null ? cfg.minGap : 1,
+                  bestTime: cfg.bestTime || interest.bestTime || 'anytime',
+                  group: cfg.group || interest.group || '',
+                  dedupRelated: cfg.dedupRelated || interest.dedupRelated || [],
+                  defaultEnabled: cfg.defaultEnabled !== undefined ? cfg.defaultEnabled : true,
+                  noGoogleSearch: interest.noGoogleSearch || false,
+                  color: cfg.color || interest.color || '',
+                });
+                setShowAddInterestDialog(true);
+              };
+              return (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
+                      🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({visible.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
+                    </div>
+                    <button
+                      onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [], defaultEnabled: false }); }}
+                      style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                    >+ הוסף תחום</button>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <span>עיר: 🟢 חשוף · ⚫ מוסתר (לחץ על אייקון עיר לשינוי)</span>
+                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>tag = ללא חיפוש גוגל</span>
+                  </div>
+                  <div style={{ maxHeight: '65vh', overflowY: 'auto' }} className="space-y-1">
+                    {visible.map(i => {
+                      const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
+                      const isDraft = getAStatus(i) === 'draft';
+                      return (
+                        <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isDraft ? '#fde68a' : '#e5e7eb', background: isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                          <span style={{ flexShrink: 0 }}>{icon}</span>
+                          <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{tLabel(i) || i.label}</span>
+                          {i.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>tag</span>}
+                          {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
+                          {/* City exposure — globe if all visible, else individual city icons */}
+                          {(() => {
+                            const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
+                            if (allVisible) {
+                              return (
+                                <span title="חשוף בכל הערים" style={{ fontSize: '16px', flexShrink: 0, cursor: 'default' }}>🌍</span>
+                              );
+                            }
+                            return (
+                              <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                                {allCities.map(city => {
+                                  const isHiddenInCity = (cityHiddenInterests[city.id] || new Set()).has(i.id);
+                                  const toggleCity = () => {
+                                    const cur = cityHiddenInterests[city.id] || new Set();
+                                    const next = new Set(cur);
+                                    if (next.has(i.id)) next.delete(i.id); else next.add(i.id);
+                                    const arr = [...next];
+                                    setCityHiddenInterests(prev => ({ ...prev, [city.id]: next }));
+                                    if (isFirebaseAvailable && database) {
+                                      database.ref(`settings/cityHiddenInterests/${city.id}`).set(arr.length > 0 ? arr : null)
+                                        .catch(e => console.error('[CITY] toggle error:', e));
+                                    }
+                                  };
+                                  return (
+                                    <button key={city.id} onClick={toggleCity}
+                                      title={`${tLabel(city)}: ${isHiddenInCity ? 'מוסתר — לחץ להציג' : 'חשוף — לחץ להסתיר'}`}
+                                      style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                        background: isHiddenInCity ? '#f3f4f6' : '#ecfdf5', borderColor: isHiddenInCity ? '#d1d5db' : '#6ee7b7', opacity: isHiddenInCity ? 0.4 : 1 }}
+                                    >{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</button>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                          <button onClick={() => openInterestDialogFromSettings(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ===== SYSTEM PARAMS TAB ===== */}
             {settingsTab === 'sysparams' && isAdmin && (<div>
@@ -14221,6 +14273,50 @@ const FouFouApp = () => {
 
                                 {/* Counter for auto-naming — only in edit mode + admin */}
                 {/* Admin: Status + Default + Place count */}
+                {/* City exposure — admin only, dropdown with checkboxes */}
+                {isAdmin && editingCustomInterest && (() => {
+                  const interestId = editingCustomInterest.id;
+                  const allCities = Object.values(window.BKK.cities || {});
+                  const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId));
+                  const visibleCount = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(interestId)).length;
+                  const [showCityDropdown, setShowCityDropdown] = React.useState(false);
+                  const toggleCity = (cityId) => {
+                    const cur = cityHiddenInterests[cityId] || new Set();
+                    const next = new Set(cur);
+                    if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
+                    const arr = [...next];
+                    setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
+                    if (isFirebaseAvailable && database) {
+                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
+                        .catch(e => console.error('[CITY] toggle error:', e));
+                    }
+                  };
+                  return (
+                    <div style={{ marginBottom: '8px', position: 'relative' }}>
+                      <button
+                        onClick={() => setShowCityDropdown(v => !v)}
+                        style={{ width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <span>{allVisible ? '🌍 חשוף בכל הערים' : `🏙️ חשוף ב-${visibleCount}/${allCities.length} ערים`}</span>
+                        <span>{showCityDropdown ? '▲' : '▼'}</span>
+                      </button>
+                      {showCityDropdown && (
+                        <div style={{ position: 'absolute', zIndex: 100, background: 'white', border: '1px solid #d1d5db', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '8px', width: '100%', top: '100%', marginTop: '2px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                          {allCities.map(city => {
+                            const isVisible = !(cityHiddenInterests[city.id] || new Set()).has(interestId);
+                            return (
+                              <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px', background: isVisible ? '#f0fdf4' : '#fafafa' }}>
+                                <input type="checkbox" checked={isVisible} onChange={() => toggleCity(city.id)} style={{ cursor: 'pointer', width: '14px', height: '14px' }} />
+                                <span style={{ fontSize: '14px' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                                <span style={{ fontSize: '12px', fontWeight: isVisible ? 'bold' : 'normal', color: isVisible ? '#166534' : '#9ca3af' }}>{tLabel(city)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {editingCustomInterest && isUnlocked && (() => {
                   const interestId = editingCustomInterest.id;
                   const cfg = interestConfig[interestId] || {};
@@ -14511,7 +14607,19 @@ const FouFouApp = () => {
                             return [...prev, newInterestData];
                           });
                           
-                          setInterestStatus(prev => ({ ...prev, [interestId]: true }));
+                          setInterestStatus(prev => ({ ...prev, [interestId]: newInterest.defaultEnabled !== false }));
+                          
+                          const otherCityIds = Object.keys(window.BKK.cities || {}).filter(cid => cid !== selectedCityId);
+                          otherCityIds.forEach(cid => {
+                            const cur = cityHiddenInterests[cid] || new Set();
+                            const next = new Set(cur);
+                            next.add(interestId);
+                            setCityHiddenInterests(prev => ({ ...prev, [cid]: next }));
+                            if (isFirebaseAvailable && database) {
+                              database.ref(`settings/cityHiddenInterests/${cid}`).set([...next])
+                                .catch(e => console.error('[INTEREST] hide in city error:', e));
+                            }
+                          });
                           
                           if (isFirebaseAvailable && database) {
                             database.ref(`customInterests/${interestId}`).set(newInterestData)
