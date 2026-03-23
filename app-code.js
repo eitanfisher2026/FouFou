@@ -10554,12 +10554,13 @@ const FouFouApp = () => {
                   );
                 })()}
 
-                {/* City Interest Visibility — admin controls which interests are visible for this city */}
+                {/* City Interest Visibility button — opens inline panel */}
                 {isAdmin && window.BKK.selectedCity && (() => {
                   const cityId = selectedCityId;
-                  const allAvailable = [...(window.BKK.interestOptions || []), ...(cityCustomInterests || [])];
+                  const allAvailable = allInterestOptions.filter(o => (o.adminStatus || 'active') !== 'hidden');
                   if (allAvailable.length === 0) return null;
                   const hidden = cityHiddenInterests[cityId] || new Set();
+                  const visibleCount = allAvailable.length - hidden.size;
                   const toggleHidden = (interestId) => {
                     const next = new Set(hidden);
                     if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
@@ -10570,30 +10571,43 @@ const FouFouApp = () => {
                         .catch(e => console.error('[CITY] cityHiddenInterests save error:', e));
                     }
                   };
-                  const visibleCount = allAvailable.length - hidden.size;
-                  return (
-                    <div style={{ marginBottom: '8px', padding: '10px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #86efac' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>🏷️ תחומים חשופים לעיר</span>
-                        <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 'normal' }}>{visibleCount} חשופים · {hidden.size} מוסתרים</span>
+                  const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
+                  const visible = sortAlpha(allAvailable.filter(i => !hidden.has(i.id)));
+                  const hiddenList = sortAlpha(allAvailable.filter(i => hidden.has(i.id)));
+                  const renderRow = (i, isVisible) => {
+                    const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
+                    return (
+                      <div key={i.id} className="flex items-center gap-2 p-1.5 rounded border border-gray-100 bg-white hover:bg-gray-50" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                        <span className="flex-shrink-0">{icon}</span>
+                        <span className="flex-1 text-sm font-medium" style={{ textDecoration: isVisible ? 'none' : 'line-through', color: isVisible ? '#111827' : '#9ca3af' }}>{tLabel(i) || i.label}</span>
+                        {i.noGoogleSearch && <span style={{ fontSize: '9px', color: '#6b7280', background: '#f3f4f6', padding: '1px 4px', borderRadius: '3px' }}>tag</span>}
+                        <button onClick={() => toggleHidden(i.id)}
+                          style={{ padding: '2px 8px', fontSize: '10px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', fontWeight: 'bold', flexShrink: 0,
+                            background: isVisible ? '#fee2e2' : '#ecfdf5', color: isVisible ? '#b91c1c' : '#065f46',
+                            borderColor: isVisible ? '#fca5a5' : '#6ee7b7' }}
+                        >{isVisible ? '🙈 הסתר' : '👁️ הצג'}</button>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                        {allAvailable.map(i => {
-                          const isHidden = hidden.has(i.id);
-                          const iconDisplay = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '12px', height: '12px', verticalAlign: 'middle', marginRight: '2px' }} /> : (i.icon || '📍');
-                          return (
-                            <button key={i.id} onClick={() => toggleHidden(i.id)}
-                              title={isHidden ? '⛔ מוסתר — לחץ להציג' : '✅ חשוף — לחץ להסתיר'}
-                              style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '20px', border: '1.5px solid', cursor: 'pointer',
-                                background: isHidden ? '#fee2e2' : '#ecfdf5',
-                                color: isHidden ? '#b91c1c' : '#065f46',
-                                borderColor: isHidden ? '#fca5a5' : '#6ee7b7',
-                                textDecoration: isHidden ? 'line-through' : 'none',
-                                opacity: isHidden ? 0.7 : 1
-                              }}
-                            >{iconDisplay} {tLabel(i) || i.label}</button>
-                          );
-                        })}
+                    );
+                  };
+                  return (
+                    <div style={{ marginBottom: '8px', border: '1px solid #e5e7eb', borderRadius: '10px', overflow: 'hidden' }}>
+                      <div style={{ padding: '8px 10px', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534' }}>🏷️ תחומים חשופים לעיר</span>
+                        <span style={{ fontSize: '11px', color: '#16a34a' }}>{visibleCount} חשופים · {hidden.size} מוסתרים</span>
+                      </div>
+                      <div style={{ padding: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                        {visible.length > 0 && (
+                          <div className="space-y-1 mb-3">
+                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#16a34a', marginBottom: '4px' }}>✅ חשופים ({visible.length})</div>
+                            {visible.map(i => renderRow(i, true))}
+                          </div>
+                        )}
+                        {hiddenList.length > 0 && (
+                          <div className="space-y-1">
+                            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#dc2626', marginBottom: '4px' }}>🙈 מוסתרים ({hiddenList.length})</div>
+                            {hiddenList.map(i => renderRow(i, false))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
