@@ -13656,13 +13656,18 @@ const FouFouApp = () => {
                         <button
                           title="מחק googlePlaceId"
                           onClick={() => {
-                            if (!window.confirm('למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.')) return;
-                            setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
-                            if (editingLocation.firebaseId && isFirebaseAvailable && database) {
-                              database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
-                              setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
-                              showToast('✅ Place ID נמחק', 'success');
-                            }
+                            showConfirm(
+                              'למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.',
+                              () => {
+                                setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
+                                if (editingLocation.firebaseId && isFirebaseAvailable && database) {
+                                  database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
+                                  setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
+                                  showToast('✅ Place ID נמחק', 'success');
+                                }
+                              },
+                              { confirmLabel: 'מחק', confirmColor: '#ef4444' }
+                            );
                           }}
                           style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
                         >✕ ID</button>
@@ -13801,9 +13806,25 @@ const FouFouApp = () => {
                 </div>
                 <button
                   onClick={() => {
-                    setShowAddInterestDialog(false);
-                    setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
-                    setEditingCustomInterest(null);
+                    const hasChanges = editingCustomInterest
+                      ? newInterest.label?.trim() !== (editingCustomInterest.label || '')
+                        || newInterest.icon !== (editingCustomInterest.icon || '📍')
+                      : !!(newInterest.label?.trim());
+                    if (hasChanges) {
+                      showConfirm(
+                        t('places.unsavedChangesWarning') || 'יש שינויים שלא נשמרו. לצאת בלי לשמור?',
+                        () => {
+                          setShowAddInterestDialog(false);
+                          setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
+                          setEditingCustomInterest(null);
+                        },
+                        { confirmLabel: t('general.exit') || 'צא', confirmColor: '#6b7280' }
+                      );
+                    } else {
+                      setShowAddInterestDialog(false);
+                      setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
+                      setEditingCustomInterest(null);
+                    }
                   }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >✕</button>
@@ -15215,7 +15236,10 @@ const FouFouApp = () => {
                 {confirmConfig.confirmLabel || t('general.confirm')}
               </button>
               <button
-                onClick={() => setShowConfirmDialog(false)}
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  if (confirmConfig.onCancel) confirmConfig.onCancel();
+                }}
                 className="flex-1 py-2 bg-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-400"
               >
                 {t('general.cancel')}
@@ -15839,11 +15863,11 @@ const FouFouApp = () => {
         
         const handleClose = () => {
           if (reviewDialog.hasChanges) {
-            if (window.confirm(t('reviews.unsavedChanges'))) {
-              saveReview();
-            } else {
-              setReviewDialog(null);
-            }
+            showConfirm(
+              t('reviews.unsavedChanges') || 'יש שינויים שלא נשמרו. לשמור?',
+              () => saveReview(),
+              { onCancel: () => setReviewDialog(null), confirmLabel: t('general.save') || 'שמור', confirmColor: '#f59e0b' }
+            );
           } else {
             setReviewDialog(null);
           }
