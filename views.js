@@ -2041,22 +2041,17 @@
               {/* Row 1: Group by + Search */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '6px', flexWrap: 'wrap' }}>
                 <div className="flex items-center gap-2">
-                  {/* Unified group+sort dropdown */}
+                  {/* Sort/group selector */}
                   <select
-                    value={`${placesGroupBy}__${placesSortBy}`}
-                    onChange={e => {
-                      const [group, sort] = e.target.value.split('__');
-                      setPlacesGroupBy(group);
-                      setPlacesSortBy(sort);
-                    }}
+                    value={placesSortBy}
+                    onChange={e => setPlacesSortBy(e.target.value)}
                     style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
                   >
-                    <option value="interest__updatedAt">🏷️ {t('places.byInterest')} · {t('places.sortByUpdated') || 'עודכן'}</option>
-                    <option value="interest__addedAt">🏷️ {t('places.byInterest')} · {t('places.sortByAdded') || 'נוסף'}</option>
-                    <option value="interest__name">🏷️ {t('places.byInterest')} · {t('places.sortByName') || 'שם'}</option>
-                    <option value="area__updatedAt">📍 {t('places.byArea')} · {t('places.sortByUpdated') || 'עודכן'}</option>
-                    <option value="area__addedAt">📍 {t('places.byArea')} · {t('places.sortByAdded') || 'נוסף'}</option>
-                    <option value="area__name">📍 {t('places.byArea')} · {t('places.sortByName') || 'שם'}</option>
+                    <option value="updatedAt">🕐 {t('places.sortByUpdated') || 'עודכן לאחרונה'}</option>
+                    <option value="addedAt">📅 {t('places.sortByAdded') || 'נוסף לאחרונה'}</option>
+                    <option value="name">🔤 {t('places.sortByName') || 'שם'}</option>
+                    <option value="interest">🏷️ {t('places.byInterest') || 'לפי תחום'}</option>
+                    <option value="area">📍 {t('places.byArea') || 'לפי אזור'}</option>
                   </select>
                   {/* Favorites map button */}
                   <button
@@ -2209,7 +2204,7 @@
                       ? (interestMap[key] || customInterests?.find(ci => ci.id === key))
                       : areaMap[key];
                     const groupLabel = obj ? tLabel(obj) : key;
-                    const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
+                    const groupIcon = (placesSortBy === 'area') ? '📍' : (obj?.icon || '🏷️');
                     const canEdit = true; // permissions handled in edit dialog
                     return (
                       <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">

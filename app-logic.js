@@ -4733,11 +4733,15 @@
       
       if (filteredTabLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
       
+      // Derive grouping mode from sort selection
+      const isFlatEarly = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt' || placesSortBy === 'name';
+      const groupByMode = placesSortBy === 'area' ? 'area' : 'interest';
+
       const groups = {};
       const ungrouped = [];
       
       filteredTabLocations.forEach(loc => {
-        if (placesGroupBy === 'interest') {
+        if (groupByMode === 'interest') {
           const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
             ungrouped.push(loc);
@@ -4762,37 +4766,38 @@
       });
       
       const sortedKeys = Object.keys(groups).sort((a, b) => {
-        if (placesGroupBy === 'interest') {
+        if (groupByMode === 'interest') {
           return (tLabel(interestMap[a]) || a).localeCompare(tLabel(interestMap[b]) || b);
         } else {
           return (tLabel(areaMap[a]) || a).localeCompare(tLabel(areaMap[b]) || b);
         }
       });
 
-      // Date sort helper — newest first, missing dates go last
-      const getTs = (loc) => {
+      // FLAT MODE check (computed earlier as isFlatEarly)
+      const getTs2 = (loc) => {
         const d = placesSortBy === 'addedAt' ? (loc.addedAt) : (loc.updatedAt || loc.addedAt);
-        if (!d) return 0;
-        return new Date(d).getTime() || 0;
+        return d ? (new Date(d).getTime() || 0) : 0;
       };
-      const isDateSort = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt';
+      if (isFlatEarly) {
+        const flat = [...filteredTabLocations].sort((a, b) => {
+          if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+          const ta = getTs2(a), tb = getTs2(b);
+          if (ta === 0 && tb === 0) return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+          if (ta === 0) return 1; if (tb === 0) return -1;
+          if (tb !== ta) return tb - ta; // newer first
+          return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' }); // same date → name asc
+        });
+        return { groups: {}, ungrouped: flat, sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
+      }
 
+      // GROUPED MODE — sort within each group: by interest label then name (area mode), or by name (interest mode)
       const sortWithin = (locs) => [...locs].sort((a, b) => {
-        if (isDateSort) {
-          const ta = getTs(a), tb = getTs(b);
-          if (ta === 0 && tb === 0) return a.name.localeCompare(b.name, 'he');
-          if (ta === 0) return 1;  // no date → end
-          if (tb === 0) return -1;
-          return tb - ta; // newest first
+        if (groupByMode === 'area') {
+          const ai = tLabel(interestMap[(a.interests || [])[0]]) || '';
+          const bi = tLabel(interestMap[(b.interests || [])[0]]) || '';
+          return ai.localeCompare(bi, 'he') || (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
         }
-        if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
-        if (placesGroupBy === 'interest') {
-          const aArea = tLabel(areaMap[(a.areas || [a.area])[0]]) || '';
-          const bArea = tLabel(areaMap[(b.areas || [b.area])[0]]) || '';
-          return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
-        } else {
-          return (a.interests?.[0] || '').localeCompare(b.interests?.[0] || '') || a.name.localeCompare(b.name, 'he');
-        }
+        return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
       });
       
       const sortedGroups = {};

@@ -4630,11 +4630,14 @@ const FouFouApp = () => {
       
       if (filteredTabLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
       
+      const isFlatEarly = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt' || placesSortBy === 'name';
+      const groupByMode = placesSortBy === 'area' ? 'area' : 'interest';
+
       const groups = {};
       const ungrouped = [];
       
       filteredTabLocations.forEach(loc => {
-        if (placesGroupBy === 'interest') {
+        if (groupByMode === 'interest') {
           const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
             ungrouped.push(loc);
@@ -4659,36 +4662,36 @@ const FouFouApp = () => {
       });
       
       const sortedKeys = Object.keys(groups).sort((a, b) => {
-        if (placesGroupBy === 'interest') {
+        if (groupByMode === 'interest') {
           return (tLabel(interestMap[a]) || a).localeCompare(tLabel(interestMap[b]) || b);
         } else {
           return (tLabel(areaMap[a]) || a).localeCompare(tLabel(areaMap[b]) || b);
         }
       });
 
-      const getTs = (loc) => {
+      const getTs2 = (loc) => {
         const d = placesSortBy === 'addedAt' ? (loc.addedAt) : (loc.updatedAt || loc.addedAt);
-        if (!d) return 0;
-        return new Date(d).getTime() || 0;
+        return d ? (new Date(d).getTime() || 0) : 0;
       };
-      const isDateSort = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt';
+      if (isFlatEarly) {
+        const flat = [...filteredTabLocations].sort((a, b) => {
+          if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+          const ta = getTs2(a), tb = getTs2(b);
+          if (ta === 0 && tb === 0) return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+          if (ta === 0) return 1; if (tb === 0) return -1;
+          if (tb !== ta) return tb - ta; // newer first
+          return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' }); // same date → name asc
+        });
+        return { groups: {}, ungrouped: flat, sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
+      }
 
       const sortWithin = (locs) => [...locs].sort((a, b) => {
-        if (isDateSort) {
-          const ta = getTs(a), tb = getTs(b);
-          if (ta === 0 && tb === 0) return a.name.localeCompare(b.name, 'he');
-          if (ta === 0) return 1;  // no date → end
-          if (tb === 0) return -1;
-          return tb - ta; // newest first
+        if (groupByMode === 'area') {
+          const ai = tLabel(interestMap[(a.interests || [])[0]]) || '';
+          const bi = tLabel(interestMap[(b.interests || [])[0]]) || '';
+          return ai.localeCompare(bi, 'he') || (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
         }
-        if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
-        if (placesGroupBy === 'interest') {
-          const aArea = tLabel(areaMap[(a.areas || [a.area])[0]]) || '';
-          const bArea = tLabel(areaMap[(b.areas || [b.area])[0]]) || '';
-          return aArea.localeCompare(bArea, 'he') || a.name.localeCompare(b.name, 'he');
-        } else {
-          return (a.interests?.[0] || '').localeCompare(b.interests?.[0] || '') || a.name.localeCompare(b.name, 'he');
-        }
+        return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
       });
       
       const sortedGroups = {};
@@ -9883,22 +9886,17 @@ const FouFouApp = () => {
               {/* Row 1: Group by + Search */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', gap: '6px', flexWrap: 'wrap' }}>
                 <div className="flex items-center gap-2">
-                  {/* Unified group+sort dropdown */}
+                  {/* Sort/group selector */}
                   <select
-                    value={`${placesGroupBy}__${placesSortBy}`}
-                    onChange={e => {
-                      const [group, sort] = e.target.value.split('__');
-                      setPlacesGroupBy(group);
-                      setPlacesSortBy(sort);
-                    }}
+                    value={placesSortBy}
+                    onChange={e => setPlacesSortBy(e.target.value)}
                     style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', background: 'white', color: '#374151', cursor: 'pointer', fontWeight: 'bold' }}
                   >
-                    <option value="interest__updatedAt">🏷️ {t('places.byInterest')} · {t('places.sortByUpdated') || 'עודכן'}</option>
-                    <option value="interest__addedAt">🏷️ {t('places.byInterest')} · {t('places.sortByAdded') || 'נוסף'}</option>
-                    <option value="interest__name">🏷️ {t('places.byInterest')} · {t('places.sortByName') || 'שם'}</option>
-                    <option value="area__updatedAt">📍 {t('places.byArea')} · {t('places.sortByUpdated') || 'עודכן'}</option>
-                    <option value="area__addedAt">📍 {t('places.byArea')} · {t('places.sortByAdded') || 'נוסף'}</option>
-                    <option value="area__name">📍 {t('places.byArea')} · {t('places.sortByName') || 'שם'}</option>
+                    <option value="updatedAt">🕐 {t('places.sortByUpdated') || 'עודכן לאחרונה'}</option>
+                    <option value="addedAt">📅 {t('places.sortByAdded') || 'נוסף לאחרונה'}</option>
+                    <option value="name">🔤 {t('places.sortByName') || 'שם'}</option>
+                    <option value="interest">🏷️ {t('places.byInterest') || 'לפי תחום'}</option>
+                    <option value="area">📍 {t('places.byArea') || 'לפי אזור'}</option>
                   </select>
                   {/* Favorites map button */}
                   <button
@@ -10051,7 +10049,7 @@ const FouFouApp = () => {
                       ? (interestMap[key] || customInterests?.find(ci => ci.id === key))
                       : areaMap[key];
                     const groupLabel = obj ? tLabel(obj) : key;
-                    const groupIcon = placesGroupBy === 'interest' ? (obj?.icon || '🏷️') : '📍';
+                    const groupIcon = (placesSortBy === 'area') ? '📍' : (obj?.icon || '🏷️');
                     const canEdit = true; // permissions handled in edit dialog
                     return (
                       <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
