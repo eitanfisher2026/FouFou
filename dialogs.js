@@ -1114,30 +1114,7 @@
                   </div>
                 )}
                 </div>{/* close inner wrapper */}
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-purple-800">🌍</span>
-                    <select
-                      value={newInterest.scope || 'global'}
-                      onChange={(e) => setNewInterest({...newInterest, scope: e.target.value, cityId: e.target.value === 'local' ? selectedCityId : ''})}
-                      className="p-1 text-xs border rounded flex-1"
-                    >
-                      <option value="global">{t('interests.scopeGlobal')}</option>
-                      <option value="local">{t('interests.scopeLocal')}</option>
-                    </select>
-                    {newInterest.scope === 'local' && (
-                      <select
-                        value={newInterest.cityId || selectedCityId}
-                        onChange={(e) => setNewInterest({...newInterest, cityId: e.target.value})}
-                        className="p-1 text-xs border rounded"
-                      >
-                        {Object.values(window.BKK.cities || {}).map(city => (
-                          <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
+
 
                 {/* Group — for visual grouping in wizard */}
                 {isUnlocked && (

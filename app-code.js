@@ -10554,7 +10554,7 @@ const FouFouApp = () => {
                   );
                 })()}
 
-                                {/* City Interest Visibility — admin controls which interests are shown for this city */}
+                {/* City Interest Visibility — admin controls which interests are visible for this city */}
                 {isAdmin && window.BKK.selectedCity && (() => {
                   const cityId = selectedCityId;
                   const allAvailable = [...(window.BKK.interestOptions || []), ...(cityCustomInterests || [])];
@@ -10570,21 +10570,28 @@ const FouFouApp = () => {
                         .catch(e => console.error('[CITY] cityHiddenInterests save error:', e));
                     }
                   };
+                  const visibleCount = allAvailable.length - hidden.size;
                   return (
-                    <div style={{ marginBottom: '8px', padding: '8px 10px', background: '#fafafa', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>
-                        🏷️ {t('settings.cityInterestVisibility') || 'תחומים חשופים בעיר'} <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allAvailable.length - hidden.size}/{allAvailable.length})</span>
+                    <div style={{ marginBottom: '8px', padding: '10px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #86efac' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>🏷️ תחומים חשופים לעיר</span>
+                        <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 'normal' }}>{visibleCount} חשופים · {hidden.size} מוסתרים</span>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                         {allAvailable.map(i => {
                           const isHidden = hidden.has(i.id);
+                          const iconDisplay = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '12px', height: '12px', verticalAlign: 'middle', marginRight: '2px' }} /> : (i.icon || '📍');
                           return (
                             <button key={i.id} onClick={() => toggleHidden(i.id)}
-                              style={{ padding: '2px 7px', fontSize: '10px', borderRadius: '20px', border: '1px solid', cursor: 'pointer', fontWeight: isHidden ? 'normal' : 'bold',
-                                background: isHidden ? '#f3f4f6' : '#ecfdf5', color: isHidden ? '#9ca3af' : '#065f46',
-                                borderColor: isHidden ? '#e5e7eb' : '#6ee7b7', opacity: isHidden ? 0.6 : 1 }}
-                              title={isHidden ? 'לחץ להציג' : 'לחץ להסתיר'}
-                            >{i.icon?.startsWith?.('data:') ? '📍' : (i.icon || '📍')} {tLabel(i) || i.label}</button>
+                              title={isHidden ? '⛔ מוסתר — לחץ להציג' : '✅ חשוף — לחץ להסתיר'}
+                              style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '20px', border: '1.5px solid', cursor: 'pointer',
+                                background: isHidden ? '#fee2e2' : '#ecfdf5',
+                                color: isHidden ? '#b91c1c' : '#065f46',
+                                borderColor: isHidden ? '#fca5a5' : '#6ee7b7',
+                                textDecoration: isHidden ? 'line-through' : 'none',
+                                opacity: isHidden ? 0.7 : 1
+                              }}
+                            >{iconDisplay} {tLabel(i) || i.label}</button>
                           );
                         })}
                       </div>
@@ -13907,30 +13914,6 @@ const FouFouApp = () => {
                   </div>
                 )}
                 </div>{/* close inner wrapper */}
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-purple-800">🌍</span>
-                    <select
-                      value={newInterest.scope || 'global'}
-                      onChange={(e) => setNewInterest({...newInterest, scope: e.target.value, cityId: e.target.value === 'local' ? selectedCityId : ''})}
-                      className="p-1 text-xs border rounded flex-1"
-                    >
-                      <option value="global">{t('interests.scopeGlobal')}</option>
-                      <option value="local">{t('interests.scopeLocal')}</option>
-                    </select>
-                    {newInterest.scope === 'local' && (
-                      <select
-                        value={newInterest.cityId || selectedCityId}
-                        onChange={(e) => setNewInterest({...newInterest, cityId: e.target.value})}
-                        className="p-1 text-xs border rounded"
-                      >
-                        {Object.values(window.BKK.cities || {}).map(city => (
-                          <option key={city.id} value={city.id}>{city.icon} {tLabel(city)}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
 
                 {/* Group — for visual grouping in wizard */}
                 {isUnlocked && (
