@@ -11949,10 +11949,13 @@ const FouFouApp = () => {
                 );
               };
               const allCities = Object.values(window.BKK.cities || {});
-              const fullList = [
-                ...(window.BKK.interestOptions || []),
-                ...(customInterests || []).filter(ci => !(window.BKK.interestOptions || []).some(b => b.id === ci.id))
-              ];
+              const allCityInterests = Object.values(window.BKK.cities || {}).flatMap(c => c.interests || []);
+              const seenIds = new Set();
+              const fullList = [...allCityInterests, ...(customInterests || [])].filter(i => {
+                if (!i?.id || seenIds.has(i.id)) return false;
+                seenIds.add(i.id);
+                return true;
+              });
               const allInterestsSorted = fullList
                 .filter(i => (interestConfig[i.id]?.adminStatus || 'active') !== 'hidden')
                 .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
