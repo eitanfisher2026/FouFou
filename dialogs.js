@@ -3554,8 +3554,10 @@
                 {/* Email login */}
                 <div style={{ marginBottom: '8px' }}>
                   <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t('auth.email') || 'אימייל'}
+                    autoComplete="username"
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }} />
                   <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder={t('auth.password') || 'סיסמה'}
+                    autoComplete="current-password"
                     onKeyDown={e => { if (e.key === 'Enter') authSignInEmail(); }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>

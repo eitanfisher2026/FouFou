@@ -445,6 +445,7 @@ const FouFouApp = () => {
   };
 
   const [authUser, setAuthUser] = useState(null); // Firebase auth user object
+  const authUserRef = React.useRef(null); // ref to always read current auth state (avoids stale closure in requireSignIn)
   const [authLoading, setAuthLoading] = useState(true); // true until onAuthStateChanged fires
   const [userRole, setUserRole] = useState(0); // 0=regular, 1=editor, 2=admin (real role from Firebase)
   const [userProfile, setUserProfile] = useState(null); // { name, email, photo, role, cities }
@@ -469,6 +470,7 @@ const FouFouApp = () => {
   useEffect(() => {
     if (!auth) { setAuthLoading(false); return; }
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      authUserRef.current = user; // keep ref in sync
       setAuthUser(user);
       if (user) {
         if (user.isAnonymous) {
@@ -6748,7 +6750,11 @@ const FouFouApp = () => {
   const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
       showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'info', 'sticky');
-      setTimeout(() => setShowLoginDialog(true), 600);
+      setTimeout(() => {
+        if (!authUserRef.current || authUserRef.current.isAnonymous) {
+          setShowLoginDialog(true);
+        }
+      }, 600);
       return false;
     }
     return true;
@@ -16381,8 +16387,10 @@ const FouFouApp = () => {
                 {/* Email login */}
                 <div style={{ marginBottom: '8px' }}>
                   <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t('auth.email') || 'אימייל'}
+                    autoComplete="username"
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', marginBottom: '6px', boxSizing: 'border-box' }} />
                   <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder={t('auth.password') || 'סיסמה'}
+                    autoComplete="current-password"
                     onKeyDown={e => { if (e.key === 'Enter') authSignInEmail(); }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} />
                 </div>

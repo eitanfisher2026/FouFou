@@ -43,6 +43,7 @@
   // Roles: 0 = regular, 1 = editor, 2 = admin
   // ═══════════════════════════════════════════════════════════════
   const [authUser, setAuthUser] = useState(null); // Firebase auth user object
+  const authUserRef = React.useRef(null); // ref to always read current auth state (avoids stale closure in requireSignIn)
   const [authLoading, setAuthLoading] = useState(true); // true until onAuthStateChanged fires
   const [userRole, setUserRole] = useState(0); // 0=regular, 1=editor, 2=admin (real role from Firebase)
   const [userProfile, setUserProfile] = useState(null); // { name, email, photo, role, cities }
@@ -73,6 +74,7 @@
   useEffect(() => {
     if (!auth) { setAuthLoading(false); return; }
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      authUserRef.current = user; // keep ref in sync
       setAuthUser(user);
       if (user) {
         // Anonymous users: no Firebase profile. State lives in localStorage only.
@@ -7195,7 +7197,13 @@
   const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
       showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'info', 'sticky');
-      setTimeout(() => setShowLoginDialog(true), 600);
+      // Check CURRENT auth state at timeout time (not stale closure) to avoid showing
+      // login dialog when Firebase briefly sets authUser=null during token refresh
+      setTimeout(() => {
+        if (!authUserRef.current || authUserRef.current.isAnonymous) {
+          setShowLoginDialog(true);
+        }
+      }, 600);
       return false;
     }
     return true;
