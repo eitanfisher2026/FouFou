@@ -246,7 +246,15 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Parks",
       "icon": "🌳",
       "group": "outdoors"
-    }
+    },
+    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
+    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
+    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
+    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
+    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
+    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "temples": [
@@ -306,72 +314,6 @@ window.BKK.cityData.bangkok = {
   "textSearchInterests": {
     "graffiti": "street art"
   },
-  "uncoveredInterests": [
-    {
-      "id": "massage_spa",
-      "icon": "💆",
-      "label": "עיסוי וספא",
-      "labelEn": "Massage & Spa",
-      "name": "עיסוי וספא",
-      "examples": "Thai massage, wellness centers, spa"
-    },
-    {
-      "id": "fitness",
-      "icon": "🏋️",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט",
-      "examples": "Gyms, yoga studios, Muay Thai, fitness"
-    },
-    {
-      "id": "shopping_special",
-      "icon": "🛍️",
-      "label": "קניות מיוחדות",
-      "labelEn": "Special Shopping",
-      "name": "קניות מיוחדות",
-      "examples": "Boutiques, jewelry, fashion stores"
-    },
-    {
-      "id": "learning",
-      "icon": "🎓",
-      "label": "לימוד וחוויות",
-      "labelEn": "Learning & Experiences",
-      "name": "לימוד וחוויות",
-      "examples": "Cooking classes, meditation, workshops"
-    },
-    {
-      "id": "health",
-      "icon": "🏥",
-      "label": "בריאות ורפואה",
-      "labelEn": "Health & Medical",
-      "name": "בריאות ורפואה",
-      "examples": "Clinics, pharmacies, health services"
-    },
-    {
-      "id": "accommodation",
-      "icon": "🏨",
-      "label": "אירוח",
-      "labelEn": "Accommodation",
-      "name": "אירוח",
-      "examples": "Hotels, hostels, guesthouses"
-    },
-    {
-      "id": "transport",
-      "icon": "🚗",
-      "label": "תחבורה",
-      "labelEn": "Transport",
-      "name": "תחבורה",
-      "examples": "Car rental, bike rental, transportation"
-    },
-    {
-      "id": "business",
-      "icon": "💼",
-      "label": "עסקים",
-      "labelEn": "Business",
-      "name": "עסקים",
-      "examples": "Coworking, offices, business centers"
-    }
-  ],
   "interestTooltips": {
     "temples": "מקדשים בודהיסטיים והינדיים",
     "food": "מסעדות ואוכל רחוב",

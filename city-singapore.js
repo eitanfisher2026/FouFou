@@ -178,7 +178,15 @@ window.BKK.cityData.singapore = {
       "label": "שווקי יום",
       "labelEn": "Markets",
       "locked": true
-    }
+    },
+    {"icon": "💆", "id": "massage_spa", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
+    {"icon": "🏋️", "id": "fitness", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"icon": "🛍️", "id": "shopping_special", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
+    {"icon": "🎓", "id": "learning", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
+    {"icon": "🏥", "id": "health", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
+    {"icon": "🏨", "id": "accommodation", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
+    {"icon": "🚗", "id": "transport", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
+    {"icon": "💼", "id": "business", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "food": [
@@ -234,72 +242,6 @@ window.BKK.cityData.singapore = {
     "hawkers": "hawker centre",
     "gardens": "garden"
   },
-  "uncoveredInterests": [
-    {
-      "examples": "Thai massage, wellness centers, spa",
-      "icon": "💆",
-      "id": "massage_spa",
-      "label": "עיסוי וספא",
-      "labelEn": "Massage & Spa",
-      "name": "עיסוי וספא"
-    },
-    {
-      "examples": "Gyms, yoga studios, Muay Thai, fitness",
-      "icon": "🏋️",
-      "id": "fitness",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט"
-    },
-    {
-      "examples": "Boutiques, jewelry, fashion stores",
-      "icon": "🛍️",
-      "id": "shopping_special",
-      "label": "קניות מיוחדות",
-      "labelEn": "Special Shopping",
-      "name": "קניות מיוחדות"
-    },
-    {
-      "examples": "Cooking classes, meditation, workshops",
-      "icon": "🎓",
-      "id": "learning",
-      "label": "לימוד וחוויות",
-      "labelEn": "Learning & Experiences",
-      "name": "לימוד וחוויות"
-    },
-    {
-      "examples": "Clinics, pharmacies, health services",
-      "icon": "🏥",
-      "id": "health",
-      "label": "בריאות ורפואה",
-      "labelEn": "Health & Medical",
-      "name": "בריאות ורפואה"
-    },
-    {
-      "examples": "Hotels, hostels, guesthouses",
-      "icon": "🏨",
-      "id": "accommodation",
-      "label": "אירוח",
-      "labelEn": "Accommodation",
-      "name": "אירוח"
-    },
-    {
-      "examples": "Car rental, bike rental, transportation",
-      "icon": "🚗",
-      "id": "transport",
-      "label": "תחבורה",
-      "labelEn": "Transport",
-      "name": "תחבורה"
-    },
-    {
-      "examples": "Coworking, offices, business centers",
-      "icon": "💼",
-      "id": "business",
-      "label": "עסקים",
-      "labelEn": "Business",
-      "name": "עסקים"
-    }
-  ],
   "interestTooltips": {
     "food": "מסעדות מכל העולם",
     "cafes": "בתי קפה",

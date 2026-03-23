@@ -202,7 +202,10 @@ window.BKK.cityData.gushdan = {
       "label": "היסטוריה",
       "labelEn": "History",
       "icon": "🏚️"
-    }
+    },
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness", "noGoogleSearch": true},
+    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "food": [
@@ -256,32 +259,6 @@ window.BKK.cityData.gushdan = {
     "architecture": "bauhaus building",
     "beaches": "beach"
   },
-  "uncoveredInterests": [
-    {
-      "id": "fitness",
-      "icon": "🏋️",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט",
-      "examples": "Gyms, yoga, pilates, cycling"
-    },
-    {
-      "id": "wellness",
-      "icon": "💆",
-      "label": "ספא ורווחה",
-      "labelEn": "Spa & Wellness",
-      "name": "ספא ורווחה",
-      "examples": "Spa, massage, wellness"
-    },
-    {
-      "id": "coworking",
-      "icon": "💻",
-      "label": "עבודה",
-      "labelEn": "Coworking",
-      "name": "חללי עבודה",
-      "examples": "Coworking, cafes with wifi"
-    }
-  ],
   "interestTooltips": {
     "food": "מסעדות ואוכל רחוב",
     "cafes": "בתי קפה",

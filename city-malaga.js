@@ -262,7 +262,6 @@ window.BKK.cityData.malaga = {
   "textSearchInterests": {
     "graffiti": "street art"
   },
-  "uncoveredInterests": [],
   "interestTooltips": {},
   "theme": {
     "color": "#c60b1e",

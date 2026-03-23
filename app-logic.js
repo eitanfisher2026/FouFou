@@ -623,6 +623,7 @@
   
   // Interest search configuration (editable)
   const [interestConfig, setInterestConfig] = useState({});
+  const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
 
   // System parameters — configurable scoring/optimization values
   if (!window.BKK._defaultSystemParams) {
@@ -2680,7 +2681,7 @@
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
-      const builtInIds = new Set([...window.BKK.interestOptions.map(i => i.id), ...window.BKK.uncoveredInterests.map(i => i.id)]);
+      const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
       
       const unsubscribe = interestsRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -2824,7 +2825,21 @@
     }
   }, []);
 
-  // Load interest counters (for auto-naming: "Graffiti Chinatown #3")
+  // Load cityHiddenInterests — per-city interest visibility set by admin
+  useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    const ref = database.ref('settings/cityHiddenInterests');
+    ref.on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+      // Convert arrays to Sets for fast lookup
+      const sets = {};
+      Object.entries(data).forEach(([cityId, arr]) => {
+        sets[cityId] = new Set(Array.isArray(arr) ? arr : Object.keys(arr));
+      });
+      setCityHiddenInterests(sets);
+    });
+    return () => ref.off();
+  }, []);
   useEffect(() => {
     if (isFirebaseAvailable && database && selectedCityId) {
       const countersRef = database.ref(`cities/${selectedCityId}/interestCounters`);
@@ -2838,13 +2853,12 @@
 
   // Load interest active/inactive status (per-user with admin defaults)
   useEffect(() => {
-    // Hard-coded defaults: built-in = active, uncovered = inactive
+    // Hard-coded defaults: all built-in interests default to active
+    // noGoogleSearch interests are also active by default (opt-out model, same as regular)
     const builtInIds = interestOptions.map(i => i.id);
-    const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
     
     const hardDefaults = {};
     builtInIds.forEach(id => { hardDefaults[id] = true; });
-    uncoveredIds.forEach(id => { hardDefaults[id] = false; });
     
     // Helper: compute defaults from interestConfig defaultEnabled flags
     const computeDefaults = (icfg, legacyStatus) => {
@@ -2964,7 +2978,7 @@
           const intSnap = await database.ref('customInterests').once('value');
           const intData = intSnap.val();
           if (intData) {
-            const builtInIds = new Set([...window.BKK.interestOptions.map(i => i.id), ...window.BKK.uncoveredInterests.map(i => i.id)]);
+            const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
             const interestsArray = Object.keys(intData).map(key => ({
               ...intData[key],
               firebaseId: key
@@ -2998,7 +3012,7 @@
           // Interest Status — compute defaults from interestConfig.defaultEnabled flags
           {
             const builtInIds = interestOptions.map(i => i.id);
-            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const uncoveredIds = []; // uncoveredInterests removed — folded into interests
             const icfg = s.interestConfig || {};
             const defaultStatus = {};
             builtInIds.forEach(id => { 
@@ -3052,13 +3066,9 @@
                 // Also update localStorage for fast offline access
                 try {
                   const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-                  lsOverrides[cid] = { interests: co.interests, uncoveredInterests: co.uncoveredInterests || lsOverrides[cid]?.uncoveredInterests || [] };
+                  lsOverrides[cid] = { interests: co.interests };
                   localStorage.setItem('city_interests_overrides', JSON.stringify(lsOverrides));
                 } catch(e) {}
-              }
-              if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
-                window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
-                if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
               }
             });
             // Force React to re-read updated interestOptions
@@ -3175,10 +3185,7 @@
             window.BKK.cities[cid].interests = co.interests;
             if (cid === cityId) window.BKK.interestOptions = co.interests;
           }
-          if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
-            window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
-            if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
-          }
+
         });
         if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
           setSelectedCityId(id => id);
@@ -3346,11 +3353,13 @@
   };
 
   // Config - loaded from config.js, re-read on city change via selectedCityId dependency
-  const interestOptions = window.BKK.interestOptions || [];
+  // interestOptions filtered by city-level visibility (admin-controlled per city)
+  const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
+  const interestOptions = (window.BKK.interestOptions || []).filter(i => !hiddenForCity.has(i.id));
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
-  const uncoveredInterests = window.BKK.uncoveredInterests || [];
+  // uncoveredInterests removed — folded into interestOptions with noGoogleSearch:true
 
   const interestTooltips = window.BKK.interestTooltips || {};
 
@@ -4547,7 +4556,6 @@
   const allInterestOptions = useMemo(() => {
     return [
       ...interestOptions,
-      ...uncoveredInterests.map(opt => ({ ...opt, uncovered: true })), // stamp flag for hamburger count
       ...(cityCustomInterests || [])
     ].map(opt => {
       const config = interestConfig[opt.id];
@@ -4567,7 +4575,7 @@
         group: config.group || opt.group || ''
       };
     });
-  }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
+  }, [interestOptions, cityCustomInterests, interestConfig]);
 
   // Debug: log custom interests in allInterestOptions (only when debug mode is on)
   useEffect(() => {
@@ -4877,7 +4885,7 @@
         if (aStatus === 'draft' && !isUnlocked) return false;
         // Check interestStatus — same logic as wizard step 2 display
         const status = interestStatus[opt.id];
-        if (opt.uncovered) return status === true;
+        // noGoogleSearch interests now use opt-out like regular interests
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
         // Custom interests (not built-in, not uncovered): undefined = OFF by default
         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
@@ -5567,7 +5575,7 @@
         // Check city scope
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
         const status = interestStatus[id];
-        if (opt.uncovered) return status === true;
+        // noGoogleSearch interests now use opt-out like regular interests
         return status !== false;
       });
       if (activeInterests.length !== formData.interests.length) {
@@ -6722,7 +6730,7 @@
     const defaults = {};
     const builtInIds = new Set(interestOptions.map(i => i.id));
     // Unified logic for ALL interests — same as ⚪/🔵 toggle display
-    const allInterests = [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])];
+    const allInterests = [...interestOptions, ...(cityCustomInterests || [])];
     for (const i of allInterests) {
       const id = i.id || i.name?.replace(/\s+/g, '_').toLowerCase();
       if (!id) continue;
@@ -6801,8 +6809,11 @@
   const isInterestValid = (interestId) => {
     // 1. Manual (privateOnly) interests are ALWAYS valid - no search config needed
     const interestObj = allInterestOptions.find(o => o.id === interestId);
+    // noGoogleSearch interests: valid for tagging, never searched in Google
+    if (interestObj?.noGoogleSearch) return false;
     if (interestObj?.privateOnly) return true;
     const rawCustom = customInterests.find(o => o.id === interestId);
+    if (rawCustom?.noGoogleSearch) return false;
     if (rawCustom?.privateOnly) return true;
     
     // 2. Non-manual interests need search config (types or textSearch)

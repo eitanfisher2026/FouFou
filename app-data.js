@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.10.31
+// FouFou app-data.js v3.11.0
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2453,7 +2453,15 @@ window.BKK.cityData.bangkok = {
       "labelEn": "Parks",
       "icon": "🌳",
       "group": "outdoors"
-    }
+    },
+    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
+    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
+    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
+    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
+    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
+    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "temples": [
@@ -2513,72 +2521,6 @@ window.BKK.cityData.bangkok = {
   "textSearchInterests": {
     "graffiti": "street art"
   },
-  "uncoveredInterests": [
-    {
-      "id": "massage_spa",
-      "icon": "💆",
-      "label": "עיסוי וספא",
-      "labelEn": "Massage & Spa",
-      "name": "עיסוי וספא",
-      "examples": "Thai massage, wellness centers, spa"
-    },
-    {
-      "id": "fitness",
-      "icon": "🏋️",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט",
-      "examples": "Gyms, yoga studios, Muay Thai, fitness"
-    },
-    {
-      "id": "shopping_special",
-      "icon": "🛍️",
-      "label": "קניות מיוחדות",
-      "labelEn": "Special Shopping",
-      "name": "קניות מיוחדות",
-      "examples": "Boutiques, jewelry, fashion stores"
-    },
-    {
-      "id": "learning",
-      "icon": "🎓",
-      "label": "לימוד וחוויות",
-      "labelEn": "Learning & Experiences",
-      "name": "לימוד וחוויות",
-      "examples": "Cooking classes, meditation, workshops"
-    },
-    {
-      "id": "health",
-      "icon": "🏥",
-      "label": "בריאות ורפואה",
-      "labelEn": "Health & Medical",
-      "name": "בריאות ורפואה",
-      "examples": "Clinics, pharmacies, health services"
-    },
-    {
-      "id": "accommodation",
-      "icon": "🏨",
-      "label": "אירוח",
-      "labelEn": "Accommodation",
-      "name": "אירוח",
-      "examples": "Hotels, hostels, guesthouses"
-    },
-    {
-      "id": "transport",
-      "icon": "🚗",
-      "label": "תחבורה",
-      "labelEn": "Transport",
-      "name": "תחבורה",
-      "examples": "Car rental, bike rental, transportation"
-    },
-    {
-      "id": "business",
-      "icon": "💼",
-      "label": "עסקים",
-      "labelEn": "Business",
-      "name": "עסקים",
-      "examples": "Coworking, offices, business centers"
-    }
-  ],
   "interestTooltips": {
     "temples": "מקדשים בודהיסטיים והינדיים",
     "food": "מסעדות ואוכל רחוב",
@@ -3122,7 +3064,10 @@ window.BKK.cityData.gushdan = {
       "label": "היסטוריה",
       "labelEn": "History",
       "icon": "🏚️"
-    }
+    },
+    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness", "noGoogleSearch": true},
+    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "food": [
@@ -3176,32 +3121,6 @@ window.BKK.cityData.gushdan = {
     "architecture": "bauhaus building",
     "beaches": "beach"
   },
-  "uncoveredInterests": [
-    {
-      "id": "fitness",
-      "icon": "🏋️",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט",
-      "examples": "Gyms, yoga, pilates, cycling"
-    },
-    {
-      "id": "wellness",
-      "icon": "💆",
-      "label": "ספא ורווחה",
-      "labelEn": "Spa & Wellness",
-      "name": "ספא ורווחה",
-      "examples": "Spa, massage, wellness"
-    },
-    {
-      "id": "coworking",
-      "icon": "💻",
-      "label": "עבודה",
-      "labelEn": "Coworking",
-      "name": "חללי עבודה",
-      "examples": "Coworking, cafes with wifi"
-    }
-  ],
   "interestTooltips": {
     "food": "מסעדות ואוכל רחוב",
     "cafes": "בתי קפה",
@@ -3483,7 +3402,6 @@ window.BKK.cityData.malaga = {
   "textSearchInterests": {
     "graffiti": "street art"
   },
-  "uncoveredInterests": [],
   "interestTooltips": {},
   "theme": {
     "color": "#c60b1e",
@@ -3673,7 +3591,15 @@ window.BKK.cityData.singapore = {
       "label": "שווקי יום",
       "labelEn": "Markets",
       "locked": true
-    }
+    },
+    {"icon": "💆", "id": "massage_spa", "label": "עיסוי וספא", "labelEn": "Massage & Spa", "noGoogleSearch": true},
+    {"icon": "🏋️", "id": "fitness", "label": "כושר וספורט", "labelEn": "Fitness & Sports", "noGoogleSearch": true},
+    {"icon": "🛍️", "id": "shopping_special", "label": "קניות מיוחדות", "labelEn": "Special Shopping", "noGoogleSearch": true},
+    {"icon": "🎓", "id": "learning", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences", "noGoogleSearch": true},
+    {"icon": "🏥", "id": "health", "label": "בריאות ורפואה", "labelEn": "Health & Medical", "noGoogleSearch": true},
+    {"icon": "🏨", "id": "accommodation", "label": "אירוח", "labelEn": "Accommodation", "noGoogleSearch": true},
+    {"icon": "🚗", "id": "transport", "label": "תחבורה", "labelEn": "Transport", "noGoogleSearch": true},
+    {"icon": "💼", "id": "business", "label": "עסקים", "labelEn": "Business", "noGoogleSearch": true}
   ],
   "interestToGooglePlaces": {
     "food": [
@@ -3729,72 +3655,6 @@ window.BKK.cityData.singapore = {
     "hawkers": "hawker centre",
     "gardens": "garden"
   },
-  "uncoveredInterests": [
-    {
-      "examples": "Thai massage, wellness centers, spa",
-      "icon": "💆",
-      "id": "massage_spa",
-      "label": "עיסוי וספא",
-      "labelEn": "Massage & Spa",
-      "name": "עיסוי וספא"
-    },
-    {
-      "examples": "Gyms, yoga studios, Muay Thai, fitness",
-      "icon": "🏋️",
-      "id": "fitness",
-      "label": "כושר וספורט",
-      "labelEn": "Fitness & Sports",
-      "name": "כושר וספורט"
-    },
-    {
-      "examples": "Boutiques, jewelry, fashion stores",
-      "icon": "🛍️",
-      "id": "shopping_special",
-      "label": "קניות מיוחדות",
-      "labelEn": "Special Shopping",
-      "name": "קניות מיוחדות"
-    },
-    {
-      "examples": "Cooking classes, meditation, workshops",
-      "icon": "🎓",
-      "id": "learning",
-      "label": "לימוד וחוויות",
-      "labelEn": "Learning & Experiences",
-      "name": "לימוד וחוויות"
-    },
-    {
-      "examples": "Clinics, pharmacies, health services",
-      "icon": "🏥",
-      "id": "health",
-      "label": "בריאות ורפואה",
-      "labelEn": "Health & Medical",
-      "name": "בריאות ורפואה"
-    },
-    {
-      "examples": "Hotels, hostels, guesthouses",
-      "icon": "🏨",
-      "id": "accommodation",
-      "label": "אירוח",
-      "labelEn": "Accommodation",
-      "name": "אירוח"
-    },
-    {
-      "examples": "Car rental, bike rental, transportation",
-      "icon": "🚗",
-      "id": "transport",
-      "label": "תחבורה",
-      "labelEn": "Transport",
-      "name": "תחבורה"
-    },
-    {
-      "examples": "Coworking, offices, business centers",
-      "icon": "💼",
-      "id": "business",
-      "label": "עסקים",
-      "labelEn": "Business",
-      "name": "עסקים"
-    }
-  ],
   "interestTooltips": {
     "food": "מסעדות מכל העולם",
     "cafes": "בתי קפה",
@@ -3860,7 +3720,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.10.31';
+window.BKK.VERSION = '3.11.0';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4172,7 +4032,7 @@ window.BKK.selectCity = function(cityId) {
   window.BKK.interestOptions = city.interests;
   window.BKK.interestToGooglePlaces = city.interestToGooglePlaces;
   window.BKK.textSearchInterests = city.textSearchInterests || {};
-  window.BKK.uncoveredInterests = city.uncoveredInterests || [];
+  window.BKK.uncoveredInterests = []; // removed — noGoogleSearch flag on interests instead
   window.BKK.interestTooltips = city.interestTooltips || {};
 
   window.BKK.cityNameForSearch = city.nameEn;
@@ -4218,7 +4078,6 @@ window.BKK.selectCity = function(cityId) {
       if (window.BKK.cities[cityId]) {
         var ov = interestOverrides[cityId];
         if (ov.interests) window.BKK.cities[cityId].interests = ov.interests;
-        if (ov.uncoveredInterests) window.BKK.cities[cityId].uncoveredInterests = ov.uncoveredInterests;
       }
     });
   } catch(e) { console.error('[CONFIG] Error loading interests overrides:', e); }

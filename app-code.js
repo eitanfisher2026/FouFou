@@ -957,6 +957,7 @@ const FouFouApp = () => {
   const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }
   
   const [interestConfig, setInterestConfig] = useState({});
+  const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
 
   if (!window.BKK._defaultSystemParams) {
     window.BKK._defaultSystemParams = {
@@ -2832,7 +2833,7 @@ const FouFouApp = () => {
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
-      const builtInIds = new Set([...window.BKK.interestOptions.map(i => i.id), ...window.BKK.uncoveredInterests.map(i => i.id)]);
+      const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
       
       const unsubscribe = interestsRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -2955,6 +2956,19 @@ const FouFouApp = () => {
   }, []);
 
   useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    const ref = database.ref('settings/cityHiddenInterests');
+    ref.on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+      const sets = {};
+      Object.entries(data).forEach(([cityId, arr]) => {
+        sets[cityId] = new Set(Array.isArray(arr) ? arr : Object.keys(arr));
+      });
+      setCityHiddenInterests(sets);
+    });
+    return () => ref.off();
+  }, []);
+  useEffect(() => {
     if (isFirebaseAvailable && database && selectedCityId) {
       const countersRef = database.ref(`cities/${selectedCityId}/interestCounters`);
       countersRef.on('value', (snapshot) => {
@@ -2967,11 +2981,9 @@ const FouFouApp = () => {
 
   useEffect(() => {
     const builtInIds = interestOptions.map(i => i.id);
-    const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
     
     const hardDefaults = {};
     builtInIds.forEach(id => { hardDefaults[id] = true; });
-    uncoveredIds.forEach(id => { hardDefaults[id] = false; });
     
     const computeDefaults = (icfg, legacyStatus) => {
       const defaults = { ...hardDefaults };
@@ -3079,7 +3091,7 @@ const FouFouApp = () => {
           const intSnap = await database.ref('customInterests').once('value');
           const intData = intSnap.val();
           if (intData) {
-            const builtInIds = new Set([...window.BKK.interestOptions.map(i => i.id), ...window.BKK.uncoveredInterests.map(i => i.id)]);
+            const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
             const interestsArray = Object.keys(intData).map(key => ({
               ...intData[key],
               firebaseId: key
@@ -3107,7 +3119,7 @@ const FouFouApp = () => {
           
           {
             const builtInIds = interestOptions.map(i => i.id);
-            const uncoveredIds = uncoveredInterests.map(i => i.id || i.name.replace(/\s+/g, '_').toLowerCase());
+            const uncoveredIds = []; // uncoveredInterests removed — folded into interests
             const icfg = s.interestConfig || {};
             const defaultStatus = {};
             builtInIds.forEach(id => { 
@@ -3152,13 +3164,9 @@ const FouFouApp = () => {
                 if (cid === cityId) window.BKK.interestOptions = co.interests;
                 try {
                   const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-                  lsOverrides[cid] = { interests: co.interests, uncoveredInterests: co.uncoveredInterests || lsOverrides[cid]?.uncoveredInterests || [] };
+                  lsOverrides[cid] = { interests: co.interests };
                   localStorage.setItem('city_interests_overrides', JSON.stringify(lsOverrides));
                 } catch(e) {}
-              }
-              if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
-                window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
-                if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
               }
             });
             if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
@@ -3261,10 +3269,7 @@ const FouFouApp = () => {
             window.BKK.cities[cid].interests = co.interests;
             if (cid === cityId) window.BKK.interestOptions = co.interests;
           }
-          if (co.uncoveredInterests && co.uncoveredInterests.length > 0) {
-            window.BKK.cities[cid].uncoveredInterests = co.uncoveredInterests;
-            if (cid === cityId) window.BKK.uncoveredInterests = co.uncoveredInterests;
-          }
+
         });
         if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
           setSelectedCityId(id => id);
@@ -3421,11 +3426,10 @@ const FouFouApp = () => {
     }
   };
 
-  const interestOptions = window.BKK.interestOptions || [];
+  const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
+  const interestOptions = (window.BKK.interestOptions || []).filter(i => !hiddenForCity.has(i.id));
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
-
-  const uncoveredInterests = window.BKK.uncoveredInterests || [];
 
   const interestTooltips = window.BKK.interestTooltips || {};
 
@@ -4470,7 +4474,6 @@ const FouFouApp = () => {
   const allInterestOptions = useMemo(() => {
     return [
       ...interestOptions,
-      ...uncoveredInterests.map(opt => ({ ...opt, uncovered: true })), // stamp flag for hamburger count
       ...(cityCustomInterests || [])
     ].map(opt => {
       const config = interestConfig[opt.id];
@@ -4490,7 +4493,7 @@ const FouFouApp = () => {
         group: config.group || opt.group || ''
       };
     });
-  }, [interestOptions, uncoveredInterests, cityCustomInterests, interestConfig]);
+  }, [interestOptions, cityCustomInterests, interestConfig]);
 
   useEffect(() => {
     if (!debugMode) return;
@@ -4762,7 +4765,6 @@ const FouFouApp = () => {
         if (aStatus === 'hidden') return false;
         if (aStatus === 'draft' && !isUnlocked) return false;
         const status = interestStatus[opt.id];
-        if (opt.uncovered) return status === true;
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
         return status !== false;
@@ -5343,7 +5345,6 @@ const FouFouApp = () => {
         if (aStatus === 'draft' && !isUnlocked) return false;
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
         const status = interestStatus[id];
-        if (opt.uncovered) return status === true;
         return status !== false;
       });
       if (activeInterests.length !== formData.interests.length) {
@@ -6335,7 +6336,7 @@ const FouFouApp = () => {
   const computeDefaultInterestStatus = () => {
     const defaults = {};
     const builtInIds = new Set(interestOptions.map(i => i.id));
-    const allInterests = [...interestOptions, ...uncoveredInterests, ...(cityCustomInterests || [])];
+    const allInterests = [...interestOptions, ...(cityCustomInterests || [])];
     for (const i of allInterests) {
       const id = i.id || i.name?.replace(/\s+/g, '_').toLowerCase();
       if (!id) continue;
@@ -6404,8 +6405,10 @@ const FouFouApp = () => {
 
   const isInterestValid = (interestId) => {
     const interestObj = allInterestOptions.find(o => o.id === interestId);
+    if (interestObj?.noGoogleSearch) return false;
     if (interestObj?.privateOnly) return true;
     const rawCustom = customInterests.find(o => o.id === interestId);
+    if (rawCustom?.noGoogleSearch) return false;
     if (rawCustom?.privateOnly) return true;
     
     const config = interestConfig[interestId];
@@ -8150,7 +8153,6 @@ const FouFouApp = () => {
                 if (aStatus === 'draft' && !isUnlocked) return false;
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
                 const status = interestStatus[o.id];
-                if (o.uncovered) return status === true;
                 if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) {
                   return isInterestValid(o.id);
                 }
@@ -8799,7 +8801,6 @@ const FouFouApp = () => {
                       if (aStatus === 'hidden') return false;
                       if (aStatus === 'draft' && !isUnlocked) return false;
                       const status = interestStatus[option.id];
-                      if (option.uncovered) return status === true;
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
                       if (status === false) return false;
@@ -9121,7 +9122,6 @@ const FouFouApp = () => {
                         if (aStatus === 'draft' && !isUnlocked) return false;
                         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
                         const status = interestStatus[interest];
-                        if (opt.uncovered) return status === true;
                         if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
                         return status !== false;
                       })
@@ -10191,7 +10191,7 @@ const FouFouApp = () => {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
-                  {(window.BKK.interestOptions || []).length + (window.BKK.uncoveredInterests || []).length + (cityCustomInterests || []).length} {t("general.total")}
+                  {(window.BKK.interestOptions || []).length + (cityCustomInterests || []).length} {t("general.total")}
                 </span>
               </div>
               <div className="flex gap-1">
@@ -10354,37 +10354,24 @@ const FouFouApp = () => {
                 if (!cfg) return i;
                 return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
               });
-              const overriddenUncovered = uncoveredInterests.map(i => {
-                const cfg = interestConfig[i.id];
-                if (!cfg) return i;
-                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
-              });
               const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const activeBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
-              }));
-              const activeUncovered = sortAlpha(overriddenUncovered.filter(i => {
-                const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] === true;
+                return as === 'active' && interestStatus[i.id] !== false;
               }));
               const activeCustom = sortAlpha(cityCustomInterests.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && isInterestValid(i.id) && interestStatus[i.id] !== false;
+                return as === 'active' && interestStatus[i.id] !== false;
               }));
               const inactiveBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] === false);
-              }));
-              const inactiveUncovered = sortAlpha(overriddenUncovered.filter(i => {
-                const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] !== true);
+                return as === 'active' && interestStatus[i.id] === false;
               }));
               const inactiveCustom = sortAlpha(cityCustomInterests.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && (!isInterestValid(i.id) || interestStatus[i.id] === false);
+                return as === 'active' && interestStatus[i.id] === false;
               }));
-              const allForAdmin = [...overriddenBuiltIn, ...overriddenUncovered, ...cityCustomInterests];
+              const allForAdmin = [...overriddenBuiltIn, ...cityCustomInterests];
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
               
@@ -10393,22 +10380,21 @@ const FouFouApp = () => {
                   {/* Active Interests — merged and sorted alphabetically */}
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-green-700 mb-2">
-                      {t("interests.activeInterests")} ({activeBuiltIn.length + activeUncovered.length + activeCustom.length})
+                      {t("interests.activeInterests")} ({activeBuiltIn.length + activeCustom.length})
                     </h3>
                     <div className="space-y-1">
-                      {sortAlpha([...activeBuiltIn, ...activeUncovered, ...activeCustom]).map(i => renderInterestRow(i, true))}
+                      {sortAlpha([...activeBuiltIn, ...activeCustom]).map(i => renderInterestRow(i, true))}
                     </div>
                   </div>
                   
                   {/* Inactive Interests */}
-                  {(inactiveBuiltIn.length + inactiveUncovered.length + inactiveCustom.length) > 0 && (
+                  {(inactiveBuiltIn.length + inactiveCustom.length) > 0 && (
                     <div className="mb-4">
                       <h3 className="text-sm font-bold text-gray-500 mb-2">
-                        ⏸️ Disabled interests ({inactiveBuiltIn.length + inactiveUncovered.length + inactiveCustom.length})
+                        ⏸️ Disabled interests ({inactiveBuiltIn.length + inactiveCustom.length})
                       </h3>
                       <div className="space-y-1">
                         {inactiveBuiltIn.map(i => renderInterestRow(i, false))}
-                        {inactiveUncovered.map(i => renderInterestRow(i, false))}
                         {inactiveCustom.map(i => renderInterestRow(i, false))}
                       </div>
                     </div>
@@ -10568,99 +10554,40 @@ const FouFouApp = () => {
                   );
                 })()}
 
-                {/* Copy Interests from Source City */}
-                {isUnlocked && window.BKK.selectedCity && (() => {
-                  const targetCity = window.BKK.selectedCity;
-                  const otherCities = Object.values(window.BKK.cities || {}).filter(c => c.id !== targetCity.id);
-                  if (otherCities.length === 0) return null;
+                                {/* City Interest Visibility — admin controls which interests are shown for this city */}
+                {isAdmin && window.BKK.selectedCity && (() => {
+                  const cityId = selectedCityId;
+                  const allAvailable = [...(window.BKK.interestOptions || []), ...(cityCustomInterests || [])];
+                  if (allAvailable.length === 0) return null;
+                  const hidden = cityHiddenInterests[cityId] || new Set();
+                  const toggleHidden = (interestId) => {
+                    const next = new Set(hidden);
+                    if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
+                    const arr = [...next];
+                    setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
+                    if (isFirebaseAvailable && database) {
+                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
+                        .catch(e => console.error('[CITY] cityHiddenInterests save error:', e));
+                    }
+                  };
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#0369a1' }}>📋 {t('settings.copyInterestsFrom') || 'העתק תחומים מ:'}</span>
-                      <select
-                        id="copy-interests-source"
-                        style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #bae6fd', fontSize: '12px', background: 'white', color: '#0369a1', cursor: 'pointer' }}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>{t('general.selectCity') || 'בחר עיר...'}</option>
-                        {otherCities.map(c => (
-                          <option key={c.id} value={c.id}>{c.icon} {tLabel(c)}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => {
-                          const sel = document.getElementById('copy-interests-source');
-                          const sourceCityId = sel?.value;
-                          if (!sourceCityId) { showToast(t('general.selectCity') || 'בחר עיר מקור תחילה', 'warning'); return; }
-                          const sourceCity = window.BKK.cities[sourceCityId];
-                          if (!sourceCity) { showToast('Source city not found', 'error'); return; }
-
-                          const isLocal = i => {
-                            if (i.cityId) return true;
-                            if (i.scope === 'local') return true;
-                            const cfg = interestConfig[i.id];
-                            if (cfg?.cityId) return true;
-                            if (cfg?.scope === 'local') return true;
-                            return false;
-                          };
-                          const isFromSource = i => i.cityId === sourceCityId || interestConfig[i.id]?.cityId === sourceCityId;
-
-                          const builtIn   = (sourceCity.interests || []).filter(i => !isLocal(i));
-                          const uncovered = (sourceCity.uncoveredInterests || []).filter(i => !isLocal(i));
-                          const fromFirebase = (customInterests || []).filter(i => !isLocal(i));
-
-                          const seen = new Set();
-                          const toCopy = [...builtIn, ...uncovered, ...fromFirebase].filter(i => {
-                            if (seen.has(i.id)) return false;
-                            seen.add(i.id);
-                            return true;
-                          });
-
-                          const skippedFile = (sourceCity.interests || []).filter(i => isLocal(i)).length;
-                          const skippedFirebase = (customInterests || []).filter(i => isLocal(i)).length;
-                          const skippedBuiltIn = skippedFile + skippedFirebase;
-                          const currentCount = (targetCity.interests?.length || 0) + (targetCity.uncoveredInterests?.length || 0);
-
-                          const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?\n` +
-                            `  • ${builtIn.length} תחומים רגילים\n` +
-                            `  • ${uncovered.length} תחומים ללא כיסוי גוגל\n` +
-                            `  • ${fromFirebase.length} תחומים מ-Firebase\n` +
-                            (skippedBuiltIn > 0 ? `  ⚠️ ${skippedBuiltIn} תחומים מקומיים של ${tLabel(sourceCity)} לא יועתקו\n` : '') +
-                            `\nהתחומים הנוכחיים של ${tLabel(targetCity)} (${currentCount}) יימחקו ויוחלפו.\n\nלהמשיך?`;
-
-                          showConfirm(msg, () => {
-                            targetCity.interests = builtIn.map(i => { const c = { ...i }; delete c.cityId; return c; });
-                            targetCity.uncoveredInterests = uncovered.map(i => { const c = { ...i }; delete c.cityId; return c; });
-                            try {
-                              const customCities = JSON.parse(localStorage.getItem('custom_cities') || '{}');
-                              if (customCities[targetCity.id]) {
-                                customCities[targetCity.id].interests = targetCity.interests;
-                                customCities[targetCity.id].uncoveredInterests = targetCity.uncoveredInterests;
-                                localStorage.setItem('custom_cities', JSON.stringify(customCities));
-                              }
-                              const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-                              overrides[targetCity.id] = {
-                                interests: targetCity.interests,
-                                uncoveredInterests: targetCity.uncoveredInterests
-                              };
-                              localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
-                              if (isFirebaseAvailable && database) {
-                                database.ref(`settings/cityOverrides/${targetCity.id}/interests`).set(targetCity.interests)
-                                  .catch(e => console.error('[CITY] Firebase interests save error:', e));
-                                database.ref(`settings/cityOverrides/${targetCity.id}/uncoveredInterests`).set(targetCity.uncoveredInterests || [])
-                                  .catch(e => console.error('[CITY] Firebase uncoveredInterests save error:', e));
-                              }
-                            } catch(e) { console.error('[CITY] Failed to save interests:', e); }
-                            window.BKK.selectCity(targetCity.id);
-                            window.BKK.exportCityFile(targetCity);
-                            setCityModified(false);
-                            setSelectedCityId(prev => { return prev; }); // ping React to re-read window.BKK.interestOptions
-                            setFormData(prev => ({ ...prev, interests: [] })); // reset interest selection
-                            showToast(`✅ הועתקו ${toCopy.length} תחומים מ-${tLabel(sourceCity)}`, 'success');
-                          });
-                        }}
-                        style={{ padding: '3px 10px', borderRadius: '6px', border: 'none', background: '#0284c7', color: 'white', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-                      >📋 {t('settings.copyInterests') || 'העתק'}</button>
-                      <span style={{ fontSize: '10px', color: '#64748b' }}>{t('settings.copyInterestsHint') || 'תחומים ספציפיים לעיר המקור לא יועתקו'}</span>
+                    <div style={{ marginBottom: '8px', padding: '8px 10px', background: '#fafafa', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#374151', marginBottom: '6px' }}>
+                        🏷️ {t('settings.cityInterestVisibility') || 'תחומים חשופים בעיר'} <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allAvailable.length - hidden.size}/{allAvailable.length})</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {allAvailable.map(i => {
+                          const isHidden = hidden.has(i.id);
+                          return (
+                            <button key={i.id} onClick={() => toggleHidden(i.id)}
+                              style={{ padding: '2px 7px', fontSize: '10px', borderRadius: '20px', border: '1px solid', cursor: 'pointer', fontWeight: isHidden ? 'normal' : 'bold',
+                                background: isHidden ? '#f3f4f6' : '#ecfdf5', color: isHidden ? '#9ca3af' : '#065f46',
+                                borderColor: isHidden ? '#e5e7eb' : '#6ee7b7', opacity: isHidden ? 0.6 : 1 }}
+                              title={isHidden ? 'לחץ להציג' : 'לחץ להסתיר'}
+                            >{i.icon?.startsWith?.('data:') ? '📍' : (i.icon || '📍')} {tLabel(i) || i.label}</button>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })()}
@@ -12304,7 +12231,6 @@ const FouFouApp = () => {
                   if (aStatus === 'draft' && !isUnlocked) return false;
                   if (!usedInterests.has(i.id)) return false;
                   if (interestStatus[i.id] === false) return false;
-                  if (i.uncovered && !interestStatus[i.id]) return false;
                   return true;
                 });
                 const areas = window.BKK.areaOptions || [];
@@ -14022,7 +13948,6 @@ const FouFouApp = () => {
                         const groups = new Set();
                         (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
                         (window.BKK.interestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
-                        (window.BKK.uncoveredInterests || []).forEach(i => { if (i.group) groups.add(i.group); });
                         return [...groups].sort().map(g => <option key={g} value={g}>{g}</option>);
                       })()}
                     </select>
@@ -14297,61 +14222,7 @@ const FouFouApp = () => {
                 </div>
                 )}
 
-                {/* Copy to city — admin only, rare action, inside dialog */}
-                {isAdmin && editingCustomInterest && (() => {
-                  const allCities = Object.values(window.BKK.cities || {});
-                  const otherCities = allCities.filter(c => c.id !== selectedCityId);
-                  if (otherCities.length === 0) return null;
-                  const interestToCopy = editingCustomInterest;
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: '#f5f3ff', borderRadius: '8px', border: '1px solid #e9d5ff', marginTop: '6px' }}>
-                      <span style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 'bold', whiteSpace: 'nowrap' }}>📋 {t('settings.copyInterestsFrom') || 'העתק תחום לעיר:'}</span>
-                      <select
-                        defaultValue=""
-                        onChange={e => {
-                          const targetCityId = e.target.value;
-                          e.target.value = '';
-                          if (!targetCityId) return;
-                          const targetCity = window.BKK.cities[targetCityId];
-                          if (!targetCity) return;
-                          const interestLabel = newInterest.label || interestToCopy.label || interestToCopy.id;
-                          showConfirm(
-                            `העתק תחום "${interestLabel}" אל ${tLabel(targetCity)}?\n\nהתחום יתווסף לרשימת התחומים של ${tLabel(targetCity)}.`,
-                            () => {
-                              const copy = { ...interestToCopy };
-                              delete copy.cityId; delete copy.scope;
-                              const existing = targetCity.interests || [];
-                              if (existing.find(i => i.id === copy.id)) {
-                                showToast(`⚠️ התחום "${interestLabel}" כבר קיים ב-${tLabel(targetCity)}`, 'warning');
-                                return;
-                              }
-                              targetCity.interests = [...existing, copy];
-                              try {
-                                const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-                                overrides[targetCityId] = { interests: targetCity.interests, uncoveredInterests: targetCity.uncoveredInterests || [] };
-                                localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
-                                if (isFirebaseAvailable && database) {
-                                  database.ref(`settings/cityOverrides/${targetCityId}/interests`).set(targetCity.interests)
-                                    .catch(e => console.error('[CITY] copy interest firebase error:', e));
-                                }
-                              } catch(err) { console.error('[CITY] copy interest save error:', err); }
-                              showToast(`✅ "${interestLabel}" הועתק אל ${tLabel(targetCity)}`, 'success');
-                            },
-                            { confirmLabel: 'העתק', confirmColor: '#8b5cf6' }
-                          );
-                        }}
-                        style={{ padding: '2px 6px', borderRadius: '6px', border: '1px solid #c4b5fd', fontSize: '10px', background: 'white', color: '#5b21b6', cursor: 'pointer', flex: 1 }}
-                      >
-                        <option value="">בחר עיר יעד...</option>
-                        {otherCities.map(c => (
-                          <option key={c.id} value={c.id}>{tLabel(c)}{!c.active ? ' (לא פעיל)' : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })()}
-
-                {/* Counter for auto-naming — only in edit mode + admin */}
+                                {/* Counter for auto-naming — only in edit mode + admin */}
                 {/* Admin: Status + Default + Place count */}
                 {editingCustomInterest && isUnlocked && (() => {
                   const interestId = editingCustomInterest.id;
@@ -15743,7 +15614,7 @@ const FouFouApp = () => {
                               allCityRadius, areas, interests: defaultInterests,
                               interestToGooglePlaces: defaultPlaceTypes,
                               textSearchInterests: { graffiti: 'street art' },
-                              uncoveredInterests: [],
+                              
                               interestTooltips: {},
                               systemRoutes: []
                             };
