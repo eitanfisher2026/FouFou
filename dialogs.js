@@ -1805,6 +1805,58 @@
                 >
                   {`✓ ${t("general.close")}`}
                 </button>
+                {isAdmin && editingCustomInterest && (() => {
+                  const allCities = Object.values(window.BKK.cities || {});
+                  const otherCities = allCities.filter(c => c.id !== selectedCityId);
+                  if (otherCities.length === 0) return null;
+                  const interestToCopy = editingCustomInterest;
+                  return (
+                    <select
+                      defaultValue=""
+                      onChange={e => {
+                        const targetCityId = e.target.value;
+                        e.target.value = '';
+                        if (!targetCityId) return;
+                        const targetCity = window.BKK.cities[targetCityId];
+                        if (!targetCity) return;
+                        const interestLabel = newInterest.label || interestToCopy.label || interestToCopy.id;
+                        showConfirm(
+                          `העתק תחום "${interestLabel}" אל ${tLabel(targetCity)}?\n\nהתחום יתווסף לרשימת התחומים של ${tLabel(targetCity)}.`,
+                          () => {
+                            const copy = { ...interestToCopy };
+                            delete copy.cityId; delete copy.scope;
+                            // Add to target city's interests array
+                            const existing = targetCity.interests || [];
+                            if (existing.find(i => i.id === copy.id)) {
+                              showToast(`⚠️ התחום "${interestLabel}" כבר קיים ב-${tLabel(targetCity)}`, 'warning');
+                              return;
+                            }
+                            targetCity.interests = [...existing, copy];
+                            // Persist: localStorage + Firebase
+                            try {
+                              const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+                              overrides[targetCityId] = { interests: targetCity.interests, uncoveredInterests: targetCity.uncoveredInterests || [] };
+                              localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/cityOverrides/${targetCityId}/interests`).set(targetCity.interests)
+                                  .catch(e => console.error('[CITY] copy interest firebase error:', e));
+                              }
+                            } catch(err) { console.error('[CITY] copy interest save error:', err); }
+                            showToast(`✅ "${interestLabel}" הועתק אל ${tLabel(targetCity)}`, 'success');
+                          },
+                          { confirmLabel: 'העתק', confirmColor: '#8b5cf6' }
+                        );
+                      }}
+                      style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #c4b5fd', fontSize: '11px', background: '#f5f3ff', color: '#5b21b6', cursor: 'pointer', fontWeight: 'bold' }}
+                      title="העתק תחום זה לעיר אחרת"
+                    >
+                      <option value="">📋 העתק לעיר...</option>
+                      {otherCities.map(c => (
+                        <option key={c.id} value={c.id}>{tLabel(c)}{!c.active ? ' (לא פעיל)' : ''}</option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
 
             </div>

@@ -276,8 +276,12 @@
                 if (aStatus === 'draft' && !isUnlocked) return false;
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
                 const status = interestStatus[o.id];
+                // uncovered: only active if explicitly enabled
                 if (o.uncovered) return status === true;
-                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
+                // custom interests with no status set: include if isInterestValid (matches activeCustom logic)
+                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) {
+                  return isInterestValid(o.id);
+                }
                 return status !== false;
               }).length },
               // Settings — admin only (hidden from regular users, not just blocked)
@@ -1325,7 +1329,7 @@
                             {filteredStops.map((stop) => {
                               const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
                               const isDisabled = isStopDisabled(stop);
-                              const isCustom = stop.custom;
+                              const isCustom = stop.custom || !!customLocations.find(loc => loc.name.toLowerCase().trim() === (stop.name || '').toLowerCase().trim());
                               const isAddedLater = stop.addedLater;
                               const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
@@ -2010,6 +2014,12 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">{`⭐ ${t("nav.favorites")}`}</h2>
+              <button
+                onClick={() => refreshAllData()}
+                disabled={isRefreshing}
+                style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', cursor: isRefreshing ? 'wait' : 'pointer' }}
+                title={t('settings.refreshData') || 'רענן'}
+              ><span className={isRefreshing ? 'animate-spin inline-block' : ''}>🔄</span></button>
               {isUnlocked && customLocations.length > 1 && (
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                   <button
@@ -2740,12 +2750,20 @@
                           // 1. city.interests        — built-in, in city file
                           // 2. city.uncoveredInterests — built-in, no Google search config
                           // 3. customInterests (Firebase) — global ones + source-city-specific
-                          const isGlobal = i => !i.cityId && i.scope !== 'local';
-                          const isFromSource = i => i.cityId === sourceCityId;
+                          // An interest is "local" if it has cityId set OR interestConfig marks it scope='local' or cityId
+                          const isLocal = i => {
+                            if (i.cityId) return true;
+                            if (i.scope === 'local') return true;
+                            const cfg = interestConfig[i.id];
+                            if (cfg?.cityId) return true;
+                            if (cfg?.scope === 'local') return true;
+                            return false;
+                          };
+                          const isFromSource = i => i.cityId === sourceCityId || interestConfig[i.id]?.cityId === sourceCityId;
 
-                          const builtIn   = (sourceCity.interests || []).filter(isGlobal);
-                          const uncovered = (sourceCity.uncoveredInterests || []).filter(isGlobal);
-                          const fromFirebase = (customInterests || []).filter(i => isGlobal(i) || isFromSource(i));
+                          const builtIn   = (sourceCity.interests || []).filter(i => !isLocal(i));
+                          const uncovered = (sourceCity.uncoveredInterests || []).filter(i => !isLocal(i));
+                          const fromFirebase = (customInterests || []).filter(i => !isLocal(i) || isFromSource(i));
 
                           // Dedupe by id across all three sources
                           const seen = new Set();
@@ -2755,14 +2773,14 @@
                             return true;
                           });
 
-                          const skippedBuiltIn = (sourceCity.interests || []).length - builtIn.length;
+                          const skippedBuiltIn = (sourceCity.interests || []).filter(i => isLocal(i)).length;
                           const currentCount = (targetCity.interests?.length || 0) + (targetCity.uncoveredInterests?.length || 0);
 
                           const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?\n` +
                             `  • ${builtIn.length} תחומים רגילים\n` +
                             `  • ${uncovered.length} תחומים ללא כיסוי גוגל\n` +
                             `  • ${fromFirebase.length} תחומים מ-Firebase\n` +
-                            (skippedBuiltIn > 0 ? `  (${skippedBuiltIn} ספציפיים ל-${tLabel(sourceCity)} לא יועתקו)\n` : '') +
+                            (skippedBuiltIn > 0 ? `  ⚠️ ${skippedBuiltIn} תחומים מקומיים של ${tLabel(sourceCity)} לא יועתקו\n` : '') +
                             `\nהתחומים הנוכחיים של ${tLabel(targetCity)} (${currentCount}) יימחקו ויוחלפו.\n\nלהמשיך?`;
 
                           showConfirm(msg, () => {

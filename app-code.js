@@ -8151,7 +8151,9 @@ const FouFouApp = () => {
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
                 const status = interestStatus[o.id];
                 if (o.uncovered) return status === true;
-                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) return false;
+                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) {
+                  return isInterestValid(o.id);
+                }
                 return status !== false;
               }).length },
               ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
@@ -9176,7 +9178,7 @@ const FouFouApp = () => {
                             {filteredStops.map((stop) => {
                               const hasValidCoords = stop.lat && stop.lng && stop.lat !== 0 && stop.lng !== 0;
                               const isDisabled = isStopDisabled(stop);
-                              const isCustom = stop.custom;
+                              const isCustom = stop.custom || !!customLocations.find(loc => loc.name.toLowerCase().trim() === (stop.name || '').toLowerCase().trim());
                               const isAddedLater = stop.addedLater;
                               const isStartPoint = hasValidCoords && startPointCoords?.lat === stop.lat && startPointCoords?.lng === stop.lng;
                               
@@ -9855,6 +9857,12 @@ const FouFouApp = () => {
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3">
               <h2 className="text-lg font-bold">{`⭐ ${t("nav.favorites")}`}</h2>
+              <button
+                onClick={() => refreshAllData()}
+                disabled={isRefreshing}
+                style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', cursor: isRefreshing ? 'wait' : 'pointer' }}
+                title={t('settings.refreshData') || 'רענן'}
+              ><span className={isRefreshing ? 'animate-spin inline-block' : ''}>🔄</span></button>
               {isUnlocked && customLocations.length > 1 && (
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
                   <button
@@ -10576,12 +10584,19 @@ const FouFouApp = () => {
                           const sourceCity = window.BKK.cities[sourceCityId];
                           if (!sourceCity) { showToast('Source city not found', 'error'); return; }
 
-                          const isGlobal = i => !i.cityId && i.scope !== 'local';
-                          const isFromSource = i => i.cityId === sourceCityId;
+                          const isLocal = i => {
+                            if (i.cityId) return true;
+                            if (i.scope === 'local') return true;
+                            const cfg = interestConfig[i.id];
+                            if (cfg?.cityId) return true;
+                            if (cfg?.scope === 'local') return true;
+                            return false;
+                          };
+                          const isFromSource = i => i.cityId === sourceCityId || interestConfig[i.id]?.cityId === sourceCityId;
 
-                          const builtIn   = (sourceCity.interests || []).filter(isGlobal);
-                          const uncovered = (sourceCity.uncoveredInterests || []).filter(isGlobal);
-                          const fromFirebase = (customInterests || []).filter(i => isGlobal(i) || isFromSource(i));
+                          const builtIn   = (sourceCity.interests || []).filter(i => !isLocal(i));
+                          const uncovered = (sourceCity.uncoveredInterests || []).filter(i => !isLocal(i));
+                          const fromFirebase = (customInterests || []).filter(i => !isLocal(i) || isFromSource(i));
 
                           const seen = new Set();
                           const toCopy = [...builtIn, ...uncovered, ...fromFirebase].filter(i => {
@@ -10590,14 +10605,14 @@ const FouFouApp = () => {
                             return true;
                           });
 
-                          const skippedBuiltIn = (sourceCity.interests || []).length - builtIn.length;
+                          const skippedBuiltIn = (sourceCity.interests || []).filter(i => isLocal(i)).length;
                           const currentCount = (targetCity.interests?.length || 0) + (targetCity.uncoveredInterests?.length || 0);
 
                           const msg = `העתק ${toCopy.length} תחומים מ-${tLabel(sourceCity)} אל ${tLabel(targetCity)}?\n` +
                             `  • ${builtIn.length} תחומים רגילים\n` +
                             `  • ${uncovered.length} תחומים ללא כיסוי גוגל\n` +
                             `  • ${fromFirebase.length} תחומים מ-Firebase\n` +
-                            (skippedBuiltIn > 0 ? `  (${skippedBuiltIn} ספציפיים ל-${tLabel(sourceCity)} לא יועתקו)\n` : '') +
+                            (skippedBuiltIn > 0 ? `  ⚠️ ${skippedBuiltIn} תחומים מקומיים של ${tLabel(sourceCity)} לא יועתקו\n` : '') +
                             `\nהתחומים הנוכחיים של ${tLabel(targetCity)} (${currentCount}) יימחקו ויוחלפו.\n\nלהמשיך?`;
 
                           showConfirm(msg, () => {
@@ -14624,6 +14639,56 @@ const FouFouApp = () => {
                 >
                   {`✓ ${t("general.close")}`}
                 </button>
+                {isAdmin && editingCustomInterest && (() => {
+                  const allCities = Object.values(window.BKK.cities || {});
+                  const otherCities = allCities.filter(c => c.id !== selectedCityId);
+                  if (otherCities.length === 0) return null;
+                  const interestToCopy = editingCustomInterest;
+                  return (
+                    <select
+                      defaultValue=""
+                      onChange={e => {
+                        const targetCityId = e.target.value;
+                        e.target.value = '';
+                        if (!targetCityId) return;
+                        const targetCity = window.BKK.cities[targetCityId];
+                        if (!targetCity) return;
+                        const interestLabel = newInterest.label || interestToCopy.label || interestToCopy.id;
+                        showConfirm(
+                          `העתק תחום "${interestLabel}" אל ${tLabel(targetCity)}?\n\nהתחום יתווסף לרשימת התחומים של ${tLabel(targetCity)}.`,
+                          () => {
+                            const copy = { ...interestToCopy };
+                            delete copy.cityId; delete copy.scope;
+                            const existing = targetCity.interests || [];
+                            if (existing.find(i => i.id === copy.id)) {
+                              showToast(`⚠️ התחום "${interestLabel}" כבר קיים ב-${tLabel(targetCity)}`, 'warning');
+                              return;
+                            }
+                            targetCity.interests = [...existing, copy];
+                            try {
+                              const overrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
+                              overrides[targetCityId] = { interests: targetCity.interests, uncoveredInterests: targetCity.uncoveredInterests || [] };
+                              localStorage.setItem('city_interests_overrides', JSON.stringify(overrides));
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/cityOverrides/${targetCityId}/interests`).set(targetCity.interests)
+                                  .catch(e => console.error('[CITY] copy interest firebase error:', e));
+                              }
+                            } catch(err) { console.error('[CITY] copy interest save error:', err); }
+                            showToast(`✅ "${interestLabel}" הועתק אל ${tLabel(targetCity)}`, 'success');
+                          },
+                          { confirmLabel: 'העתק', confirmColor: '#8b5cf6' }
+                        );
+                      }}
+                      style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid #c4b5fd', fontSize: '11px', background: '#f5f3ff', color: '#5b21b6', cursor: 'pointer', fontWeight: 'bold' }}
+                      title="העתק תחום זה לעיר אחרת"
+                    >
+                      <option value="">📋 העתק לעיר...</option>
+                      {otherCities.map(c => (
+                        <option key={c.id} value={c.id}>{tLabel(c)}{!c.active ? ' (לא פעיל)' : ''}</option>
+                      ))}
+                    </select>
+                  );
+                })()}
               </div>
 
             </div>
