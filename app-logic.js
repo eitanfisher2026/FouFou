@@ -6824,7 +6824,11 @@
     const config = interestConfig[interestId];
     if (config) {
       if (config.textSearch && config.textSearch.trim()) return true;
-      if (config.types && Array.isArray(config.types) && config.types.length > 0) return true;
+      // types can be array or comma-separated string
+      if (config.types) {
+        const typesArr = Array.isArray(config.types) ? config.types : config.types.toString().split(',').map(s=>s.trim()).filter(Boolean);
+        if (typesArr.length > 0) return true;
+      }
     }
     
     // Check city's built-in search config
@@ -7584,8 +7588,14 @@
         window.BKK.systemParams = merged;
         setSystemParams(merged);
       }
-      
-      // 4. Import locations
+
+      if (importedData.cityHiddenInterests && typeof importedData.cityHiddenInterests === 'object') {
+        const sets = {};
+        Object.entries(importedData.cityHiddenInterests).forEach(([cid, arr]) => {
+          sets[cid] = new Set(Array.isArray(arr) ? arr : []);
+        });
+        setCityHiddenInterests(sets);
+      }
       (importedData.customLocations || []).forEach(loc => {
         if (!loc.name) return;
         

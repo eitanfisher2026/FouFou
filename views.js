@@ -2736,29 +2736,41 @@
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
-                      <input type="text" value={theme.iconLeft || ''} placeholder="◀"
-                        onChange={(e) => {
-                          city.theme.iconLeft = e.target.value;
-                          setCityModified(true); setCityEditCounter(c => c + 1);
-                        }}
-                        style={{ width: '36px', fontSize: '14px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px' }}
-                      />
-                      <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
-                        style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
-                      >✨</button>
+                      {/* iconLeft — text input + emoji picker + file upload */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <div style={{ width: '36px', height: '30px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', overflow: 'hidden' }}>
+                          {theme.iconLeft?.startsWith?.('data:') ? <img src={theme.iconLeft} alt="" style={{ width: '28px', height: '28px', objectFit: 'contain' }} /> : (theme.iconLeft || '◀')}
+                        </div>
+                        <label style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #6b7280', borderRadius: '3px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }}>
+                          📁<input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            const compressed = await window.BKK.compressIcon(file, 64);
+                            if (compressed) { city.theme.iconLeft = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                          }} />
+                        </label>
+                        <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                          style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
+                        >✨</button>
+                      </div>
                       <div style={{ width: '60px', height: '22px', borderRadius: '6px', background: theme.color || '#e11d48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ color: 'white', fontSize: '9px', fontWeight: 'bold' }}>{tLabel(city)}</span>
                       </div>
-                      <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
-                        style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
-                      >✨</button>
-                      <input type="text" value={theme.iconRight || ''} placeholder="▶"
-                        onChange={(e) => {
-                          city.theme.iconRight = e.target.value;
-                          setCityModified(true); setCityEditCounter(c => c + 1);
-                        }}
-                        style={{ width: '36px', fontSize: '14px', textAlign: 'center', padding: '2px', border: '1px solid #d1d5db', borderRadius: '6px' }}
-                      />
+                      {/* iconRight — text input + emoji picker + file upload */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <div style={{ width: '36px', height: '30px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', overflow: 'hidden' }}>
+                          {theme.iconRight?.startsWith?.('data:') ? <img src={theme.iconRight} alt="" style={{ width: '28px', height: '28px', objectFit: 'contain' }} /> : (theme.iconRight || '▶')}
+                        </div>
+                        <label style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #6b7280', borderRadius: '3px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }}>
+                          📁<input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0]; if (!file) return;
+                            const compressed = await window.BKK.compressIcon(file, 64);
+                            if (compressed) { city.theme.iconRight = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                          }} />
+                        </label>
+                        <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                          style={{ fontSize: '8px', padding: '1px 3px', border: '1px dashed #f59e0b', borderRadius: '3px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }}
+                        >✨</button>
+                      </div>
                     </div>
                   );
                 })()}
@@ -3739,6 +3751,10 @@
                           interestStatus: interestStatus,
                           // Interest auto-naming counters
                           interestCounters: interestCounters,
+                          // City-level interest visibility (which interests are hidden per city)
+                          cityHiddenInterests: Object.fromEntries(
+                            Object.entries(cityHiddenInterests).map(([cid, set]) => [cid, [...set]])
+                          ),
                           // System parameters (algorithm tuning)
                           systemParams: systemParams,
                           // Metadata

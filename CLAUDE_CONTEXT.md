@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.9.94d` (Mar 21, 2026)
+- **גרסה:** `3.11.14` (Mar 23, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -544,11 +544,13 @@ window.BKK.compressIcon(input, 64)  // PNG/WebP, 64x64 max, preserves transparen
 cities/{cityId}/locations/{id}         <- favorites
 cities/{cityId}/routes/{id}            <- saved routes
 cities/{cityId}/reviews/{namePK}/{uid} <- ratings (deleted with location!)
-cities/{cityId}/interestCounters/      <- auto-naming counters
-customInterests/{id}                   <- custom interests
+cities/{cityId}/interestCounters/      <- auto-naming counters (per-city!)
+customInterests/{id}                   <- custom interests (all global)
 settings/interestConfig/{id}           <- search config + routeSlot + overrides
 settings/interestStatus/{id}           <- default enabled/disabled
+settings/cityHiddenInterests/{cityId}  <- array of interest IDs hidden for that city
 settings/systemParams                  <- admin system params
+settings/cityOverrides/{cityId}/       <- day/nightStartHour overrides per city
 users/{uid}/interestStatus/{id}        <- per-user overrides
 users/{uid}/role                       <- 0=regular, 1=editor, 2=admin
 helpContent/{sectionId}/{lang}         <- hint/documentation
@@ -1277,6 +1279,89 @@ Console output:
 What I did before:
 [action that triggered the bug]
 ```
+
+---
+
+## Major Changes This Session (v3.10.27 → v3.11.12)
+
+### ארכיטקטורת תחומים — שינוי מרכזי
+
+#### מה השתנה
+**לפני:** תחומים היו מחולקים ל-3 סוגים:
+1. `city.interests` — built-in עם חיפוש גוגל
+2. `city.uncoveredInterests` — built-in ללא חיפוש גוגל
+3. `customInterests` (Firebase) — עם `scope: global/local` ו-`cityId`
+
+**אחרי:** תחום הוא תחום. סוג אחד בלבד:
+- `uncoveredInterests` בוטל — מוזג לתוך `interests` עם `noGoogleSearch: true`
+- `scope: local/global` בוטל — הכל גלובלי
+- `cityId` על תחום בוטל — visibility מנוהל דרך `cityHiddenInterests`
+
+#### מנגנון Visibility Per-City
+```
+settings/cityHiddenInterests/{cityId} = ["interest_id_1", "interest_id_2", ...]
+```
+- **Admin** קובע אילו תחומים חשופים/מוסתרים לכל עיר
+- **User** רואה רק תחומים שה-admin לא הסתיר לעיר שלו
+- **Default:** כל תחום חשוף בכל הערים
+- תחום חדש שנוסף → **מוסתר אוטומטית** בכל הערים חוץ מהנוכחית
+
+#### היררכיית Visibility
+```
+adminStatus: 'hidden'    → מוסתר לכולם בכל עיר (global)
+adminStatus: 'draft'     → גלוי רק ל-unlocked users
+cityHiddenInterests      → מוסתר לעיר ספציפית (admin per-city)
+interestStatus[id]=false → כבוי למשתמש ספציפי
+```
+
+#### `noGoogleSearch: true`
+תחומים שמיועדים לתיוג ידני בלבד (ללא חיפוש גוגל).
+- `isInterestValid()` מחזיר `false` → ⚠️ מוצג אם תחום לא מוגדר כ-`noGoogleSearch` ואין לו `types`/`textSearch`
+- לא מופיעים ב-fetchMore/Google search
+- מופיעים ברשימת תחומים רגיל, ניתן לתייג מועדפים איתם
+
+#### `isInterestValid(interestId)` — לוגיקה עדכנית
+```js
+// noGoogleSearch → return false (never searches Google)
+// privateOnly → return true (manual only, valid for tagging)
+// has interestConfig.types (array or string!) → return true
+// has interestConfig.textSearch → return true
+// has city's interestToGooglePlaces → return true
+// otherwise → return false (⚠️ shown in UI)
+// IMPORTANT: types can be string "shopping_mall" or array ["shopping_mall"] — both handled
+```
+
+#### ניהול תחומים בהגדרות — טאב "תחומים"
+- רשימה מלאה של **כל** התחומים (מכל הערים + customInterests), מחולקת:
+  - ✅ חשופים לעיר הנוכחית
+  - 🙈 מוסתרים מעיר הנוכחית
+- כפתורי ערים לצד כל תחום (🌍 אם כולן, אחרת אייקוני ערים) — לחיצה = toggle visibility
+- עריכת תחום מתוך הרשימה (✏️)
+- הוספת תחום חדש (+ הוסף תחום)
+
+#### Export/Import
+`cityHiddenInterests` נכלל בייצוא ויובא בחזרה.
+
+---
+
+### שינויים טכניים נוספים
+
+**`authUserRef`** — הוספת ref שעוקב אחרי `authUser` בזמן אמת. מונע popup לוגין שגוי כשFirebase מרענן token (authUser היה `null` לשנייה).
+
+**`showDedupDropdown`** — state ברמת component לדיאלוג תחומים קשורים (dedupRelated). נלמד מהבאג: `React.useState` בתוך IIFE = React error #310.
+
+**browser autofill** — שדות email/password בדיאלוג התחברות קיבלו `autocomplete="username"` ו-`autocomplete="current-password"` — מונע autofill של שמות מקומות.
+
+**`city icon upload`** — אייקון עיר בהגדרות תומך כעת בהעלאת קובץ תמונה (כמו אייקון תחום) + compressIcon(80px).
+
+**Singapore** — עיר סינגפור עודכנה עם 5 אזורים (marina-bay, east, north, west, south-west).
+
+---
+
+### Known Regression — Never Return
+**hooks inside IIFE** (React error #310):
+`React.useState` בתוך `(() => { ... })()` בתוך JSX = crash מיידי.
+**הפתרון הנכון:** state ברמת component (`app-logic.js`), או שימוש ב-`<details>/<summary>` HTML לtoggle ללא state.
 
 ---
 
