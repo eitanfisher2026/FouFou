@@ -3314,7 +3314,8 @@
                 ...enriched,
                 name: finalName,
                 interests: finalInterests,
-                uploadedImage: enriched.uploadedImage || null
+                uploadedImage: enriched.uploadedImage || null,
+                userRating: rating || null
               };
               // Pass finalLocation as overrideData — bypasses stale newLocation state
               saveWithDedupCheck(true, true, finalLocation);

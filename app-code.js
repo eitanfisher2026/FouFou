@@ -7613,6 +7613,20 @@ const FouFouApp = () => {
             showToast(`💾 ${locationToAdd.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
           }
           
+          if (locData.userRating && isFirebaseAvailable && database) {
+            try {
+              const pk = (locationToAdd.name || '').replace(/[.#$/\[\]]/g, '_');
+              const uid = authUser?.uid || window.BKK.visitorId;
+              await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
+                rating: locData.userRating.score || locData.userRating,
+                text: locData.userRating.text || '',
+                timestamp: Date.now(),
+                uid,
+                userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+              });
+            } catch(e) { /* rating save failure is non-critical */ }
+          }
+
           if (!closeAfter) {
             const addedWithFirebaseId = { ...locationToAdd, firebaseId: ref.key };
             setEditingLocation(addedWithFirebaseId);
@@ -16280,7 +16294,8 @@ const FouFouApp = () => {
                 ...enriched,
                 name: finalName,
                 interests: finalInterests,
-                uploadedImage: enriched.uploadedImage || null
+                uploadedImage: enriched.uploadedImage || null,
+                userRating: rating || null
               };
               saveWithDedupCheck(true, true, finalLocation);
             }}

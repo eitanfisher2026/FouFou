@@ -8146,6 +8146,21 @@
             showToast(`💾 ${locationToAdd.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
           }
           
+          // Save userRating if provided (from QuickCapture)
+          if (locData.userRating && isFirebaseAvailable && database) {
+            try {
+              const pk = (locationToAdd.name || '').replace(/[.#$/\[\]]/g, '_');
+              const uid = authUser?.uid || window.BKK.visitorId;
+              await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
+                rating: locData.userRating.score || locData.userRating,
+                text: locData.userRating.text || '',
+                timestamp: Date.now(),
+                uid,
+                userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+              });
+            } catch(e) { /* rating save failure is non-critical */ }
+          }
+
           // If staying open, switch to edit mode
           if (!closeAfter) {
             const addedWithFirebaseId = { ...locationToAdd, firebaseId: ref.key };
