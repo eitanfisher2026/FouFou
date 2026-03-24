@@ -2483,24 +2483,20 @@
                 );
               };
               
-              // Collect active and inactive - apply config overrides to built-in
-              // Use allInterestOptions — already has Firebase labels, icons, etc applied
-              const builtInOptions = allInterestOptions.filter(i => !i.custom && !i.id?.startsWith('custom_'));
+              // Use allInterestOptions — already has Firebase labels, icons, interestConfig overrides applied
+              const allOpts = allInterestOptions;
               const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const activeBuiltIn = sortAlpha(builtInOptions.filter(i => {
+              const activeBuiltIn = sortAlpha(allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active';
               }));
-              const activeCustom = sortAlpha(cityCustomInterests.filter(i => {
-                const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active';
-              }));
-              const inactiveBuiltIn = sortAlpha(builtInOptions.filter(i => {
+              const activeCustom = []; // merged into activeBuiltIn above
+              const inactiveBuiltIn = sortAlpha(allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return false; // user toggle removed
               }));
               const inactiveCustom = []; // user toggle removed
-              const allForAdmin = [...builtInOptions, ...cityCustomInterests];
+              const allForAdmin = allOpts;
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
               
@@ -3724,42 +3720,56 @@
                         // Count active interests
                         const activeCount = Object.values(interestStatus).filter(Boolean).length;
                         
-                        const data = {
-                          // Custom interests created by user
+                        const dateStr = new Date().toISOString().split('T')[0];
+                        const cityNameEn = (window.BKK.selectedCity?.nameEn || window.BKK.selectedCity?.name || selectedCityId || 'city').toLowerCase().replace(/\s+/g, '-');
+
+                        // Global data: interests + config (shared across all cities)
+                        const globalData = {
+                          _type: 'foufou-global',
                           customInterests: customInterests,
-                          // Custom locations
-                          customLocations: customLocations,
-                          // Saved routes
-                          savedRoutes: savedRoutes,
-                          // Interest search configurations (types, textSearch, blacklist)
                           interestConfig: interestConfig,
-                          // Interest active/inactive status
                           interestStatus: interestStatus,
-                          // Interest auto-naming counters
-                          interestCounters: interestCounters,
-                          // City-level interest visibility (which interests are hidden per city)
                           cityHiddenInterests: Object.fromEntries(
                             Object.entries(cityHiddenInterests).map(([cid, set]) => [cid, [...set]])
                           ),
-                          // System parameters (algorithm tuning)
                           systemParams: systemParams,
-                          // Metadata
                           exportDate: new Date().toISOString(),
                           version: window.BKK.VERSION || '3.5'
                         };
-                        
-                        const dataStr = JSON.stringify(data, null, 2);
-                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                        const url = URL.createObjectURL(dataBlob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        const dateStr = new Date().toISOString().split('T')[0];
-                        const cityNameEn = (window.BKK.selectedCity?.nameEn || window.BKK.selectedCity?.name || selectedCityId || 'city').toLowerCase().replace(/\s+/g, '-');
-                        link.download = `foufou-${cityNameEn}-${dateStr}.json`;
-                        link.click();
-                        URL.revokeObjectURL(url);
-                        
-                        showToast(`${t("toast.fileDownloaded")} (${customInterests.length} ${t("interests.customCount")}, ${activeCount} ${t("interests.activeCount")}, ${customLocations.length} ${t("route.places")}ת, ${savedRoutes.length} מסלולים)`, 'success');
+
+                        // City data: locations + routes for current city only
+                        const cityData = {
+                          _type: 'foufou-city',
+                          cityId: selectedCityId,
+                          customLocations: customLocations,
+                          savedRoutes: savedRoutes,
+                          exportDate: new Date().toISOString(),
+                          version: window.BKK.VERSION || '3.5'
+                        };
+
+                        // Download global file
+                        const globalStr = JSON.stringify(globalData, null, 2);
+                        const globalBlob = new Blob([globalStr], { type: 'application/json' });
+                        const globalUrl = URL.createObjectURL(globalBlob);
+                        const globalLink = document.createElement('a');
+                        globalLink.href = globalUrl;
+                        globalLink.download = `foufou-global-${dateStr}.json`;
+                        globalLink.click();
+                        URL.revokeObjectURL(globalUrl);
+
+                        // Download city file
+                        setTimeout(() => {
+                          const cityStr = JSON.stringify(cityData, null, 2);
+                          const cityBlob = new Blob([cityStr], { type: 'application/json' });
+                          const cityUrl = URL.createObjectURL(cityBlob);
+                          const cityLink = document.createElement('a');
+                          cityLink.href = cityUrl;
+                          cityLink.download = `foufou-${cityNameEn}-${dateStr}.json`;
+                          cityLink.click();
+                          URL.revokeObjectURL(cityUrl);
+                        }, 300);
+
+                        showToast(`✅ ייצוא: ${customInterests.length} תחומים (global) + ${customLocations.length} מקומות + ${savedRoutes.length} מסלולים (${cityNameEn})`, 'success');
                       } catch (error) {
                         console.error('[EXPORT] Error:', error);
                         showToast(t('toast.exportError'), 'error');

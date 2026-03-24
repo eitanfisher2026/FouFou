@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.11.71` (Mar 24, 2026)
+- **גרסה:** `3.11.74` (Mar 24, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1543,6 +1543,85 @@ If unsure about the correct insertion point — DO NOT attempt the move, roll ba
 
 ---
 
+## Major Changes (v3.11.62 → v3.11.73) — ארכיטקטורת תחומים — Chat session 24/03/2026
+
+### עקרון מרכזי שהשתנה: כל התחומים חיים ב-Firebase בלבד
+לפני: תחומים מפוזרים בין קבצי עיר (city-*.js) ו-`customInterests` ב-Firebase.
+אחרי: **כל** התחומים ב-`customInterests` ב-Firebase. קבצי עיר שומרים רק areas/theme/נתוני עיר.
+
+### 1. הסרת `interests` מקבצי עיר (v3.11.70)
+כל 4 קבצי עיר (city-bangkok.js, city-gushdan.js, city-singapore.js, city-malaga.js) — הוסרה רשימת `interests: [...]`.
+`window.BKK.interestOptions` = `[]` ב-`selectCity` (לא נקרא מקובץ עיר).
+
+### 2. Migration אוטומטי (v3.11.70)
+בטעינה ראשונה (localStorage key: `interests_migrated_to_firebase`) — זורע 27 built-in IDs ל-Firebase `customInterests`.
+IDs: temples, canals, graffiti, galleries, artisans, architecture, food, cafes, rooftop, markets, nightlife, entertainment, parks, massage_spa, fitness, shopping_special, learning, health, accommodation, transport, business, beaches, shopping, culture, history, wellness, coworking.
+
+### 3. `interestOptions` נגזר מ-`customInterests` (v3.11.70)
+```js
+// לפני:
+const interestOptions = (window.BKK.interestOptions || []).filter(i => !hiddenForCity.has(i.id));
+// אחרי:
+const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
+```
+
+### 4. `cityCustomInterests` = `interestOptions` (v3.11.70)
+`cityCustomInterests` הפך ל-alias בלבד לאחידות עם שאר הקוד. `allInterestOptions` מפסיק לאחד שתי רשימות.
+
+### 5. הסרת `builtInIds` filters (v3.11.70)
+3 מקומות שסיננו built-in IDs מ-customInterests — הוסרו. כל IDs תקפים.
+
+### 6. הסרת `scope`/`cityId` מתחומים (v3.11.65)
+שדות legacy שגרמו לבאגים — הוסרו מ-6 נקודות שמירה וגם מ-cityCustomInterests useMemo.
+**RULE:** אין עוד `scope`/`cityId` על תחומים. visibility נשלט אך ורק ע"י `cityHiddenInterests`.
+
+### 7. `deleteCustomInterest` — תיקון מחיקה (v3.11.66)
+- Optimistic update: `setCustomInterests(prev => prev.filter(...))` לפני Firebase
+- Fallback: אם אין firebaseId, חיפוש ב-Firebase לפי id
+- גם מוחק `interestConfig` ו-`interestStatus` ב-Firebase
+- תיקון null-safety שחסמה מחיקת תחום אחרון
+
+### 8. כפתור "הסתר X ריקים" בהגדרות → תחומים (v3.11.68)
+מזהה תחומים מ-`allInterestsSorted` (כל הערים) עם icon ריק/📍.
+- custom interests → מוחק לגמרי
+- built-in interests → מסתיר ע"י `adminStatus='hidden'` ב-interestConfig
+
+### 9. `interestCounters` — הסרת שמירה מ-Firebase (v3.11.73)
+**לפני:** נשמר ב-`cities/{cityId}/interestCounters`, נקרא ב-Firebase listener.
+**אחרי:** `useMemo` שמחשב on-the-fly מ-`customLocations`:
+```js
+const interestCounters = useMemo(() => {
+  const counters = {};
+  customLocations.forEach(loc => {
+    const nameMatch = (loc.name||'').match(/#(\d+)$/);
+    if (!nameMatch) return;
+    const num = parseInt(nameMatch[1]);
+    (loc.interests||[]).forEach(id => { if (!counters[id] || num > counters[id]) counters[id] = num; });
+  });
+  return counters;
+}, [customLocations]);
+```
+**ניתן למחוק מ-Firebase:** `cities/*/interestCounters` (כבר לא נכתב/נקרא).
+
+### 10. ייצוא/ייבוא (v3.11.73)
+**ייצוא** — 2 קבצים:
+- `foufou-global-DATE.json`: customInterests + interestConfig + interestStatus + cityHiddenInterests + systemParams
+- `foufou-{city}-DATE.json`: customLocations + savedRoutes (לעיר הנוכחית בלבד)
+
+**ייבוא** — מזהה `_type` בקובץ:
+- `foufou-global`: מייבא תחומים+הגדרות
+- `foufou-city`: מייבא מקומות+מסלולים (עם אזהרה אם עיר שונה)
+- `legacy` (ישן): מייבא הכל
+
+**Dedup תחומים בייבוא** — נבדק לפי ID קודם, אחר כך לפי label.
+
+### 11. `seedSystemRoutes` שוחזר ל-city-bangkok.js (v3.11.71)
+הפונקציה נמחקה בטעות כש-JSON.stringify לא שמר functions. שוחזרה לסוף city-bangkok.js.
+
+### 12. `requireSignIn` — הגנה משופרת (v3.11.69)
+delay: 600ms → 800ms. נוסף guard: `authLoading` — לא מציג dialog לפני שה-auth נטען לחלוטין.
+
+---
 ## Major Changes (v3.11.61 → v3.11.62) — Bug fixes
 
 ### 1. `isCoordOnlyPlace` — רגרסיה תוקנה (utils.js)

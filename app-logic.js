@@ -710,7 +710,20 @@
   }
   const [systemParams, setSystemParams] = useState(window.BKK.systemParams);
   const sp = systemParams; // shorthand
-  const [interestCounters, setInterestCounters] = useState({}); // { interestId: nextNumber }
+  // interestCounters: computed on-the-fly — max location number per interest (for auto-naming)
+  // NOT persisted to Firebase — always derived from actual customLocations
+  const interestCounters = useMemo(() => {
+    const counters = {};
+    (customLocations || []).forEach(loc => {
+      const nameMatch = (loc.name || '').match(/#(\d+)$/);
+      if (!nameMatch) return;
+      const num = parseInt(nameMatch[1]);
+      (loc.interests || []).forEach(id => {
+        if (!counters[id] || num > counters[id]) counters[id] = num;
+      });
+    });
+    return counters;
+  }, [customLocations]);
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
@@ -2884,16 +2897,7 @@
     });
     return () => ref.off();
   }, []);
-  useEffect(() => {
-    if (isFirebaseAvailable && database && selectedCityId) {
-      const countersRef = database.ref(`cities/${selectedCityId}/interestCounters`);
-      countersRef.on('value', (snapshot) => {
-        const data = snapshot.val() || {};
-        setInterestCounters(data);
-      });
-      return () => countersRef.off();
-    }
-  }, [selectedCityId]);
+  // interestCounters: computed on-the-fly from customLocations — no longer persisted to Firebase
 
   // Load interest active/inactive status (per-user with admin defaults)
   useEffect(() => {
@@ -7367,9 +7371,21 @@
     let updatedConfigs = 0;
     let updatedStatuses = 0;
     
-    // Helper to check if interest exists by label (not id)
-    const interestExistsByLabel = (label) => {
-      return customInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
+    // Detect file type: global (interests) or city (locations+routes) or legacy (mixed)
+    const fileType = importedData._type || 'legacy';
+    const isGlobal = fileType === 'foufou-global' || fileType === 'legacy';
+    const isCity = fileType === 'foufou-city' || fileType === 'legacy';
+    
+    // For city files: warn if cityId doesn't match current city
+    if (fileType === 'foufou-city' && importedData.cityId && importedData.cityId !== selectedCityId) {
+      const ok = window.confirm(`הקובץ שייך לעיר "${importedData.cityId}" אבל אתה נמצא ב-"${selectedCityId}".\nלייבא בכל זאת?`);
+      if (!ok) return;
+    }
+
+    // Helper to check if interest exists by ID or label
+    const interestExistsByLabel = (label, id) => {
+      if (id && customInterests.find(i => i.id === id)) return true;
+      return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     
     // Helper to check if location exists by name (not id)
@@ -7382,12 +7398,12 @@
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
       
-      // 1. Import custom interests
-      for (const interest of (importedData.customInterests || [])) {
+      // 1. Import custom interests (global only)
+      if (isGlobal) for (const interest of (importedData.customInterests || [])) {
         const label = tLabel(interest) || interest.name;
         if (!label) continue;
         
-        const exists = interestExistsByLabel(label);
+        const exists = interestExistsByLabel(label, interest.id);
         if (exists) {
           skippedInterests++;
           continue;
@@ -7420,8 +7436,8 @@
         }
       }
       
-      // 2. Import interest configurations (search settings)
-      if (importedData.interestConfig) {
+      // 2. Import interest configurations (global only)
+      if (isGlobal && importedData.interestConfig) {
         for (const [interestId, config] of Object.entries(importedData.interestConfig)) {
           try {
             await database.ref(`settings/interestConfig/${interestId}`).set(config);
@@ -7432,8 +7448,8 @@
         }
       }
       
-      // 3. Import interest statuses (active/inactive)
-      if (importedData.interestStatus) {
+      // 3. Import interest statuses (global only)
+      if (isGlobal && importedData.interestStatus) {
         for (const [interestId, status] of Object.entries(importedData.interestStatus)) {
           try {
             await database.ref(`settings/interestStatus/${interestId}`).set(status);
@@ -7444,19 +7460,10 @@
         }
       }
       
-      // 3b. Import interest counters (auto-naming)
-      if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
-        for (const [interestId, counter] of Object.entries(importedData.interestCounters)) {
-          try {
-            await database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(counter);
-          } catch (error) {
-            console.error('[FIREBASE] Error importing counter:', error);
-          }
-        }
-      }
+      // 3b. interestCounters no longer persisted to Firebase — computed on-the-fly from locations
       
-      // 3c. Import system parameters (algorithm tuning)
-      if (importedData.systemParams && typeof importedData.systemParams === 'object') {
+      // 3c. Import system parameters (global only)
+      if (isGlobal && importedData.systemParams && typeof importedData.systemParams === 'object') {
         const merged = { ...window.BKK._defaultSystemParams, ...importedData.systemParams };
         window.BKK.systemParams = merged;
         setSystemParams(merged);
@@ -7465,8 +7472,9 @@
         }
       }
       
-      // 4. Import locations
-      for (const loc of (importedData.customLocations || [])) {
+      // 4. Import locations (city only — to current or file's city)
+      const importCityId = (fileType === 'foufou-city' && importedData.cityId) ? importedData.cityId : selectedCityId;
+      if (isCity) for (const loc of (importedData.customLocations || [])) {
         if (!loc.name) continue;
         
         const exists = locationExistsByName(loc.name);
@@ -7508,15 +7516,15 @@
             importBatch: currentImportBatch
           };
           
-          await database.ref(`cities/${selectedCityId}/locations`).push(newLocation);
+          await database.ref(`cities/${importCityId}/locations`).push(newLocation);
           addedLocations++;
         } catch (error) {
           console.error('[FIREBASE] Error importing location:', error);
         }
       }
       
-      // 5. Import saved routes (to Firebase)
-      for (const route of (importedData.savedRoutes || [])) {
+      // 5. Import saved routes (city only)
+      if (isCity) for (const route of (importedData.savedRoutes || [])) {
         if (!route.name) continue;
         
         const exists = savedRoutes.find(r => r.name.toLowerCase() === route.name.toLowerCase());
@@ -7594,10 +7602,8 @@
       }
       
       // 3b. Import interest counters (auto-naming)
-      if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
-        setInterestCounters(prev => ({ ...prev, ...importedData.interestCounters }));
-      }
-      
+      // interestCounters no longer stored — computed on-the-fly from customLocations
+
       // 3c. Import system parameters
       if (importedData.systemParams && typeof importedData.systemParams === 'object') {
         const merged = { ...window.BKK._defaultSystemParams, ...importedData.systemParams };
@@ -8076,21 +8082,7 @@
       if (nameMatch && locationToAdd.interests?.length > 0) {
         const num = parseInt(nameMatch[1]);
         const updates = {};
-        locationToAdd.interests.forEach(interestId => {
-          const current = interestCounters[interestId] || 0;
-          if (num > current) {
-            updates[interestId] = num;
-            // Write to Firebase
-            if (isFirebaseAvailable && database) {
-              database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(num);
-            }
-          }
-        });
-        // Update local state immediately — don't wait for Firebase listener
-        // This ensures next generateLocationName call in the same session uses the correct counter
-        if (Object.keys(updates).length > 0) {
-          setInterestCounters(prev => ({ ...prev, ...updates }));
-        }
+        // interestCounters now computed from customLocations via useMemo — no Firebase write needed
       }
     };
     

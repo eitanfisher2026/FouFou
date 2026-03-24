@@ -1027,7 +1027,18 @@ const FouFouApp = () => {
   }
   const [systemParams, setSystemParams] = useState(window.BKK.systemParams);
   const sp = systemParams; // shorthand
-  const [interestCounters, setInterestCounters] = useState({}); // { interestId: nextNumber }
+  const interestCounters = useMemo(() => {
+    const counters = {};
+    (customLocations || []).forEach(loc => {
+      const nameMatch = (loc.name || '').match(/#(\d+)$/);
+      if (!nameMatch) return;
+      const num = parseInt(nameMatch[1]);
+      (loc.interests || []).forEach(id => {
+        if (!counters[id] || num > counters[id]) counters[id] = num;
+      });
+    });
+    return counters;
+  }, [customLocations]);
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
@@ -3001,16 +3012,6 @@ const FouFouApp = () => {
     });
     return () => ref.off();
   }, []);
-  useEffect(() => {
-    if (isFirebaseAvailable && database && selectedCityId) {
-      const countersRef = database.ref(`cities/${selectedCityId}/interestCounters`);
-      countersRef.on('value', (snapshot) => {
-        const data = snapshot.val() || {};
-        setInterestCounters(data);
-      });
-      return () => countersRef.off();
-    }
-  }, [selectedCityId]);
 
   useEffect(() => {
     const builtInIds = interestOptions.map(i => i.id);
@@ -6890,8 +6891,18 @@ const FouFouApp = () => {
     let updatedConfigs = 0;
     let updatedStatuses = 0;
     
-    const interestExistsByLabel = (label) => {
-      return customInterests.find(i => (i.label || i.name || '').toLowerCase() === label.toLowerCase());
+    const fileType = importedData._type || 'legacy';
+    const isGlobal = fileType === 'foufou-global' || fileType === 'legacy';
+    const isCity = fileType === 'foufou-city' || fileType === 'legacy';
+    
+    if (fileType === 'foufou-city' && importedData.cityId && importedData.cityId !== selectedCityId) {
+      const ok = window.confirm(`הקובץ שייך לעיר "${importedData.cityId}" אבל אתה נמצא ב-"${selectedCityId}".\nלייבא בכל זאת?`);
+      if (!ok) return;
+    }
+
+    const interestExistsByLabel = (label, id) => {
+      if (id && customInterests.find(i => i.id === id)) return true;
+      return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     
     const locationExistsByName = (name) => {
@@ -6901,11 +6912,11 @@ const FouFouApp = () => {
     const currentImportBatch = new Date().toISOString().slice(0, 16).replace('T', '_');
     if (isFirebaseAvailable && database) {
       
-      for (const interest of (importedData.customInterests || [])) {
+      if (isGlobal) for (const interest of (importedData.customInterests || [])) {
         const label = tLabel(interest) || interest.name;
         if (!label) continue;
         
-        const exists = interestExistsByLabel(label);
+        const exists = interestExistsByLabel(label, interest.id);
         if (exists) {
           skippedInterests++;
           continue;
@@ -6938,7 +6949,7 @@ const FouFouApp = () => {
         }
       }
       
-      if (importedData.interestConfig) {
+      if (isGlobal && importedData.interestConfig) {
         for (const [interestId, config] of Object.entries(importedData.interestConfig)) {
           try {
             await database.ref(`settings/interestConfig/${interestId}`).set(config);
@@ -6949,7 +6960,7 @@ const FouFouApp = () => {
         }
       }
       
-      if (importedData.interestStatus) {
+      if (isGlobal && importedData.interestStatus) {
         for (const [interestId, status] of Object.entries(importedData.interestStatus)) {
           try {
             await database.ref(`settings/interestStatus/${interestId}`).set(status);
@@ -6960,17 +6971,7 @@ const FouFouApp = () => {
         }
       }
       
-      if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
-        for (const [interestId, counter] of Object.entries(importedData.interestCounters)) {
-          try {
-            await database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(counter);
-          } catch (error) {
-            console.error('[FIREBASE] Error importing counter:', error);
-          }
-        }
-      }
-      
-      if (importedData.systemParams && typeof importedData.systemParams === 'object') {
+      if (isGlobal && importedData.systemParams && typeof importedData.systemParams === 'object') {
         const merged = { ...window.BKK._defaultSystemParams, ...importedData.systemParams };
         window.BKK.systemParams = merged;
         setSystemParams(merged);
@@ -6979,7 +6980,8 @@ const FouFouApp = () => {
         }
       }
       
-      for (const loc of (importedData.customLocations || [])) {
+      const importCityId = (fileType === 'foufou-city' && importedData.cityId) ? importedData.cityId : selectedCityId;
+      if (isCity) for (const loc of (importedData.customLocations || [])) {
         if (!loc.name) continue;
         
         const exists = locationExistsByName(loc.name);
@@ -7021,14 +7023,14 @@ const FouFouApp = () => {
             importBatch: currentImportBatch
           };
           
-          await database.ref(`cities/${selectedCityId}/locations`).push(newLocation);
+          await database.ref(`cities/${importCityId}/locations`).push(newLocation);
           addedLocations++;
         } catch (error) {
           console.error('[FIREBASE] Error importing location:', error);
         }
       }
       
-      for (const route of (importedData.savedRoutes || [])) {
+      if (isCity) for (const route of (importedData.savedRoutes || [])) {
         if (!route.name) continue;
         
         const exists = savedRoutes.find(r => r.name.toLowerCase() === route.name.toLowerCase());
@@ -7099,10 +7101,6 @@ const FouFouApp = () => {
           newStatus[id] = status;
           updatedStatuses++;
         });
-      }
-      
-      if (importedData.interestCounters && typeof importedData.interestCounters === 'object') {
-        setInterestCounters(prev => ({ ...prev, ...importedData.interestCounters }));
       }
       
       if (importedData.systemParams && typeof importedData.systemParams === 'object') {
@@ -7545,18 +7543,6 @@ const FouFouApp = () => {
       if (nameMatch && locationToAdd.interests?.length > 0) {
         const num = parseInt(nameMatch[1]);
         const updates = {};
-        locationToAdd.interests.forEach(interestId => {
-          const current = interestCounters[interestId] || 0;
-          if (num > current) {
-            updates[interestId] = num;
-            if (isFirebaseAvailable && database) {
-              database.ref(`cities/${selectedCityId}/interestCounters/${interestId}`).set(num);
-            }
-          }
-        });
-        if (Object.keys(updates).length > 0) {
-          setInterestCounters(prev => ({ ...prev, ...updates }));
-        }
       }
     };
     
@@ -10373,22 +10359,19 @@ const FouFouApp = () => {
                 );
               };
               
-              const builtInOptions = allInterestOptions.filter(i => !i.custom && !i.id?.startsWith('custom_'));
+              const allOpts = allInterestOptions;
               const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const activeBuiltIn = sortAlpha(builtInOptions.filter(i => {
+              const activeBuiltIn = sortAlpha(allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active';
               }));
-              const activeCustom = sortAlpha(cityCustomInterests.filter(i => {
-                const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active';
-              }));
-              const inactiveBuiltIn = sortAlpha(builtInOptions.filter(i => {
+              const activeCustom = []; // merged into activeBuiltIn above
+              const inactiveBuiltIn = sortAlpha(allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return false; // user toggle removed
               }));
               const inactiveCustom = []; // user toggle removed
-              const allForAdmin = [...builtInOptions, ...cityCustomInterests];
+              const allForAdmin = allOpts;
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
               
@@ -11600,13 +11583,14 @@ const FouFouApp = () => {
                       try {
                         const activeCount = Object.values(interestStatus).filter(Boolean).length;
                         
-                        const data = {
+                        const dateStr = new Date().toISOString().split('T')[0];
+                        const cityNameEn = (window.BKK.selectedCity?.nameEn || window.BKK.selectedCity?.name || selectedCityId || 'city').toLowerCase().replace(/\s+/g, '-');
+
+                        const globalData = {
+                          _type: 'foufou-global',
                           customInterests: customInterests,
-                          customLocations: customLocations,
-                          savedRoutes: savedRoutes,
                           interestConfig: interestConfig,
                           interestStatus: interestStatus,
-                          interestCounters: interestCounters,
                           cityHiddenInterests: Object.fromEntries(
                             Object.entries(cityHiddenInterests).map(([cid, set]) => [cid, [...set]])
                           ),
@@ -11614,19 +11598,37 @@ const FouFouApp = () => {
                           exportDate: new Date().toISOString(),
                           version: window.BKK.VERSION || '3.5'
                         };
-                        
-                        const dataStr = JSON.stringify(data, null, 2);
-                        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                        const url = URL.createObjectURL(dataBlob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        const dateStr = new Date().toISOString().split('T')[0];
-                        const cityNameEn = (window.BKK.selectedCity?.nameEn || window.BKK.selectedCity?.name || selectedCityId || 'city').toLowerCase().replace(/\s+/g, '-');
-                        link.download = `foufou-${cityNameEn}-${dateStr}.json`;
-                        link.click();
-                        URL.revokeObjectURL(url);
-                        
-                        showToast(`${t("toast.fileDownloaded")} (${customInterests.length} ${t("interests.customCount")}, ${activeCount} ${t("interests.activeCount")}, ${customLocations.length} ${t("route.places")}ת, ${savedRoutes.length} מסלולים)`, 'success');
+
+                        const cityData = {
+                          _type: 'foufou-city',
+                          cityId: selectedCityId,
+                          customLocations: customLocations,
+                          savedRoutes: savedRoutes,
+                          exportDate: new Date().toISOString(),
+                          version: window.BKK.VERSION || '3.5'
+                        };
+
+                        const globalStr = JSON.stringify(globalData, null, 2);
+                        const globalBlob = new Blob([globalStr], { type: 'application/json' });
+                        const globalUrl = URL.createObjectURL(globalBlob);
+                        const globalLink = document.createElement('a');
+                        globalLink.href = globalUrl;
+                        globalLink.download = `foufou-global-${dateStr}.json`;
+                        globalLink.click();
+                        URL.revokeObjectURL(globalUrl);
+
+                        setTimeout(() => {
+                          const cityStr = JSON.stringify(cityData, null, 2);
+                          const cityBlob = new Blob([cityStr], { type: 'application/json' });
+                          const cityUrl = URL.createObjectURL(cityBlob);
+                          const cityLink = document.createElement('a');
+                          cityLink.href = cityUrl;
+                          cityLink.download = `foufou-${cityNameEn}-${dateStr}.json`;
+                          cityLink.click();
+                          URL.revokeObjectURL(cityUrl);
+                        }, 300);
+
+                        showToast(`✅ ייצוא: ${customInterests.length} תחומים (global) + ${customLocations.length} מקומות + ${savedRoutes.length} מסלולים (${cityNameEn})`, 'success');
                       } catch (error) {
                         console.error('[EXPORT] Error:', error);
                         showToast(t('toast.exportError'), 'error');
