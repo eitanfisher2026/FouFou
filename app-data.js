@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.70
+// FouFou app-data.js v3.11.71
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2753,6 +2753,39 @@ window.BKK.cityData.bangkok = {
   ]
 };
 
+window.BKK.seedSystemRoutes = function(database) {
+  if (!database) return;
+  var cities = window.BKK.cityData || {};
+  Object.keys(cities).forEach(function(cityId) {
+    var sysRoutes = cities[cityId].systemRoutes;
+    if (!sysRoutes || sysRoutes.length === 0) return;
+    var flagKey = 'foufou_sys_routes_seeded_' + cityId;
+    if (localStorage.getItem(flagKey) === 'true') return;
+    database.ref('cities/' + cityId + '/routes')
+      .orderByChild('system').equalTo(true)
+      .once('value')
+      .then(function(snap) {
+        var existing = snap.val() || {};
+        var existingIds = Object.values(existing).map(function(r) { return r.id; });
+        var toSeed = sysRoutes.filter(function(r) { return !existingIds.includes(r.id); });
+        if (toSeed.length === 0) {
+          localStorage.setItem(flagKey, 'true');
+          return;
+        }
+        var writes = toSeed.map(function(route) {
+          return database.ref('cities/' + cityId + '/routes').push(route);
+        });
+        return Promise.all(writes).then(function() {
+          console.log('[SEED] Seeded ' + toSeed.length + ' system routes for ' + cityId);
+          localStorage.setItem(flagKey, 'true');
+        });
+      })
+      .catch(function(e) {
+        console.warn('[SEED] Error seeding system routes for ' + cityId, e);
+      });
+  });
+};
+
 // City data: gushdan
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.gushdan = {
@@ -3357,7 +3390,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.70';
+window.BKK.VERSION = '3.11.71';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
