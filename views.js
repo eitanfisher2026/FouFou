@@ -2133,7 +2133,10 @@
                   {`📸 ${t("places.addFromCamera")}`}
                 </button>
                 <button
-                  onClick={() => setShowAddLocationDialog(true)}
+                  onClick={() => {
+                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
+                    setShowAddLocationDialog(true);
+                  }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                 >
                   {`✏️ ${t("places.addManually")}`}

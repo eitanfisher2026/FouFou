@@ -4371,8 +4371,12 @@
   };
 
   // Refresh Google rating for a single place — used by the rating button in edit dialog
-  const refreshSingleGoogleRating = async (loc) => {
-    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database || !loc?.firebaseId) {
+  const refreshSingleGoogleRating = async (loc, inPlaceCallback = null) => {
+    if (!GOOGLE_PLACES_API_KEY) {
+      showToast('Google API not available', 'error');
+      return;
+    }
+    if (!inPlaceCallback && (!isFirebaseAvailable || !database || !loc?.firebaseId)) {
       showToast('Google API or Firebase not available', 'error');
       return;
     }
@@ -4411,6 +4415,13 @@
       }
       if (!newRating) { showToast(t('settings.noPlacesToRefresh') || 'לא נמצא דירוג', 'warning'); return; }
       const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now(), ...(foundPlaceId ? { googlePlaceId: foundPlaceId } : {}) };
+      if (inPlaceCallback) {
+        // Unsaved location — just update in-place via callback, don't write to Firebase
+        inPlaceCallback(updates);
+        setNewLocation(prev => ({ ...prev, ...updates }));
+        showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
+        return;
+      }
       await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
       // Update local state immediately
       setCustomLocations(prev => prev.map(l => l.firebaseId === loc.firebaseId ? { ...l, ...updates } : l));

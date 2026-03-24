@@ -550,9 +550,17 @@
                             <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
                           <button
-                            onClick={() => {
+                            onClick={async () => {
+                              // Work with existing location or create a temp object from current newLocation
                               const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
-                              if (cl) refreshSingleGoogleRating(cl);
+                              if (cl) {
+                                refreshSingleGoogleRating(cl);
+                              } else if (newLocation.googlePlaceId || newLocation.name) {
+                                // New location not saved yet — refresh in-place
+                                refreshSingleGoogleRating({ ...newLocation, firebaseId: null, _inPlace: true }, (updated) => {
+                                  setNewLocation(prev => ({ ...prev, googleRating: updated.googleRating, googleRatingCount: updated.googleRatingCount }));
+                                });
+                              }
                             }}
                             style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
@@ -560,13 +568,13 @@
                           {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
                           {ra ? (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
                               style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               title={t('reviews.seeReviews') || 'ראה ביקורות'}
                             >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
                           ) : (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
                               style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
                             >☆ {t('reviews.rate') || 'דרג'}</button>
                           )}

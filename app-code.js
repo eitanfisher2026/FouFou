@@ -4323,8 +4323,12 @@ const FouFouApp = () => {
     setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
   };
 
-  const refreshSingleGoogleRating = async (loc) => {
-    if (!GOOGLE_PLACES_API_KEY || !isFirebaseAvailable || !database || !loc?.firebaseId) {
+  const refreshSingleGoogleRating = async (loc, inPlaceCallback = null) => {
+    if (!GOOGLE_PLACES_API_KEY) {
+      showToast('Google API not available', 'error');
+      return;
+    }
+    if (!inPlaceCallback && (!isFirebaseAvailable || !database || !loc?.firebaseId)) {
       showToast('Google API or Firebase not available', 'error');
       return;
     }
@@ -4361,6 +4365,12 @@ const FouFouApp = () => {
       }
       if (!newRating) { showToast(t('settings.noPlacesToRefresh') || 'לא נמצא דירוג', 'warning'); return; }
       const updates = { googleRating: newRating, googleRatingCount: newCount, googleRatingUpdated: Date.now(), ...(foundPlaceId ? { googlePlaceId: foundPlaceId } : {}) };
+      if (inPlaceCallback) {
+        inPlaceCallback(updates);
+        setNewLocation(prev => ({ ...prev, ...updates }));
+        showToast(`⭐ ${loc.name} — ${newRating.toFixed(1)} (${newCount})`, 'success');
+        return;
+      }
       await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(updates);
       setCustomLocations(prev => prev.map(l => l.firebaseId === loc.firebaseId ? { ...l, ...updates } : l));
       setEditingLocation(prev => prev ? { ...prev, ...updates } : prev);
@@ -10064,7 +10074,10 @@ const FouFouApp = () => {
                   {`📸 ${t("places.addFromCamera")}`}
                 </button>
                 <button
-                  onClick={() => setShowAddLocationDialog(true)}
+                  onClick={() => {
+                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
+                    setShowAddLocationDialog(true);
+                  }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                 >
                   {`✏️ ${t("places.addManually")}`}
@@ -13572,9 +13585,15 @@ const FouFouApp = () => {
                             <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
-                              if (cl) refreshSingleGoogleRating(cl);
+                              if (cl) {
+                                refreshSingleGoogleRating(cl);
+                              } else if (newLocation.googlePlaceId || newLocation.name) {
+                                refreshSingleGoogleRating({ ...newLocation, firebaseId: null, _inPlace: true }, (updated) => {
+                                  setNewLocation(prev => ({ ...prev, googleRating: updated.googleRating, googleRatingCount: updated.googleRatingCount }));
+                                });
+                              }
                             }}
                             style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                             title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
@@ -13582,13 +13601,13 @@ const FouFouApp = () => {
                           {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
                           {ra ? (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
                               style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               title={t('reviews.seeReviews') || 'ראה ביקורות'}
                             >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
                           ) : (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name); if (cl) openReviewDialog(cl); }}
+                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
                               style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
                             >☆ {t('reviews.rate') || 'דרג'}</button>
                           )}
