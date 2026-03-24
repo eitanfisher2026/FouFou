@@ -7341,7 +7341,7 @@ const FouFouApp = () => {
 
   const handleDedupConfirm = (action) => {
     if (!dedupConfirm) return;
-    const { type, loc, match, closeAfter, closeQuickCapture } = dedupConfirm;
+    const { type, loc, match, closeAfter, closeQuickCapture, overrideData } = dedupConfirm;
 
     if (loc?.uploadedImage && !closeQuickCapture) {
       try { window.BKK.saveImageToDevice?.(loc.uploadedImage, loc.name || match.name || 'photo'); } catch(e) {}
@@ -7381,14 +7381,20 @@ const FouFouApp = () => {
         showToast(`📍 "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         return;
       }      if (type === 'google') {
+        const userDescription = overrideData?.description || loc.description || '';
+        const userRating = overrideData?.userRating ?? loc.userRating ?? null;
         const googleData = {
           ...loc,
+          ...(overrideData || {}),
           name: match.name,
           lat: match.lat || loc.lat,
           lng: match.lng || loc.lng,
           address: match.address || '',
           mapsUrl: match.mapsUrl || '',
-          description: `⭐ ${match.rating?.toFixed(1) || 'N/A'} (${match.ratingCount || 0})`,
+          description: userDescription, // keep user's description
+          userRating: userRating,        // keep user's rating
+          googleRating: match.rating || null,
+          googleRatingCount: match.ratingCount || 0,
           googlePlace: true,
           googlePlaceId: match.googlePlaceId || ''
         };
