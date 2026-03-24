@@ -1113,7 +1113,7 @@
                     <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280' }}>{t('interests.mapColor') || 'צבע במפה:'}</span>
                     <input
                       type="color"
-                      value={newInterest.color || window.BKK.getInterestColor(newInterest.id || '', window.BKK.interestOptions || [])}
+                      value={newInterest.color || window.BKK.getInterestColor(newInterest.id || '', allInterestOptions || [])}
                       onChange={e => setNewInterest({...newInterest, color: e.target.value})}
                       style={{ width: '28px', height: '22px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', padding: 0 }}
                     />
@@ -1157,7 +1157,7 @@
                       {(() => {
                         const groups = new Set();
                         (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
-                        (window.BKK.interestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
+                        (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
                         // uncoveredInterests removed — noGoogleSearch interests now in interestOptions
                         return [...groups].sort().map(g => <option key={g} value={g}>{g}</option>);
                       })()}

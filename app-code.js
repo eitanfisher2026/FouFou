@@ -1464,7 +1464,7 @@ const FouFouApp = () => {
           
           leafletMapRef.current = map;
         } else if (mapMode === 'favorites') {
-          const allInts = window.BKK.interestOptions || [];
+          const allInts = allInterestOptions || [];
           const showDrafts = window.BKK.systemParams?.includeDrafts !== false;
           
           const locs = customLocations.filter(loc => {
@@ -2577,6 +2577,40 @@ const FouFouApp = () => {
       window.BKK.migrateLocationsToPerCity(database);
       window.BKK.cleanupInProgress(database);
       window.BKK.seedSystemRoutes(database);
+
+      if (localStorage.getItem('interests_migrated_to_firebase') !== 'true') {
+        const BUILTIN_IDS = [
+          'temples','canals','graffiti','galleries','artisans','architecture',
+          'food','cafes','rooftop','markets','nightlife','entertainment','parks',
+          'massage_spa','fitness','shopping_special','learning','health',
+          'accommodation','transport','business',
+          'beaches','shopping','culture','history','wellness','coworking'
+        ];
+        database.ref('customInterests').once('value').then(snap => {
+          const existing = snap.val() || {};
+          const existingIds = new Set(Object.values(existing).map(v => v.id || '').filter(Boolean));
+          Object.keys(existing).forEach(k => existingIds.add(k));
+          const batch = {};
+          BUILTIN_IDS.forEach(id => {
+            if (!existingIds.has(id)) {
+              const newRef = database.ref('customInterests').push();
+              batch[`customInterests/${newRef.key}`] = {
+                id, label: id, labelEn: id, icon: '📍',
+                custom: false, privateOnly: false, locked: false,
+                category: 'attraction', weight: 3,
+                minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime'
+              };
+            }
+          });
+          if (Object.keys(batch).length > 0) {
+            database.ref().update(batch).then(() => {
+              localStorage.setItem('interests_migrated_to_firebase', 'true');
+            }).catch(e => console.error('[MIGRATION] interests seed failed:', e));
+          } else {
+            localStorage.setItem('interests_migrated_to_firebase', 'true');
+          }
+        }).catch(e => console.error('[MIGRATION] interests read failed:', e));
+      }
     }
   }, []);
 
@@ -2858,20 +2892,14 @@ const FouFouApp = () => {
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
-      const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
       
       const unsubscribe = interestsRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          const allEntries = Object.keys(data).map(key => ({
+          const interestsArray = Object.keys(data).map(key => ({
             ...data[key],
             firebaseId: key
           }));
-          const duplicates = allEntries.filter(i => builtInIds.has(i.id));
-          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
-          if (duplicates.length > 0) {
-            duplicates.forEach(d => database.ref(`customInterests/${d.firebaseId}`).remove());
-          }
           
           const firebaseIds = new Set(interestsArray.map(i => i.id));
           const now = Date.now();
@@ -3031,9 +3059,7 @@ const FouFouApp = () => {
 
         const intData = interestsSnap.val();
         if (intData) {
-          const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
-          const allEntries = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
-          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
+          const interestsArray = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
           setCustomInterests(interestsArray);
           setInterestConfig(prev => {
             const merged = { ...defaultConfig };
@@ -3128,11 +3154,10 @@ const FouFouApp = () => {
           const intSnap = await database.ref('customInterests').once('value');
           const intData = intSnap.val();
           if (intData) {
-            const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
             const interestsArray = Object.keys(intData).map(key => ({
               ...intData[key],
               firebaseId: key
-            })).filter(i => !builtInIds.has(i.id));
+            }));
             setCustomInterests(interestsArray);
           } else {
             setCustomInterests(prev => {
@@ -3203,7 +3228,6 @@ const FouFouApp = () => {
               }
               if (co.interests && co.interests.length > 0) {
                 window.BKK.cities[cid].interests = co.interests;
-                if (cid === cityId) window.BKK.interestOptions = co.interests;
                 try {
                   const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
                   lsOverrides[cid] = { interests: co.interests };
@@ -3309,7 +3333,6 @@ const FouFouApp = () => {
           }
           if (co.interests && co.interests.length > 0) {
             window.BKK.cities[cid].interests = co.interests;
-            if (cid === cityId) window.BKK.interestOptions = co.interests;
           }
 
         });
@@ -3469,7 +3492,7 @@ const FouFouApp = () => {
   };
 
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
-  const interestOptions = (window.BKK.interestOptions || []).filter(i => !hiddenForCity.has(i.id));
+  const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
@@ -4515,15 +4538,10 @@ const FouFouApp = () => {
     setRatingsRefreshProgress(null);
   };
 
-  const cityCustomInterests = useMemo(() => {
-    return customInterests || [];
-  }, [customInterests, selectedCityId]);
+  const cityCustomInterests = interestOptions;
 
   const allInterestOptions = useMemo(() => {
-    return [
-      ...interestOptions,
-      ...(cityCustomInterests || [])
-    ].map(opt => {
+    return interestOptions.map(opt => {
       const config = interestConfig[opt.id];
       if (!config) return opt;
       return {
@@ -4542,7 +4560,7 @@ const FouFouApp = () => {
         privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
-  }, [interestOptions, cityCustomInterests, interestConfig]);
+  }, [interestOptions, interestConfig]);
 
   useEffect(() => {
     if (!debugMode) return;
@@ -5841,7 +5859,7 @@ const FouFouApp = () => {
             if (!opt) return null;
             const iconRaw = opt.icon || '';
             const isImageIcon = iconRaw.startsWith('data:') || iconRaw.startsWith('http');
-            const baseOpt = isImageIcon ? window.BKK.interestOptions?.find(o => o.id === id) : null;
+            const baseOpt = isImageIcon ? allInterestOptions?.find(o => o.id === id) : null;
             const icon = isImageIcon
               ? ((baseOpt?.icon && !baseOpt.icon.startsWith('data:')) ? baseOpt.icon + ' ' : '🏷️ ')
               : (iconRaw ? iconRaw + ' ' : '');
@@ -10235,7 +10253,7 @@ const FouFouApp = () => {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
-                  {(window.BKK.interestOptions || []).length + (cityCustomInterests || []).length} {t("general.total")}
+                  {allInterestOptions.length} {t("general.total")}
                 </span>
               </div>
               <div className="flex gap-1">
@@ -11653,7 +11671,7 @@ const FouFouApp = () => {
                   <button
                     onClick={() => {
                       try {
-                        const allInterests = [...(window.BKK.interestOptions || []), ...(cityCustomInterests || [])];
+                        const allInterests = allInterestOptions || [];
                         const schema = {
                           _description: "FouFou Places Import Schema — use this to generate places for import",
                           _instructions: "Generate a JSON file with a 'customLocations' array (or just a plain JSON array). Each item is a place. The importer auto-maps Hebrew field names (שם המקום→name, תיאור→description, כתובת→address, קטגוריה→notes). Coordinates (lat/lng) are recommended but optional. Interests array is optional — places can be assigned to interests manually after import.",
@@ -12585,7 +12603,7 @@ const FouFouApp = () => {
               {mapMode === 'favorites' && mapBottomSheet && (() => {
                 const loc = mapBottomSheet;
                 const intLabels = (loc.interests || []).map(i => {
-                  const opt = (window.BKK.interestOptions || []).find(o => o.id === i);
+                  const opt = allInterestOptions.find(o => o.id === i);
                   return opt ? ((opt.icon?.startsWith?.('data:') ? '📍' : opt.icon) + ' ' + tLabel(opt)) : i;
                 }).join(', ');
                 const areaLabels = (loc.areas || [loc.area]).filter(Boolean).map(aId => {
@@ -14061,7 +14079,7 @@ const FouFouApp = () => {
                     <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280' }}>{t('interests.mapColor') || 'צבע במפה:'}</span>
                     <input
                       type="color"
-                      value={newInterest.color || window.BKK.getInterestColor(newInterest.id || '', window.BKK.interestOptions || [])}
+                      value={newInterest.color || window.BKK.getInterestColor(newInterest.id || '', allInterestOptions || [])}
                       onChange={e => setNewInterest({...newInterest, color: e.target.value})}
                       style={{ width: '28px', height: '22px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', padding: 0 }}
                     />
@@ -14104,7 +14122,7 @@ const FouFouApp = () => {
                       {(() => {
                         const groups = new Set();
                         (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
-                        (window.BKK.interestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
+                        (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
                         return [...groups].sort().map(g => <option key={g} value={g}>{g}</option>);
                       })()}
                     </select>

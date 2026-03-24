@@ -1,4 +1,4 @@
-// City data: Singapore
+// City data: singapore
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.singapore = {
   "id": "singapore",
@@ -83,60 +83,6 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "canals",
-            "group": "heritage"
-        },
-        {
-            "id": "graffiti",
-            "group": "art"
-        },
-        {
-            "id": "galleries",
-            "group": "art"
-        },
-        {
-            "id": "artisans",
-            "group": "art"
-        },
-        {
-            "id": "architecture",
-            "group": "art"
-        },
-        {
-            "id": "food",
-            "group": "food"
-        },
-        {
-            "id": "cafes",
-            "group": "food"
-        },
-        {
-            "id": "rooftop",
-            "group": "food"
-        },
-        {
-            "id": "nightlife",
-            "group": "explore"
-        },
-        {
-            "id": "entertainment",
-            "group": "explore"
-        },
-        {
-            "id": "parks",
-            "group": "outdoors"
-        },
-        {
-            "id": "temples",
-            "group": "heritage"
-        },
-        {
-            "id": "markets",
-            "group": "explore"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",

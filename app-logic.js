@@ -1186,7 +1186,7 @@
           // FAVORITES MAP — shows saved places colored by interest
           // Supports: city overview, area focus, single place highlight
           // ═══════════════════════════════════════════════════════════════
-          const allInts = window.BKK.interestOptions || [];
+          const allInts = allInterestOptions || [];
           const showDrafts = window.BKK.systemParams?.includeDrafts !== false;
           
           // Filter locations
@@ -2401,6 +2401,47 @@
       // The function checked for types/textSearch on the interest object, but search config
       // is stored separately in settings/interestConfig/{id}. So non-privateOnly interests
       // were incorrectly flagged as orphans and deleted.
+
+      // ONE-TIME MIGRATION: Seed built-in interest IDs into customInterests (v3.11.70)
+      // City files no longer carry interests arrays — all interests live in Firebase customInterests.
+      // This migration writes any missing built-in IDs as minimal interest objects.
+      if (localStorage.getItem('interests_migrated_to_firebase') !== 'true') {
+        const BUILTIN_IDS = [
+          'temples','canals','graffiti','galleries','artisans','architecture',
+          'food','cafes','rooftop','markets','nightlife','entertainment','parks',
+          'massage_spa','fitness','shopping_special','learning','health',
+          'accommodation','transport','business',
+          'beaches','shopping','culture','history','wellness','coworking'
+        ];
+        database.ref('customInterests').once('value').then(snap => {
+          const existing = snap.val() || {};
+          const existingIds = new Set(Object.values(existing).map(v => v.id || '').filter(Boolean));
+          // Also check by Firebase key (some may use id as key)
+          Object.keys(existing).forEach(k => existingIds.add(k));
+          const batch = {};
+          BUILTIN_IDS.forEach(id => {
+            if (!existingIds.has(id)) {
+              // Create minimal entry — label/icon/config come from interestConfig
+              const newRef = database.ref('customInterests').push();
+              batch[`customInterests/${newRef.key}`] = {
+                id, label: id, labelEn: id, icon: '📍',
+                custom: false, privateOnly: false, locked: false,
+                category: 'attraction', weight: 3,
+                minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime'
+              };
+            }
+          });
+          if (Object.keys(batch).length > 0) {
+            database.ref().update(batch).then(() => {
+              console.log('[MIGRATION] Seeded', Object.keys(batch).length, 'built-in interests to Firebase');
+              localStorage.setItem('interests_migrated_to_firebase', 'true');
+            }).catch(e => console.error('[MIGRATION] interests seed failed:', e));
+          } else {
+            console.log('[MIGRATION] All built-in interests already in Firebase');
+            localStorage.setItem('interests_migrated_to_firebase', 'true');
+          }
+        }).catch(e => console.error('[MIGRATION] interests read failed:', e));
+      }
     }
   }, []);
 
@@ -2711,23 +2752,15 @@
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
-      const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
+      // All interests now live in customInterests — no builtInIds filter needed
       
       const unsubscribe = interestsRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          const allEntries = Object.keys(data).map(key => ({
+          const interestsArray = Object.keys(data).map(key => ({
             ...data[key],
             firebaseId: key
           }));
-          // Filter out built-in IDs that were accidentally saved as custom
-          const duplicates = allEntries.filter(i => builtInIds.has(i.id));
-          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
-          // Auto-cleanup duplicates from Firebase
-          if (duplicates.length > 0) {
-            console.log('[CLEANUP] Removing', duplicates.length, 'built-in duplicates from customInterests');
-            duplicates.forEach(d => database.ref(`customInterests/${d.firebaseId}`).remove());
-          }
           
           // Merge: keep locally-added interests that Firebase doesn't know about yet (race condition protection)
           const firebaseIds = new Set(interestsArray.map(i => i.id));
@@ -2920,9 +2953,8 @@
         // Process customInterests from the same batch
         const intData = interestsSnap.val();
         if (intData) {
-          const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
-          const allEntries = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
-          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
+          // All interests are in customInterests — no builtInIds filter needed
+          const interestsArray = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
           setCustomInterests(interestsArray);
           setInterestConfig(prev => {
             const merged = { ...defaultConfig };
@@ -3024,11 +3056,11 @@
           const intSnap = await database.ref('customInterests').once('value');
           const intData = intSnap.val();
           if (intData) {
-            const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
+            // All interests are in customInterests — no builtInIds filter needed
             const interestsArray = Object.keys(intData).map(key => ({
               ...intData[key],
               firebaseId: key
-            })).filter(i => !builtInIds.has(i.id));
+            }));
             setCustomInterests(interestsArray);
             console.log('[REFRESH] Loaded', interestsArray.length, 'interests');
           } else {
@@ -3113,7 +3145,7 @@
               }
               if (co.interests && co.interests.length > 0) {
                 window.BKK.cities[cid].interests = co.interests;
-                if (cid === cityId) window.BKK.interestOptions = co.interests;
+                // interests now in Firebase — no longer read from city file
                 // Also update localStorage for fast offline access
                 try {
                   const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
@@ -3234,7 +3266,7 @@
           }
           if (co.interests && co.interests.length > 0) {
             window.BKK.cities[cid].interests = co.interests;
-            if (cid === cityId) window.BKK.interestOptions = co.interests;
+            // interests now in Firebase — no longer read from city file
           }
 
         });
@@ -3404,9 +3436,10 @@
   };
 
   // Config - loaded from config.js, re-read on city change via selectedCityId dependency
-  // interestOptions filtered by city-level visibility (admin-controlled per city)
+  // interestOptions: now sourced from customInterests (Firebase) — city files no longer carry interests
+  // cityHiddenInterests still controls per-city visibility
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
-  const interestOptions = (window.BKK.interestOptions || []).filter(i => !hiddenForCity.has(i.id));
+  const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
@@ -4605,17 +4638,11 @@
 
   // Combine all interests: built-in + uncovered + custom (city-filtered)
   // Filter custom interests by city scope (must be before allInterestOptions)
-  const cityCustomInterests = useMemo(() => {
-    // All customInterests are global — cityId field is legacy and no longer used
-    // hiddenForCity (cityHiddenInterests) controls per-city visibility instead
-    return customInterests || [];
-  }, [customInterests, selectedCityId]);
+  // cityCustomInterests kept for backward compatibility with any remaining references
+  const cityCustomInterests = interestOptions;
 
   const allInterestOptions = useMemo(() => {
-    return [
-      ...interestOptions,
-      ...(cityCustomInterests || [])
-    ].map(opt => {
+    return interestOptions.map(opt => {
       const config = interestConfig[opt.id];
       if (!config) return opt;
       return {
@@ -4634,7 +4661,7 @@
         privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
-  }, [interestOptions, cityCustomInterests, interestConfig]);
+  }, [interestOptions, interestConfig]);
 
   // Debug: log custom interests in allInterestOptions (only when debug mode is on)
   useEffect(() => {
@@ -6160,7 +6187,7 @@
             if (!opt) return null;
             const iconRaw = opt.icon || '';
             const isImageIcon = iconRaw.startsWith('data:') || iconRaw.startsWith('http');
-            const baseOpt = isImageIcon ? window.BKK.interestOptions?.find(o => o.id === id) : null;
+            const baseOpt = isImageIcon ? allInterestOptions?.find(o => o.id === id) : null;
             const icon = isImageIcon
               ? ((baseOpt?.icon && !baseOpt.icon.startsWith('data:')) ? baseOpt.icon + ' ' : '🏷️ ')
               : (iconRaw ? iconRaw + ' ' : '');

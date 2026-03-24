@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.69
+// FouFou app-data.js v3.11.70
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2232,7 +2232,7 @@ help: {
 
 // [I18N] translations loaded
 
-// City data: Bangkok
+// City data: bangkok
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.bangkok = {
   "id": "bangkok",
@@ -2389,84 +2389,6 @@ window.BKK.cityData.bangkok = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "temples",
-            "group": "heritage"
-        },
-        {
-            "id": "canals",
-            "group": "heritage"
-        },
-        {
-            "id": "graffiti",
-            "group": "art"
-        },
-        {
-            "id": "galleries",
-            "group": "art"
-        },
-        {
-            "id": "artisans",
-            "group": "art"
-        },
-        {
-            "id": "architecture",
-            "group": "art"
-        },
-        {
-            "id": "food",
-            "group": "food"
-        },
-        {
-            "id": "cafes",
-            "group": "food"
-        },
-        {
-            "id": "rooftop",
-            "group": "food"
-        },
-        {
-            "id": "markets",
-            "group": "explore"
-        },
-        {
-            "id": "nightlife",
-            "group": "explore"
-        },
-        {
-            "id": "entertainment",
-            "group": "explore"
-        },
-        {
-            "id": "parks",
-            "group": "outdoors"
-        },
-        {
-            "id": "massage_spa"
-        },
-        {
-            "id": "fitness"
-        },
-        {
-            "id": "shopping_special"
-        },
-        {
-            "id": "learning"
-        },
-        {
-            "id": "health"
-        },
-        {
-            "id": "accommodation"
-        },
-        {
-            "id": "transport"
-        },
-        {
-            "id": "business"
-        }
-    ],
   "interestToGooglePlaces": {
     "temples": [
       "hindu_temple",
@@ -2831,40 +2753,7 @@ window.BKK.cityData.bangkok = {
   ]
 };
 
-window.BKK.seedSystemRoutes = function(database) {
-  if (!database) return;
-  var cities = window.BKK.cityData || {};
-  Object.keys(cities).forEach(function(cityId) {
-    var sysRoutes = cities[cityId].systemRoutes;
-    if (!sysRoutes || sysRoutes.length === 0) return;
-    var flagKey = 'foufou_sys_routes_seeded_' + cityId;
-    if (localStorage.getItem(flagKey) === 'true') return;
-    database.ref('cities/' + cityId + '/routes')
-      .orderByChild('system').equalTo(true)
-      .once('value')
-      .then(function(snap) {
-        var existing = snap.val() || {};
-        var existingIds = Object.values(existing).map(function(r) { return r.id; });
-        var toSeed = sysRoutes.filter(function(r) { return !existingIds.includes(r.id); });
-        if (toSeed.length === 0) {
-          localStorage.setItem(flagKey, 'true');
-          return;
-        }
-        var writes = toSeed.map(function(route) {
-          return database.ref('cities/' + cityId + '/routes').push(route);
-        });
-        return Promise.all(writes).then(function() {
-          console.log('[SEED] Seeded ' + toSeed.length + ' system routes for ' + cityId);
-          localStorage.setItem(flagKey, 'true');
-        });
-      })
-      .catch(function(e) {
-        console.warn('[SEED] Error seeding system routes for ' + cityId, e);
-      });
-  });
-};
-
-// City data: Gush Dan
+// City data: gushdan
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.gushdan = {
   "id": "gushdan",
@@ -2996,53 +2885,6 @@ window.BKK.cityData.gushdan = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "food"
-        },
-        {
-            "id": "cafes"
-        },
-        {
-            "id": "beaches"
-        },
-        {
-            "id": "graffiti"
-        },
-        {
-            "id": "galleries"
-        },
-        {
-            "id": "architecture"
-        },
-        {
-            "id": "markets"
-        },
-        {
-            "id": "nightlife"
-        },
-        {
-            "id": "parks"
-        },
-        {
-            "id": "shopping"
-        },
-        {
-            "id": "culture"
-        },
-        {
-            "id": "history"
-        },
-        {
-            "id": "fitness"
-        },
-        {
-            "id": "wellness"
-        },
-        {
-            "id": "coworking"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3112,7 +2954,7 @@ window.BKK.cityData.gushdan = {
   "systemRoutes": []
 };
 
-// City data: Malaga
+// City data: malaga
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.malaga = {
   "id": "malaga",
@@ -3252,44 +3094,6 @@ window.BKK.cityData.malaga = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "food"
-        },
-        {
-            "id": "cafes"
-        },
-        {
-            "id": "culture"
-        },
-        {
-            "id": "history"
-        },
-        {
-            "id": "parks"
-        },
-        {
-            "id": "shopping"
-        },
-        {
-            "id": "nightlife"
-        },
-        {
-            "id": "galleries"
-        },
-        {
-            "id": "markets"
-        },
-        {
-            "id": "graffiti"
-        },
-        {
-            "id": "beaches"
-        },
-        {
-            "id": "architecture"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3349,7 +3153,7 @@ window.BKK.cityData.malaga = {
   "systemRoutes": []
 };
 
-// City data: Singapore
+// City data: singapore
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.singapore = {
   "id": "singapore",
@@ -3434,60 +3238,6 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "canals",
-            "group": "heritage"
-        },
-        {
-            "id": "graffiti",
-            "group": "art"
-        },
-        {
-            "id": "galleries",
-            "group": "art"
-        },
-        {
-            "id": "artisans",
-            "group": "art"
-        },
-        {
-            "id": "architecture",
-            "group": "art"
-        },
-        {
-            "id": "food",
-            "group": "food"
-        },
-        {
-            "id": "cafes",
-            "group": "food"
-        },
-        {
-            "id": "rooftop",
-            "group": "food"
-        },
-        {
-            "id": "nightlife",
-            "group": "explore"
-        },
-        {
-            "id": "entertainment",
-            "group": "explore"
-        },
-        {
-            "id": "parks",
-            "group": "outdoors"
-        },
-        {
-            "id": "temples",
-            "group": "heritage"
-        },
-        {
-            "id": "markets",
-            "group": "explore"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3607,7 +3357,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.69';
+window.BKK.VERSION = '3.11.70';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3922,9 +3672,8 @@ window.BKK.selectCity = function(cityId) {
     };
   });
 
-  window.BKK.interestOptions = city.interests;
-;
-  window.BKK.interestToGooglePlaces = city.interestToGooglePlaces;
+  window.BKK.interestOptions = []; // interests now live in Firebase customInterests — loaded by React
+  window.BKK.interestToGooglePlaces = city.interestToGooglePlaces || {};
   window.BKK.textSearchInterests = city.textSearchInterests || {};
   window.BKK.uncoveredInterests = []; // removed — noGoogleSearch flag on interests instead
   window.BKK.interestTooltips = city.interestTooltips || {};
@@ -3966,16 +3715,6 @@ window.BKK.selectCity = function(cityId) {
     });
   } catch(e) {}
 
-  try {
-    var interestOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-    Object.keys(interestOverrides).forEach(function(cityId) {
-      if (window.BKK.cities[cityId]) {
-        var ov = interestOverrides[cityId];
-        if (ov.interests) window.BKK.cities[cityId].interests = ov.interests;
-      }
-    });
-  } catch(e) { console.error('[CONFIG] Error loading interests overrides:', e); }
-  
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}
   if (!window.BKK.cities[savedCity] || window.BKK.cities[savedCity].active === false) {

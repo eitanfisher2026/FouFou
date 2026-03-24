@@ -1,4 +1,4 @@
-// City data: Gush Dan
+// City data: gushdan
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.gushdan = {
   "id": "gushdan",
@@ -130,53 +130,6 @@ window.BKK.cityData.gushdan = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "food"
-        },
-        {
-            "id": "cafes"
-        },
-        {
-            "id": "beaches"
-        },
-        {
-            "id": "graffiti"
-        },
-        {
-            "id": "galleries"
-        },
-        {
-            "id": "architecture"
-        },
-        {
-            "id": "markets"
-        },
-        {
-            "id": "nightlife"
-        },
-        {
-            "id": "parks"
-        },
-        {
-            "id": "shopping"
-        },
-        {
-            "id": "culture"
-        },
-        {
-            "id": "history"
-        },
-        {
-            "id": "fitness"
-        },
-        {
-            "id": "wellness"
-        },
-        {
-            "id": "coworking"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",

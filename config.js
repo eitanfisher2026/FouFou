@@ -57,7 +57,7 @@ window.BKK.mapConfig = {
 })();
 
 // App Version
-window.BKK.VERSION = '3.11.69';
+window.BKK.VERSION = '3.11.70';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
@@ -407,9 +407,8 @@ window.BKK.selectCity = function(cityId) {
   });
 
   // Populate legacy interest variables
-  window.BKK.interestOptions = city.interests;
-;
-  window.BKK.interestToGooglePlaces = city.interestToGooglePlaces;
+  window.BKK.interestOptions = []; // interests now live in Firebase customInterests — loaded by React
+  window.BKK.interestToGooglePlaces = city.interestToGooglePlaces || {};
   window.BKK.textSearchInterests = city.textSearchInterests || {};
   window.BKK.uncoveredInterests = []; // removed — noGoogleSearch flag on interests instead
   window.BKK.interestTooltips = city.interestTooltips || {};
@@ -421,7 +420,7 @@ window.BKK.selectCity = function(cityId) {
   window.BKK.dayStartHour = city.dayStartHour != null ? city.dayStartHour : 6;
   window.BKK.nightStartHour = city.nightStartHour != null ? city.nightStartHour : 17;
 
-  console.log('[CONFIG] City selected: ' + city.nameEn + ' (' + city.areas.length + ' areas, ' + city.interests.length + ' interests)');
+  console.log('[CONFIG] City selected: ' + city.nameEn + ' (' + city.areas.length + ' areas)');
   return true;
 };
 
@@ -460,16 +459,7 @@ window.BKK.selectCity = function(cityId) {
   } catch(e) {}
 
   // Apply interests overrides for built-in cities (saved after "copy interests" operation)
-  try {
-    var interestOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-    Object.keys(interestOverrides).forEach(function(cityId) {
-      if (window.BKK.cities[cityId]) {
-        var ov = interestOverrides[cityId];
-        if (ov.interests) window.BKK.cities[cityId].interests = ov.interests;
-        console.log('[CONFIG] Applied interests override for ' + cityId + ': ' + (ov.interests || []).length + ' interests');
-      }
-    });
-  } catch(e) { console.error('[CONFIG] Error loading interests overrides:', e); }
+  // city_interests_overrides localStorage removed — interests now live in Firebase customInterests
   
   var savedCity = 'bangkok';
   try { savedCity = localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) {}

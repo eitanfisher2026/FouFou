@@ -2360,7 +2360,7 @@
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
                 <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">
-                  {(window.BKK.interestOptions || []).length + (cityCustomInterests || []).length} {t("general.total")}
+                  {allInterestOptions.length} {t("general.total")}
                 </span>
               </div>
               <div className="flex gap-1">
@@ -3804,7 +3804,7 @@
                   <button
                     onClick={() => {
                       try {
-                        const allInterests = [...(window.BKK.interestOptions || []), ...(cityCustomInterests || [])];
+                        const allInterests = allInterestOptions || [];
                         const schema = {
                           _description: "FouFou Places Import Schema — use this to generate places for import",
                           _instructions: "Generate a JSON file with a 'customLocations' array (or just a plain JSON array). Each item is a place. The importer auto-maps Hebrew field names (שם המקום→name, תיאור→description, כתובת→address, קטגוריה→notes). Coordinates (lat/lng) are recommended but optional. Interests array is optional — places can be assigned to interests manually after import.",
@@ -4757,7 +4757,7 @@
               {mapMode === 'favorites' && mapBottomSheet && (() => {
                 const loc = mapBottomSheet;
                 const intLabels = (loc.interests || []).map(i => {
-                  const opt = (window.BKK.interestOptions || []).find(o => o.id === i);
+                  const opt = allInterestOptions.find(o => o.id === i);
                   return opt ? ((opt.icon?.startsWith?.('data:') ? '📍' : opt.icon) + ' ' + tLabel(opt)) : i;
                 }).join(', ');
                 const areaLabels = (loc.areas || [loc.area]).filter(Boolean).map(aId => {

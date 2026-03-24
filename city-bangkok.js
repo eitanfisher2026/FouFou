@@ -1,4 +1,4 @@
-// City data: Bangkok
+// City data: bangkok
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.bangkok = {
   "id": "bangkok",
@@ -155,84 +155,6 @@ window.BKK.cityData.bangkok = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "temples",
-            "group": "heritage"
-        },
-        {
-            "id": "canals",
-            "group": "heritage"
-        },
-        {
-            "id": "graffiti",
-            "group": "art"
-        },
-        {
-            "id": "galleries",
-            "group": "art"
-        },
-        {
-            "id": "artisans",
-            "group": "art"
-        },
-        {
-            "id": "architecture",
-            "group": "art"
-        },
-        {
-            "id": "food",
-            "group": "food"
-        },
-        {
-            "id": "cafes",
-            "group": "food"
-        },
-        {
-            "id": "rooftop",
-            "group": "food"
-        },
-        {
-            "id": "markets",
-            "group": "explore"
-        },
-        {
-            "id": "nightlife",
-            "group": "explore"
-        },
-        {
-            "id": "entertainment",
-            "group": "explore"
-        },
-        {
-            "id": "parks",
-            "group": "outdoors"
-        },
-        {
-            "id": "massage_spa"
-        },
-        {
-            "id": "fitness"
-        },
-        {
-            "id": "shopping_special"
-        },
-        {
-            "id": "learning"
-        },
-        {
-            "id": "health"
-        },
-        {
-            "id": "accommodation"
-        },
-        {
-            "id": "transport"
-        },
-        {
-            "id": "business"
-        }
-    ],
   "interestToGooglePlaces": {
     "temples": [
       "hindu_temple",
@@ -595,37 +517,4 @@ window.BKK.cityData.bangkok = {
       ]
     }
   ]
-};
-
-window.BKK.seedSystemRoutes = function(database) {
-  if (!database) return;
-  var cities = window.BKK.cityData || {};
-  Object.keys(cities).forEach(function(cityId) {
-    var sysRoutes = cities[cityId].systemRoutes;
-    if (!sysRoutes || sysRoutes.length === 0) return;
-    var flagKey = 'foufou_sys_routes_seeded_' + cityId;
-    if (localStorage.getItem(flagKey) === 'true') return;
-    database.ref('cities/' + cityId + '/routes')
-      .orderByChild('system').equalTo(true)
-      .once('value')
-      .then(function(snap) {
-        var existing = snap.val() || {};
-        var existingIds = Object.values(existing).map(function(r) { return r.id; });
-        var toSeed = sysRoutes.filter(function(r) { return !existingIds.includes(r.id); });
-        if (toSeed.length === 0) {
-          localStorage.setItem(flagKey, 'true');
-          return;
-        }
-        var writes = toSeed.map(function(route) {
-          return database.ref('cities/' + cityId + '/routes').push(route);
-        });
-        return Promise.all(writes).then(function() {
-          console.log('[SEED] Seeded ' + toSeed.length + ' system routes for ' + cityId);
-          localStorage.setItem(flagKey, 'true');
-        });
-      })
-      .catch(function(e) {
-        console.warn('[SEED] Error seeding system routes for ' + cityId, e);
-      });
-  });
 };

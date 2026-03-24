@@ -1,4 +1,4 @@
-// City data: Malaga
+// City data: malaga
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.malaga = {
   "id": "malaga",
@@ -138,44 +138,6 @@ window.BKK.cityData.malaga = {
       "safety": "safe"
     }
   ],
-  "interests":     [
-        {
-            "id": "food"
-        },
-        {
-            "id": "cafes"
-        },
-        {
-            "id": "culture"
-        },
-        {
-            "id": "history"
-        },
-        {
-            "id": "parks"
-        },
-        {
-            "id": "shopping"
-        },
-        {
-            "id": "nightlife"
-        },
-        {
-            "id": "galleries"
-        },
-        {
-            "id": "markets"
-        },
-        {
-            "id": "graffiti"
-        },
-        {
-            "id": "beaches"
-        },
-        {
-            "id": "architecture"
-        }
-    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
