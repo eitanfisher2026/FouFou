@@ -4195,9 +4195,10 @@
                       {(() => {
                         const orphaned = customInterests.filter(i => {
                           const cfg = interestConfig[i.id] || {};
-                          const hasLabel = (cfg.label || cfg.labelOverride || i.label || '').trim();
-                          const hasIcon = (cfg.icon || cfg.iconOverride || i.icon || '') !== '📍';
-                          return !hasLabel || !hasIcon;
+                          const label = (cfg.label || cfg.labelOverride || i.label || '').trim();
+                          const icon = (cfg.icon || cfg.iconOverride || i.icon || '').trim();
+                          // Orphaned = no real label OR only default pin icon
+                          return !label || icon === '📍' || icon === '';
                         });
                         if (orphaned.length === 0) return null;
                         return (

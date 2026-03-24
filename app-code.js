@@ -2892,7 +2892,7 @@ const FouFouApp = () => {
           });
         } else {
           setCustomInterests(prev => {
-            if (prev.length > 0) {
+            if (prev.length > 0 && !interestsInitialLoadDone.current) {
               return prev;
             }
             return [];
@@ -6335,25 +6335,38 @@ const FouFouApp = () => {
       loc.interests && loc.interests.includes(interestId)
     );
     
+    setCustomInterests(prev => prev.filter(i => i.id !== interestId));
+    
     if (isFirebaseAvailable && database) {
+      const toastFn = () => {
+        if (locationsUsingInterest.length > 0) {
+          showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
+        } else {
+          showToast(t('interests.interestDeleted'), 'success');
+        }
+      };
       if (interestToDelete && interestToDelete.firebaseId) {
         database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
           .then(() => {
-            if (locationsUsingInterest.length > 0) {
-              showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
-            } else {
-              showToast(t('interests.interestDeleted'), 'success');
-            }
+            toastFn();
+            database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+            database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting interest:', error);
+            setCustomInterests(prev => [...prev, interestToDelete]);
             showToast(t('toast.deleteError'), 'error');
           });
+      } else {
+        database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value').then(snap => {
+          if (snap.val()) {
+            Object.keys(snap.val()).forEach(key => database.ref(`customInterests/${key}`).remove());
+          }
+          toastFn();
+        }).catch(() => toastFn());
+        database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
       }
     } else {
-      const updated = customInterests.filter(i => i.id !== interestId);
-      setCustomInterests(updated);
-      
       if (locationsUsingInterest.length > 0) {
         showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
       } else {
@@ -12022,9 +12035,9 @@ const FouFouApp = () => {
                       {(() => {
                         const orphaned = customInterests.filter(i => {
                           const cfg = interestConfig[i.id] || {};
-                          const hasLabel = (cfg.label || cfg.labelOverride || i.label || '').trim();
-                          const hasIcon = (cfg.icon || cfg.iconOverride || i.icon || '') !== '📍';
-                          return !hasLabel || !hasIcon;
+                          const label = (cfg.label || cfg.labelOverride || i.label || '').trim();
+                          const icon = (cfg.icon || cfg.iconOverride || i.icon || '').trim();
+                          return !label || icon === '📍' || icon === '';
                         });
                         if (orphaned.length === 0) return null;
                         return (

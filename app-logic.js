@@ -2755,10 +2755,12 @@
           });
           console.log('[FIREBASE] Loaded', interestsArray.length, 'interests from Firebase');
         } else {
-          // Safety: don't wipe if we already have interests — Firebase might have returned null due to connection issue
+          // snapshot is null = no customInterests in Firebase at all
+          // Only keep local state if we have never successfully loaded from Firebase
+          // (connection issue on startup). If we have loaded before, null means empty = correct.
           setCustomInterests(prev => {
-            if (prev.length > 0) {
-              console.warn('[FIREBASE] customInterests returned null but we have', prev.length, 'locally — keeping them');
+            if (prev.length > 0 && !interestsInitialLoadDone.current) {
+              console.warn('[FIREBASE] customInterests returned null before initial load — keeping local');
               return prev;
             }
             return [];
@@ -6721,29 +6723,45 @@
       loc.interests && loc.interests.includes(interestId)
     );
     
+    // Optimistic local update — remove immediately (per CLAUDE_CONTEXT rule)
+    setCustomInterests(prev => prev.filter(i => i.id !== interestId));
+    
     // Delete from Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)
+      const toastFn = () => {
+        if (locationsUsingInterest.length > 0) {
+          showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
+        } else {
+          showToast(t('interests.interestDeleted'), 'success');
+        }
+      };
       if (interestToDelete && interestToDelete.firebaseId) {
         database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
           .then(() => {
-            console.log('[FIREBASE] Interest deleted from shared database');
-            if (locationsUsingInterest.length > 0) {
-              showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
-            } else {
-              showToast(t('interests.interestDeleted'), 'success');
-            }
+            toastFn();
+            // Also clean up interestConfig if exists
+            database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+            database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
           })
           .catch((error) => {
             console.error('[FIREBASE] Error deleting interest:', error);
+            // Revert optimistic update
+            setCustomInterests(prev => [...prev, interestToDelete]);
             showToast(t('toast.deleteError'), 'error');
           });
+      } else {
+        // No firebaseId — try deleting by id directly (fallback)
+        database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value').then(snap => {
+          if (snap.val()) {
+            Object.keys(snap.val()).forEach(key => database.ref(`customInterests/${key}`).remove());
+          }
+          toastFn();
+        }).catch(() => toastFn());
+        database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
       }
     } else {
-      // STATIC MODE: localStorage (local)
-      const updated = customInterests.filter(i => i.id !== interestId);
-      setCustomInterests(updated);
-      
+      // STATIC MODE: localStorage (local) — already removed by optimistic update above
       if (locationsUsingInterest.length > 0) {
         showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
       } else {
