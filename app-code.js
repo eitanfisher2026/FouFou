@@ -4527,23 +4527,24 @@ const FouFouApp = () => {
     const city = selectedCityId;
     const hidden = cityHiddenInterests[city] || new Set();
     const all = customInterests || [];
-    const toCheck = labelSearch
-      ? all.filter(i => (i.label||'').includes(labelSearch) || (i.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase()) || i.id.includes(labelSearch))
-      : all;
-    console.group(`[DEBUG-INTEREST] City: ${city} | hidden IDs: [${[...hidden].join(', ')}]`);
-    if (toCheck.length === 0 && labelSearch) {
+    console.group(`[DEBUG-INTEREST] selectedCityId=${city}`);
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('customInterests').once('value').then(snap => {
+        const raw = snap.val() || {};
+        Object.entries(raw).forEach(([k, v]) => {
+          const isHidden = hidden.has(v.id || k);
+          const inAll = allInterestOptions.some(a => a.id === (v.id || k));
+          const match = !labelSearch || (v.label||'').includes(labelSearch) || (v.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase());
+          if (!labelSearch || match) {
+          }
+        });
+        firebase.database().ref('settings/cityHiddenInterests/' + city).once('value').then(hs => {
+          console.groupEnd();
+        });
+      });
+    } else {
+      console.groupEnd();
     }
-    toCheck.forEach(i => {
-      const cfg = interestConfig[i.id] || {};
-      const reasons = [];
-      if (i.cityId && i.cityId !== city) reasons.push(`cityId="${i.cityId}" ≠ selected "${city}"`);
-      if (!i.cityId && i.scope === 'local') reasons.push('scope=local without cityId');
-      if (hidden.has(i.id)) reasons.push('in cityHiddenInterests');
-      if (cfg.adminStatus === 'hidden') reasons.push('adminStatus=hidden');
-      if (cfg.adminStatus === 'draft') reasons.push('adminStatus=draft (only admin sees)');
-      const inWizard = allInterestOptions.some(a => a.id === i.id);
-    });
-    console.groupEnd();
   };
 
   const allInterestOptions = useMemo(() => {

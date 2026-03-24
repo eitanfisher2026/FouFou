@@ -4614,37 +4614,43 @@
   }, [customInterests, selectedCityId]);
 
   // Debug tool: diagnose why an interest is not visible in the wizard
-  // Usage from Console: window.BKK.debugInterest('מים')  or  window.BKK.debugInterest()  for all custom interests
+  // Usage from Console: window.BKK.debugInterest('מים')  or  window.BKK.debugInterest()  for all
   window.BKK.debugInterest = (labelSearch) => {
     const city = selectedCityId;
     const hidden = cityHiddenInterests[city] || new Set();
     const all = customInterests || [];
-    const toCheck = labelSearch
-      ? all.filter(i => (i.label||'').includes(labelSearch) || (i.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase()) || i.id.includes(labelSearch))
-      : all;
-    console.group(`[DEBUG-INTEREST] City: ${city} | hidden IDs: [${[...hidden].join(', ')}]`);
-    console.log('Total customInterests:', all.length, '| cityCustomInterests:', cityCustomInterests.length, '| allInterestOptions:', allInterestOptions.length);
-    if (toCheck.length === 0 && labelSearch) {
-      console.warn(`No customInterest found matching "${labelSearch}"`);
-      console.log('All custom IDs:', all.map(i => `${i.id}:"${i.label}"`).join(', '));
+    console.group(`[DEBUG-INTEREST] selectedCityId=${city}`);
+    console.log('customInterests.length:', all.length);
+    console.log('cityHiddenInterests[' + city + ']:', [...hidden]);
+    console.log('allInterestOptions.length:', allInterestOptions.length);
+    console.log('allInterestOptions IDs:', allInterestOptions.map(o => o.id).join(', '));
+    // Also read directly from Firebase to bypass any filtering
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('customInterests').once('value').then(snap => {
+        const raw = snap.val() || {};
+        console.log('--- FIREBASE customInterests raw (' + Object.keys(raw).length + ' items) ---');
+        Object.entries(raw).forEach(([k, v]) => {
+          const isHidden = hidden.has(v.id || k);
+          const inAll = allInterestOptions.some(a => a.id === (v.id || k));
+          const match = !labelSearch || (v.label||'').includes(labelSearch) || (v.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase());
+          if (!labelSearch || match) {
+            console.log(
+              inAll ? '✅ IN WIZARD' : '❌ MISSING',
+              `"${v.label}" id=${v.id||k} scope=${v.scope} cityId="${v.cityId||''}"`,
+              isHidden ? '| HIDDEN in city' : '',
+              v.id && all.some(i => i.id === v.id) ? '' : '| NOT in customInterests state!'
+            );
+          }
+        });
+        firebase.database().ref('settings/cityHiddenInterests/' + city).once('value').then(hs => {
+          console.log('Firebase cityHiddenInterests/' + city + ':', hs.val());
+          console.groupEnd();
+        });
+      });
+    } else {
+      console.warn('Firebase not available for direct read');
+      console.groupEnd();
     }
-    toCheck.forEach(i => {
-      const cfg = interestConfig[i.id] || {};
-      const reasons = [];
-      if (i.cityId && i.cityId !== city) reasons.push(`cityId="${i.cityId}" ≠ selected "${city}"`);
-      if (!i.cityId && i.scope === 'local') reasons.push('scope=local without cityId');
-      if (hidden.has(i.id)) reasons.push('in cityHiddenInterests');
-      if (cfg.adminStatus === 'hidden') reasons.push('adminStatus=hidden');
-      if (cfg.adminStatus === 'draft') reasons.push('adminStatus=draft (only admin sees)');
-      const inWizard = allInterestOptions.some(a => a.id === i.id);
-      console.log(
-        inWizard ? '✅' : '❌',
-        `"${i.label}" (${i.id})`,
-        `scope=${i.scope} cityId="${i.cityId||''}" adminStatus=${cfg.adminStatus||'active'}`,
-        reasons.length ? `| MISSING BECAUSE: ${reasons.join(', ')}` : inWizard ? '| visible in wizard ✓' : '| reason unknown'
-      );
-    });
-    console.groupEnd();
   };
 
   const allInterestOptions = useMemo(() => {
