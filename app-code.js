@@ -11930,6 +11930,10 @@ const FouFouApp = () => {
 
             {/* ===== INTERESTS TAB ===== */}
             {settingsTab === 'interests' && isAdmin && (() => {
+              if (debugMode) {
+                addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
+                customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
+              }
               const toggleCityForInterest = (interestId, cityId) => {
                 const cur = cityHiddenInterests[cityId] || new Set();
                 const next = new Set(cur);
@@ -12035,9 +12039,8 @@ const FouFouApp = () => {
                       {(() => {
                         const orphaned = customInterests.filter(i => {
                           const cfg = interestConfig[i.id] || {};
-                          const label = (cfg.label || cfg.labelOverride || i.label || '').trim();
-                          const icon = (cfg.icon || cfg.iconOverride || i.icon || '').trim();
-                          return !label || icon === '📍' || icon === '';
+                          const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
+                          return !effectiveIcon || effectiveIcon === '📍';
                         });
                         if (orphaned.length === 0) return null;
                         return (
