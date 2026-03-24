@@ -7324,6 +7324,12 @@ const FouFouApp = () => {
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
+
+    if (loc.googlePlace || loc.googlePlaceId) {
+      addCustomLocation(closeAfter, overrideData);
+      if (closeQuickCapture) setShowQuickCapture(false);
+      return;
+    }
     
     try {
       const matches = await findNearbyDuplicates(loc.lat, loc.lng, loc.interests);

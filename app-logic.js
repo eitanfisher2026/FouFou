@@ -7825,6 +7825,13 @@
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
+
+    // Skip dedup if user already chose a specific Google place — no need to warn
+    if (loc.googlePlace || loc.googlePlaceId) {
+      addCustomLocation(closeAfter, overrideData);
+      if (closeQuickCapture) setShowQuickCapture(false);
+      return;
+    }
     
     // Background dedup check
     try {
