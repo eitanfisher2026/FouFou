@@ -1480,7 +1480,7 @@ const FouFouApp = () => {
                 const aStatus = opt.adminStatus || 'active';
                 if (aStatus === 'hidden') return false;
                 if (aStatus === 'draft' && !isEditor) return false;
-                return interestStatus[id] !== false;
+                return true; // all visible interests shown (user toggle removed)
               });
               if (!hasVisibleInterest) return false;
             }
@@ -3077,18 +3077,8 @@ const FouFouApp = () => {
         markLoaded('config');
         markLoaded('status');
       });
-      
-      if (!isAnon) {
-        const userStatusRef2 = database.ref(`users/${authUser.uid}/interestStatus`);
-        userStatusRef2.on('value', (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            setInterestStatus(prev => ({ ...prev, ...data }));
-          }
-        });
-      }
     } else {
-      setInterestStatus(hardDefaults);
+      setInterestStatus({});
       markLoaded('status');
     }
   }, []);
@@ -6372,75 +6362,6 @@ const FouFouApp = () => {
         showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
       } else {
         showToast(t('interests.interestDeleted'), 'success');
-      }
-    }
-  };
-
-  const toggleInterestStatus = (interestId) => {
-    if (!isInterestValid(interestId) && !interestStatus[interestId]) return;
-    
-    const newStatus = !interestStatus[interestId];
-    const updatedStatus = { ...interestStatus, [interestId]: newStatus };
-    setInterestStatus(updatedStatus);
-    
-    if (!newStatus && formData.interests.includes(interestId)) {
-      setFormData(prev => ({ ...prev, interests: prev.interests.filter(id => id !== interestId) }));
-    }
-    
-    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
-      const userId = authUser.uid;
-      database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
-        .catch(err => {
-          console.error('Error updating interest status:', err);
-        });
-    }
-  };
-
-  const computeDefaultInterestStatus = () => {
-    const defaults = {};
-    const builtInIds = new Set(interestOptions.map(i => i.id));
-    const allInterests = [...interestOptions, ...(cityCustomInterests || [])];
-    for (const i of allInterests) {
-      const id = i.id || i.name?.replace(/\s+/g, '_').toLowerCase();
-      if (!id) continue;
-      const cfg = interestConfig[id];
-      defaults[id] = cfg?.defaultEnabled !== undefined ? cfg.defaultEnabled : builtInIds.has(id);
-    }
-    return defaults;
-  };
-
-  const resetInterestStatusToDefault = async () => {
-    const defaults = computeDefaultInterestStatus();
-    
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(id => defaults[id] !== false)
-    }));
-    
-    setInterestStatus(defaults);
-    showToast(t('interests.interestsReset'), 'success');
-    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
-      database.ref(`users/${authUser.uid}/interestStatus`).set(defaults)
-        .catch(err => console.error('Error resetting interest status:', err));
-    }
-  };
-
-  const toggleDefaultEnabled = async (interestId) => {
-    if (!isUnlocked) return;
-    const currentConfig = interestConfig[interestId] || {};
-    const builtInIds = interestOptions.map(i => i.id);
-    const hardDefault = builtInIds.includes(interestId) ? true : false;
-    const currentDefault = currentConfig.defaultEnabled !== undefined ? currentConfig.defaultEnabled : hardDefault;
-    const newDefault = !currentDefault;
-    
-    const updatedConfig = { ...interestConfig, [interestId]: { ...currentConfig, defaultEnabled: newDefault } };
-    setInterestConfig(updatedConfig);
-    
-    if (isFirebaseAvailable && database) {
-      try {
-        await database.ref(`settings/interestConfig/${interestId}/defaultEnabled`).set(newDefault);
-      } catch (err) {
-        console.error('Error saving defaultEnabled:', err);
       }
     }
   };
@@ -11214,59 +11135,6 @@ const FouFouApp = () => {
               </div>
             </div>
 
-            {/* Interest Groups Overview */}
-            {isUnlocked && (
-            <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>📂 Interest Groups</div>
-              {(() => {
-                const allOpts = allInterestOptions || [];
-                const groups = {};
-                const ungrouped = [];
-                allOpts.forEach(opt => {
-                  const aStatus = opt.adminStatus || 'active';
-                  if (aStatus === 'hidden') return;
-                  if (opt.group) {
-                    if (!groups[opt.group]) groups[opt.group] = [];
-                    groups[opt.group].push(opt);
-                  } else {
-                    ungrouped.push(opt);
-                  }
-                });
-                const groupNames = Object.keys(groups).sort();
-                if (groupNames.length === 0) return <div style={{ fontSize: '10px', color: '#9ca3af' }}>No groups defined. Edit interests to assign groups.</div>;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {groupNames.map(g => (
-                      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', minWidth: '60px' }}>{g}</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {groups[g].map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {ungrouped.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>none</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {ungrouped.map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>To change groups: edit each interest in the Interests tab → Group field</div>
-                  </div>
-                );
-              })()}
-            </div>
-            )}
-
-            </div>)}
-
             {/* ===== GENERAL SETTINGS TAB ===== */}
             {settingsTab === 'general' && (<div>
 
@@ -12991,6 +12859,58 @@ const FouFouApp = () => {
         )}
 
         {/* === DIALOGS (from dialogs.js) === */}
+            {/* Interest Groups Overview */}
+            {isUnlocked && (
+            <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>📂 Interest Groups</div>
+              {(() => {
+                const allOpts = allInterestOptions || [];
+                const groups = {};
+                const ungrouped = [];
+                allOpts.forEach(opt => {
+                  const aStatus = opt.adminStatus || 'active';
+                  if (aStatus === 'hidden') return;
+                  if (opt.group) {
+                    if (!groups[opt.group]) groups[opt.group] = [];
+                    groups[opt.group].push(opt);
+                  } else {
+                    ungrouped.push(opt);
+                  }
+                });
+                const groupNames = Object.keys(groups).sort();
+                if (groupNames.length === 0) return <div style={{ fontSize: '10px', color: '#9ca3af' }}>No groups defined. Edit interests to assign groups.</div>;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {groupNames.map(g => (
+                      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', minWidth: '60px' }}>{g}</span>
+                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
+                          {groups[g].map(opt => (
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}
+                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {ungrouped.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>none</span>
+                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
+                          {ungrouped.map(opt => (
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}
+                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>To change groups: edit each interest in the Interests tab → Group field</div>
+                  </div>
+                );
+              })()}
+            </div>
+            )}
+
+            </div>)}
 
 
         {/* Dedup Confirmation Dialog */}
@@ -14555,20 +14475,7 @@ const FouFouApp = () => {
                 {editingCustomInterest && isUnlocked && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          toggleInterestStatus(editingCustomInterest.id);
-                          setShowAddInterestDialog(false);
-                          setEditingCustomInterest(null);
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-bold ${
-                          interestStatus[editingCustomInterest.id] === false 
-                            ? 'bg-green-500 text-white hover:bg-green-600'
-                            : 'bg-blue-500 text-white hover:bg-blue-600'
-                        }`}
-                      >
-                        {interestStatus[editingCustomInterest.id] === false ? t('general.enable') : t('general.disable')}
-                      </button>
+
                       {isEditor && (() => {
                         const inUseCount = customLocations.filter(loc => (loc.interests || []).includes(editingCustomInterest?.id)).length;
                         const canDelete = isAdmin || inUseCount === 0;
@@ -14580,7 +14487,6 @@ const FouFouApp = () => {
                               : `${t('interests.deleteCustom')} "${newInterest.label}"?`;
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
-                                toggleInterestStatus(editingCustomInterest.id);
                                 if (isFirebaseAvailable && database) {
                                   database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
                                 }

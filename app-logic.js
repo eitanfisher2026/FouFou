@@ -1205,7 +1205,7 @@
                 const aStatus = opt.adminStatus || 'active';
                 if (aStatus === 'hidden') return false;
                 if (aStatus === 'draft' && !isEditor) return false;
-                return interestStatus[id] !== false;
+                return true; // all visible interests shown (user toggle removed)
               });
               if (!hasVisibleInterest) return false;
             }
@@ -2963,19 +2963,8 @@
         markLoaded('config');
         markLoaded('status');
       });
-      
-      // Listen for user's own changes — skip for anonymous
-      if (!isAnon) {
-        const userStatusRef2 = database.ref(`users/${authUser.uid}/interestStatus`);
-        userStatusRef2.on('value', (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            setInterestStatus(prev => ({ ...prev, ...data }));
-          }
-        });
-      }
     } else {
-      setInterestStatus(hardDefaults);
+      setInterestStatus({});
       markLoaded('status');
     }
   }, []);
@@ -6766,87 +6755,11 @@
   };
 
   // Toggle interest active/inactive status (per-user)
-  const toggleInterestStatus = (interestId) => {
-    // Invalid interests cannot be activated
-    if (!isInterestValid(interestId) && !interestStatus[interestId]) return;
-    
-    const newStatus = !interestStatus[interestId];
-    const updatedStatus = { ...interestStatus, [interestId]: newStatus };
-    setInterestStatus(updatedStatus);
-    
-    // When disabling: immediately remove from selected interests to prevent stale selections
-    if (!newStatus && formData.interests.includes(interestId)) {
-      console.log('[INTEREST] Removing disabled interest from selection:', interestId);
-      setFormData(prev => ({ ...prev, interests: prev.interests.filter(id => id !== interestId) }));
-    }
-    
-    // Anonymous users: skip Firebase write — state is local-only
-    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
-      const userId = authUser.uid;
-      database.ref(`users/${userId}/interestStatus/${interestId}`).set(newStatus)
-        .catch(err => {
-          console.error('Error updating interest status:', err);
-        });
-    }
-  };
 
-  // Reset user interest preferences to admin defaults
-  // Compute default interest status from interestConfig flags
-  const computeDefaultInterestStatus = () => {
-    const defaults = {};
-    const builtInIds = new Set(interestOptions.map(i => i.id));
-    // Unified logic for ALL interests — same as ⚪/🔵 toggle display
-    const allInterests = [...interestOptions, ...(cityCustomInterests || [])];
-    for (const i of allInterests) {
-      const id = i.id || i.name?.replace(/\s+/g, '_').toLowerCase();
-      if (!id) continue;
-      const cfg = interestConfig[id];
-      // If admin explicitly set defaultEnabled, use it. Otherwise: built-in=true, non-built-in=false
-      defaults[id] = cfg?.defaultEnabled !== undefined ? cfg.defaultEnabled : builtInIds.has(id);
-    }
-    return defaults;
-  };
 
-  const resetInterestStatusToDefault = async () => {
-    const defaults = computeDefaultInterestStatus();
-    
-    // Also clean formData.interests — remove any that will be disabled
-    setFormData(prev => ({
-      ...prev,
-      interests: prev.interests.filter(id => defaults[id] !== false)
-    }));
-    
-    setInterestStatus(defaults);
-    showToast(t('interests.interestsReset'), 'success');
-    // Persist to Firebase only for authenticated (non-anonymous) users
-    if (isFirebaseAvailable && database && authUser && !authUser.isAnonymous) {
-      database.ref(`users/${authUser.uid}/interestStatus`).set(defaults)
-        .catch(err => console.error('Error resetting interest status:', err));
-    }
-  };
 
   // Admin: toggle the defaultEnabled flag for an interest
-  const toggleDefaultEnabled = async (interestId) => {
-    if (!isUnlocked) return;
-    const currentConfig = interestConfig[interestId] || {};
-    // Determine current effective default
-    const builtInIds = interestOptions.map(i => i.id);
-    const hardDefault = builtInIds.includes(interestId) ? true : false;
-    const currentDefault = currentConfig.defaultEnabled !== undefined ? currentConfig.defaultEnabled : hardDefault;
-    const newDefault = !currentDefault;
-    
-    const updatedConfig = { ...interestConfig, [interestId]: { ...currentConfig, defaultEnabled: newDefault } };
-    setInterestConfig(updatedConfig);
-    
-    if (isFirebaseAvailable && database) {
-      try {
-        await database.ref(`settings/interestConfig/${interestId}/defaultEnabled`).set(newDefault);
-        console.log(`[ADMIN] Set defaultEnabled=${newDefault} for ${interestId}`);
-      } catch (err) {
-        console.error('Error saving defaultEnabled:', err);
-      }
-    }
-  };
+
 
   // Admin: cycle adminStatus for an interest (active → draft → hidden → active)
   const cycleAdminStatus = async (interestId) => {

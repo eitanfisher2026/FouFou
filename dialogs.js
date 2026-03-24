@@ -1579,20 +1579,7 @@
                 {editingCustomInterest && isUnlocked && (
                   <div className="border-t border-red-200 bg-red-50 px-4 py-2">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          toggleInterestStatus(editingCustomInterest.id);
-                          setShowAddInterestDialog(false);
-                          setEditingCustomInterest(null);
-                        }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-bold ${
-                          interestStatus[editingCustomInterest.id] === false 
-                            ? 'bg-green-500 text-white hover:bg-green-600'
-                            : 'bg-blue-500 text-white hover:bg-blue-600'
-                        }`}
-                      >
-                        {interestStatus[editingCustomInterest.id] === false ? t('general.enable') : t('general.disable')}
-                      </button>
+
                       {isEditor && (() => {
                         const inUseCount = customLocations.filter(loc => (loc.interests || []).includes(editingCustomInterest?.id)).length;
                         const canDelete = isAdmin || inUseCount === 0;
@@ -1604,7 +1591,6 @@
                               : `${t('interests.deleteCustom')} "${newInterest.label}"?`;
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
-                                toggleInterestStatus(editingCustomInterest.id);
                                 if (isFirebaseAvailable && database) {
                                   database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
                                 }
