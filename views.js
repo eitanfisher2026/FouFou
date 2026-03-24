@@ -2527,13 +2527,10 @@
               };
               
               // Collect active and inactive - apply config overrides to built-in
-              const overriddenBuiltIn = interestOptions.map(i => {
-                const cfg = interestConfig[i.id];
-                if (!cfg) return i;
-                return { ...i, label: cfg.labelOverride || i.label, icon: cfg.iconOverride || i.icon, locked: cfg.locked !== undefined ? cfg.locked : i.locked };
-              });
+              // Use allInterestOptions — already has Firebase labels, icons, etc applied
+              const builtInOptions = allInterestOptions.filter(i => !i.custom && !i.id?.startsWith('custom_'));
               const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const activeBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
+              const activeBuiltIn = sortAlpha(builtInOptions.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && interestStatus[i.id] !== false;
               }));
@@ -2541,7 +2538,7 @@
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && interestStatus[i.id] !== false;
               }));
-              const inactiveBuiltIn = sortAlpha(overriddenBuiltIn.filter(i => {
+              const inactiveBuiltIn = sortAlpha(builtInOptions.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && interestStatus[i.id] === false;
               }));
@@ -2549,8 +2546,7 @@
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active' && interestStatus[i.id] === false;
               }));
-              // Admin-only: draft and hidden interests
-              const allForAdmin = [...overriddenBuiltIn, ...cityCustomInterests];
+              const allForAdmin = [...builtInOptions, ...cityCustomInterests];
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
               

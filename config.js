@@ -57,7 +57,7 @@ window.BKK.mapConfig = {
 })();
 
 // App Version
-window.BKK.VERSION = '3.11.40';
+window.BKK.VERSION = '3.11.42';
 // Convert stop index (0-based) to letter label: 0→A, 1→B, ..., 25→Z, 26→AA
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
@@ -408,6 +408,7 @@ window.BKK.selectCity = function(cityId) {
 
   // Populate legacy interest variables
   window.BKK.interestOptions = city.interests;
+;
   window.BKK.interestToGooglePlaces = city.interestToGooglePlaces;
   window.BKK.textSearchInterests = city.textSearchInterests || {};
   window.BKK.uncoveredInterests = []; // removed — noGoogleSearch flag on interests instead

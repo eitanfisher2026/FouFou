@@ -4635,8 +4635,6 @@
       if (!config) return opt;
       return {
         ...opt,
-        // Firebase interestConfig is primary source for all display/behavior properties
-        // City file only provides id + group
         label: config.labelOverride || config.label || opt.label,
         labelEn: config.labelEnOverride || config.labelOverrideEn || config.labelEn || opt.labelEn,
         icon: config.iconOverride || config.icon || opt.icon,
