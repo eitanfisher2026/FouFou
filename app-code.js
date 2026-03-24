@@ -10306,13 +10306,6 @@ const FouFouApp = () => {
                 </span>
               </div>
               <div className="flex gap-1">
-                <button
-                  onClick={resetInterestStatusToDefault}
-                  className="bg-gray-200 text-gray-700 px-2 py-1.5 rounded-lg text-[10px] font-bold hover:bg-gray-300"
-                  title={t("interests.resetToDefault")}
-                >
-                  {t("interests.resetToDefault")}
-                </button>
                 {isEditor && (
                 <button
                   onClick={() => {
@@ -10418,25 +10411,6 @@ const FouFouApp = () => {
                           title={`Status: ${aStatus} (click to cycle)`}
                         >{isHidden ? '🔴' : '🟡'}</button>
                       )}
-                      {/* Default flag toggle — admin only */}
-                      {isUnlocked && (() => {
-                        const cfg = interestConfig[interest.id] || {};
-                        const builtInDefault = interestOptions.some(i => i.id === interest.id);
-                        const isDefault = cfg.defaultEnabled !== undefined ? cfg.defaultEnabled : builtInDefault;
-                        return (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleDefaultEnabled(interest.id); }}
-                            style={{
-                              fontSize: '9px', padding: '1px 4px', borderRadius: '4px',
-                              background: isDefault ? '#dbeafe' : '#f3f4f6',
-                              color: isDefault ? '#1d4ed8' : '#9ca3af',
-                              border: `1px solid ${isDefault ? '#93c5fd' : '#d1d5db'}`,
-                              cursor: 'pointer', lineHeight: '14px'
-                            }}
-                            title={isDefault ? 'Default: ON (click to change)' : 'Default: OFF (click to change)'}
-                          >{isDefault ? '🔵' : '⚪'}</button>
-                        );
-                      })()}
                       {/* Toggle button — removed: users see city interests as defined by admin */}
                       {isEditor && (
                       <button
@@ -12085,12 +12059,31 @@ const FouFouApp = () => {
               const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
                 const isDraft = getAStatus(i) === 'draft';
+                const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
                 return (
                   <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isDraft ? '#fde68a' : '#e5e7eb', background: isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
                     <span style={{ flexShrink: 0 }}>{icon}</span>
                     <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{tLabel(i) || i.label}</span>
                     {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
+                    {allVisible ? (
+                      <button onClick={() => { const cid = selectedCityId; const cur = cityHiddenInterests[cid] || new Set(); const next = new Set(cur); next.add(i.id); setCityHiddenInterests(prev => ({ ...prev, [cid]: next })); if (isFirebaseAvailable && database) database.ref(`settings/cityHiddenInterests/${cid}`).set([...next]).catch(() => {}); }}
+                        title="חשוף בכל הערים — לחץ להסתיר מעיר זו"
+                        style={{ fontSize: '16px', flexShrink: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0, lineHeight: 1 }}>🌍</button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                        {allCities.map(city => {
+                          const isHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
+                          return (
+                            <button key={city.id} onClick={() => { const cur = cityHiddenInterests[city.id] || new Set(); const next = new Set(cur); if (next.has(i.id)) next.delete(i.id); else next.add(i.id); setCityHiddenInterests(prev => ({ ...prev, [city.id]: next })); if (isFirebaseAvailable && database) database.ref(`settings/cityHiddenInterests/${city.id}`).set(next.size > 0 ? [...next] : null).catch(() => {}); }}
+                              title={`${tLabel(city)}: ${isHidden ? 'מוסתר — לחץ להציג' : 'חשוף — לחץ להסתיר'}`}
+                              style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                background: isHidden ? '#f3f4f6' : '#ecfdf5', borderColor: isHidden ? '#d1d5db' : '#6ee7b7', opacity: isHidden ? 0.4 : 1 }}
+                            >{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</button>
+                          );
+                        })}
+                      </div>
+                    )}
                     <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
                   </div>
                 );
@@ -12115,9 +12108,6 @@ const FouFouApp = () => {
                 .filter(i => (interestConfig[i.id]?.adminStatus || 'active') !== 'hidden')
                 .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
-              const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
-              const exposed = allInterestsSorted.filter(i => !hiddenForCity.has(i.id));
-              const hiddenList = allInterestsSorted.filter(i => hiddenForCity.has(i.id));
               const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
               const openInterestDialogFromSettings = (interest) => {
                 const cfg = interestConfig[interest.id] || {};
@@ -12145,7 +12135,6 @@ const FouFouApp = () => {
                   bestTime: cfg.bestTime || interest.bestTime || 'anytime',
                   group: cfg.group || interest.group || '',
                   dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
-                  defaultEnabled: cfg.defaultEnabled !== undefined ? cfg.defaultEnabled : true,
                   noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
                   color: cfg.color || interest.color || '',
                 });
@@ -12155,32 +12144,21 @@ const FouFouApp = () => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
-                      🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({exposed.length} חשופים · {hiddenList.length} מוסתרים{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
+                      🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allInterestsSorted.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
                     </div>
                     <button
-                      onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [], defaultEnabled: false }); }}
+                      onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] }); }}
                       style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
                     >+ הוסף תחום</button>
                   </div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <span>עיר: 🟢 חשוף · ⚫ מוסתר (לחץ על אייקון עיר לשינוי)</span>
-                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל (מוגדר בהגדרות תחום)</span>
+                    <span>🌍 = חשוף בכל הערים · אייקון עיר = לחץ לשינוי ניראות</span>
+                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל</span>
                   </div>
                   <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-                    {/* Exposed section */}
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a', padding: '4px 2px', marginBottom: '4px' }}>✅ חשופים לעיר זו ({exposed.length})</div>
-                    <div className="space-y-1 mb-3">
-                      {exposed.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
+                    <div className="space-y-1">
+                      {allInterestsSorted.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
                     </div>
-                    {/* Hidden section */}
-                    {hiddenList.length > 0 && (
-                      <>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626', padding: '4px 2px', marginBottom: '4px', marginTop: '8px' }}>🙈 מוסתרים מעיר זו ({hiddenList.length})</div>
-                        <div className="space-y-1">
-                          {hiddenList.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
               );
