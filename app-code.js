@@ -12095,9 +12095,8 @@ const FouFouApp = () => {
                 );
               };
               const allCities = Object.values(window.BKK.cities || {});
-              const allCityInterests = Object.values(window.BKK.cities || {}).flatMap(c => c.interests || []);
               const seenIds = new Set();
-              const fullList = [...allCityInterests, ...(customInterests || [])].filter(i => {
+              const fullList = [...allInterestOptions].filter(i => {
                 if (!i?.id || seenIds.has(i.id)) return false;
                 seenIds.add(i.id);
                 return true;

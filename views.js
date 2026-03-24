@@ -4179,10 +4179,9 @@
                 );
               };
               const allCities = Object.values(window.BKK.cities || {});
-              // Build full list from ALL cities + all custom — not per-city filtered
-              const allCityInterests = Object.values(window.BKK.cities || {}).flatMap(c => c.interests || []);
+              // Use allInterestOptions — already enriched with Firebase labels/icons
               const seenIds = new Set();
-              const fullList = [...allCityInterests, ...(customInterests || [])].filter(i => {
+              const fullList = [...allInterestOptions].filter(i => {
                 if (!i?.id || seenIds.has(i.id)) return false;
                 seenIds.add(i.id);
                 return true;
