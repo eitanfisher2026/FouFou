@@ -11984,7 +11984,6 @@ const FouFouApp = () => {
                       {allInterestsSorted.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
                     </div>
                   </div>
-                </div>
 
             {/* Interest Groups Overview */}
             {isUnlocked && (
