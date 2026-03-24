@@ -4198,10 +4198,10 @@
                     </div>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       {(() => {
-                        const orphaned = customInterests.filter(i => {
+                        // Orphaned = any interest (built-in or custom) with no icon in interestConfig
+                        // These show as 📍 in the list and have no real configuration
+                        const orphaned = allInterestsSorted.filter(i => {
                           const cfg = interestConfig[i.id] || {};
-                          // "Orphaned" = shows as 📍 pin icon in the list
-                          // This happens when icon is falsy (empty/null/undefined) in both interest and config
                           const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
                           return !effectiveIcon || effectiveIcon === '📍';
                         });
@@ -4209,11 +4209,24 @@
                         return (
                           <button
                             onClick={() => {
-                              if (!window.confirm(`מחק ${orphaned.length} תחומים ללא שם/אייקון?\n${orphaned.map(i => i.id).join(', ')}`)) return;
-                              orphaned.forEach(i => deleteCustomInterest(i.id));
+                              const names = orphaned.map(i => cfg => (interestConfig[i.id]?.label || i.label || i.id)).join ? orphaned.map(i => interestConfig[i.id]?.label || i.label || i.id).join(', ') : '';
+                              if (!window.confirm(`הסתר ${orphaned.length} תחומים ללא אייקון?\n${names}`)) return;
+                              orphaned.forEach(i => {
+                                const isCustom = customInterests.some(ci => ci.id === i.id);
+                                if (isCustom) {
+                                  deleteCustomInterest(i.id);
+                                } else {
+                                  // Built-in: hide via adminStatus
+                                  const cfg = { ...(interestConfig[i.id] || {}), adminStatus: 'hidden' };
+                                  setInterestConfig(prev => ({ ...prev, [i.id]: cfg }));
+                                  if (isFirebaseAvailable && database) {
+                                    database.ref(`settings/interestConfig/${i.id}/adminStatus`).set('hidden').catch(() => {});
+                                  }
+                                }
+                              });
                             }}
                             style={{ padding: '5px 10px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
-                          >🗑️ מחק {orphaned.length} ריקים</button>
+                          >🗑️ הסתר {orphaned.length} ריקים</button>
                         );
                       })()}
                       <button
