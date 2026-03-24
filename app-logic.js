@@ -7195,10 +7195,11 @@
       // Check CURRENT auth state at timeout time (not stale closure) to avoid showing
       // login dialog when Firebase briefly sets authUser=null during token refresh
       setTimeout(() => {
-        if (!authUserRef.current || authUserRef.current.isAnonymous) {
+        // Also guard: don't show if auth is still loading (startup race condition)
+        if (!authLoading && (!authUserRef.current || authUserRef.current.isAnonymous)) {
           setShowLoginDialog(true);
         }
-      }, 600);
+      }, 800);
       return false;
     }
     return true;

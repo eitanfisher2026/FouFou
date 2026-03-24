@@ -6741,10 +6741,10 @@ const FouFouApp = () => {
     if (!authUser || authUser.isAnonymous) {
       showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'info', 'sticky');
       setTimeout(() => {
-        if (!authUserRef.current || authUserRef.current.isAnonymous) {
+        if (!authLoading && (!authUserRef.current || authUserRef.current.isAnonymous)) {
           setShowLoginDialog(true);
         }
-      }, 600);
+      }, 800);
       return false;
     }
     return true;
