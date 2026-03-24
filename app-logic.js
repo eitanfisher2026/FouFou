@@ -685,8 +685,6 @@
       slotEndPenaltyMultiplier: 4,
       gapPenaltyMultiplier: 2,
       includeDrafts: true,
-      // FouFou rating boost (multiplier for user ratings in bucket sort)
-      foufouRatingBoost: 2,
       // Speech recording
       speechMaxSeconds: 15,
       speechRate: 1.0,
@@ -1530,7 +1528,7 @@
     }};
     urlDebugLogRef.current = [entry, ...urlDebugLogRef.current.slice(0, 49)];
     setUrlDebugLog([...urlDebugLogRef.current]);
-    window.console.log(`[URL] ${name}`, entry.data);
+    console.log(`[URL] ${name}`, entry.data);
   };
 
   const addDebugLog = (category, message, data = null) => {
@@ -1539,7 +1537,7 @@
     const cats = debugCategoriesRef.current;
     if (!cats.includes('all') && !cats.includes(cat)) return;
     const entry = { ts: Date.now(), category, message, data, runId: searchRunIdRef.current };
-    window.console.log(`[${category}] ${message}`, data || '');
+    console.log(`[${category}] ${message}`, data || '');
     if (cat === 'api' || cat === 'search') {
       searchDebugLogRef.current = [...searchDebugLogRef.current.slice(-100), entry];
       setSearchDebugLog([...searchDebugLogRef.current]);
@@ -1952,7 +1950,7 @@
     window._hintRecognition = recognition;
     recognition.start();
     setHintRecording(true);
-    showToast('🎤 מדבר...', 'info');
+    showToast('🎤 ' + (t('toast.hintRecording') || 'מדבר...'), 'info');
   };
   const stopHintDictation = () => {
     const rec = window._hintRecognition;
@@ -4347,7 +4345,7 @@
     // Apply fixes to Firebase
     if (Object.keys(fixes).length > 0 && isFirebaseAvailable && database) {
       database.ref().update(fixes)
-        .then(() => showToast(`🔧 תוקנו ${memoryFixes.length} מקומות`, 'success'))
+        .then(() => showToast(`🔧 ${(t('toast.memoryFixesDone') || 'תוקנו {count} מקומות').replace('{count}', memoryFixes.length)}`, 'success'))
         .catch(e => showToast('שגיאה: ' + e.message, 'error'));
       // Fix in memory too
       setCustomLocations(prev => prev.map(loc => {
@@ -5858,7 +5856,11 @@
         // Store unused places in cache for "find more"
         googleCacheRef.current[interest] = cachedPlaces;
         console.log(`[ROUTE] 📋 ${interest}: picked ${sortedPlaces.length}/${sortedAll.length}, cached ${cachedPlaces.length}`);
-        sortedPlaces.forEach((p, i) => console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`));
+        if (sortedPlaces.length > 0) {
+          sortedPlaces.forEach((p, i) => {
+            console.log(`  ✅ ${i+1}. ${p.name} — ⭐${p.rating} (${p.ratingCount})`);
+          });
+        }
         if (cachedPlaces.length > 0) {
           console.log(`  [cached: ${cachedPlaces.slice(0, 5).map(p => p.name).join(', ')}${cachedPlaces.length > 5 ? '...' : ''}]`);
         }

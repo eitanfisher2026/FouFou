@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.11.58` (Mar 24, 2026)
+- **גרסה:** `3.11.61` (Mar 24, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -314,6 +314,12 @@ favoriteBaseScore: 20,
 favoriteBonusPerStar: 5,
 favoriteLowRatingThreshold: 2.5,
 favoriteLowRatingPenalty: 60,
+
+// Google Places rating count filters (applies only to Google results, never to saved favorites)
+// googleMinRatingCount: places with fewer ratings than this are NEVER shown (filtered like blacklist)
+// googleLowRatingCount: places below this get a near-zero score — included only if no better option
+googleMinRatingCount: 20,
+googleLowRatingCount: 60,
 ```
 
 ---
@@ -805,8 +811,14 @@ places.priceLevel  <- only if displaying it
 - **אסור:** `showToast(\`🔒 ${hardcoded_text}\`, ...)`
 - טקסט toast מוגדר ב-`i18n.js` גם בעברית וגם באנגלית
 
----
+**Admin-only toasts:** גם טקסט שמוצג רק לadmin חייב להשתמש ב-`t('key')` עם fallback. אם הkey עדיין לא קיים ב-i18n — להוסיף אותו. אין פטור לadmin-only.
 
+**toasts עם ערכים דינמיים (count, name):** השתמש ב-pattern של `.replace('{count}', value)`:
+```js
+showToast((t('toast.memoryFixesDone') || 'תוקנו {count} מקומות').replace('{count}', n), 'success')
+```
+
+---
 ## אחידות UI — עיקרון מרכזי
 
 > **Eitan מקפיד מאוד על אחידות בכל המערכת. כל שינוי צריך לבדוק שהוא אחיד בכל המקומות.**
@@ -1463,13 +1475,12 @@ interestStatus[id]=false → כבוי למשתמש ספציפי
 - Gallery kept in both modes — coordinates come from device GPS (captured when FAB opened), not from photo
 
 ### v3.9.17 — Double confirmation on reload fixed
-- `applyUpdate()`: replaced `window.location.reload(true)` with `window.location.replace(pathname + '?_r=timestamp')`
-  - `reload(true)` triggers browser-native "Changes may not be saved" confirm on Android Chrome (due to form inputs on page)
-  - Navigation via `replace()` bypasses browser confirm entirely — one less dialog
+- `applyUpdate()`: originally tried `window.location.replace(pathname + '?_r=timestamp')` to avoid the browser confirm, but changing the URL breaks Firebase `signInWithRedirect` pending state. Final solution: plain `window.location.reload()` with `removeEventListener` called first.
 - Footer "🔄 רענן" button: removed `showConfirm()` wrapper — applyUpdate() called directly (browser was showing TWO confirms)
-- RULE: Never use `window.location.reload(true)` — deprecated, behaves same as `reload()` in modern browsers
+- RULE: Never use `window.location.reload(true)` — deprecated
 - RULE: Never change the URL during applyUpdate (no `?_r=...`) — breaks Firebase `signInWithRedirect` pending state
-- RULE: Always call `window.removeEventListener('beforeunload', window.__beforeUnloadHandler)` BEFORE any navigation in applyUpdate — the handler causes Android Chrome to partially tear down the JS context (including Firebase auth) while showing the native "Leave site?" dialog, resulting in user appearing logged out after reload
+- RULE: Always call `window.removeEventListener('beforeunload', window.__beforeUnloadHandler)` BEFORE calling `reload()` in applyUpdate — the handler causes Android Chrome to partially tear down the JS context (including Firebase auth) while showing the native "Leave site?" dialog, resulting in user appearing logged out after reload
+- **Current correct implementation:** `removeEventListener` → clear SW caches → `window.location.reload()`
 
 ### v3.9.16 — Active Trail UX fixes
 - FAB (floating 📸 button) now visible during active trail mode — was hidden by `!activeTrail` condition
@@ -1523,3 +1534,129 @@ interestStatus[id]=false → כבוי למשתמש ספציפי
 
 ### IMPORTANT: interestStatus per-user removed (v3.11.48)
 Users cannot toggle interests on/off. They see city interests as defined by admin via cityHiddenInterests.
+
+## RULE: JSX block moves — verify before attempting
+The settings tabs use IIFEs: `{settingsTab === 'X' && isAdmin && (() => { return (...); })()}`
+JSX comments `{/* ... */}` are ONLY valid as direct children of a JSX element.
+NEVER place a JSX block between two closing `</div>` tags without a parent element.
+If unsure about the correct insertion point — DO NOT attempt the move, roll back and report.
+
+---
+
+## Major Changes (v3.11.60 → v3.11.61) — Code Audit & Cleanup Session
+
+### בדיקת ציות לעקרונות הקונטקסט — תיקונים שבוצעו
+
+#### utils.js
+- **`isCoordOnlyPlace` כפולה הוסרה** — הייתה מוגדרת פעמיים עם הגדרות שונות (שורות 582 ו-606). ההגדרה הראשונה (ישנה, חסרת בדיקת `address` ו-`goo.gl`) נמחקה. ההגדרה השנייה (מלאה ונכונה) נשארה.
+- **`console.log('[UTILS] Loaded successfully')` הועבר לסוף הקובץ** — היה ממוקם אמצע הקובץ בין שתי ההגדרות הכפולות.
+
+#### i18n.js
+- **10 מפתחות כפולים ב-`sysParams` (HE) הוסרו** — הבלוק הראשון (שורות 1059-1064) דרס על-ידי הבלוק השני. המחיקה שמרה על הבלוק השני (עם תיאורים מדויקים יותר).
+- **מפתחות i18n חסרים נוספו:**
+  - `general.exit` → HE: 'צא', EN: 'Exit'
+  - `sysParams.sectionGoogleFilter`, `googleMinRatingCount/Desc`, `googleLowRatingCount/Desc` → HE + EN
+  - `toast.imageUploaded`, `toast.uploadingImage` → HE (כבר היו ב-EN)
+  - `toast.saveError` → HE (כבר היה ב-EN)
+  - `general.enable`, `disable`, `me`, `menu`, `viewImage`, `fromGoogleCache` → EN (כבר היו ב-HE)
+  - `toast.cleanupDeleting`, `cleanupDeleted`, `cleanupFailed`, `memoryFixesDone`, `detectedAreas`, `locationDeleted`, `hintRecording` → HE + EN (חדשים)
+- **`form.waitingForGps` ו-`form.allowLocationAccess`** — היו מחוץ לבלוק `form:` ב-HE, הועברו פנימה.
+
+#### views.js
+- **`direction: 'rtl'` hardcoded תוקן** — 2 containers עברו ל-`window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'` (map filter panel, map popup). 2 שדות עברית מכוונת קיבלו comment מסביר.
+- **Toasts אנגלית hardcoded תוקנו** — `'Deleting X locations...'` ו-`'Deleted X wrong-city locations'` → `t('toast.cleanupDeleting/Deleted')`.
+
+#### app-logic.js
+- **`window.console.log` הוחלף ב-`console.log`** — היה עוקף את ה-strip של `build.py`. 2 מקומות תוקנו.
+- **`console.log` בתוך `forEach` arrow** — הועבר לבלוק נפרד כדי ש-`build.py` יוכל לנקות אותו.
+- **`foufouRatingBoost: 2` הוסר** — היה מוגדר ב-`defaultSystemParams` אבל אף פעם לא נקרא בשום מקום בקוד.
+- **Toasts hardcoded תוקנו** — `'תוקנו X מקומות'` → `t('toast.memoryFixesDone')`, `'🎤 מדבר...'` → `t('toast.hintRecording')`.
+
+#### dialogs.js
+- **Toasts hardcoded תוקנו** — `'X אזורים זוהו'` → `t('toast.detectedAreas')`, `'"X" נמחק'` → `t('general.removed')`.
+
+#### CLAUDE_CONTEXT.md
+- **סתירת `applyUpdate` תוקנה** — הגרסה הקודמת אמרה "use `replace()`" ואז "never change URL" — סתירה. התיעוד עודכן: הפתרון הנכון הוא `removeEventListener` → `reload()` (ללא שינוי URL).
+- **3 systemParams חסרים נוספו** לסעיף systemParams: `googleMinRatingCount: 20`, `googleLowRatingCount: 60` (foufouRatingBoost הוסר מהקוד ולכן לא תועד).
+- **מדיניות Admin-only toasts** הוספה לסעיף כלל Toasts — גם admin-only חייב `t('key')`, עם pattern ל-dynamic values.
+
+### Known Regressions שנמצאו ותוקנו בסשן זה
+- `isCoordOnlyPlace` כפולה — תוקן
+- `sysParams` i18n כפולה — תוקן
+- `window.console.log` עוקף build.py — תוקן
+- `foufouRatingBoost` מוגדר אבל לא בשימוש — הוסר
+
+## Major Changes (v3.11.14 → v3.11.59) — Chat session 24/03/2026
+
+### City Icon Uploads
+- City main icon, iconLeft, iconRight all support file upload via `compressIcon(file, 64/80, 15KB)`
+- `compressIcon` enforces max pixels AND max 15KB via quality loop + canvas shrink
+- **RULE: data: URLs NEVER saved to city JS files** — `exportCityFile` strips them to emoji/empty
+- Theme icons (iconLeft/iconRight with data:) stored in `settings/cityOverrides/{cityId}/theme` in Firebase
+- Loaded back from Firebase in cityOverrides handler on startup
+- `accept="image/*,image/jfif"` on all icon upload inputs (JFIF = JPEG variant)
+- Header displays `<img>` for data: URL icons (not raw text)
+- `<option>` elements show 🏙️ placeholder for data: URL icons (HTML limitation)
+
+### Interest Architecture — Final State
+- City files: `id` + `group` ONLY — no label, icon, labelEn, noGoogleSearch, or any behavior
+- Firebase `interestConfig` is the SINGLE source of truth for: label, labelEn, icon, types, textSearch, blacklist, noGoogleSearch, privateOnly, category, weight, minStops, maxStops, etc.
+- `allInterestOptions` useMemo: Firebase config is primary, city file is fallback
+- `builtInInterestLabels` in config.js: last-resort fallback for 21 built-in interests (label/labelEn/icon)
+- Settings → Interests tab: shows ALL 27 interests from all cities, with city visibility buttons (🌍 / city icons)
+- Settings → Cities tab: shows city interests visibility (exposed/hidden) for current city only
+- **User-level interest toggle REMOVED** (v3.11.48) — users see city interests as defined by admin
+- `interestStatus` state retained in code but effectively ignored in UI/filtering
+
+### noGoogleSearch / פנימי
+- `noGoogleSearch: true` in `interestConfig` (Firebase) → shows "פנימי" label, skips Google API
+- Toggle in interest dialog: 🌐 Google ↔ 🏠 פנימי (2-state, not 3)
+- On save: `noGoogleSearch` written to `interestConfig` in Firebase
+- `isInterestValid()` reads from `interestConfig` only
+
+### Interest Status Removed
+- `toggleInterestStatus`, `resetInterestStatusToDefault`, `computeDefaultInterestStatus`, `toggleDefaultEnabled` — all removed
+- `defaultEnabled` field removed from dialog and logic
+- User Firebase listener for `users/{uid}/interestStatus` removed
+- Reset to default button removed from UI
+
+### Performance — Loading Order
+- App shows after `interests + config + status` load (not waiting for locations/routes)
+- `customInterests` + `interestConfig` + `interestStatus` loaded in single `Promise.all`
+- `locations` and `routes` load in background
+- `defaultConfig` moved to component level (`useMemo`) — accessible to all useEffects
+
+### Add Location Dialog
+- `newLocation` fully reset on open: name, description, notes, lat/lng, mapsUrl, address, googlePlace, googlePlaceId, googleRating, googleRatingCount, imageUrls
+- `locationSearchResults` reset to null on open
+- Last used interests (`lastCaptureInterestsRef`) restored on open
+- Skip dedup if location has `googlePlace || googlePlaceId` (user already chose from Google)
+
+### QuickCapture Fixes
+- `userRating` from QuickCapture now saved: included in `finalLocation` → passed as `overrideData`
+- `addCustomLocation` saves `userRating` to Firebase `reviews/{pk}/{uid}` after location created
+- `overrideData` properly destructured in `handleDedupConfirm`
+- `description` and `notes` preserved (not overwritten by Google data) when accepting dedup match
+
+### UI Improvements
+- Hamburger menu order: מסלול → מועדפים → תחומים → שמורים → הגדרות
+- Inline ✕ clear buttons inside name/description/notes fields (RTL/LTR aware)
+- `general.copy` added to i18n (עברית: "העתק", English: "Copy")
+- URL field: copy button uses `t('general.copy')`, admin-only ✕ delete button
+- Interest Groups moved to Interests tab (not Cities tab)
+- "פנימי" label shown for noGoogleSearch interests in both lists
+- `renderInterestRow`: internal interests shown as active (not gray)
+
+### Settings Tabs Refactor
+- **Interests tab**: all interests globally, city visibility via 🌍/city icons, Interest Groups section
+- **Cities tab**: city management + city interests visibility (exposed/hidden toggle)
+- No per-user interest toggle anywhere
+
+### Review Dialog
+- `openReviewDialog` resets state immediately (loading:true) to prevent stale data flash
+- Works on unsaved locations (`_unsaved: true` object)
+
+### Refresh Google Rating
+- `refreshSingleGoogleRating` accepts optional `inPlaceCallback` for unsaved locations
+- Works without `firebaseId` (uses name/placeId text search)
+

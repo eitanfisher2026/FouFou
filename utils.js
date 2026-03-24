@@ -574,28 +574,6 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
 };
 
 /**
- * Returns true if the place has no real Google representation —
- * i.e. no valid googlePlaceId and no valid stored mapsUrl.
- * Used to decide button label: "פתח מקום בגוגל" vs "פתח נקודה בגוגל"
- * and URL type: search/place page vs navigation destination.
- */
-window.BKK.isCoordOnlyPlace = (place) => {
-  if (!place) return true;
-  const isValidPid = (pid) => {
-    if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
-    if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
-    if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
-    return false;
-  };
-  if (isValidPid(place.googlePlaceId || place.placeId)) return false;
-  const url = place.mapsUrl || '';
-  if (url && url.includes('google.com/maps') && !url.includes('maps/place/?q=place_id') && !url.match(/\?q=[\d.]+,[\d.]+$/)) return false;
-  return true;
-};
-
-console.log('[UTILS] Loaded successfully');
-
-/**
  * Returns true if a place has NO Google representation:
  * - no valid googlePlaceId
  * - no stored mapsUrl pointing to a real Google place
@@ -1274,3 +1252,5 @@ window.BKK.startSpeechToText = (options = {}) => {
     try { recognition.stop(); } catch(e) {}
   };
 };
+
+console.log('[UTILS] Loaded successfully');

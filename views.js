@@ -2125,7 +2125,8 @@
                 <button
                   onClick={() => {
                     const lastInterests = lastCaptureInterestsRef.current || [];
-                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
+                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], googlePlace: false, googlePlaceId: '', googleRating: null, googleRatingCount: 0 });
+                    setLocationSearchResults(null);
                     setShowAddLocationDialog(true);
                   }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
@@ -3165,7 +3166,7 @@
                                 <div>
                                   <label style={{ color: '#6b7280', fontSize: '9px' }}>שם (עברית)</label>
                                   <input value={area.label || ''} onChange={(e) => { area.label = e.target.value; const ao = window.BKK.areaOptions?.find(a => a.id === area.id); if (ao) ao.label = area.label; setFormData(prev => ({...prev})); }}
-                                    style={{ width: '100%', padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '11px', direction: 'rtl' }} />
+                                    style={{ width: '100%', padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '11px', direction: 'rtl' }} />{/* intentional: Hebrew content field */}
                                 </div>
                                 <div>
                                   <label style={{ color: '#6b7280', fontSize: '9px' }}>Name (English)</label>
@@ -3175,7 +3176,7 @@
                                 <div>
                                   <label style={{ color: '#6b7280', fontSize: '9px' }}>תיאור (עברית)</label>
                                   <input value={area.desc || ''} onChange={(e) => { area.desc = e.target.value; setFormData(prev => ({...prev})); }}
-                                    style={{ width: '100%', padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '11px', direction: 'rtl' }} placeholder="מקדשים, אוכל, שווקים..." />
+                                    style={{ width: '100%', padding: '3px 5px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '11px', direction: 'rtl' }} placeholder="מקדשים, אוכל, שווקים..."/>{/* intentional: Hebrew content field */}
                                 </div>
                                 <div>
                                   <label style={{ color: '#6b7280', fontSize: '9px' }}>Description (English)</label>
@@ -3968,7 +3969,7 @@
                               const msg = `Found ${toDelete.length} locations outside ${city.nameEn}:\n${preview}${toDelete.length > 5 ? `\n... +${toDelete.length-5} more` : ''}\n\nMax radius: ${(maxRadius/1000).toFixed(1)}km\n\nDelete all ${toDelete.length}?`;
                               if (!window.confirm(msg)) return;
                               try {
-                                showToast(`Deleting ${toDelete.length} locations...`, 'info');
+                                showToast((t('toast.cleanupDeleting') || 'Deleting {count}...').replace('{count}', toDelete.length), 'info');
                                 const batch = {};
                                 toDelete.forEach(loc => {
                                   if (loc.firebaseId) {
@@ -3979,7 +3980,7 @@
                                 });
                                 if (database && Object.keys(batch).length > 0) await database.ref().update(batch);
                                 setCustomLocations(prev => prev.filter(l => !toDelete.find(d => d.firebaseId === l.firebaseId)));
-                                showToast(`Deleted ${toDelete.length} wrong-city locations`, 'success', 'sticky');
+                                showToast((t('toast.cleanupDeleted') || 'Deleted {count} wrong-city locations').replace('{count}', toDelete.length), 'success', 'sticky');
                                 console.log(`[CLEANUP] Geo-deleted ${toDelete.length} outliers from ${cityId}`);
                               } catch(e) { showToast(`Cleanup failed: ${e.message}`, 'error'); }
                             }}
@@ -4524,7 +4525,7 @@
                 return (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
                     onClick={() => { setShowFavMapFilter(false); setMapFavFilter(new Set(mapFavFilter)); /* force refresh */ }}>
-                    <div style={{ width: '100%', maxWidth: '500px', maxHeight: 'calc(100% - 50px)', background: 'white', borderRadius: '16px 16px 0 0', boxShadow: '0 -8px 30px rgba(0,0,0,0.2)', overflow: 'hidden', direction: 'rtl', display: 'flex', flexDirection: 'column' }}
+                    <div style={{ width: '100%', maxWidth: '500px', maxHeight: 'calc(100% - 50px)', background: 'white', borderRadius: '16px 16px 0 0', boxShadow: '0 -8px 30px rgba(0,0,0,0.2)', overflow: 'hidden', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', display: 'flex', flexDirection: 'column' }}
                       onClick={e => e.stopPropagation()}>
                       {/* Filter header */}
                       <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4727,7 +4728,7 @@
                 const ra = reviewAverages[pk];
                 const addedByName = loc.addedBy ? (userNamesMap[loc.addedBy] || '') : '';
                 return (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: 'rtl', maxHeight: '45%', overflowY: 'auto' }}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', maxHeight: '45%', overflowY: 'auto' }}
                     onClick={e => e.stopPropagation()}>
                     {/* Close handle */}
                     <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1d5db', margin: '0 auto 10px' }}></div>

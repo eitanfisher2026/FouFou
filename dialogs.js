@@ -281,7 +281,7 @@
                             const detected = window.BKK.getAreasForCoordinates(newLocation.lat, newLocation.lng);
                             if (detected.length > 0) {
                               setNewLocation({...newLocation, areas: detected, area: detected[0], outsideArea: false});
-                              showToast(`📍 ${detected.length} אזורים זוהו`, 'success');
+                              showToast(`📍 ${(t('toast.detectedAreas') || '{count} אזורים זוהו').replace('{count}', detected.length)}`, 'success');
                             } else {
                               showToast('⚠️ לא נמצא אזור לקואורדינטות', 'warning');
                             }
@@ -3641,7 +3641,7 @@
 פעולה זו אינה ניתנת לביטול.`)) return;
           try {
             await database.ref(`users/${uid}`).remove();
-            showToast(`🗑️ "${displayName}" נמחק`, 'success');
+            showToast(`🗑️ "${displayName}" ${t('general.removed') || 'נמחק'}`, 'success');
             authLoadAllUsers();
           } catch (e) {
             showToast('❌ ' + e.message, 'error');

@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.58
+// FouFou app-data.js v3.11.61
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -288,7 +288,7 @@ general: {
   added: 'נוסף!',
   canAddMore: 'ניתן להוסיף מקום נוסף או לסגור',
   ok: 'אישור',
-  openInGoogle: 'פתח בגוגל',
+  exit: 'צא',
   openInGoogleNoCoords: 'פתח בגוגל (אין קואורדינטות)',
   openPointInGoogle: 'פתח נקודה בגוגל',
   openGooglePoint: 'פתח נקודה בגוגל',
@@ -437,9 +437,9 @@ form: {
   showSearchRadius: 'הצג רדיוס חיפוש',
   gpsRadiusHint: 'חיפוש לפי GPS (1 ק"מ)',
   useGpsForRadius: '📍 לחץ GPS או הגדר מיקום כדי להשתמש במצב רדיוס',
-},
   waitingForGps: 'ממתין לאיתור מיקום...',
   allowLocationAccess: 'אשר גישה למיקום בדפדפן',
+},
 
 // --- Route ---
 route: {
@@ -726,6 +726,7 @@ trail: {
 
 // --- Toasts & Messages ---
 toast: {
+  saveError: 'שגיאה בשמירה',
   saveNotVerified: 'השמירה לא אומתה — בדוק שהמקום נשמר!',
   savedLocalOnly: 'נשמר מקומית בלבד! אין חיבור לשרת — יאבד בסגירת הדף',
   offlineSaveWarning: 'אין חיבור לשרת! המקום יישמר רק מקומית ויאבד בסגירה',
@@ -747,6 +748,8 @@ toast: {
   addressSearchError: 'שגיאה בחיפוש כתובת',
   routeSaveError: 'שגיאה בשמירת מסלול',
   imageUploadError: 'שגיאה בהעלאת התמונה',
+  uploadingImage: 'מעלה תמונה...',
+  imageUploaded: 'התמונה הועלתה בהצלחה',
   addPlacesError: 'שגיאה בהוספת מקומות',
   googleInfoError: 'שגיאה בשליפת מידע מ-Google',
   resetError: 'שגיאה באיפוס',
@@ -775,6 +778,13 @@ toast: {
   passwordRemoved: 'סיסמה הוסרה - גישה פתוחה',
   logCleared: 'הלוג נוקה',
   allFeedbackDeleted: 'כל המשובים נמחקו',
+  cleanupDeleting: 'מוחק {count} מקומות...',
+  cleanupDeleted: 'נמחקו {count} מקומות שגויים',
+  cleanupFailed: 'ניקוי נכשל: {error}',
+  memoryFixesDone: 'תוקנו {count} מקומות',
+  detectedAreas: '{count} אזורים זוהו',
+  locationDeleted: '"{name}" נמחק',
+  hintRecording: '🎤 מדבר...',
   appUpToDate: 'האפליקציה מעודכנת ✅',
   cannotCheckUpdates: 'לא ניתן לבדוק עדכונים',
   dataRefreshed: '🔄 כל הנתונים רועננו בהצלחה!',
@@ -1057,12 +1067,6 @@ help: {
     maxWaypointsDesc: 'מקסימום נקודות ביניים בקישור לגוגל מפות (מגבלת גוגל)',
     defaultRadius: 'רדיוס ברירת מחדל (מ\')',
     defaultRadiusDesc: 'רדיוס חיפוש ברירת מחדל למשתמשים חדשים (מטרים)',
-    dedupRadius: 'רדיוס זיהוי כפילויות (מ\')',
-    dedupRadiusDesc: 'בתוך כמה מטרים לחפש מקומות דומים בעת הוספה',
-    dedupGoogle: 'חפש בגוגל',
-    dedupGoogleDesc: 'בדוק אם קיים מקום דומה בגוגל מפות',
-    dedupCustom: 'חפש במקומות קיימים',
-    dedupCustomDesc: 'בדוק אם כבר קיים מקום דומה במערכת',
     trailTimeout: 'תפוגת שביל (שעות)',
     trailTimeoutDesc: 'אחרי כמה שעות שביל פעיל מתפוגג אוטומטית',
     defaultWeight: 'משקל ברירת מחדל לתחום',
@@ -1096,13 +1100,9 @@ help: {
     dedupCustom: 'זיהוי כפילויות מקומיות',
     dedupCustomDesc: 'חפש מקומות קרובים ברשימה בעת הוספה (1=כן, 0=לא)',
     maxStopsLabel: 'מקומות במסלול',
-    maxStopsDesc: 'מספר עצירות מקסימלי במסלול',
     fetchMoreLabel: 'מצא עוד — כמות',
-    fetchMoreDesc: 'כמה מקומות להביא בכל לחיצה על "עוד"',
     maxWaypointsLabel: 'נקודות בגוגל מפות',
-    maxWaypointsDesc: 'מקסימום waypoints בלינק גוגל מפות',
     defaultRadiusLabel: 'רדיוס ברירת מחדל (מ\')',
-    defaultRadiusDesc: 'רדיוס חיפוש התחלתי למשתמשים חדשים',
     toastDurationLabel: 'זמן הצגת הודעה (ms)',
     includeDrafts: 'כלול טיוטות',
     includeDraftsDesc: 'הצג מקומות טיוטה במסלולים, מפות ורשימות',
@@ -1118,6 +1118,11 @@ help: {
     favoriteLowRatingPenalty: 'עונש על דירוג גרוע',
     favoriteLowRatingPenaltyDesc: 'מחסיר מציון המועדף כשהדירוג גרוע — מאפשר לגוגל חזק לנצח אותו (ברירת מחדל: 60)',
     sectionFavorites: '⭐ ניקוד מועדפים',
+    sectionGoogleFilter: '🔍 סינון גוגל',
+    googleMinRatingCount: 'מינימום דירוגים (דלג לצמיתות)',
+    googleMinRatingCountDesc: 'מקומות גוגל עם פחות מכך דירוגים — לא יובאו לעולם',
+    googleLowRatingCount: 'דירוגים לתיעדוף נמוך',
+    googleLowRatingCountDesc: 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום',
   },
   dedup: {
     title: 'מקום דומה נמצא בקרבת מקום!',
@@ -1165,6 +1170,10 @@ general: {
   city: 'City',
   all: 'All',
   allCity: 'Entire city',
+  me: 'Me',
+  menu: 'Menu',
+  viewImage: 'View image',
+  fromGoogleCache: 'From Google (cached)',
   close: 'Close',
   cancel: 'Cancel',
   confirm: 'Confirm',
@@ -1209,6 +1218,8 @@ general: {
   dangerArea: 'Dangerous',
   enabled: '✅ Active',
   disabled: '⏸️ Disabled',
+  enable: '✅ Enable',
+  disable: 'Disable',
   enableAlt: 'Enable',
   enableCity: 'Enable city',
   disableCity: 'Disable city',
@@ -1336,7 +1347,7 @@ general: {
   added: 'Added!',
   canAddMore: 'You can add more or close',
   ok: 'OK',
-  openInGoogle: 'Open in Google',
+  exit: 'Exit',
   openInGoogleNoCoords: 'Open in Google (no coords)',
   openPointInGoogle: 'Show point in Google',
   openGooglePoint: 'Open point in Google',
@@ -1827,6 +1838,13 @@ toast: {
   passwordRemoved: 'Password removed - open access',
   logCleared: 'Log cleared',
   allFeedbackDeleted: 'All feedback deleted',
+  cleanupDeleting: 'Deleting {count} locations...',
+  cleanupDeleted: 'Deleted {count} wrong-city locations',
+  cleanupFailed: 'Cleanup failed: {error}',
+  memoryFixesDone: 'Fixed {count} locations',
+  detectedAreas: '{count} areas detected',
+  locationDeleted: '"{name}" deleted',
+  hintRecording: '🎤 Recording...',
   appUpToDate: 'App is up to date ✅',
   cannotCheckUpdates: 'Cannot check for updates',
   dataRefreshed: '🔄 All data refreshed successfully!',
@@ -2168,6 +2186,11 @@ help: {
     favoriteLowRatingPenalty: 'Poor rating penalty',
     favoriteLowRatingPenaltyDesc: 'Subtracted from favorite score when rating is poor — allows strong Google results to win (default: 60)',
     sectionFavorites: '⭐ Favorite Scoring',
+    sectionGoogleFilter: '🔍 Google Filtering',
+    googleMinRatingCount: 'Min ratings (always skip)',
+    googleMinRatingCountDesc: 'Google places with fewer ratings than this are never shown',
+    googleLowRatingCount: 'Ratings for low priority',
+    googleLowRatingCountDesc: 'Google places below this get a near-zero score — included only if nothing better exists',
   },
   dedup: {
     title: 'Similar place found nearby!',
@@ -3582,7 +3605,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.58';
+window.BKK.VERSION = '3.11.61';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4508,26 +4531,6 @@ window.BKK.getGoogleMapsUrl = (place, _debugLabel) => {
   
   _log('FAILED');
   return '#';
-};
-
-/**
- * Returns true if the place has no real Google representation —
- * i.e. no valid googlePlaceId and no valid stored mapsUrl.
- * Used to decide button label: "פתח מקום בגוגל" vs "פתח נקודה בגוגל"
- * and URL type: search/place page vs navigation destination.
- */
-window.BKK.isCoordOnlyPlace = (place) => {
-  if (!place) return true;
-  const isValidPid = (pid) => {
-    if (!pid || typeof pid !== 'string' || pid.length < 15) return false;
-    if (/^(ChIJ|EiI|GhIJ)/.test(pid)) return true;
-    if (pid.length > 25 && /^[A-Za-z0-9_-]+$/.test(pid) && !pid.startsWith('-')) return true;
-    return false;
-  };
-  if (isValidPid(place.googlePlaceId || place.placeId)) return false;
-  const url = place.mapsUrl || '';
-  if (url && url.includes('google.com/maps') && !url.includes('maps/place/?q=place_id') && !url.match(/\?q=[\d.]+,[\d.]+$/)) return false;
-  return true;
 };
 
 /**
