@@ -11135,6 +11135,57 @@ const FouFouApp = () => {
               </div>
             </div>
 
+            {/* Interest Groups Overview */}
+            {isUnlocked && (
+            <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>📂 Interest Groups</div>
+              {(() => {
+                const allOpts = allInterestOptions || [];
+                const groups = {};
+                const ungrouped = [];
+                allOpts.forEach(opt => {
+                  const aStatus = opt.adminStatus || 'active';
+                  if (aStatus === 'hidden') return;
+                  if (opt.group) {
+                    if (!groups[opt.group]) groups[opt.group] = [];
+                    groups[opt.group].push(opt);
+                  } else {
+                    ungrouped.push(opt);
+                  }
+                });
+                const groupNames = Object.keys(groups).sort();
+                if (groupNames.length === 0) return <div style={{ fontSize: '10px', color: '#9ca3af' }}>No groups defined. Edit interests to assign groups.</div>;
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {groupNames.map(g => (
+                      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', minWidth: '60px' }}>{g}</span>
+                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
+                          {groups[g].map(opt => (
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}
+                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {ungrouped.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>none</span>
+                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
+                          {ungrouped.map(opt => (
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}
+                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>To change groups: edit each interest in the Interests tab → Group field</div>
+                  </div>
+                );
+              })()}
+            </div>
+            )}
+
             </div>)}
 
             {/* ===== GENERAL SETTINGS TAB ===== */}
@@ -11984,57 +12035,7 @@ const FouFouApp = () => {
                       {allInterestsSorted.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
                     </div>
                   </div>
-
-            {/* Interest Groups Overview */}
-            {isUnlocked && (
-            <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>📂 Interest Groups</div>
-              {(() => {
-                const allOpts = allInterestOptions || [];
-                const groups = {};
-                const ungrouped = [];
-                allOpts.forEach(opt => {
-                  const aStatus = opt.adminStatus || 'active';
-                  if (aStatus === 'hidden') return;
-                  if (opt.group) {
-                    if (!groups[opt.group]) groups[opt.group] = [];
-                    groups[opt.group].push(opt);
-                  } else {
-                    ungrouped.push(opt);
-                  }
-                });
-                const groupNames = Object.keys(groups).sort();
-                if (groupNames.length === 0) return <div style={{ fontSize: '10px', color: '#9ca3af' }}>No groups defined. Edit interests to assign groups.</div>;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {groupNames.map(g => (
-                      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', minWidth: '60px' }}>{g}</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {groups[g].map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {ungrouped.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>none</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {ungrouped.map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>To change groups: edit each interest in the Interests tab → Group field</div>
-                  </div>
-                );
-              })()}
-            </div>
-            )}
+                </div>
               );
             })()}
 
