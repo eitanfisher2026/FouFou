@@ -12124,8 +12124,11 @@ const FouFouApp = () => {
                 const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
-                  id: interest.id, label: cfg.labelOverride || interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
-                  icon: interest.icon || '📍', searchMode: cfg.textSearch ? 'text' : 'types',
+                  id: interest.id,
+                  label: cfg.labelOverride || cfg.label || interest.label || '',
+                  labelEn: cfg.labelEnOverride || cfg.labelOverrideEn || cfg.labelEn || interest.labelEn || '',
+                  icon: cfg.iconOverride || cfg.icon || interest.icon || '📍',
+                  searchMode: cfg.textSearch ? 'text' : 'types',
                   types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
                   blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
                   minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
@@ -12142,7 +12145,7 @@ const FouFouApp = () => {
                   group: cfg.group || interest.group || '',
                   dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
                   defaultEnabled: cfg.defaultEnabled !== undefined ? cfg.defaultEnabled : true,
-                  noGoogleSearch: interest.noGoogleSearch || false,
+                  noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
                   color: cfg.color || interest.color || '',
                 });
                 setShowAddInterestDialog(true);
