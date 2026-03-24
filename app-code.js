@@ -11985,6 +11985,7 @@ const FouFouApp = () => {
                     </div>
                   </div>
                 </div>
+
             {/* Interest Groups Overview */}
             {isUnlocked && (
             <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
