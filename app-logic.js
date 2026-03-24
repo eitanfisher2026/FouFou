@@ -4604,54 +4604,10 @@
   // Combine all interests: built-in + uncovered + custom (city-filtered)
   // Filter custom interests by city scope (must be before allInterestOptions)
   const cityCustomInterests = useMemo(() => {
-    return (customInterests || []).filter(i => {
-      // If interest has explicit cityId, scope it — regardless of scope field
-      if (i.cityId) return i.cityId === selectedCityId;
-      // scope: 'local' without cityId — also city-specific (shouldn't happen but guard it)
-      if (i.scope === 'local') return false;
-      return true;
-    });
+    // All customInterests are global — cityId field is legacy and no longer used
+    // hiddenForCity (cityHiddenInterests) controls per-city visibility instead
+    return customInterests || [];
   }, [customInterests, selectedCityId]);
-
-  // Debug tool: diagnose why an interest is not visible in the wizard
-  // Usage from Console: window.BKK.debugInterest('מים')  or  window.BKK.debugInterest()  for all
-  window.BKK.debugInterest = (labelSearch) => {
-    const city = selectedCityId;
-    const hidden = cityHiddenInterests[city] || new Set();
-    const all = customInterests || [];
-    console.group(`[DEBUG-INTEREST] selectedCityId=${city}`);
-    console.log('customInterests.length:', all.length);
-    console.log('cityHiddenInterests[' + city + ']:', [...hidden]);
-    console.log('allInterestOptions.length:', allInterestOptions.length);
-    console.log('allInterestOptions IDs:', allInterestOptions.map(o => o.id).join(', '));
-    // Also read directly from Firebase to bypass any filtering
-    if (typeof firebase !== 'undefined' && firebase.database) {
-      firebase.database().ref('customInterests').once('value').then(snap => {
-        const raw = snap.val() || {};
-        console.log('--- FIREBASE customInterests raw (' + Object.keys(raw).length + ' items) ---');
-        Object.entries(raw).forEach(([k, v]) => {
-          const isHidden = hidden.has(v.id || k);
-          const inAll = allInterestOptions.some(a => a.id === (v.id || k));
-          const match = !labelSearch || (v.label||'').includes(labelSearch) || (v.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase());
-          if (!labelSearch || match) {
-            console.log(
-              inAll ? '✅ IN WIZARD' : '❌ MISSING',
-              `"${v.label}" id=${v.id||k} scope=${v.scope} cityId="${v.cityId||''}"`,
-              isHidden ? '| HIDDEN in city' : '',
-              v.id && all.some(i => i.id === v.id) ? '' : '| NOT in customInterests state!'
-            );
-          }
-        });
-        firebase.database().ref('settings/cityHiddenInterests/' + city).once('value').then(hs => {
-          console.log('Firebase cityHiddenInterests/' + city + ':', hs.val());
-          console.groupEnd();
-        });
-      });
-    } else {
-      console.warn('Firebase not available for direct read');
-      console.groupEnd();
-    }
-  };
 
   const allInterestOptions = useMemo(() => {
     return [
@@ -7402,8 +7358,6 @@
             custom: true,
             privateOnly: interest.privateOnly || false,
             locked: !!interest.locked,
-            scope: interest.scope || 'global',
-            cityId: interest.cityId || '',
             category: interest.category || 'attraction',
             weight: interest.weight || sp.defaultInterestWeight,
             minStops: interest.minStops != null ? interest.minStops : 1,
@@ -7566,8 +7520,6 @@
           custom: true,
           privateOnly: interest.privateOnly || false,
           locked: !!interest.locked,
-          scope: interest.scope || 'global',
-          cityId: interest.cityId || '',
           category: interest.category || 'attraction',
           weight: interest.weight || sp.defaultInterestWeight,
           minStops: interest.minStops != null ? interest.minStops : 1,

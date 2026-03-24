@@ -344,8 +344,6 @@
                     {allInterestOptions.filter(option => {
                       // Already tagged — always show
                       if ((newLocation.interests || []).includes(option.id)) return true;
-                      // Filter by city scope only (location tagging shouldn't depend on enabled/adminStatus)
-                      if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
                     }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he')).map(option => (
                       <button
@@ -1700,8 +1698,6 @@
                               icon: newInterest.icon || '📍',
                               privateOnly: newInterest.privateOnly || false,
                               locked: newInterest.locked || false,
-                              scope: newInterest.scope || 'global',
-                              cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                               category: newInterest.category || 'attraction',
                               weight: newInterest.weight || 3,
                               minStops: newInterest.minStops != null ? newInterest.minStops : 1,
@@ -1757,8 +1753,6 @@
                             custom: true,
                             privateOnly: newInterest.privateOnly || false,
                             locked: newInterest.locked || false,
-                            scope: newInterest.scope || 'global',
-                            cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                             category: newInterest.category || 'attraction',
                             weight: newInterest.weight || 3,
                               minStops: newInterest.minStops != null ? newInterest.minStops : 1,

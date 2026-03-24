@@ -4516,36 +4516,8 @@ const FouFouApp = () => {
   };
 
   const cityCustomInterests = useMemo(() => {
-    return (customInterests || []).filter(i => {
-      if (i.cityId) return i.cityId === selectedCityId;
-      if (i.scope === 'local') return false;
-      return true;
-    });
+    return customInterests || [];
   }, [customInterests, selectedCityId]);
-
-  window.BKK.debugInterest = (labelSearch) => {
-    const city = selectedCityId;
-    const hidden = cityHiddenInterests[city] || new Set();
-    const all = customInterests || [];
-    console.group(`[DEBUG-INTEREST] selectedCityId=${city}`);
-    if (typeof firebase !== 'undefined' && firebase.database) {
-      firebase.database().ref('customInterests').once('value').then(snap => {
-        const raw = snap.val() || {};
-        Object.entries(raw).forEach(([k, v]) => {
-          const isHidden = hidden.has(v.id || k);
-          const inAll = allInterestOptions.some(a => a.id === (v.id || k));
-          const match = !labelSearch || (v.label||'').includes(labelSearch) || (v.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase());
-          if (!labelSearch || match) {
-          }
-        });
-        firebase.database().ref('settings/cityHiddenInterests/' + city).once('value').then(hs => {
-          console.groupEnd();
-        });
-      });
-    } else {
-      console.groupEnd();
-    }
-  };
 
   const allInterestOptions = useMemo(() => {
     return [
@@ -6919,8 +6891,6 @@ const FouFouApp = () => {
             custom: true,
             privateOnly: interest.privateOnly || false,
             locked: !!interest.locked,
-            scope: interest.scope || 'global',
-            cityId: interest.cityId || '',
             category: interest.category || 'attraction',
             weight: interest.weight || sp.defaultInterestWeight,
             minStops: interest.minStops != null ? interest.minStops : 1,
@@ -7075,8 +7045,6 @@ const FouFouApp = () => {
           custom: true,
           privateOnly: interest.privateOnly || false,
           locked: !!interest.locked,
-          scope: interest.scope || 'global',
-          cityId: interest.cityId || '',
           category: interest.category || 'attraction',
           weight: interest.weight || sp.defaultInterestWeight,
           minStops: interest.minStops != null ? interest.minStops : 1,
@@ -10295,8 +10263,6 @@ const FouFouApp = () => {
                   privateOnly: interest.privateOnly || false,
                   locked: interest.locked || false,
                   builtIn: !isFromCustom,
-                  scope: config.scope || interest.scope || 'global',
-                  cityId: config.cityId || interest.cityId || '',
                   category: config.category || interest.category || 'attraction',
                   weight: config.weight || interest.weight || ({'attraction':3,'break':1,'meal':1,'experience':1,'shopping':2,'nature':2}[config.category || interest.category || 'attraction'] || 2),
                   minStops: config.minStops != null ? config.minStops : (interest.minStops != null ? interest.minStops : 1),
@@ -12052,10 +12018,30 @@ const FouFouApp = () => {
                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
                       🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allInterestsSorted.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
                     </div>
-                    <button
-                      onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] }); }}
-                      style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                    >+ הוסף תחום</button>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {(() => {
+                        const orphaned = customInterests.filter(i => {
+                          const cfg = interestConfig[i.id] || {};
+                          const hasLabel = (cfg.label || cfg.labelOverride || i.label || '').trim();
+                          const hasIcon = (cfg.icon || cfg.iconOverride || i.icon || '') !== '📍';
+                          return !hasLabel || !hasIcon;
+                        });
+                        if (orphaned.length === 0) return null;
+                        return (
+                          <button
+                            onClick={() => {
+                              if (!window.confirm(`מחק ${orphaned.length} תחומים ללא שם/אייקון?\n${orphaned.map(i => i.id).join(', ')}`)) return;
+                              orphaned.forEach(i => deleteCustomInterest(i.id));
+                            }}
+                            style={{ padding: '5px 10px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                          >🗑️ מחק {orphaned.length} ריקים</button>
+                        );
+                      })()}
+                      <button
+                        onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] }); }}
+                        style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                      >+ הוסף תחום</button>
+                    </div>
                   </div>
                   <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <span>🌍 = חשוף בכל הערים · אייקון עיר = לחץ לשינוי ניראות</span>
@@ -13288,7 +13274,6 @@ const FouFouApp = () => {
                   <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-36 overflow-y-auto">
                     {allInterestOptions.filter(option => {
                       if ((newLocation.interests || []).includes(option.id)) return true;
-                      if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
                       return true;
                     }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he')).map(option => (
                       <button
@@ -14619,8 +14604,6 @@ const FouFouApp = () => {
                               icon: newInterest.icon || '📍',
                               privateOnly: newInterest.privateOnly || false,
                               locked: newInterest.locked || false,
-                              scope: newInterest.scope || 'global',
-                              cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                               category: newInterest.category || 'attraction',
                               weight: newInterest.weight || 3,
                               minStops: newInterest.minStops != null ? newInterest.minStops : 1,
@@ -14674,8 +14657,6 @@ const FouFouApp = () => {
                             custom: true,
                             privateOnly: newInterest.privateOnly || false,
                             locked: newInterest.locked || false,
-                            scope: newInterest.scope || 'global',
-                            cityId: newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '',
                             category: newInterest.category || 'attraction',
                             weight: newInterest.weight || 3,
                               minStops: newInterest.minStops != null ? newInterest.minStops : 1,
