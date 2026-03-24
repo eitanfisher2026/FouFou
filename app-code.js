@@ -11135,6 +11135,8 @@ const FouFouApp = () => {
               </div>
             </div>
 
+            </div>)}
+
             {/* ===== GENERAL SETTINGS TAB ===== */}
             {settingsTab === 'general' && (<div>
 
@@ -12859,6 +12861,7 @@ const FouFouApp = () => {
         )}
 
         {/* === DIALOGS (from dialogs.js) === */}
+
             {/* Interest Groups Overview */}
             {isUnlocked && (
             <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
@@ -12909,8 +12912,6 @@ const FouFouApp = () => {
               })()}
             </div>
             )}
-
-            </div>)}
 
 
         {/* Dedup Confirmation Dialog */}
