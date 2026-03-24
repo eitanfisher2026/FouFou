@@ -958,6 +958,30 @@ const FouFouApp = () => {
   const [customInterests, setCustomInterests] = useState([]);
   const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }
   
+  const defaultConfig = React.useMemo(() => ({
+    temples: { types: ['hindu_temple', 'buddhist_temple', 'church', 'mosque'], blacklist: ['hotel', 'restaurant', 'school'] },
+    food: { types: ['restaurant', 'meal_takeaway'], blacklist: ['bar', 'pub', 'club', 'hotel', 'hostel'] },
+    graffiti: { textSearch: 'street art', blacklist: ['tattoo', 'ink', 'piercing', 'salon'] },
+    artisans: { types: ['store', 'art_gallery'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa', '7-eleven', 'convenience'] },
+    galleries: { types: ['art_gallery', 'museum'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa', 'cafe', 'coffee', 'hotel'] },
+    architecture: { types: ['historical_landmark'], blacklist: ['hotel', 'restaurant', 'mall', 'parking'] },
+    canals: { types: ['boat_tour_agency', 'marina'], blacklist: ['hotel', 'restaurant', 'parking'] },
+    cafes: { types: ['cafe', 'coffee_shop'], blacklist: ['cannabis', 'weed', 'kratom', 'hookah', 'shisha'] },
+    markets: { types: ['market', 'shopping_mall'], blacklist: ['hotel', 'supermarket', '7-eleven', 'convenience', 'tesco', 'big c', 'makro'] },
+    nightlife: { types: ['bar', 'night_club'], blacklist: ['restaurant', 'hotel', 'hostel', 'cafe'] },
+    parks: { types: ['park', 'national_park'], blacklist: ['hotel', 'parking', 'car park', 'garage', 'water park'] },
+    rooftop: { types: ['bar', 'restaurant'], blacklist: ['parking', 'car park', 'garage'] },
+    entertainment: { types: ['movie_theater', 'amusement_park', 'performing_arts_theater'], blacklist: ['hotel', 'mall'] },
+    massage_spa: { blacklist: [] },
+    fitness: { blacklist: [] },
+    shopping_special: { blacklist: [] },
+    learning: { blacklist: [] },
+    health: { blacklist: [] },
+    accommodation: { blacklist: [] },
+    transport: { blacklist: [] },
+    business: { blacklist: [] },
+  }), []);
+
   const [interestConfig, setInterestConfig] = useState({});
   const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
   const [showDedupDropdown, setShowDedupDropdown] = useState(false); // dedupRelated dropdown in interest dialog
@@ -2890,29 +2914,6 @@ const FouFouApp = () => {
   }, []);
 
   useEffect(() => {
-    const defaultConfig = {
-      temples: { types: ['hindu_temple', 'buddhist_temple', 'church', 'mosque'], blacklist: ['hotel', 'restaurant', 'school'] },
-      food: { types: ['restaurant', 'meal_takeaway'], blacklist: ['bar', 'pub', 'club', 'hotel', 'hostel'] },
-      graffiti: { textSearch: 'street art', blacklist: ['tattoo', 'ink', 'piercing', 'salon'] },
-      artisans: { types: ['store', 'art_gallery'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa', '7-eleven', 'convenience'] },
-      galleries: { types: ['art_gallery', 'museum'], blacklist: ['cannabis', 'weed', 'kratom', 'massage', 'spa', 'cafe', 'coffee', 'hotel'] },
-      architecture: { types: ['historical_landmark'], blacklist: ['hotel', 'restaurant', 'mall', 'parking'] },
-      canals: { types: ['boat_tour_agency', 'marina'], blacklist: ['hotel', 'restaurant', 'parking'] },
-      cafes: { types: ['cafe', 'coffee_shop'], blacklist: ['cannabis', 'weed', 'kratom', 'hookah', 'shisha'] },
-      markets: { types: ['market', 'shopping_mall'], blacklist: ['hotel', 'supermarket', '7-eleven', 'convenience', 'tesco', 'big c', 'makro'] },
-      nightlife: { types: ['bar', 'night_club'], blacklist: ['restaurant', 'hotel', 'hostel', 'cafe'] },
-      parks: { types: ['park', 'national_park'], blacklist: ['hotel', 'parking', 'car park', 'garage', 'water park'] },
-      rooftop: { types: ['bar', 'restaurant'], blacklist: ['parking', 'car park', 'garage'] },
-      entertainment: { types: ['movie_theater', 'amusement_park', 'performing_arts_theater'], blacklist: ['hotel', 'mall'] },
-      massage_spa: { blacklist: [] },
-      fitness: { blacklist: [] },
-      shopping_special: { blacklist: [] },
-      learning: { blacklist: [] },
-      health: { blacklist: [] },
-      accommodation: { blacklist: [] },
-      transport: { blacklist: [] },
-      business: { blacklist: [] },
-    };
     
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
