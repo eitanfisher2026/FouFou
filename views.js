@@ -4179,13 +4179,26 @@
                 );
               };
               const allCities = Object.values(window.BKK.cities || {});
-              // Use allInterestOptions — already enriched with Firebase labels/icons
+              // Collect interests from ALL cities (not just current) + customInterests
+              // Use interestConfig for labels/icons where available
               const seenIds = new Set();
-              const fullList = [...allInterestOptions].filter(i => {
-                if (!i?.id || seenIds.has(i.id)) return false;
-                seenIds.add(i.id);
-                return true;
-              });
+              const allCityInterestIds = allCities.flatMap(c => (c.interests || []).map(i => i.id));
+              const allIdsToShow = [...new Set([...allCityInterestIds, ...(customInterests || []).map(i => i.id)])];
+              const fullList = allIdsToShow.map(id => {
+                // Try allInterestOptions first (current city, enriched)
+                const fromCurrent = allInterestOptions.find(o => o.id === id);
+                if (fromCurrent) return fromCurrent;
+                // Try other city files
+                for (const city of allCities) {
+                  const found = (city.interests || []).find(i => i.id === id);
+                  if (found) {
+                    const cfg = interestConfig[id] || {};
+                    return { ...found, label: cfg.labelOverride || cfg.label || found.label || id, labelEn: cfg.labelEnOverride || cfg.labelEn || found.labelEn || '', icon: cfg.iconOverride || cfg.icon || found.icon || '📍' };
+                  }
+                }
+                // Custom interest
+                return customInterests.find(i => i.id === id) || { id };
+              }).filter(Boolean);
               const allInterestsSorted = fullList
                 .filter(i => (interestConfig[i.id]?.adminStatus || 'active') !== 'hidden')
                 .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
