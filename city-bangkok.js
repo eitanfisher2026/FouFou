@@ -155,107 +155,84 @@ window.BKK.cityData.bangkok = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "temples",
-      "label": "מקדשים",
-      "labelEn": "Temples",
-      "icon": "🛕",
-      "group": "heritage"
-    },
-    {
-      "id": "canals",
-      "label": "תעלות",
-      "labelEn": "Canals",
-      "icon": "🚤",
-      "group": "heritage"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨",
-      "group": "art"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️",
-      "group": "art"
-    },
-    {
-      "id": "artisans",
-      "label": "מלאכה",
-      "labelEn": "Crafts",
-      "icon": "🔨",
-      "group": "art"
-    },
-    {
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture",
-      "icon": "🏛️",
-      "group": "art"
-    },
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍜",
-      "group": "food"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕",
-      "group": "food"
-    },
-    {
-      "id": "rooftop",
-      "label": "גגות",
-      "labelEn": "Rooftops",
-      "icon": "🌆",
-      "group": "food"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪",
-      "group": "explore"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃",
-      "group": "explore"
-    },
-    {
-      "id": "entertainment",
-      "label": "בידור",
-      "labelEn": "Entertainment",
-      "icon": "🎭",
-      "group": "explore"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳",
-      "group": "outdoors"
-    },
-    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa"},
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
-    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping"},
-    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences"},
-    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical"},
-    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation"},
-    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport"},
-    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business"}
-  ],
+  "interests":     [
+        {
+            "id": "temples",
+            "group": "heritage"
+        },
+        {
+            "id": "canals",
+            "group": "heritage"
+        },
+        {
+            "id": "graffiti",
+            "group": "art"
+        },
+        {
+            "id": "galleries",
+            "group": "art"
+        },
+        {
+            "id": "artisans",
+            "group": "art"
+        },
+        {
+            "id": "architecture",
+            "group": "art"
+        },
+        {
+            "id": "food",
+            "group": "food"
+        },
+        {
+            "id": "cafes",
+            "group": "food"
+        },
+        {
+            "id": "rooftop",
+            "group": "food"
+        },
+        {
+            "id": "markets",
+            "group": "explore"
+        },
+        {
+            "id": "nightlife",
+            "group": "explore"
+        },
+        {
+            "id": "entertainment",
+            "group": "explore"
+        },
+        {
+            "id": "parks",
+            "group": "outdoors"
+        },
+        {
+            "id": "massage_spa"
+        },
+        {
+            "id": "fitness"
+        },
+        {
+            "id": "shopping_special"
+        },
+        {
+            "id": "learning"
+        },
+        {
+            "id": "health"
+        },
+        {
+            "id": "accommodation"
+        },
+        {
+            "id": "transport"
+        },
+        {
+            "id": "business"
+        }
+    ],
   "interestToGooglePlaces": {
     "temples": [
       "hindu_temple",

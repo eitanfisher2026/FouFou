@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.28
+// FouFou app-data.js v3.11.31
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2362,107 +2362,84 @@ window.BKK.cityData.bangkok = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "temples",
-      "label": "מקדשים",
-      "labelEn": "Temples",
-      "icon": "🛕",
-      "group": "heritage"
-    },
-    {
-      "id": "canals",
-      "label": "תעלות",
-      "labelEn": "Canals",
-      "icon": "🚤",
-      "group": "heritage"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨",
-      "group": "art"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️",
-      "group": "art"
-    },
-    {
-      "id": "artisans",
-      "label": "מלאכה",
-      "labelEn": "Crafts",
-      "icon": "🔨",
-      "group": "art"
-    },
-    {
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture",
-      "icon": "🏛️",
-      "group": "art"
-    },
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍜",
-      "group": "food"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕",
-      "group": "food"
-    },
-    {
-      "id": "rooftop",
-      "label": "גגות",
-      "labelEn": "Rooftops",
-      "icon": "🌆",
-      "group": "food"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪",
-      "group": "explore"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃",
-      "group": "explore"
-    },
-    {
-      "id": "entertainment",
-      "label": "בידור",
-      "labelEn": "Entertainment",
-      "icon": "🎭",
-      "group": "explore"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳",
-      "group": "outdoors"
-    },
-    {"id": "massage_spa", "icon": "💆", "label": "עיסוי וספא", "labelEn": "Massage & Spa"},
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
-    {"id": "shopping_special", "icon": "🛍️", "label": "קניות מיוחדות", "labelEn": "Special Shopping"},
-    {"id": "learning", "icon": "🎓", "label": "לימוד וחוויות", "labelEn": "Learning & Experiences"},
-    {"id": "health", "icon": "🏥", "label": "בריאות ורפואה", "labelEn": "Health & Medical"},
-    {"id": "accommodation", "icon": "🏨", "label": "אירוח", "labelEn": "Accommodation"},
-    {"id": "transport", "icon": "🚗", "label": "תחבורה", "labelEn": "Transport"},
-    {"id": "business", "icon": "💼", "label": "עסקים", "labelEn": "Business"}
-  ],
+  "interests":     [
+        {
+            "id": "temples",
+            "group": "heritage"
+        },
+        {
+            "id": "canals",
+            "group": "heritage"
+        },
+        {
+            "id": "graffiti",
+            "group": "art"
+        },
+        {
+            "id": "galleries",
+            "group": "art"
+        },
+        {
+            "id": "artisans",
+            "group": "art"
+        },
+        {
+            "id": "architecture",
+            "group": "art"
+        },
+        {
+            "id": "food",
+            "group": "food"
+        },
+        {
+            "id": "cafes",
+            "group": "food"
+        },
+        {
+            "id": "rooftop",
+            "group": "food"
+        },
+        {
+            "id": "markets",
+            "group": "explore"
+        },
+        {
+            "id": "nightlife",
+            "group": "explore"
+        },
+        {
+            "id": "entertainment",
+            "group": "explore"
+        },
+        {
+            "id": "parks",
+            "group": "outdoors"
+        },
+        {
+            "id": "massage_spa"
+        },
+        {
+            "id": "fitness"
+        },
+        {
+            "id": "shopping_special"
+        },
+        {
+            "id": "learning"
+        },
+        {
+            "id": "health"
+        },
+        {
+            "id": "accommodation"
+        },
+        {
+            "id": "transport"
+        },
+        {
+            "id": "business"
+        }
+    ],
   "interestToGooglePlaces": {
     "temples": [
       "hindu_temple",
@@ -2992,83 +2969,53 @@ window.BKK.cityData.gushdan = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍽️"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕"
-    },
-    {
-      "id": "beaches",
-      "label": "חופים",
-      "labelEn": "Beaches",
-      "icon": "🏖️"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️"
-    },
-    {
-      "id": "architecture",
-      "label": "באוהאוס",
-      "labelEn": "Bauhaus",
-      "icon": "🏛️"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳"
-    },
-    {
-      "id": "shopping",
-      "label": "קניות",
-      "labelEn": "Shopping",
-      "icon": "🛍️"
-    },
-    {
-      "id": "culture",
-      "label": "תרבות",
-      "labelEn": "Culture",
-      "icon": "🎭"
-    },
-    {
-      "id": "history",
-      "label": "היסטוריה",
-      "labelEn": "History",
-      "icon": "🏚️"
-    },
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
-    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness"},
-    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking"}
-  ],
+  "interests":     [
+        {
+            "id": "food"
+        },
+        {
+            "id": "cafes"
+        },
+        {
+            "id": "beaches"
+        },
+        {
+            "id": "graffiti"
+        },
+        {
+            "id": "galleries"
+        },
+        {
+            "id": "architecture"
+        },
+        {
+            "id": "markets"
+        },
+        {
+            "id": "nightlife"
+        },
+        {
+            "id": "parks"
+        },
+        {
+            "id": "shopping"
+        },
+        {
+            "id": "culture"
+        },
+        {
+            "id": "history"
+        },
+        {
+            "id": "fitness"
+        },
+        {
+            "id": "wellness"
+        },
+        {
+            "id": "coworking"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3278,80 +3225,44 @@ window.BKK.cityData.malaga = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍜"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕"
-    },
-    {
-      "id": "culture",
-      "label": "תרבות",
-      "labelEn": "Culture",
-      "icon": "🎭"
-    },
-    {
-      "id": "history",
-      "label": "היסטוריה",
-      "labelEn": "History",
-      "icon": "🏛️"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳"
-    },
-    {
-      "id": "shopping",
-      "label": "קניות",
-      "labelEn": "Shopping",
-      "icon": "🛍️"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨"
-    },
-    {
-      "id": "beaches",
-      "label": "חופים",
-      "labelEn": "Beaches",
-      "icon": "🏖️"
-    },
-    {
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture",
-      "icon": "🏗️"
-    }
-  ],
+  "interests":     [
+        {
+            "id": "food"
+        },
+        {
+            "id": "cafes"
+        },
+        {
+            "id": "culture"
+        },
+        {
+            "id": "history"
+        },
+        {
+            "id": "parks"
+        },
+        {
+            "id": "shopping"
+        },
+        {
+            "id": "nightlife"
+        },
+        {
+            "id": "galleries"
+        },
+        {
+            "id": "markets"
+        },
+        {
+            "id": "graffiti"
+        },
+        {
+            "id": "beaches"
+        },
+        {
+            "id": "architecture"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3496,103 +3407,60 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "group": "heritage",
-      "icon": "🚤",
-      "id": "canals",
-      "label": "תעלות",
-      "labelEn": "Canals"
-    },
-    {
-      "group": "art",
-      "icon": "🎨",
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art"
-    },
-    {
-      "group": "art",
-      "icon": "🖼️",
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries"
-    },
-    {
-      "group": "art",
-      "icon": "🔨",
-      "id": "artisans",
-      "label": "מלאכה",
-      "labelEn": "Crafts"
-    },
-    {
-      "group": "art",
-      "icon": "🏛️",
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture"
-    },
-    {
-      "group": "food",
-      "icon": "🍜",
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food"
-    },
-    {
-      "group": "food",
-      "icon": "☕",
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee"
-    },
-    {
-      "group": "food",
-      "icon": "🌆",
-      "id": "rooftop",
-      "label": "גגות",
-      "labelEn": "Rooftops"
-    },
-    {
-      "group": "explore",
-      "icon": "🌃",
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife"
-    },
-    {
-      "group": "explore",
-      "icon": "🎭",
-      "id": "entertainment",
-      "label": "בידור",
-      "labelEn": "Entertainment"
-    },
-    {
-      "group": "outdoors",
-      "icon": "🌳",
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks"
-    },
-    {
-      "builtIn": true,
-      "group": "heritage",
-      "icon": "🛕",
-      "id": "temples",
-      "label": "מקדשים",
-      "labelEn": "Temples",
-      "locked": true
-    },
-    {
-      "builtIn": true,
-      "group": "explore",
-      "icon": "🦁",
-      "id": "markets",
-      "label": "שווקי יום",
-      "labelEn": "Markets",
-      "locked": true
-    }
-  ],
+  "interests":     [
+        {
+            "id": "canals",
+            "group": "heritage"
+        },
+        {
+            "id": "graffiti",
+            "group": "art"
+        },
+        {
+            "id": "galleries",
+            "group": "art"
+        },
+        {
+            "id": "artisans",
+            "group": "art"
+        },
+        {
+            "id": "architecture",
+            "group": "art"
+        },
+        {
+            "id": "food",
+            "group": "food"
+        },
+        {
+            "id": "cafes",
+            "group": "food"
+        },
+        {
+            "id": "rooftop",
+            "group": "food"
+        },
+        {
+            "id": "nightlife",
+            "group": "explore"
+        },
+        {
+            "id": "entertainment",
+            "group": "explore"
+        },
+        {
+            "id": "parks",
+            "group": "outdoors"
+        },
+        {
+            "id": "temples",
+            "group": "heritage"
+        },
+        {
+            "id": "markets",
+            "group": "explore"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
@@ -3712,7 +3580,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.28';
+window.BKK.VERSION = '3.11.31';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

@@ -83,103 +83,60 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "group": "heritage",
-      "icon": "🚤",
-      "id": "canals",
-      "label": "תעלות",
-      "labelEn": "Canals"
-    },
-    {
-      "group": "art",
-      "icon": "🎨",
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art"
-    },
-    {
-      "group": "art",
-      "icon": "🖼️",
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries"
-    },
-    {
-      "group": "art",
-      "icon": "🔨",
-      "id": "artisans",
-      "label": "מלאכה",
-      "labelEn": "Crafts"
-    },
-    {
-      "group": "art",
-      "icon": "🏛️",
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture"
-    },
-    {
-      "group": "food",
-      "icon": "🍜",
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food"
-    },
-    {
-      "group": "food",
-      "icon": "☕",
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee"
-    },
-    {
-      "group": "food",
-      "icon": "🌆",
-      "id": "rooftop",
-      "label": "גגות",
-      "labelEn": "Rooftops"
-    },
-    {
-      "group": "explore",
-      "icon": "🌃",
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife"
-    },
-    {
-      "group": "explore",
-      "icon": "🎭",
-      "id": "entertainment",
-      "label": "בידור",
-      "labelEn": "Entertainment"
-    },
-    {
-      "group": "outdoors",
-      "icon": "🌳",
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks"
-    },
-    {
-      "builtIn": true,
-      "group": "heritage",
-      "icon": "🛕",
-      "id": "temples",
-      "label": "מקדשים",
-      "labelEn": "Temples",
-      "locked": true
-    },
-    {
-      "builtIn": true,
-      "group": "explore",
-      "icon": "🦁",
-      "id": "markets",
-      "label": "שווקי יום",
-      "labelEn": "Markets",
-      "locked": true
-    }
-  ],
+  "interests":     [
+        {
+            "id": "canals",
+            "group": "heritage"
+        },
+        {
+            "id": "graffiti",
+            "group": "art"
+        },
+        {
+            "id": "galleries",
+            "group": "art"
+        },
+        {
+            "id": "artisans",
+            "group": "art"
+        },
+        {
+            "id": "architecture",
+            "group": "art"
+        },
+        {
+            "id": "food",
+            "group": "food"
+        },
+        {
+            "id": "cafes",
+            "group": "food"
+        },
+        {
+            "id": "rooftop",
+            "group": "food"
+        },
+        {
+            "id": "nightlife",
+            "group": "explore"
+        },
+        {
+            "id": "entertainment",
+            "group": "explore"
+        },
+        {
+            "id": "parks",
+            "group": "outdoors"
+        },
+        {
+            "id": "temples",
+            "group": "heritage"
+        },
+        {
+            "id": "markets",
+            "group": "explore"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",

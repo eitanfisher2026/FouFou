@@ -1658,8 +1658,13 @@
                             // Built-in interest - save search config + admin overrides to interestConfig
                             const existingConfig = interestConfig[interestId] || {};
                             const configData = { ...searchConfig };
-                            configData.scope = newInterest.scope || 'global';
-                            configData.cityId = newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '';
+                            // Label/icon are primary in Firebase — city file only has id+group
+                            configData.label = newInterest.label.trim();
+                            configData.labelEn = (newInterest.labelEn || '').trim();
+                            configData.labelOverride = newInterest.label.trim();
+                            configData.labelEnOverride = (newInterest.labelEn || '').trim();
+                            configData.icon = newInterest.icon || '';
+                            configData.iconOverride = newInterest.icon || '';
                             configData.category = newInterest.category || 'attraction';
                             configData.weight = newInterest.weight || 3;
                             configData.minStops = newInterest.minStops != null ? newInterest.minStops : 1;
@@ -1673,9 +1678,6 @@
                             if (existingConfig.defaultEnabled !== undefined) configData.defaultEnabled = existingConfig.defaultEnabled;
                             if (existingConfig.adminStatus) configData.adminStatus = existingConfig.adminStatus;
                             if (isUnlocked) {
-                              configData.labelOverride = newInterest.label.trim();
-                              configData.labelEnOverride = (newInterest.labelEn || '').trim();
-                              configData.iconOverride = newInterest.icon || '';
                               configData.locked = newInterest.locked || false;
                               if (newInterest.color) configData.color = newInterest.color;
                             }

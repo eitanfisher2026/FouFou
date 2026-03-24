@@ -138,80 +138,44 @@ window.BKK.cityData.malaga = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍜"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕"
-    },
-    {
-      "id": "culture",
-      "label": "תרבות",
-      "labelEn": "Culture",
-      "icon": "🎭"
-    },
-    {
-      "id": "history",
-      "label": "היסטוריה",
-      "labelEn": "History",
-      "icon": "🏛️"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳"
-    },
-    {
-      "id": "shopping",
-      "label": "קניות",
-      "labelEn": "Shopping",
-      "icon": "🛍️"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨"
-    },
-    {
-      "id": "beaches",
-      "label": "חופים",
-      "labelEn": "Beaches",
-      "icon": "🏖️"
-    },
-    {
-      "id": "architecture",
-      "label": "ארכיטקטורה",
-      "labelEn": "Architecture",
-      "icon": "🏗️"
-    }
-  ],
+  "interests":     [
+        {
+            "id": "food"
+        },
+        {
+            "id": "cafes"
+        },
+        {
+            "id": "culture"
+        },
+        {
+            "id": "history"
+        },
+        {
+            "id": "parks"
+        },
+        {
+            "id": "shopping"
+        },
+        {
+            "id": "nightlife"
+        },
+        {
+            "id": "galleries"
+        },
+        {
+            "id": "markets"
+        },
+        {
+            "id": "graffiti"
+        },
+        {
+            "id": "beaches"
+        },
+        {
+            "id": "architecture"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",

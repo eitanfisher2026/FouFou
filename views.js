@@ -2390,7 +2390,7 @@
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id,
-                  label: interest.label || interest.name || '',
+                  label: config.labelOverride || interest.label || interest.name || '',
                   labelEn: config.labelEnOverride || config.labelOverrideEn || interest.labelEn || '',
                   icon: interest.icon || '📍',
                   searchMode: config.textSearch ? 'text' : 'types',
@@ -4194,7 +4194,7 @@
                 const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
-                  id: interest.id, label: interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
+                  id: interest.id, label: cfg.labelOverride || interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
                   icon: interest.icon || '📍', searchMode: cfg.textSearch ? 'text' : 'types',
                   types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
                   blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),

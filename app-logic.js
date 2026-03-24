@@ -1393,11 +1393,14 @@
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [ratingsRefreshProgress, setRatingsRefreshProgress] = useState(null); // { current, total, updated }
   const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks initial Firebase/localStorage load
+  // PERFORMANCE: Show app after interests+config load (the first screen the user sees).
+  // locations, routes, status load in background and update when ready.
   const dataLoadTracker = React.useRef({ locations: false, interests: false, config: false, status: false, routes: false });
   const markLoaded = (key) => {
     dataLoadTracker.current[key] = true;
     const t = dataLoadTracker.current;
-    if (t.locations && t.interests && t.config && t.status && t.routes) {
+    // Show app as soon as interests+config are ready — user can interact immediately
+    if (t.interests && t.config && t.status) {
       setIsDataLoaded(true);
       window.scrollTo(0, 0);
       // Preload Leaflet in background (2s delay to not compete with rendering)
@@ -2681,6 +2684,7 @@
 
   // Load custom interests from Firebase
   const recentlyAddedRef = React.useRef(new Map()); // id → timestamp of recent local adds
+  const interestsInitialLoadDone = React.useRef(false); // prevents double markLoaded after Promise.all
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
@@ -2737,7 +2741,10 @@
             return [];
           });
         }
-        markLoaded('interests');
+        if (!interestsInitialLoadDone.current) {
+          interestsInitialLoadDone.current = true;
+          markLoaded('interests');
+        }
       });
       
       return () => interestsRef.off('value', unsubscribe);
@@ -2801,10 +2808,11 @@
           setInterestConfig(defaultConfig);
           console.log('[FIREBASE] Saved default interest config');
         }
-        markLoaded('config');
+        // Guard: Promise.all handles initial load, don't double-markLoaded
+        if (!dataLoadTracker.current.config) markLoaded('config');
       });
       
-      // Listen for changes
+      // Listen for real-time changes after initial load
       configRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -2882,16 +2890,21 @@
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
+      const interestsRef2 = database.ref('customInterests');
 
       // Anonymous users: load global config/defaults only — no personal Firebase data
       const isAnon = authUser?.isAnonymous || !authUser?.uid;
       const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
       
+      // PERFORMANCE: Load interestConfig + customInterests + status in one Promise.all
+      // These are required for the first screen (interests list)
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
-        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null)
-      ]).then(([configSnap, legacySnap, userSnap]) => {
+        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null),
+        interestsRef2.once('value')
+      ]).then(([configSnap, legacySnap, userSnap, interestsSnap]) => {
+        // Process interestConfig
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
         const userData = userSnap?.val();
@@ -2903,10 +2916,51 @@
         } else {
           setInterestStatus(defaults);
         }
+
+        // Process customInterests from the same batch
+        const intData = interestsSnap.val();
+        if (intData) {
+          const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
+          const allEntries = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
+          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
+          setCustomInterests(interestsArray);
+          setInterestConfig(prev => {
+            const merged = { ...defaultConfig };
+            for (const [key, val] of Object.entries(icfg)) {
+              if (merged[key]) {
+                merged[key] = { ...merged[key], ...val };
+                if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
+                  merged[key].blacklist = defaultConfig[key].blacklist;
+                }
+              } else {
+                merged[key] = val;
+              }
+            }
+            return merged;
+          });
+        } else {
+          setCustomInterests([]);
+          const merged = { ...defaultConfig };
+          for (const [key, val] of Object.entries(icfg)) {
+            if (merged[key]) {
+              merged[key] = { ...merged[key], ...val };
+            } else {
+              merged[key] = val;
+            }
+          }
+          setInterestConfig(merged);
+        }
+
+        markLoaded('interests');
+        markLoaded('config');
         markLoaded('status');
       }).catch(err => {
-        console.error('[FIREBASE] Error loading interest status:', err);
+        console.error('[FIREBASE] Error loading interest data:', err);
         setInterestStatus(hardDefaults);
+        setInterestConfig(defaultConfig);
+        setCustomInterests([]);
+        markLoaded('interests');
+        markLoaded('config');
         markLoaded('status');
       });
       
@@ -4570,17 +4624,20 @@
       if (!config) return opt;
       return {
         ...opt,
-        label: config.labelOverride || opt.label, labelEn: config.labelEnOverride || config.labelOverrideEn || opt.labelEn,
-        icon: config.iconOverride || opt.icon,
+        // Firebase interestConfig is primary source for all display/behavior properties
+        // City file only provides id + group
+        label: config.labelOverride || config.label || opt.label,
+        labelEn: config.labelEnOverride || config.labelOverrideEn || config.labelEn || opt.labelEn,
+        icon: config.iconOverride || config.icon || opt.icon,
         locked: config.locked !== undefined ? config.locked : opt.locked,
-        scope: config.scope || opt.scope || 'global',
-        cityId: config.cityId || opt.cityId || '',
         category: config.category || opt.category || 'attraction',
         weight: config.weight || opt.weight || sp.defaultInterestWeight,
         minStops: config.minStops != null ? config.minStops : (opt.minStops != null ? opt.minStops : 1),
         maxStops: config.maxStops || opt.maxStops || 10,
-        adminStatus: config.adminStatus || 'active', // 'active' | 'draft' | 'hidden'
-        group: config.group || opt.group || ''
+        adminStatus: config.adminStatus || 'active',
+        group: config.group || opt.group || '',
+        noGoogleSearch: config.noGoogleSearch || opt.noGoogleSearch || false,
+        privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
   }, [interestOptions, cityCustomInterests, interestConfig]);

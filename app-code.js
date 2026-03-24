@@ -1655,7 +1655,7 @@ const FouFouApp = () => {
   const markLoaded = (key) => {
     dataLoadTracker.current[key] = true;
     const t = dataLoadTracker.current;
-    if (t.locations && t.interests && t.config && t.status && t.routes) {
+    if (t.interests && t.config && t.status) {
       setIsDataLoaded(true);
       window.scrollTo(0, 0);
       setTimeout(() => window.BKK.loadLeaflet(), 2000);
@@ -2833,6 +2833,7 @@ const FouFouApp = () => {
   }, [selectedCityId]);
 
   const recentlyAddedRef = React.useRef(new Map()); // id → timestamp of recent local adds
+  const interestsInitialLoadDone = React.useRef(false); // prevents double markLoaded after Promise.all
   useEffect(() => {
     if (isFirebaseAvailable && database) {
       const interestsRef = database.ref('customInterests');
@@ -2876,7 +2877,10 @@ const FouFouApp = () => {
             return [];
           });
         }
-        markLoaded('interests');
+        if (!interestsInitialLoadDone.current) {
+          interestsInitialLoadDone.current = true;
+          markLoaded('interests');
+        }
       });
       
       return () => interestsRef.off('value', unsubscribe);
@@ -2932,7 +2936,7 @@ const FouFouApp = () => {
           configRef.set(defaultConfig);
           setInterestConfig(defaultConfig);
         }
-        markLoaded('config');
+        if (!dataLoadTracker.current.config) markLoaded('config');
       });
       
       configRef.on('value', (snapshot) => {
@@ -3004,6 +3008,7 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
+      const interestsRef2 = database.ref('customInterests');
 
       const isAnon = authUser?.isAnonymous || !authUser?.uid;
       const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
@@ -3011,8 +3016,9 @@ const FouFouApp = () => {
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
-        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null)
-      ]).then(([configSnap, legacySnap, userSnap]) => {
+        userStatusRef ? userStatusRef.once('value') : Promise.resolve(null),
+        interestsRef2.once('value')
+      ]).then(([configSnap, legacySnap, userSnap, interestsSnap]) => {
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
         const userData = userSnap?.val();
@@ -3024,10 +3030,50 @@ const FouFouApp = () => {
         } else {
           setInterestStatus(defaults);
         }
+
+        const intData = interestsSnap.val();
+        if (intData) {
+          const builtInIds = new Set(window.BKK.interestOptions.map(i => i.id));
+          const allEntries = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
+          const interestsArray = allEntries.filter(i => !builtInIds.has(i.id));
+          setCustomInterests(interestsArray);
+          setInterestConfig(prev => {
+            const merged = { ...defaultConfig };
+            for (const [key, val] of Object.entries(icfg)) {
+              if (merged[key]) {
+                merged[key] = { ...merged[key], ...val };
+                if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
+                  merged[key].blacklist = defaultConfig[key].blacklist;
+                }
+              } else {
+                merged[key] = val;
+              }
+            }
+            return merged;
+          });
+        } else {
+          setCustomInterests([]);
+          const merged = { ...defaultConfig };
+          for (const [key, val] of Object.entries(icfg)) {
+            if (merged[key]) {
+              merged[key] = { ...merged[key], ...val };
+            } else {
+              merged[key] = val;
+            }
+          }
+          setInterestConfig(merged);
+        }
+
+        markLoaded('interests');
+        markLoaded('config');
         markLoaded('status');
       }).catch(err => {
-        console.error('[FIREBASE] Error loading interest status:', err);
+        console.error('[FIREBASE] Error loading interest data:', err);
         setInterestStatus(hardDefaults);
+        setInterestConfig(defaultConfig);
+        setCustomInterests([]);
+        markLoaded('interests');
+        markLoaded('config');
         markLoaded('status');
       });
       
@@ -4488,17 +4534,18 @@ const FouFouApp = () => {
       if (!config) return opt;
       return {
         ...opt,
-        label: config.labelOverride || opt.label, labelEn: config.labelEnOverride || config.labelOverrideEn || opt.labelEn,
-        icon: config.iconOverride || opt.icon,
+        label: config.labelOverride || config.label || opt.label,
+        labelEn: config.labelEnOverride || config.labelOverrideEn || config.labelEn || opt.labelEn,
+        icon: config.iconOverride || config.icon || opt.icon,
         locked: config.locked !== undefined ? config.locked : opt.locked,
-        scope: config.scope || opt.scope || 'global',
-        cityId: config.cityId || opt.cityId || '',
         category: config.category || opt.category || 'attraction',
         weight: config.weight || opt.weight || sp.defaultInterestWeight,
         minStops: config.minStops != null ? config.minStops : (opt.minStops != null ? opt.minStops : 1),
         maxStops: config.maxStops || opt.maxStops || 10,
-        adminStatus: config.adminStatus || 'active', // 'active' | 'draft' | 'hidden'
-        group: config.group || opt.group || ''
+        adminStatus: config.adminStatus || 'active',
+        group: config.group || opt.group || '',
+        noGoogleSearch: config.noGoogleSearch || opt.noGoogleSearch || false,
+        privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
   }, [interestOptions, cityCustomInterests, interestConfig]);
@@ -10252,7 +10299,7 @@ const FouFouApp = () => {
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
                   id: interest.id,
-                  label: interest.label || interest.name || '',
+                  label: config.labelOverride || interest.label || interest.name || '',
                   labelEn: config.labelEnOverride || config.labelOverrideEn || interest.labelEn || '',
                   icon: interest.icon || '📍',
                   searchMode: config.textSearch ? 'text' : 'types',
@@ -12022,7 +12069,7 @@ const FouFouApp = () => {
                 const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
                 setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
                 setNewInterest({
-                  id: interest.id, label: interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
+                  id: interest.id, label: cfg.labelOverride || interest.label || '', labelEn: cfg.labelEnOverride || interest.labelEn || '',
                   icon: interest.icon || '📍', searchMode: cfg.textSearch ? 'text' : 'types',
                   types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
                   blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
@@ -14593,8 +14640,12 @@ const FouFouApp = () => {
                           if (newInterest.builtIn) {
                             const existingConfig = interestConfig[interestId] || {};
                             const configData = { ...searchConfig };
-                            configData.scope = newInterest.scope || 'global';
-                            configData.cityId = newInterest.scope === 'local' ? (newInterest.cityId || selectedCityId) : '';
+                            configData.label = newInterest.label.trim();
+                            configData.labelEn = (newInterest.labelEn || '').trim();
+                            configData.labelOverride = newInterest.label.trim();
+                            configData.labelEnOverride = (newInterest.labelEn || '').trim();
+                            configData.icon = newInterest.icon || '';
+                            configData.iconOverride = newInterest.icon || '';
                             configData.category = newInterest.category || 'attraction';
                             configData.weight = newInterest.weight || 3;
                             configData.minStops = newInterest.minStops != null ? newInterest.minStops : 1;
@@ -14607,9 +14658,6 @@ const FouFouApp = () => {
                             if (existingConfig.defaultEnabled !== undefined) configData.defaultEnabled = existingConfig.defaultEnabled;
                             if (existingConfig.adminStatus) configData.adminStatus = existingConfig.adminStatus;
                             if (isUnlocked) {
-                              configData.labelOverride = newInterest.label.trim();
-                              configData.labelEnOverride = (newInterest.labelEn || '').trim();
-                              configData.iconOverride = newInterest.icon || '';
                               configData.locked = newInterest.locked || false;
                               if (newInterest.color) configData.color = newInterest.color;
                             }

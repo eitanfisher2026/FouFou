@@ -130,83 +130,53 @@ window.BKK.cityData.gushdan = {
       "safety": "safe"
     }
   ],
-  "interests": [
-    {
-      "id": "food",
-      "label": "אוכל",
-      "labelEn": "Food",
-      "icon": "🍽️"
-    },
-    {
-      "id": "cafes",
-      "label": "קפה",
-      "labelEn": "Coffee",
-      "icon": "☕"
-    },
-    {
-      "id": "beaches",
-      "label": "חופים",
-      "labelEn": "Beaches",
-      "icon": "🏖️"
-    },
-    {
-      "id": "graffiti",
-      "label": "גרפיטי",
-      "labelEn": "Street Art",
-      "icon": "🎨"
-    },
-    {
-      "id": "galleries",
-      "label": "גלריות",
-      "labelEn": "Galleries",
-      "icon": "🖼️"
-    },
-    {
-      "id": "architecture",
-      "label": "באוהאוס",
-      "labelEn": "Bauhaus",
-      "icon": "🏛️"
-    },
-    {
-      "id": "markets",
-      "label": "שווקים",
-      "labelEn": "Markets",
-      "icon": "🏪"
-    },
-    {
-      "id": "nightlife",
-      "label": "לילה",
-      "labelEn": "Nightlife",
-      "icon": "🌃"
-    },
-    {
-      "id": "parks",
-      "label": "פארקים",
-      "labelEn": "Parks",
-      "icon": "🌳"
-    },
-    {
-      "id": "shopping",
-      "label": "קניות",
-      "labelEn": "Shopping",
-      "icon": "🛍️"
-    },
-    {
-      "id": "culture",
-      "label": "תרבות",
-      "labelEn": "Culture",
-      "icon": "🎭"
-    },
-    {
-      "id": "history",
-      "label": "היסטוריה",
-      "labelEn": "History",
-      "icon": "🏚️"
-    },
-    {"id": "fitness", "icon": "🏋️", "label": "כושר וספורט", "labelEn": "Fitness & Sports"},
-    {"id": "wellness", "icon": "💆", "label": "ספא ורווחה", "labelEn": "Spa & Wellness"},
-    {"id": "coworking", "icon": "💻", "label": "עבודה", "labelEn": "Coworking"}
-  ],
+  "interests":     [
+        {
+            "id": "food"
+        },
+        {
+            "id": "cafes"
+        },
+        {
+            "id": "beaches"
+        },
+        {
+            "id": "graffiti"
+        },
+        {
+            "id": "galleries"
+        },
+        {
+            "id": "architecture"
+        },
+        {
+            "id": "markets"
+        },
+        {
+            "id": "nightlife"
+        },
+        {
+            "id": "parks"
+        },
+        {
+            "id": "shopping"
+        },
+        {
+            "id": "culture"
+        },
+        {
+            "id": "history"
+        },
+        {
+            "id": "fitness"
+        },
+        {
+            "id": "wellness"
+        },
+        {
+            "id": "coworking"
+        }
+    ],
   "interestToGooglePlaces": {
     "food": [
       "restaurant",
