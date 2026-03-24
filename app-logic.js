@@ -4613,6 +4613,40 @@
     });
   }, [customInterests, selectedCityId]);
 
+  // Debug tool: diagnose why an interest is not visible in the wizard
+  // Usage from Console: window.BKK.debugInterest('מים')  or  window.BKK.debugInterest()  for all custom interests
+  window.BKK.debugInterest = (labelSearch) => {
+    const city = selectedCityId;
+    const hidden = cityHiddenInterests[city] || new Set();
+    const all = customInterests || [];
+    const toCheck = labelSearch
+      ? all.filter(i => (i.label||'').includes(labelSearch) || (i.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase()) || i.id.includes(labelSearch))
+      : all;
+    console.group(`[DEBUG-INTEREST] City: ${city} | hidden IDs: [${[...hidden].join(', ')}]`);
+    console.log('Total customInterests:', all.length, '| cityCustomInterests:', cityCustomInterests.length, '| allInterestOptions:', allInterestOptions.length);
+    if (toCheck.length === 0 && labelSearch) {
+      console.warn(`No customInterest found matching "${labelSearch}"`);
+      console.log('All custom IDs:', all.map(i => `${i.id}:"${i.label}"`).join(', '));
+    }
+    toCheck.forEach(i => {
+      const cfg = interestConfig[i.id] || {};
+      const reasons = [];
+      if (i.cityId && i.cityId !== city) reasons.push(`cityId="${i.cityId}" ≠ selected "${city}"`);
+      if (!i.cityId && i.scope === 'local') reasons.push('scope=local without cityId');
+      if (hidden.has(i.id)) reasons.push('in cityHiddenInterests');
+      if (cfg.adminStatus === 'hidden') reasons.push('adminStatus=hidden');
+      if (cfg.adminStatus === 'draft') reasons.push('adminStatus=draft (only admin sees)');
+      const inWizard = allInterestOptions.some(a => a.id === i.id);
+      console.log(
+        inWizard ? '✅' : '❌',
+        `"${i.label}" (${i.id})`,
+        `scope=${i.scope} cityId="${i.cityId||''}" adminStatus=${cfg.adminStatus||'active'}`,
+        reasons.length ? `| MISSING BECAUSE: ${reasons.join(', ')}` : inWizard ? '| visible in wizard ✓' : '| reason unknown'
+      );
+    });
+    console.groupEnd();
+  };
+
   const allInterestOptions = useMemo(() => {
     return [
       ...interestOptions,

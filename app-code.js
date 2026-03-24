@@ -4523,6 +4523,29 @@ const FouFouApp = () => {
     });
   }, [customInterests, selectedCityId]);
 
+  window.BKK.debugInterest = (labelSearch) => {
+    const city = selectedCityId;
+    const hidden = cityHiddenInterests[city] || new Set();
+    const all = customInterests || [];
+    const toCheck = labelSearch
+      ? all.filter(i => (i.label||'').includes(labelSearch) || (i.labelEn||'').toLowerCase().includes((labelSearch||'').toLowerCase()) || i.id.includes(labelSearch))
+      : all;
+    console.group(`[DEBUG-INTEREST] City: ${city} | hidden IDs: [${[...hidden].join(', ')}]`);
+    if (toCheck.length === 0 && labelSearch) {
+    }
+    toCheck.forEach(i => {
+      const cfg = interestConfig[i.id] || {};
+      const reasons = [];
+      if (i.cityId && i.cityId !== city) reasons.push(`cityId="${i.cityId}" ≠ selected "${city}"`);
+      if (!i.cityId && i.scope === 'local') reasons.push('scope=local without cityId');
+      if (hidden.has(i.id)) reasons.push('in cityHiddenInterests');
+      if (cfg.adminStatus === 'hidden') reasons.push('adminStatus=hidden');
+      if (cfg.adminStatus === 'draft') reasons.push('adminStatus=draft (only admin sees)');
+      const inWizard = allInterestOptions.some(a => a.id === i.id);
+    });
+    console.groupEnd();
+  };
+
   const allInterestOptions = useMemo(() => {
     return [
       ...interestOptions,
