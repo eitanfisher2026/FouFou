@@ -2438,7 +2438,8 @@
 
               const renderInterestRow = (interest, isActive = true) => {
                 const isValid = isInterestValid(interest.id);
-                const effectiveActive = isValid ? isActive : false;
+                const isInternal = !!interestConfig[interest.id]?.noGoogleSearch;
+                const effectiveActive = (isValid || isInternal) ? isActive : false;
                 const aStatus = interest.adminStatus || (interestConfig[interest.id]?.adminStatus) || 'active';
                 const isDraft = aStatus === 'draft';
                 const isHidden = aStatus === 'hidden';
@@ -2447,7 +2448,7 @@
                 const borderClass = isHidden ? 'border-2 border-red-300 bg-red-50 opacity-50'
                   : isDraft ? 'border-2 border-amber-300 bg-amber-50'
                   : !effectiveActive ? 'border border-gray-300 bg-gray-50 opacity-60'
-                  : (isValid ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
+                  : (isValid || isInternal ? 'border border-gray-200 bg-white' : 'border-2 border-red-400 bg-red-50');
                 
                 return (
                   <div key={interest.id} className={`flex items-center justify-between gap-2 rounded-lg p-2 ${borderClass}`}>
