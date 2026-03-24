@@ -6815,6 +6815,7 @@ const FouFouApp = () => {
     if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
     if (addingPlaceIds.includes(placeId)) return;
+    if (enriched.interests?.length > 0) lastCaptureInterestsRef.current = enriched.interests;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
     if (isFirebaseAvailable && database) {
@@ -9960,11 +9961,14 @@ const FouFouApp = () => {
               <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
                 <button
                   onClick={() => {
+                    const defaultInterests = lastCaptureInterestsRef.current.length > 0
+                      ? lastCaptureInterestsRef.current
+                      : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
                     const initLocation = {
                       name: '', description: '', notes: '',
                       area: formData.area,
                       areas: formData.area ? [formData.area] : [],
-                      interests: [],
+                      interests: defaultInterests,
                       lat: null, lng: null, mapsUrl: '', address: '',
                       uploadedImage: null, imageUrls: [],
                       nearestStop: null, gpsLoading: true
@@ -9993,7 +9997,9 @@ const FouFouApp = () => {
                 </button>
                 <button
                   onClick={() => {
-                    const lastInterests = lastCaptureInterestsRef.current || [];
+                    const lastInterests = lastCaptureInterestsRef.current?.length > 0
+                      ? lastCaptureInterestsRef.current
+                      : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
                     setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], googlePlace: false, googlePlaceId: '', googleRating: null, googleRatingCount: 0 });
                     setLocationSearchResults(null);
                     setShowAddLocationDialog(true);

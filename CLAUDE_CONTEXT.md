@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.11.61` (Mar 24, 2026)
+- **גרסה:** `3.11.62` (Mar 24, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1542,6 +1542,72 @@ NEVER place a JSX block between two closing `</div>` tags without a parent eleme
 If unsure about the correct insertion point — DO NOT attempt the move, roll back and report.
 
 ---
+
+## Major Changes (v3.11.61 → v3.11.62) — Bug fixes
+
+### 1. `isCoordOnlyPlace` — רגרסיה תוקנה (utils.js)
+
+**הבעיה:** בסשן ה-audit הוחלטה ההגדרה השנייה של `isCoordOnlyPlace` (שהוסרה הראשונה) — אבל ההגדרה השנייה כללה שגיאה:
+```js
+if (place.address?.trim()) return false; // שגוי!
+```
+מקום שיש לו כתובת ידנית (address) — למשל "Ing Thep Maha Nakhon 10260" — קיבל `isCoordOnly = false`, ולכן הוצג לו הכפתור "פתח בגוגל" עם `t('general.openInGoogle')` ללא fallback, מה שגרם להצגת ה-key הגולמי במסך.
+
+**התיקון:** הוסרה שורת ה-`address` — כתובת ידנית אינה מהווה חיבור לגוגל מפס. `isCoordOnlyPlace` בודק רק `googlePlaceId` ו-`mapsUrl`.
+
+**ההגדרה הנכונה:**
+```js
+window.BKK.isCoordOnlyPlace = (place) => {
+  if (!place) return true;
+  const pid = place.googlePlaceId || place.placeId;
+  const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
+  if (isValidPid) return false;
+  if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') &&
+      !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/) &&
+      !place.mapsUrl.includes('maps.app.goo.gl') &&
+      !place.mapsUrl.includes('goo.gl/')) return false;
+  return true;
+};
+```
+
+**כלל:** `isCoordOnlyPlace` = אין `googlePlaceId` תקין AND אין `mapsUrl` תקין של google.com/maps. כתובת, שם, קואורדינטות — לא משפיעים.
+
+### 2. שמירת תחומים לצילום הבא — 3 תיקונים (views.js, app-logic.js)
+
+**הבעיה:** תחומים לא נשמרו בין פעולות שמירה בחלק מהנקודות.
+
+**תיקון א — כפתור צילום בטאב מועדפים (views.js):**
+```js
+// לפני: interests: []
+// אחרי:
+const defaultInterests = lastCaptureInterestsRef.current.length > 0
+  ? lastCaptureInterestsRef.current
+  : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
+```
+
+**תיקון ב — כפתור "הוסף ידנית" (views.js):**
+```js
+// לפני: lastCaptureInterestsRef.current || []
+// אחרי:
+lastCaptureInterestsRef.current?.length > 0
+  ? lastCaptureInterestsRef.current
+  : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : []
+```
+
+**תיקון ג — saveQuickAddPlace (app-logic.js):**
+```js
+// נוסף בתחילת הפונקציה:
+if (enriched.interests?.length > 0) lastCaptureInterestsRef.current = enriched.interests;
+```
+כשמוסיפים מקום גוגל דרך QuickAdd, התחומים שנבחרו נשמרים לצילום הבא.
+
+**סיכום זרימת `lastCaptureInterestsRef`:**
+1. FAB (trail) → `lastCaptureInterestsRef` → trail interests → wizard interests
+2. FAB (route) → `lastCaptureInterestsRef` → trail interests → wizard interests  
+3. FAB (places tab) → `lastCaptureInterestsRef` → wizard interests ← **תוקן**
+4. "הוסף ידנית" → `lastCaptureInterestsRef` → wizard interests ← **תוקן**
+5. שמירה ב-addCustomLocation → מעדכן `lastCaptureInterestsRef` ✅
+6. שמירה ב-saveQuickAddPlace → מעדכן `lastCaptureInterestsRef` ← **תוקן**
 
 ## Major Changes (v3.11.60 → v3.11.61) — Code Audit & Cleanup Session
 

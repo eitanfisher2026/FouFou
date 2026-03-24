@@ -2091,11 +2091,14 @@
               <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
                 <button
                   onClick={() => {
+                    const defaultInterests = lastCaptureInterestsRef.current.length > 0
+                      ? lastCaptureInterestsRef.current
+                      : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
                     const initLocation = {
                       name: '', description: '', notes: '',
                       area: formData.area,
                       areas: formData.area ? [formData.area] : [],
-                      interests: [],
+                      interests: defaultInterests,
                       lat: null, lng: null, mapsUrl: '', address: '',
                       uploadedImage: null, imageUrls: [],
                       nearestStop: null, gpsLoading: true
@@ -2124,7 +2127,9 @@
                 </button>
                 <button
                   onClick={() => {
-                    const lastInterests = lastCaptureInterestsRef.current || [];
+                    const lastInterests = lastCaptureInterestsRef.current?.length > 0
+                      ? lastCaptureInterestsRef.current
+                      : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
                     setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], googlePlace: false, googlePlaceId: '', googleRating: null, googleRatingCount: 0 });
                     setLocationSearchResults(null);
                     setShowAddLocationDialog(true);

@@ -586,7 +586,6 @@ window.BKK.isCoordOnlyPlace = (place) => {
   const pid = place.googlePlaceId || place.placeId;
   const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
   if (isValidPid) return false;
-  if (place.address?.trim()) return false;
   if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') &&
       !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/) &&
       !place.mapsUrl.includes('maps.app.goo.gl') &&

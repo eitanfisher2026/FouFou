@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.11.61
+// FouFou app-data.js v3.11.62
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -289,6 +289,7 @@ general: {
   canAddMore: 'ניתן להוסיף מקום נוסף או לסגור',
   ok: 'אישור',
   exit: 'צא',
+  openInGoogle: 'פתח בגוגל',
   openInGoogleNoCoords: 'פתח בגוגל (אין קואורדינטות)',
   openPointInGoogle: 'פתח נקודה בגוגל',
   openGooglePoint: 'פתח נקודה בגוגל',
@@ -1348,6 +1349,7 @@ general: {
   canAddMore: 'You can add more or close',
   ok: 'OK',
   exit: 'Exit',
+  openInGoogle: 'Open in Google',
   openInGoogleNoCoords: 'Open in Google (no coords)',
   openPointInGoogle: 'Show point in Google',
   openGooglePoint: 'Open point in Google',
@@ -3605,7 +3607,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.11.61';
+window.BKK.VERSION = '3.11.62';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4546,7 +4548,6 @@ window.BKK.isCoordOnlyPlace = (place) => {
   const pid = place.googlePlaceId || place.placeId;
   const isValidPid = pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
   if (isValidPid) return false;
-  if (place.address?.trim()) return false;
   if (place.mapsUrl && place.mapsUrl.includes('google.com/maps') &&
       !place.mapsUrl.match(/\?q=\d+\.\d+,\d+\.\d+$/) &&
       !place.mapsUrl.includes('maps.app.goo.gl') &&

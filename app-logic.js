@@ -7273,6 +7273,8 @@
     const placeId = enriched.id || enriched.name;
     // Guard: prevent duplicate save if already in progress for this place
     if (addingPlaceIds.includes(placeId)) return;
+    // Remember interests for next add/capture
+    if (enriched.interests?.length > 0) lastCaptureInterestsRef.current = enriched.interests;
     setAddingPlaceIds(prev => [...prev, placeId]);
     let saved = null;
     if (isFirebaseAvailable && database) {
