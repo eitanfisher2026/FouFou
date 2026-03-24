@@ -4957,13 +4957,8 @@
         const aStatus = opt.adminStatus || 'active';
         if (aStatus === 'hidden') return false;
         if (aStatus === 'draft' && !isUnlocked) return false;
-        // Check interestStatus — same logic as wizard step 2 display
-        const status = interestStatus[opt.id];
-        // noGoogleSearch interests now use opt-out like regular interests
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
-        // Custom interests (not built-in, not uncovered): undefined = OFF by default
-        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
-        return status !== false;
+        return true;
       })
       .map(opt => opt.id);
     const cleaned = formData.interests.filter(id => visibleIds.includes(id));
@@ -5646,11 +5641,8 @@
         const aStatus = opt.adminStatus || 'active';
         if (aStatus === 'hidden') return false;
         if (aStatus === 'draft' && !isUnlocked) return false;
-        // Check city scope
         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
-        const status = interestStatus[id];
-        // noGoogleSearch interests now use opt-out like regular interests
-        return status !== false;
+        return true;
       });
       if (activeInterests.length !== formData.interests.length) {
         const removed = formData.interests.filter(id => !activeInterests.includes(id));

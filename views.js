@@ -284,12 +284,7 @@
                 if (aStatus === 'hidden') return false;
                 if (aStatus === 'draft' && !isUnlocked) return false;
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
-                const status = interestStatus[o.id];
-                // noGoogleSearch interests: use same opt-out model as regular interests
-                if (status === undefined && (o.custom || o.id?.startsWith('custom_'))) {
-                  return isInterestValid(o.id);
-                }
-                return status !== false;
+                return true;
               }).length },
               { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
               // Settings — admin only (hidden from regular users, not just blocked)
@@ -942,10 +937,7 @@
                       const aStatus = option.adminStatus || 'active';
                       if (aStatus === 'hidden') return false;
                       if (aStatus === 'draft' && !isUnlocked) return false;
-                      const status = interestStatus[option.id];
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
-                      if (status === undefined && (option.custom || option.id?.startsWith('custom_'))) return false;
-                      if (status === false) return false;
                       // Time filter: show only interests matching selected time filter
                       // Check option.bestTime first (stored on the interest object), then interestConfig override
                       if (interestTimeFilter !== 'all') {
@@ -1275,9 +1267,7 @@
                         if (aStatus === 'hidden') return false;
                         if (aStatus === 'draft' && !isUnlocked) return false;
                         if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
-                        const status = interestStatus[interest];
-                        if (status === undefined && (opt.custom || opt.id?.startsWith('custom_'))) return false;
-                        return status !== false;
+                        return true;
                       })
                       .sort(([interestA], [interestB]) => {
                         // Sort sections by slot order — same source of truth as sort in generateRoute
@@ -2502,19 +2492,7 @@
                           >{isDefault ? '🔵' : '⚪'}</button>
                         );
                       })()}
-                      {/* Toggle button */}
-                      <button
-                        onClick={() => toggleInterestStatus(interest.id)}
-                        disabled={!isValid}
-                        className={`text-[10px] px-2 py-1 rounded font-bold transition ${
-                          !isValid ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : effectiveActive ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                          : 'bg-green-100 text-green-600 hover:bg-green-200'
-                        }`}
-                        title={!isValid ? t('interests.interestInvalid') : effectiveActive ? t('general.disable') : t('general.enable')}
-                      >
-                        {effectiveActive ? t('general.disable') : t('general.enableAlt')}
-                      </button>
+                      {/* Toggle button — removed: users see city interests as defined by admin */}
                       {isEditor && (
                       <button
                         onClick={() => openInterestDialog(interest)}
@@ -2533,20 +2511,17 @@
               const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const activeBuiltIn = sortAlpha(builtInOptions.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && interestStatus[i.id] !== false;
+                return as === 'active';
               }));
               const activeCustom = sortAlpha(cityCustomInterests.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && interestStatus[i.id] !== false;
+                return as === 'active';
               }));
               const inactiveBuiltIn = sortAlpha(builtInOptions.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && interestStatus[i.id] === false;
+                return false; // user toggle removed
               }));
-              const inactiveCustom = sortAlpha(cityCustomInterests.filter(i => {
-                const as = (interestConfig[i.id]?.adminStatus) || 'active';
-                return as === 'active' && interestStatus[i.id] === false;
-              }));
+              const inactiveCustom = []; // user toggle removed
               const allForAdmin = [...builtInOptions, ...cityCustomInterests];
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
               const hiddenInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'hidden');
@@ -2583,7 +2558,7 @@
                         🟡 Draft ({draftInterests.length})
                       </h3>
                       <div className="space-y-1">
-                        {draftInterests.map(i => renderInterestRow(i, !!interestStatus[i.id]))}
+                        {draftInterests.map(i => renderInterestRow(i, true))}
                       </div>
                     </div>
                   )}
@@ -4608,7 +4583,7 @@
                   if (aStatus === 'draft' && !isUnlocked) return false;
                   if (!usedInterests.has(i.id)) return false;
                   // Only show interests that are enabled for this user
-                  if (interestStatus[i.id] === false) return false;
+                  // user toggle removed — show all non-hidden
                   // Uncovered interests only shown if explicitly enabled
                   return true;
                 });

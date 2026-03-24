@@ -30,7 +30,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.11.47` (Mar 24, 2026)
+- **גרסה:** `3.11.49` (Mar 24, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -1519,3 +1519,7 @@ interestStatus[id]=false → כבוי למשתמש ספציפי
 ---
 
 *Last updated: 17/03/2026 — v3.9.14*
+
+
+### IMPORTANT: interestStatus per-user removed (v3.11.48)
+Users cannot toggle interests on/off. They see city interests as defined by admin via cityHiddenInterests.
