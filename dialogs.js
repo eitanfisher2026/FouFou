@@ -1537,18 +1537,6 @@
                           ))}
                         </div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>Default</div>
-                        <button type="button"
-                          onClick={() => toggleDefaultEnabled(interestId)}
-                          style={{
-                            fontSize: '11px', padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
-                            background: isDefault ? '#dbeafe' : '#f1f5f9',
-                            border: `1px solid ${isDefault ? '#93c5fd' : '#e2e8f0'}`,
-                            fontWeight: 'bold', color: isDefault ? '#1d4ed8' : '#94a3b8'
-                          }}
-                        >{isDefault ? '🔵 ON' : '⚪ OFF'}</button>
-                      </div>
                       <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>⭐ Places</div>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: tagged.length > 0 ? '#059669' : '#94a3b8' }}>

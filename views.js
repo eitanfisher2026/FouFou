@@ -3278,52 +3278,6 @@
             </div>
 
 
-            {/* City Interests Visibility */}
-            {isUnlocked && (() => {
-              const cityId = selectedCityId;
-              const hiddenForCity = cityHiddenInterests[cityId] || new Set();
-              const toggleInterest = (interestId) => {
-                const cur = cityHiddenInterests[cityId] || new Set();
-                const next = new Set(cur);
-                if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
-                setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
-                if (isFirebaseAvailable && database)
-                  database.ref(`settings/cityHiddenInterests/${cityId}`).set(next.size > 0 ? [...next] : null).catch(() => {});
-              };
-              // All interests that belong to current city
-              const cityInterestIds = new Set((window.BKK.cities[cityId]?.interests || []).map(i => i.id));
-              const cityInterests = allInterestOptions.filter(i => cityInterestIds.has(i.id));
-              const exposed = cityInterests.filter(i => !hiddenForCity.has(i.id));
-              const hidden = cityInterests.filter(i => hiddenForCity.has(i.id));
-              if (cityInterests.length === 0) return null;
-              const renderRow = (i, isExposed) => (
-                <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 6px', borderRadius: '6px', background: isExposed ? 'white' : '#f9fafb', border: '1px solid', borderColor: isExposed ? '#e5e7eb' : '#f3f4f6', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '16px', flexShrink: 0 }}>{i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} /> : i.icon || '📍'}</span>
-                  <span style={{ flex: 1, fontSize: '12px', fontWeight: 600, color: isExposed ? '#111827' : '#9ca3af' }}>{tLabel(i)}</span>
-                  <button onClick={() => toggleInterest(i.id)}
-                    style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
-                      background: isExposed ? '#fee2e2' : '#dcfce7', color: isExposed ? '#dc2626' : '#16a34a' }}
-                  >{isExposed ? 'הסתר' : 'חשוף'}</button>
-                </div>
-              );
-              return (
-                <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>🏷️ תחומים בעיר זו ({cityInterests.length})</div>
-                  {exposed.length > 0 && (
-                    <div style={{ marginBottom: '8px' }}>
-                      <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>✅ חשופים ({exposed.length})</div>
-                      {exposed.map(i => renderRow(i, true))}
-                    </div>
-                  )}
-                  {hidden.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>🙈 מוסתרים ({hidden.length})</div>
-                      {hidden.map(i => renderRow(i, false))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
 
             {/* Interest Groups Overview */}
             {isUnlocked && (
@@ -3375,7 +3329,6 @@
               })()}
             </div>
             )}
-
 
             </div>)}
 
