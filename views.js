@@ -2350,6 +2350,12 @@
         {/* My Interests View */}
         {currentView === 'myInterests' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
+            {Object.keys(interestConfig).length === 0 && allInterestOptions.every(i => !i.label) ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '120px', color: '#9ca3af', fontSize: '14px', gap: '8px' }}>
+                <div style={{ width: '20px', height: '20px', border: '2px solid #e5e7eb', borderTop: '2px solid #8b5cf6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                {t('general.loading') || 'טוען תחומים...'}
+              </div>
+            ) : (<>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold">🏷️ {t("nav.myInterests")}</h2>
@@ -2595,6 +2601,7 @@
                 </>
               );
             })()}
+          </>)}
           </div>
         )}
 
