@@ -6650,6 +6650,8 @@ const FouFouApp = () => {
     const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
     const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
     
+    setReviewDialog({ place, placeKey, reviews: [], myRating: 0, myText: '', hasChanges: false, loading: true });
+    
     let reviews = [];
     try {
       if (database) {
@@ -7529,6 +7531,7 @@ const FouFouApp = () => {
   const addCustomLocation = (closeAfter = true, overrideData = null) => {
     if (!requireSignIn()) return;
     const locData = overrideData || newLocation;
+    if (locData.interests?.length > 0) lastCaptureInterestsRef.current = locData.interests;
     if (!locData.name?.trim() || !locData.interests?.length) {
       return; // Just don't add if validation fails
     }
@@ -8255,7 +8258,6 @@ const FouFouApp = () => {
           }}>
             {[
               { icon: '🗺️', label: t('nav.route'), view: 'form' },
-              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
               { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: cityCustomLocations.filter(l => l.status !== 'blacklist').length },
               { icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 const aStatus = o.adminStatus || 'active';
@@ -8268,6 +8270,7 @@ const FouFouApp = () => {
                 }
                 return status !== false;
               }).length },
+              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
               ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
             ].map(item => (
               <button
@@ -10081,7 +10084,8 @@ const FouFouApp = () => {
                 </button>
                 <button
                   onClick={() => {
-                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
+                    const lastInterests = lastCaptureInterestsRef.current || [];
+                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
                     setShowAddLocationDialog(true);
                   }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
@@ -13222,10 +13226,10 @@ const FouFouApp = () => {
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
                     <input
                       type="text"
                       value={newLocation.name}
-                      
                       onChange={(e) => {
                         setNewLocation({...newLocation, name: e.target.value});
                         setLocationSearchResults(null);
@@ -13240,9 +13244,15 @@ const FouFouApp = () => {
                       onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
                       placeholder={t("places.placeName")}
                       className="w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px' }}
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '28px', paddingRight: window.BKK.i18n.isRTL() ? '28px' : '8px' }}
                       autoFocus={!showEditLocationDialog}
                     />
+                    {newLocation.name && (
+                      <button type="button" onClick={() => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); }}
+                        style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '14px', lineHeight: 1, padding: '2px' }}
+                      >✕</button>
+                    )}
+                    </div>
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
@@ -13517,17 +13527,21 @@ const FouFouApp = () => {
                   <div>
                     <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
                         value={newLocation.description || ''}
                         onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
                         placeholder={t("places.description")}
-                        className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4' }}
+                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
                         rows="2"
                       />
                       {newLocation.description?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))}
+                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+                        >✕</button>
                       )}
+                      </div>
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -13624,17 +13638,21 @@ const FouFouApp = () => {
                   <div>
                     <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
                         value={newLocation.notes || ''}
                         onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
                         placeholder={t("places.notes")}
-                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
                         rows="2"
                       />
                       {newLocation.notes?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))}
+                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+                        >✕</button>
                       )}
+                      </div>
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -13752,11 +13770,18 @@ const FouFouApp = () => {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <label className="block text-xs font-bold">🔗 Google Maps URL</label>
-                    {newLocation.mapsUrl && (
-                      <button type="button" onClick={() => {
-                        navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
-                      }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      {newLocation.mapsUrl && (
+                        <button type="button" onClick={() => {
+                          navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
+                        }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
+                      )}
+                      {isUnlocked && newLocation.mapsUrl && (
+                        <button type="button" onClick={() => setNewLocation({...newLocation, mapsUrl: ''})}
+                          style={{ fontSize: '11px', color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}
+                          title="מחק URL">✕</button>
+                      )}
+                    </div>
                   </div>
                   <textarea
                     value={newLocation.mapsUrl || ''}

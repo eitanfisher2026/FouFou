@@ -278,7 +278,6 @@
           }}>
             {[
               { icon: '🗺️', label: t('nav.route'), view: 'form' },
-              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
               { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: cityCustomLocations.filter(l => l.status !== 'blacklist').length },
               { icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 const aStatus = o.adminStatus || 'active';
@@ -292,6 +291,7 @@
                 }
                 return status !== false;
               }).length },
+              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
               // Settings — admin only (hidden from regular users, not just blocked)
               ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
             ].map(item => (
@@ -2134,7 +2134,8 @@
                 </button>
                 <button
                   onClick={() => {
-                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: [], lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
+                    const lastInterests = lastCaptureInterestsRef.current || [];
+                    setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [] });
                     setShowAddLocationDialog(true);
                   }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"

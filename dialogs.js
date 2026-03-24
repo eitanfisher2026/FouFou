@@ -171,11 +171,10 @@
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
                     <input
                       type="text"
                       value={newLocation.name}
-                      
-                      
                       onChange={(e) => {
                         setNewLocation({...newLocation, name: e.target.value});
                         setLocationSearchResults(null);
@@ -190,9 +189,15 @@
                       onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
                       placeholder={t("places.placeName")}
                       className="w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px' }}
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '28px', paddingRight: window.BKK.i18n.isRTL() ? '28px' : '8px' }}
                       autoFocus={!showEditLocationDialog}
                     />
+                    {newLocation.name && (
+                      <button type="button" onClick={() => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); }}
+                        style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '14px', lineHeight: 1, padding: '2px' }}
+                      >✕</button>
+                    )}
+                    </div>
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
@@ -475,17 +480,21 @@
                   <div>
                     <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
                         value={newLocation.description || ''}
                         onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
                         placeholder={t("places.description")}
-                        className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4' }}
+                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
                         rows="2"
                       />
                       {newLocation.description?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))}
+                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+                        >✕</button>
                       )}
+                      </div>
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -585,17 +594,21 @@
                   <div>
                     <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
                         value={newLocation.notes || ''}
                         onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
                         placeholder={t("places.notes")}
-                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px' }}
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
                         rows="2"
                       />
                       {newLocation.notes?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))}
+                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+                        >✕</button>
                       )}
+                      </div>
                       {window.BKK.speechSupported && (
                         <button
                           type="button"
@@ -713,11 +726,18 @@
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <label className="block text-xs font-bold">🔗 Google Maps URL</label>
-                    {newLocation.mapsUrl && (
-                      <button type="button" onClick={() => {
-                        navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
-                      }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      {newLocation.mapsUrl && (
+                        <button type="button" onClick={() => {
+                          navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
+                        }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
+                      )}
+                      {isUnlocked && newLocation.mapsUrl && (
+                        <button type="button" onClick={() => setNewLocation({...newLocation, mapsUrl: ''})}
+                          style={{ fontSize: '11px', color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}
+                          title="מחק URL">✕</button>
+                      )}
+                    </div>
                   </div>
                   <textarea
                     value={newLocation.mapsUrl || ''}

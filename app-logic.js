@@ -7099,6 +7099,9 @@
     const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');
     const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
     
+    // Clear immediately to prevent stale data from previous open
+    setReviewDialog({ place, placeKey, reviews: [], myRating: 0, myText: '', hasChanges: false, loading: true });
+    
     // Load existing reviews from Firebase
     let reviews = [];
     try {
@@ -8050,6 +8053,8 @@
   const addCustomLocation = (closeAfter = true, overrideData = null) => {
     if (!requireSignIn()) return;
     const locData = overrideData || newLocation;
+    // Remember interests for next add
+    if (locData.interests?.length > 0) lastCaptureInterestsRef.current = locData.interests;
     if (!locData.name?.trim() || !locData.interests?.length) {
       return; // Just don't add if validation fails
     }
