@@ -3002,8 +3002,6 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
-      const interestsRef2 = database.ref('customInterests');
-
       const isAnon = authUser?.isAnonymous || !authUser?.uid;
       const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
       
@@ -3011,60 +3009,39 @@ const FouFouApp = () => {
         configRef.once('value'),
         legacyStatusRef.once('value'),
         userStatusRef ? userStatusRef.once('value') : Promise.resolve(null),
-        interestsRef2.once('value')
-      ]).then(([configSnap, legacySnap, userSnap, interestsSnap]) => {
+      ]).then(([configSnap, legacySnap, userSnap]) => {
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
         const userData = userSnap?.val();
         
         const defaults = computeDefaults(icfg, legacyStatus);
-        
         if (userData) {
           setInterestStatus({ ...defaults, ...userData });
         } else {
           setInterestStatus(defaults);
         }
 
-        const intData = interestsSnap.val();
-        if (intData) {
-          const interestsArray = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
-          setCustomInterests(interestsArray);
-          setInterestConfig(prev => {
-            const merged = { ...defaultConfig };
-            for (const [key, val] of Object.entries(icfg)) {
-              if (merged[key]) {
-                merged[key] = { ...merged[key], ...val };
-                if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
-                  merged[key].blacklist = defaultConfig[key].blacklist;
-                }
-              } else {
-                merged[key] = val;
-              }
-            }
-            return merged;
-          });
-        } else {
-          setCustomInterests([]);
+        setInterestConfig(prev => {
           const merged = { ...defaultConfig };
           for (const [key, val] of Object.entries(icfg)) {
             if (merged[key]) {
               merged[key] = { ...merged[key], ...val };
+              if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
+                merged[key].blacklist = defaultConfig[key].blacklist;
+              }
             } else {
               merged[key] = val;
             }
           }
-          setInterestConfig(merged);
-        }
+          return merged;
+        });
 
-        markLoaded('interests');
         markLoaded('config');
         markLoaded('status');
       }).catch(err => {
-        console.error('[FIREBASE] Error loading interest data:', err);
+        console.error('[FIREBASE] Error loading config/status:', err);
         setInterestStatus(hardDefaults);
         setInterestConfig(defaultConfig);
-        setCustomInterests([]);
-        markLoaded('interests');
         markLoaded('config');
         markLoaded('status');
       });
@@ -3462,6 +3439,12 @@ const FouFouApp = () => {
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
   const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
+  const interestMap = useMemo(() => {
+    const map = new Map();
+    (customInterests || []).forEach(i => map.set(i.id, i));
+    return map;
+  }, [customInterests]);
+
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
   const interestTooltips = window.BKK.interestTooltips || {};
@@ -3569,7 +3552,7 @@ const FouFouApp = () => {
           if (cfg?.blacklist) {
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
-          const ci = customInterests.find(c => c.id === interest);
+          const ci = interestMap.get(interest);
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
           }
@@ -3682,7 +3665,7 @@ const FouFouApp = () => {
       
       let config = interestConfig[primaryInterest];
       if (!config) {
-        const customInterest = customInterests.find(ci => ci.id === primaryInterest);
+        const customInterest = interestMap.get(primaryInterest);
         if (customInterest?.baseCategory) {
           config = interestConfig[customInterest.baseCategory] || {};
         } else {
@@ -3698,7 +3681,7 @@ const FouFouApp = () => {
         .flatMap(interest => {
           const directConfig = interestConfig[interest];
           if (directConfig?.blacklist) return directConfig.blacklist;
-          const ci = customInterests.find(c => c.id === interest);
+          const ci = interestMap.get(interest);
           if (ci?.baseCategory) return interestConfig[ci.baseCategory]?.blacklist || [];
           return [];
         })
@@ -3751,7 +3734,7 @@ const FouFouApp = () => {
             if (interestConfig[interest]?.types) {
               return interestConfig[interest].types;
             }
-            const customInterest = customInterests.find(ci => ci.id === interest);
+            const customInterest = interestMap.get(interest);
             if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
               return interestConfig[customInterest.baseCategory].types;
             }
@@ -6315,7 +6298,7 @@ const FouFouApp = () => {
   };
 
   const deleteCustomInterest = (interestId) => {
-    const interestToDelete = customInterests.find(i => i.id === interestId);
+    const interestToDelete = interestMap.get(interestId);
     
     const locationsUsingInterest = customLocations.filter(loc => 
       loc.interests && loc.interests.includes(interestId)
@@ -6387,7 +6370,7 @@ const FouFouApp = () => {
     if (config?.noGoogleSearch) return false;
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly || config?.privateOnly) return true;
-    const rawCustom = customInterests.find(o => o.id === interestId);
+    const rawCustom = interestMap.get(interestId);
     if (rawCustom?.privateOnly) return true;
     if (config?.textSearch?.trim()) return true;
     if (config?.types) {
@@ -6868,7 +6851,7 @@ const FouFouApp = () => {
     }
 
     const interestExistsByLabel = (label, id) => {
-      if (id && customInterests.find(i => i.id === id)) return true;
+      if (id && interestMap.has(id)) return true;
       return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     
@@ -12027,7 +12010,10 @@ const FouFouApp = () => {
                         const orphaned = allInterestsSorted.filter(i => {
                           const cfg = interestConfig[i.id] || {};
                           const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
-                          return !effectiveIcon || effectiveIcon === '📍';
+                          const effectiveLabel = cfg.label || cfg.labelOverride || i.label || '';
+                          const hasDefaultIcon = !effectiveIcon || effectiveIcon === '📍';
+                          const hasRawLabel = effectiveLabel === i.id || effectiveLabel === '';
+                          return hasDefaultIcon && hasRawLabel;
                         });
                         if (orphaned.length === 0) return null;
                         return (

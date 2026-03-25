@@ -2888,75 +2888,50 @@
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
       const legacyStatusRef = database.ref('settings/interestStatus');
-      const interestsRef2 = database.ref('customInterests');
-
       // Anonymous users: load global config/defaults only — no personal Firebase data
       const isAnon = authUser?.isAnonymous || !authUser?.uid;
       const userStatusRef = isAnon ? null : database.ref(`users/${authUser.uid}/interestStatus`);
       
-      // PERFORMANCE: Load interestConfig + customInterests + status in one Promise.all
-      // These are required for the first screen (interests list)
+      // Load interestConfig + user status together
+      // customInterests are loaded by the real-time listener above (no duplicate load needed)
       Promise.all([
         configRef.once('value'),
         legacyStatusRef.once('value'),
         userStatusRef ? userStatusRef.once('value') : Promise.resolve(null),
-        interestsRef2.once('value')
-      ]).then(([configSnap, legacySnap, userSnap, interestsSnap]) => {
-        // Process interestConfig
+      ]).then(([configSnap, legacySnap, userSnap]) => {
         const icfg = configSnap.val() || {};
         const legacyStatus = legacySnap.val();
         const userData = userSnap?.val();
         
         const defaults = computeDefaults(icfg, legacyStatus);
-        
         if (userData) {
           setInterestStatus({ ...defaults, ...userData });
         } else {
           setInterestStatus(defaults);
         }
 
-        // Process customInterests from the same batch
-        const intData = interestsSnap.val();
-        if (intData) {
-          // All interests are in customInterests — no builtInIds filter needed
-          const interestsArray = Object.keys(intData).map(key => ({ ...intData[key], firebaseId: key }));
-          setCustomInterests(interestsArray);
-          setInterestConfig(prev => {
-            const merged = { ...defaultConfig };
-            for (const [key, val] of Object.entries(icfg)) {
-              if (merged[key]) {
-                merged[key] = { ...merged[key], ...val };
-                if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
-                  merged[key].blacklist = defaultConfig[key].blacklist;
-                }
-              } else {
-                merged[key] = val;
-              }
-            }
-            return merged;
-          });
-        } else {
-          setCustomInterests([]);
+        setInterestConfig(prev => {
           const merged = { ...defaultConfig };
           for (const [key, val] of Object.entries(icfg)) {
             if (merged[key]) {
               merged[key] = { ...merged[key], ...val };
+              if ((!val.blacklist || val.blacklist.length === 0) && defaultConfig[key]?.blacklist?.length > 0) {
+                merged[key].blacklist = defaultConfig[key].blacklist;
+              }
             } else {
               merged[key] = val;
             }
           }
-          setInterestConfig(merged);
-        }
+          return merged;
+        });
 
-        markLoaded('interests');
         markLoaded('config');
         markLoaded('status');
+        // 'interests' is marked loaded by the real-time listener
       }).catch(err => {
-        console.error('[FIREBASE] Error loading interest data:', err);
+        console.error('[FIREBASE] Error loading config/status:', err);
         setInterestStatus(hardDefaults);
         setInterestConfig(defaultConfig);
-        setCustomInterests([]);
-        markLoaded('interests');
         markLoaded('config');
         markLoaded('status');
       });
@@ -3406,6 +3381,14 @@
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
   const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
+  // Fast O(1) lookup map: id → interest object (includes firebaseId, label, icon etc)
+  // Use this instead of customInterests.find(i => i.id === x) throughout the app
+  const interestMap = useMemo(() => {
+    const map = new Map();
+    (customInterests || []).forEach(i => map.set(i.id, i));
+    return map;
+  }, [customInterests]);
+
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
   // uncoveredInterests removed — folded into interestOptions with noGoogleSearch:true
@@ -3529,7 +3512,7 @@
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
           // Also check custom interest's base category
-          const ci = customInterests.find(c => c.id === interest);
+          const ci = interestMap.get(interest);
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
           }
@@ -3654,7 +3637,7 @@
       // Check if this interest has direct config or through baseCategory
       let config = interestConfig[primaryInterest];
       if (!config) {
-        const customInterest = customInterests.find(ci => ci.id === primaryInterest);
+        const customInterest = interestMap.get(primaryInterest);
         if (customInterest?.baseCategory) {
           config = interestConfig[customInterest.baseCategory] || {};
         } else {
@@ -3673,7 +3656,7 @@
         .flatMap(interest => {
           const directConfig = interestConfig[interest];
           if (directConfig?.blacklist) return directConfig.blacklist;
-          const ci = customInterests.find(c => c.id === interest);
+          const ci = interestMap.get(interest);
           if (ci?.baseCategory) return interestConfig[ci.baseCategory]?.blacklist || [];
           return [];
         })
@@ -3730,7 +3713,7 @@
               return interestConfig[interest].types;
             }
             // Fallback to baseCategory if it's a custom interest
-            const customInterest = customInterests.find(ci => ci.id === interest);
+            const customInterest = interestMap.get(interest);
             if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
               return interestConfig[customInterest.baseCategory].types;
             }
@@ -6708,7 +6691,7 @@
   // This allows direct configuration of search settings when creating an interest
 
   const deleteCustomInterest = (interestId) => {
-    const interestToDelete = customInterests.find(i => i.id === interestId);
+    const interestToDelete = interestMap.get(interestId);
     
     // Check if any custom locations use this interest
     const locationsUsingInterest = customLocations.filter(loc => 
@@ -6803,7 +6786,7 @@
     // privateOnly = manual tagging only, always valid
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly || config?.privateOnly) return true;
-    const rawCustom = customInterests.find(o => o.id === interestId);
+    const rawCustom = interestMap.get(interestId);
     if (rawCustom?.privateOnly) return true;
     // Has search config in Firebase?
     if (config?.textSearch?.trim()) return true;
@@ -7345,7 +7328,7 @@
 
     // Helper to check if interest exists by ID or label
     const interestExistsByLabel = (label, id) => {
-      if (id && customInterests.find(i => i.id === id)) return true;
+      if (id && interestMap.has(id)) return true;
       return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     

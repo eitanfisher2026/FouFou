@@ -4213,7 +4213,11 @@
                         const orphaned = allInterestsSorted.filter(i => {
                           const cfg = interestConfig[i.id] || {};
                           const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
-                          return !effectiveIcon || effectiveIcon === '📍';
+                          const effectiveLabel = cfg.label || cfg.labelOverride || i.label || '';
+                          // Orphaned = default 📍 icon AND label is still the raw id (never configured)
+                          const hasDefaultIcon = !effectiveIcon || effectiveIcon === '📍';
+                          const hasRawLabel = effectiveLabel === i.id || effectiveLabel === '';
+                          return hasDefaultIcon && hasRawLabel;
                         });
                         if (orphaned.length === 0) return null;
                         return (
