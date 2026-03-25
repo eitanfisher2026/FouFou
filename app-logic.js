@@ -3381,13 +3381,7 @@
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
   const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
-  // Fast O(1) lookup map: id → interest object (includes firebaseId, label, icon etc)
-  // Use this instead of customInterests.find(i => i.id === x) throughout the app
-  const interestMap = useMemo(() => {
-    const map = new Map();
-    (customInterests || []).forEach(i => map.set(i.id, i));
-    return map;
-  }, [customInterests]);
+
 
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
@@ -3512,7 +3506,7 @@
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
           // Also check custom interest's base category
-          const ci = interestMap.get(interest);
+          const ci = interestMap[interest];
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
           }
@@ -3637,7 +3631,7 @@
       // Check if this interest has direct config or through baseCategory
       let config = interestConfig[primaryInterest];
       if (!config) {
-        const customInterest = interestMap.get(primaryInterest);
+        const customInterest = interestMap[primaryInterest];
         if (customInterest?.baseCategory) {
           config = interestConfig[customInterest.baseCategory] || {};
         } else {
@@ -3656,7 +3650,7 @@
         .flatMap(interest => {
           const directConfig = interestConfig[interest];
           if (directConfig?.blacklist) return directConfig.blacklist;
-          const ci = interestMap.get(interest);
+          const ci = interestMap[interest];
           if (ci?.baseCategory) return interestConfig[ci.baseCategory]?.blacklist || [];
           return [];
         })
@@ -3713,7 +3707,7 @@
               return interestConfig[interest].types;
             }
             // Fallback to baseCategory if it's a custom interest
-            const customInterest = interestMap.get(interest);
+            const customInterest = interestMap[interest];
             if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
               return interestConfig[customInterest.baseCategory].types;
             }
@@ -6691,7 +6685,7 @@
   // This allows direct configuration of search settings when creating an interest
 
   const deleteCustomInterest = (interestId) => {
-    const interestToDelete = interestMap.get(interestId);
+    const interestToDelete = interestMap[interestId];
     
     // Check if any custom locations use this interest
     const locationsUsingInterest = customLocations.filter(loc => 
@@ -6786,7 +6780,7 @@
     // privateOnly = manual tagging only, always valid
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly || config?.privateOnly) return true;
-    const rawCustom = interestMap.get(interestId);
+    const rawCustom = interestMap[interestId];
     if (rawCustom?.privateOnly) return true;
     // Has search config in Firebase?
     if (config?.textSearch?.trim()) return true;
@@ -7328,7 +7322,7 @@
 
     // Helper to check if interest exists by ID or label
     const interestExistsByLabel = (label, id) => {
-      if (id && interestMap.has(id)) return true;
+      if (id && interestMap[id]) return true;
       return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     

@@ -3439,12 +3439,6 @@ const FouFouApp = () => {
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
   const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
 
-  const interestMap = useMemo(() => {
-    const map = new Map();
-    (customInterests || []).forEach(i => map.set(i.id, i));
-    return map;
-  }, [customInterests]);
-
   const interestToGooglePlaces = window.BKK.interestToGooglePlaces || {};
 
   const interestTooltips = window.BKK.interestTooltips || {};
@@ -3552,7 +3546,7 @@ const FouFouApp = () => {
           if (cfg?.blacklist) {
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
-          const ci = interestMap.get(interest);
+          const ci = interestMap[interest];
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
           }
@@ -3665,7 +3659,7 @@ const FouFouApp = () => {
       
       let config = interestConfig[primaryInterest];
       if (!config) {
-        const customInterest = interestMap.get(primaryInterest);
+        const customInterest = interestMap[primaryInterest];
         if (customInterest?.baseCategory) {
           config = interestConfig[customInterest.baseCategory] || {};
         } else {
@@ -3681,7 +3675,7 @@ const FouFouApp = () => {
         .flatMap(interest => {
           const directConfig = interestConfig[interest];
           if (directConfig?.blacklist) return directConfig.blacklist;
-          const ci = interestMap.get(interest);
+          const ci = interestMap[interest];
           if (ci?.baseCategory) return interestConfig[ci.baseCategory]?.blacklist || [];
           return [];
         })
@@ -3734,7 +3728,7 @@ const FouFouApp = () => {
             if (interestConfig[interest]?.types) {
               return interestConfig[interest].types;
             }
-            const customInterest = interestMap.get(interest);
+            const customInterest = interestMap[interest];
             if (customInterest?.baseCategory && interestConfig[customInterest.baseCategory]?.types) {
               return interestConfig[customInterest.baseCategory].types;
             }
@@ -6298,7 +6292,7 @@ const FouFouApp = () => {
   };
 
   const deleteCustomInterest = (interestId) => {
-    const interestToDelete = interestMap.get(interestId);
+    const interestToDelete = interestMap[interestId];
     
     const locationsUsingInterest = customLocations.filter(loc => 
       loc.interests && loc.interests.includes(interestId)
@@ -6370,7 +6364,7 @@ const FouFouApp = () => {
     if (config?.noGoogleSearch) return false;
     const interestObj = allInterestOptions.find(o => o.id === interestId);
     if (interestObj?.privateOnly || config?.privateOnly) return true;
-    const rawCustom = interestMap.get(interestId);
+    const rawCustom = interestMap[interestId];
     if (rawCustom?.privateOnly) return true;
     if (config?.textSearch?.trim()) return true;
     if (config?.types) {
@@ -6851,7 +6845,7 @@ const FouFouApp = () => {
     }
 
     const interestExistsByLabel = (label, id) => {
-      if (id && interestMap.has(id)) return true;
+      if (id && interestMap[id]) return true;
       return customInterests.find(i => (i.label || i.name || '').toLowerCase() === (label || '').toLowerCase());
     };
     
