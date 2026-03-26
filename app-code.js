@@ -14896,7 +14896,18 @@ const FouFouApp = () => {
                             window._savingInterest = false;
                             return;
                           }
-                          const interestId = 'custom_' + Date.now();
+                          const labelEnRaw = (newInterest.labelEn || '').trim();
+                          if (!labelEnRaw) {
+                            showToast('⚠️ חובה להזין שם באנגלית', 'warning');
+                            window._savingInterest = false;
+                            return;
+                          }
+                          const interestId = 'i_' + labelEnRaw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                          if (customInterests.find(i => i.id === interestId)) {
+                            showToast(`⚠️ תחום עם שם אנגלי דומה כבר קיים (${interestId})`, 'warning');
+                            window._savingInterest = false;
+                            return;
+                          }
                           const newInterestData = {
                             id: interestId,
                             label: newInterest.label.trim(),
