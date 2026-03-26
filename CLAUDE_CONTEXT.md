@@ -31,10 +31,143 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.12.30` (Mar 26, 2026)
+- **גרסה:** `3.12.32` (Mar 26, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## Major Changes (v3.12.30 → v3.12.31) — Session Mar 27, 2026
+
+### 🔬 Filter Log — מנגנון סינון חדש
+
+**מה זה:** פאנל דיבאג חדש שמראה בדיוק מה Google החזיר לכל interest, מה עבר ומה סוּנן ולמה.
+
+**Floating badge:** 🔬 מופיע בצד שמאל למטה כשdebug mode פעיל ויש נתונים. מציג ספירת ✅❌.
+
+**הפאנל מציג לכל interest:**
+- שם ה-interest, סוג חיפוש (text/category), הtypes שנחפשו, ה-blacklist הפעיל
+- ✅ **עברו:** שם, ⭐rating, primaryType, matched types (מה התאים), keyword match, פתוח/סגור, כתובת
+- ❌ **סוּננו:** שם, ⭐rating, primaryType + **badge צבעוני לפי שכבת הסינון:**
+  - 🔴 Blacklist — המילה שתפסה
+  - 🟠 Type — Google types שלא התאימו
+  - 🟡 Text — phrase שלא נמצא בשם
+  - ⚫ Closed — עסק סגור לצמיתות/זמנית
+  - 🟢 Distance — מרחק חרג מהmax
+  - 🟣 Ratings — מספר ביקורות מתחת ל-minimum
+
+**שינויים ב-app-logic.js:**
+- `filterLogRef` + `filterLog` state + `showFilterPanel` state
+- `addToFilterLog({ interestId, interestLabel, searchType, ... })` — נקראת בסוף כל חיפוש interest
+- TOO FAR + TOO FEW RATINGS מתווספים ל-`debugPlaceResults` (היו רק ב-console)
+- `debugEntry` מועשר: `address`, `openNow`, `rank`, `totalFromGoogle`, `matchedTypes`
+- `clearDebugSessions` מנקה גם את `filterLog`
+
+**שינויים ב-views.js:**
+- Badge floating חדש (סגול, במקום הכתום הישן)
+- פאנל fullscreen חדש עם legend צבעוני, שתי רשימות מופרדות (passed/filtered)
+
+---
+
+## Major Changes (v3.12.16 → v3.12.30) — Session Mar 26, 2026
+
+### cities/{cityId}/general — נתוני עיר ב-Firebase
+
+כל נתוני העיר הגלובליים עברו לגור ב-`cities/{cityId}/general` — קריאה אחת, מקור אחד.
+
+**שדות שנשארו בקובץ JS** (נדרשים לפני Firebase — GPS validation, city bounds):
+- `center`, `allCityRadius`, `distanceMultiplier`, `country`, `active`, `areas[]`
+
+**שדות שעברו ל-Firebase `general`:**
+- `icon`, `iconLeft`, `iconRight` — אייקוני עיר
+- `name`, `nameEn` — שמות עיר
+- `color` — צבע header
+- `dayStartHour`, `nightStartHour` — שעות יום/לילה
+
+**Firebase rules** — נוסף:
+```json
+"cities": { "$cityId": { "general": { ".read": true, ".write": "role >= 2" } } }
+```
+
+**טעינה** — useEffect על `selectedCityId`:
+```js
+database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
+  // מחיל על window.BKK.cities[selectedCityId]
+  // אחרי טעינה: setCityEditCounter(c => c+1) לגרום ל-header לרנדר מחדש
+})
+```
+
+**שמירה** — כל שמירה: `database.ref('cities/{id}/general/{field}').set(val)` + `isUnlocked` check + toast שגיאה
+
+**cityEditCounter** — `void cityEditCounter` בתוך ה-IIFE של ה-header גורם לו לרנדר מחדש כשמשתנה.
+
+---
+
+### 🐛 באג פתוח — שמירת אייקוני עיר לא עובדת
+
+**תסמין:** משתמש מעלה אייקון → נראה ב-UI → לא נשמר ב-Firebase. אין שגיאות ב-console.
+
+**מה ידוע:**
+- הקוד מגיע לשורת השמירה (אין exception לפניה)
+- אין שגיאות Firebase ב-console
+- Firebase ONLINE
+- הנתונים **כן** קיימים ב-Firebase מה-migration הראשוני (color, hours, name)
+- רק שמירה ידנית מה-UI לא עובדת
+
+**מה שלא נבדק עדיין:**
+- האם `isUnlocked` הוא `true` ברגע ההעלאה
+- האם `database.ref(...).set(val)` אכן נקרא (לא ידוע בוודאות)
+- האם יש race condition עם auth loading
+
+**דיבאג נדרש בצאט הבא:**
+1. הוסף `console.log('[CITY-SAVE] isUnlocked:', isUnlocked, 'isFirebase:', isFirebaseAvailable)` לפני כל שמירת אייקון
+2. בקש מהמשתמש להעלות אייקון ולשלוח את פלט ה-console
+3. רק אחרי שרואים את הפלט — לתקן
+
+**אסור** להוסיף עוד קוד ניחושי לפני שרואים את הדיבאג.
+
+---
+
+### One-time migrations שנוספו בסשן זה
+| key | מה עושה |
+|-----|---------|
+| `city_icons_migrated_v1221` | מעביר cityOverrides/theme → cities/{cityId}/general/ |
+| `city_icons_to_general_v1223` | מעביר cities/{cityId}/icon\|iconLeft\|iconRight → general/ |
+| `city_general_migrated_v1225` | מעביר dayStartHour/nightStartHour/color → general/ |
+| `city_general_completed_v1228` | ממלא name/nameEn/icon חסרים לכל 4 הערים |
+
+---
+
+### קבצי עיר — ניקוי
+הוסרו מ-`city-singapore.js` ו-`city-telaviv.js` (ו-`city-gushdan.js` → `city-telaviv.js`):
+- `interestToGooglePlaces`, `textSearchInterests`, `interestTooltips`, `secondaryIcon`
+
+`city-gushdan.js` → `city-telaviv.js` (registry key: `telaviv`, id פנימי: `gushdan`)
+
+---
+
+### אייקוני תחומים — יישור קו
+- `compressIcon(file, 64, 2)` — מקסימום **2KB** (לא 15KB)
+- icon שמור ב-`customInterests.icon` בלבד — לא ב-`interestConfig`
+- migration `icons_migrated_to_customInterests_v1217` — העביר iconOverride → customInterests
+
+---
+
+### תחומים — תיקונים
+- **`noGoogleSearch` לא נשמר** — נוסף מפורשות ל-`updatedInterest` בעריכה
+- **Validation** — תחום Google ללא types/textSearch → לא ניתן לשמור
+- **Orphan cleanup** `interestConfig_orphans_cleaned_v1219` — מוחק interestConfig + interestStatus + users/interestStatus orphans
+- **Patch מחיה מתים הוסר** — `interest_config_patched_v123` הוחלף ב-cleanup
+- **`renderIcon(icon, size)`** — תמיד להשתמש בפונקציה זו, לא `{icon}` גולמי
+
+---
+
+### Interest ID format
+- כל ID: `i_` + labelEn lowercase: `i_temples`, `i_street_food_day`
+- labelEn חובה ביצירה — ID נגזר ממנו ולא משתנה לעולם
+- migration `interest_ids_migrated_v1213` עדכן **6 מקומות** ב-Firebase: customInterests, interestConfig, interestStatus, locations\[\].interests, routes\[\].preferences/stops/debug, users/interestStatus
+
 
 ---
 
@@ -194,6 +327,11 @@ cities/{cityId}/reviews/{namePK}/{uid} <- ratings
 cities/{cityId}/general/icon            <- אייקון ראשי עיר (emoji או data: URL)
 cities/{cityId}/general/iconLeft        <- אייקון שמאל (emoji או data: URL)
 cities/{cityId}/general/iconRight       <- אייקון ימין (emoji או data: URL)
+cities/{cityId}/general/name            <- שם עברית
+cities/{cityId}/general/nameEn          <- שם אנגלית
+cities/{cityId}/general/color           <- צבע header
+cities/{cityId}/general/dayStartHour    <- שעת התחלת יום
+cities/{cityId}/general/nightStartHour  <- שעת התחלת לילה
 
 customInterests/{fbKey}:
   id: "i_temples"       <- i_ prefix תמיד
@@ -212,7 +350,7 @@ settings/interestConfig/{id}:
 
 settings/interestStatus/{id}           <- default enabled/disabled
 settings/cityHiddenInterests/{cityId}  <- array of interest IDs hidden for that city (מנוקה מ-IDs יתומים)
-settings/cityOverrides/{cityId}        <- dayStartHour, nightStartHour בלבד (ללא theme, ללא interests)
+settings/cityOverrides/{cityId}        <- ריק בפועל — כל הנתונים עברו ל-cities/{cityId}/general
 settings/systemParams                  <- admin system params
 
 users/{uid}/interestStatus/{id}        <- per-user overrides (מנוקה מ-IDs יתומים)

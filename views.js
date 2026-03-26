@@ -4905,20 +4905,167 @@
         </div>
       )}
 
-        {/* Debug Search Log - Floating Badge */}
-        {debugMode && (searchDebugLog.length > 0 || debugSessions.length > 0 || googleInfoDebugLog.length > 0 || urlDebugLog.length > 0) && currentView === 'form' && !showSearchDebugPanel && (
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* FILTER LOG — Floating Badge (טלפון + מחשב)             */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        {debugMode && filterLog.length > 0 && !showFilterPanel && (
           <button
-            onClick={() => setShowSearchDebugPanel(true)}
+            onClick={() => setShowFilterPanel(true)}
             style={{
               position: 'fixed', bottom: '140px', left: '12px', zIndex: 40,
-              background: '#f59e0b', color: 'white', border: 'none', borderRadius: '20px',
-              padding: '4px 10px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '4px'
+              background: '#7c3aed', color: 'white', border: 'none', borderRadius: '20px',
+              padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: '5px'
             }}
           >
-            🔍 {searchDebugLog.filter(e => e.message.includes('📊')).length + debugSessions.length}
+            🔬 {filterLog.reduce((s, e) => s + e.passed.length, 0)}✅ {filterLog.reduce((s, e) => s + e.filtered.length, 0)}❌
           </button>
         )}
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* FILTER LOG — Full Screen Panel                          */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        {showFilterPanel && (() => {
+          const layerColor = {
+            '❌ BLACKLIST':      { bg: '#fef2f2', border: '#fca5a5', badge: '#dc2626', text: 'Blacklist' },
+            '❌ TYPE MISMATCH':  { bg: '#fff7ed', border: '#fdba74', badge: '#ea580c', text: 'Type' },
+            '❌ NO MATCH':       { bg: '#fef9c3', border: '#fde047', badge: '#ca8a04', text: 'Text' },
+            '❌ CLOSED':         { bg: '#f1f5f9', border: '#cbd5e1', badge: '#64748b', text: 'Closed' },
+            '❌ TOO FAR':        { bg: '#f0fdf4', border: '#86efac', badge: '#16a34a', text: 'Distance' },
+            '❌ TOO FEW RATINGS':{ bg: '#f5f3ff', border: '#c4b5fd', badge: '#7c3aed', text: 'Ratings' },
+          };
+          return (
+            <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f8fafc' }}>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#4c1d95', color: 'white', flexShrink: 0 }}>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: '13px' }}>🔬 Filter Log</div>
+                  <div style={{ fontSize: '10px', opacity: 0.8 }}>
+                    {filterLog.length} interests · {filterLog.reduce((s,e) => s+e.passed.length,0)} עברו · {filterLog.reduce((s,e) => s+e.filtered.length,0)} סוּננו
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('🔬 Filter log cleared', 'info'); }}
+                    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
+                  <button onClick={() => setShowFilterPanel(false)}
+                    style={{ fontSize: '22px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', padding: '0 4px' }}>✕</button>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div style={{ padding: '6px 10px', background: '#ede9fe', borderBottom: '1px solid #c4b5fd', display: 'flex', flexWrap: 'wrap', gap: '4px', flexShrink: 0 }}>
+                {Object.entries(layerColor).map(([k, v]) => (
+                  <span key={k} style={{ fontSize: '9px', padding: '1px 7px', borderRadius: '10px', background: v.badge, color: 'white', fontWeight: 'bold' }}>{v.text}</span>
+                ))}
+                <span style={{ fontSize: '9px', padding: '1px 7px', borderRadius: '10px', background: '#059669', color: 'white', fontWeight: 'bold' }}>✅ Passed</span>
+              </div>
+
+              {/* Scrollable content */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px', direction: 'ltr' }}>
+                {filterLog.map((entry, ei) => (
+                  <div key={ei} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: `1px solid ${entry.searchType === 'fetchMore' ? '#fde68a' : '#e9d5ff'}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+
+                    {/* Interest header */}
+                    <div style={{ padding: '7px 12px', background: entry.searchType === 'fetchMore' ? '#78350f' : '#4c1d95', color: 'white', fontSize: '12px' }}>
+                      <div style={{ fontWeight: 'bold' }}>{entry.interestLabel}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {entry.searchType === 'fetchMore' ? (
+                          <span>➕ {entry.passed.length} מקומות נוספו</span>
+                        ) : (
+                          <>
+                            <span>{entry.searchType === 'text' ? `🔤 "${entry.query}"` : `🏷️ category`}</span>
+                            {entry.placeTypes?.length > 0 && <span>types: {entry.placeTypes.join(', ')}</span>}
+                            <span>{entry.fromGoogle} from Google → {entry.passed.length} passed · {entry.filtered.length} filtered</span>
+                          </>
+                        )}
+                      </div>
+                      {entry.blacklist?.length > 0 && (
+                        <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.85 }}>
+                          🚫 blacklist: <span style={{ fontFamily: 'monospace' }}>{entry.blacklist.join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PASSED list — also used for fetchMore added places */}
+                    {entry.passed.length > 0 && (
+                      <div>
+                        <div style={{ padding: '4px 12px', background: entry.searchType === 'fetchMore' ? '#fef9c3' : '#dcfce7', fontSize: '10px', fontWeight: 'bold', color: entry.searchType === 'fetchMore' ? '#92400e' : '#166534', borderBottom: `1px solid ${entry.searchType === 'fetchMore' ? '#fde68a' : '#bbf7d0'}` }}>
+                          {entry.searchType === 'fetchMore' ? `➕ נוספו (${entry.passed.length})` : `✅ עברו סינון (${entry.passed.length})`}
+                        </div>
+                        {entry.passed.map((p, pi) => (
+                          <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #f0fdf4', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                            {p.rank != null && <span style={{ color: '#6b7280', minWidth: '16px', fontSize: '10px' }}>#{p.rank}</span>}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', color: '#111827' }}>{p.name}</div>
+                              <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>⭐{p.rating} ({p.reviews})</span>
+                                <span style={{ color: '#374151' }}>{p.primaryType}</span>
+                                {p.fetchMoreSource && (
+                                  <span style={{ background: p.fetchMoreSource === 'custom' ? '#dbeafe' : '#fef3c7', color: p.fetchMoreSource === 'custom' ? '#1d4ed8' : '#92400e', padding: '0 5px', borderRadius: '6px', fontWeight: 'bold', fontSize: '9px' }}>
+                                    {p.fetchMoreSource === 'custom' ? '📌 custom' : p.fetchMoreSource === 'cache' ? '💾 cache' : '🌐 api'}
+                                  </span>
+                                )}
+                                {p.matchedTypes?.length > 0 && (
+                                  <span style={{ color: '#059669', fontWeight: 'bold' }}>match: {p.matchedTypes.join(', ')}</span>
+                                )}
+                                {p.nameKeywordMatch && (
+                                  <span style={{ color: '#d97706', fontWeight: 'bold' }}>keyword: "{p.nameKeywordMatch}"</span>
+                                )}
+                                {p.openNow === true && <span style={{ color: '#059669' }}>🟢 פתוח</span>}
+                                {p.openNow === false && <span style={{ color: '#dc2626' }}>🔴 סגור</span>}
+                              </div>
+                              {p.address && <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '1px' }}>{p.address}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* FILTERED list */}
+                    {entry.filtered.length > 0 && (
+                      <div>
+                        <div style={{ padding: '4px 12px', background: '#fef2f2', fontSize: '10px', fontWeight: 'bold', color: '#991b1b', borderBottom: '1px solid #fecaca', borderTop: entry.passed.length > 0 ? '2px solid #e5e7eb' : 'none' }}>
+                          ❌ סוּננו ({entry.filtered.length})
+                        </div>
+                        {entry.filtered.map((p, pi) => {
+                          const lc = layerColor[p.layer] || { bg: '#f9fafb', border: '#e5e7eb', badge: '#6b7280', text: p.layer };
+                          return (
+                            <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #fef2f2', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start', background: lc.bg }}>
+                              <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '8px', background: lc.badge, color: 'white', fontWeight: 'bold', marginTop: '1px', whiteSpace: 'nowrap' }}>{lc.text}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 'bold', color: '#111827' }}>{p.name}</div>
+                                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>⭐{p.rating} ({p.reviews})</span>
+                                  <span>{p.primaryType}</span>
+                                </div>
+                                {p.reason && (
+                                  <div style={{ fontSize: '9px', color: lc.badge, marginTop: '2px', fontFamily: 'monospace' }}>{p.reason}</div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Empty state */}
+                    {entry.passed.length === 0 && entry.filtered.length === 0 && (
+                      <div style={{ padding: '12px', textAlign: 'center', color: '#9ca3af', fontSize: '12px' }}>אין נתונים</div>
+                    )}
+                  </div>
+                ))}
+
+                {filterLog.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔬</div>
+                    <div style={{ fontSize: '14px' }}>אין לוג סינון עדיין</div>
+                    <div style={{ fontSize: '12px', marginTop: '4px' }}>צור מסלול עם debug mode פעיל</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Debug Search Log - Full Screen Modal */}
         {showSearchDebugPanel && (() => {

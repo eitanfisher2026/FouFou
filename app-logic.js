@@ -1526,6 +1526,12 @@
   const googleInfoDebugLogRef = useRef([]);
   const [googleInfoDebugLog, setGoogleInfoDebugLog] = useState([]);
   const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
+
+  // Filter Log — per-search breakdown of passed/filtered places
+  // Shape: [{ interestId, interestLabel, searchType, query, placeTypes, blacklist, passed: [...], filtered: [...] }]
+  const filterLogRef = useRef([]);
+  const [filterLog, setFilterLog] = useState([]);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   
   // Debug sessions — accumulated across searches, persisted to localStorage
   const [debugSessions, setDebugSessions] = useState(() => {
@@ -1572,6 +1578,49 @@
       urlDebugLogRef.current = [...urlDebugLogRef.current.slice(-50), entry];
       setUrlDebugLog([...urlDebugLogRef.current]);
     }
+  };
+
+  // Add a filter-log entry for one interest's search results
+  // Called once per interest after all filtering layers complete
+  const addToFilterLog = ({ interestId, interestLabel, searchType, query, placeTypes, blacklist, nameKeywords, allResults }) => {
+    if (!debugModeRef.current) return;
+    // allResults = debugPlaceResults array — each item has { name, rating, reviews, primaryType, types, status, reason, nameKeywordMatch }
+    const passed = allResults.filter(p => p.status === '✅ KEPT').map(p => ({
+      name: p.name,
+      rating: p.rating,
+      reviews: p.reviews,
+      primaryType: p.primaryType,
+      matchedTypes: p.matchedTypes || [],
+      nameKeywordMatch: p.nameKeywordMatch || null,
+      openNow: p.openNow ?? null,
+      address: p.address || null,
+      rank: p.rank,
+      totalFromGoogle: p.totalFromGoogle,
+    }));
+    const filtered = allResults.filter(p => p.status !== '✅ KEPT').map(p => ({
+      name: p.name,
+      rating: p.rating,
+      reviews: p.reviews,
+      primaryType: p.primaryType,
+      layer: p.status,   // '❌ BLACKLIST' | '❌ TYPE MISMATCH' | '❌ NO MATCH' | '❌ CLOSED' | '❌ TOO FAR' | '❌ TOO FEW RATINGS'
+      reason: p.reason || '',
+    }));
+    const entry = {
+      ts: Date.now(),
+      runId: searchRunIdRef.current,
+      interestId,
+      interestLabel,
+      searchType,
+      query: query || null,
+      placeTypes: placeTypes || [],
+      blacklist: blacklist || [],
+      nameKeywords: nameKeywords || [],
+      passed,
+      filtered,
+      fromGoogle: allResults.length,
+    };
+    filterLogRef.current = [entry, ...filterLogRef.current.slice(0, 99)];
+    setFilterLog([...filterLogRef.current]);
   };
   
   // Save debug preferences
@@ -1804,6 +1853,8 @@
     setUrlDebugLog([]);
     googleInfoDebugLogRef.current = [];
     setGoogleInfoDebugLog([]);
+    filterLogRef.current = [];
+    setFilterLog([]);
     setDebugFlagged(new Set());
     showToast('🗑️ Debug cleared', 'info');
   };
@@ -4318,9 +4369,10 @@
       let blacklistFilteredCount = 0;
       let relevanceFilteredCount = 0;
       const debugPlaceResults = [];
+      const totalFromGoogle = data.places.length;
       
       const transformed = data.places
-        .filter(place => {
+        .filter((place, placeIndex) => {
           const placeName = (place.displayName?.text || '').toLowerCase();
           const placeTypesFromGoogle = place.types || [];
           const debugEntry = { 
@@ -4328,7 +4380,11 @@
             rating: place.rating?.toFixed(1) || 'N/A', 
             reviews: place.userRatingCount || 0,
             types: placeTypesFromGoogle.slice(0, 5).join(', '),
-            primaryType: place.primaryType || '-'
+            primaryType: place.primaryType || '-',
+            address: place.formattedAddress || '',
+            openNow: place.currentOpeningHours?.openNow ?? null,
+            rank: placeIndex + 1,
+            totalFromGoogle,
           };
           
           // Filter 0: Business status — filter out permanently or temporarily closed places
@@ -4386,6 +4442,8 @@
             if (!hasValidType && hasNameKeyword) {
               debugEntry.nameKeywordMatch = nameKeywords.find(kw => placeName.includes(kw));
             }
+            // Record which types matched (for filter panel display)
+            debugEntry.matchedTypes = placeTypesFromGoogle.filter(type => placeTypes.includes(type));
           }
           
           debugEntry.status = '✅ KEPT';
@@ -4476,6 +4534,15 @@
         const dist = calcDistance(center.lat, center.lng, place.lat, place.lng);
         if (dist > maxDistance) {
           addDebugLog('API', `❌ TOO FAR: ${place.name} (${Math.round(dist)}m > ${Math.round(maxDistance)}m)`);
+          debugPlaceResults.push({
+            name: place.name,
+            rating: place.rating?.toFixed?.(1) || place.rating || 'N/A',
+            reviews: place.ratingCount || 0,
+            primaryType: place.primaryType || '-',
+            address: place.address || '',
+            status: '❌ TOO FAR',
+            reason: `${Math.round(dist)}m > max ${Math.round(maxDistance)}m`,
+          });
           return false;
         }
         return true;
@@ -4486,9 +4553,6 @@
       }
       
       // Layer 6: Rating count filter — applies only to Google results, never to saved favorites
-      // googleMinRatingCount: below this → always filtered out (too unknown)
-      // googleLowRatingCount: below this → mark as lowRatingCount=true for deprioritization in stopScore
-      // Per-interest override takes priority over system params
       const minCount = config.minRatingCount != null ? config.minRatingCount : (sp.googleMinRatingCount ?? 20);
       const lowCount = config.lowRatingCount != null ? config.lowRatingCount : (sp.googleLowRatingCount ?? 60);
       let ratingCountFiltered = 0;
@@ -4497,9 +4561,17 @@
         if (count < minCount) {
           ratingCountFiltered++;
           addDebugLog('API', `❌ TOO FEW RATINGS: ${place.name} (${count} < ${minCount})`);
+          debugPlaceResults.push({
+            name: place.name,
+            rating: place.rating?.toFixed?.(1) || place.rating || 'N/A',
+            reviews: count,
+            primaryType: place.primaryType || '-',
+            address: place.address || '',
+            status: '❌ TOO FEW RATINGS',
+            reason: `${count} reviews < min ${minCount}`,
+          });
           return false;
         }
-        // Mark low-rating-count places for deprioritization in stopScore
         if (count < lowCount) {
           place.lowRatingCount = true;
         }
@@ -4517,6 +4589,18 @@
         afterRatingCount: ratingFiltered.length,
         removed: { blacklist: blacklistFilteredCount, type: typeFilteredCount, relevance: relevanceFilteredCount, distance: transformed.length - distanceFiltered.length, lowRatingCount: ratingCountFiltered },
         finalPlaces: ratingFiltered.map(p => `${p.name} ⭐${p.rating} (${p.ratingCount})${p.lowRatingCount ? ' ⚠️low' : ''}`)
+      });
+
+      // Update filter log with complete picture for this interest
+      addToFilterLog({
+        interestId: validInterests[0],
+        interestLabel: tLabel(allInterestOptions.find(o => o.id === validInterests[0])) || validInterests[0],
+        searchType: isTextSearch ? 'text' : 'category',
+        query: isTextSearch ? textSearchQuery : null,
+        placeTypes: isTextSearch ? null : placeTypes,
+        blacklist: blacklistWords,
+        nameKeywords,
+        allResults: debugPlaceResults,
       });
       
       return ratingFiltered;
@@ -6758,6 +6842,30 @@
         showToast(`${t("toast.noMoreInInterest")} ${interestLabel}`, 'warning');
         return;
       }
+
+      // Log to filter panel — fetchMore entry
+      addToFilterLog({
+        interestId: interest,
+        interestLabel: interestLabel + ' [+עוד]',
+        searchType: 'fetchMore',
+        query: null,
+        placeTypes: null,
+        blacklist: null,
+        nameKeywords: null,
+        allResults: placesToAdd.map(p => ({
+          name: p.name,
+          rating: typeof p.rating === 'number' ? p.rating.toFixed(1) : (p.rating || 'N/A'),
+          reviews: p.ratingCount || 0,
+          primaryType: p.primaryType || (p.custom ? '📌 custom' : '-'),
+          address: p.address || '',
+          openNow: p.openNow ?? null,
+          rank: null,
+          totalFromGoogle: null,
+          status: '✅ KEPT',
+          matchedTypes: [],
+          fetchMoreSource: p.custom ? 'custom' : (p._debug?.source || 'cache/api'),
+        })),
+      });
       
       const updatedRoute = {
         ...route,
@@ -6910,6 +7018,34 @@
       if (fromCustom > 0) sources.push(`${fromCustom} ${t("general.fromMyPlaces")}`);
       if (fromCache > 0) sources.push(`${fromCache} ${t('general.fromGoogleCache') || t('general.fromGoogle')}`);
       if (fromApi > 0) sources.push(`${fromApi} ${t("general.fromGoogle")}`);
+
+      // Log custom + cache additions to filter panel (API ones already logged by fetchGooglePlaces)
+      const nonApiAdded = allNewPlaces.filter(p => p.custom || (!p._debug?.source || p._debug?.source !== 'google'));
+      if (nonApiAdded.length > 0) {
+        addToFilterLog({
+          interestId: 'fetchMoreAll',
+          interestLabel: '+עוד לכל התחומים',
+          searchType: 'fetchMore',
+          query: null,
+          placeTypes: null,
+          blacklist: null,
+          nameKeywords: null,
+          allResults: nonApiAdded.map(p => ({
+            name: p.name,
+            rating: typeof p.rating === 'number' ? p.rating.toFixed(1) : (p.rating || 'N/A'),
+            reviews: p.ratingCount || 0,
+            primaryType: p.primaryType || (p.custom ? '📌 custom' : '-'),
+            address: p.address || '',
+            openNow: p.openNow ?? null,
+            rank: null,
+            totalFromGoogle: null,
+            status: '✅ KEPT',
+            matchedTypes: [],
+            fetchMoreSource: p.custom ? 'custom' : 'cache',
+          })),
+        });
+      }
+
       showToast(`${allNewPlaces.length} ${t("route.places")} (${sources.join(', ')})`, 'success');
       
       setTimeout(() => {
