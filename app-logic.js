@@ -2535,6 +2535,44 @@
         });
       }
 
+      // ONE-TIME MIGRATION: Move iconOverride → customInterests.icon (v3.12.17)
+      // interestConfig should hold search config only — no display fields
+      if (localStorage.getItem('icons_migrated_to_customInterests_v1217') !== 'true') {
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/interestConfig').once('value')
+        ]).then(([ciSnap, cfgSnap]) => {
+          const ciData = ciSnap.val() || {};
+          const cfgData = cfgSnap.val() || {};
+          const idToKey = {};
+          Object.entries(ciData).forEach(([fbKey, val]) => { if (val?.id) idToKey[val.id] = fbKey; });
+          const writes = {};
+          Object.entries(cfgData).forEach(([id, cfg]) => {
+            const iconOverride = cfg.iconOverride || cfg.icon;
+            if (!iconOverride) return;
+            const fbKey = idToKey[id];
+            if (!fbKey) return;
+            const currentIcon = ciData[fbKey]?.icon || '';
+            // Only write if customInterests.icon is empty or default 📍
+            if (!currentIcon || currentIcon === '📍') {
+              writes[`customInterests/${fbKey}/icon`] = iconOverride;
+            }
+            writes[`settings/interestConfig/${id}/iconOverride`] = null;
+            if (cfg.icon) writes[`settings/interestConfig/${id}/icon`] = null;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => {
+                console.log('[MIGRATION] icons moved to customInterests:', Object.keys(writes).length, 'writes');
+                localStorage.setItem('icons_migrated_to_customInterests_v1217', 'true');
+              })
+              .catch(e => console.error('[MIGRATION] icons migration failed:', e));
+          } else {
+            localStorage.setItem('icons_migrated_to_customInterests_v1217', 'true');
+          }
+        });
+      }
+
       // ONE-TIME MIGRATION: Rename interest IDs to readable English names (v3.12.12)
       // e.g. custom_1773840083847 → sweets, cafes → coffee, graffiti → street_art
       // Updates: customInterests[].id, interestConfig keys, interestStatus keys,

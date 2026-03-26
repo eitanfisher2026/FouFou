@@ -30,10 +30,102 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.12.16` (Mar 26, 2026)
+- **גרסה:** `3.12.17` (Mar 26, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## Major Changes (v3.11.76 → v3.12.16) — Session Mar 26, 2026
+
+### ארכיטקטורת תחומים — Single Source of Truth
+
+**עיקרון:** כל התחומים חיים ב-`customInterests` ב-Firebase בלבד. אין hardcoded lists בקוד.
+
+#### שינויים שבוצעו:
+- **הוסר migration קשיח** (27 IDs hardcoded) — Firebase = מקור יחיד
+- **הוסר `Promise.all` כפול** — `customInterests` נטען פעם אחת ע"י real-time listener בלבד
+- **הוסר `cityOverrides/interests` injection** — cities לא מקבלים interests מ-cityOverrides יותר
+- **ניקוי `cityHiddenInterests`** — IDs יתומים (לא קיימים ב-customInterests) מוסרים אוטומטית
+- **ניקוי `cityOverrides/interests` + `uncoveredInterests`** — שרידי ארכיטקטורה ישנה נמחקים
+
+#### Patches חד-פעמיים (רצים בטעינה + מסמנים localStorage):
+| localStorage key | מה עושה |
+|-----------------|---------|
+| `interest_config_patched_v123` | ממלא interestConfig ל-13 תחומים חסרים (beaches, coworking וכו') |
+| `restore_culture_shopping_v125` | מחזיר culture/shopping ל-adminStatus=active |
+| `cityOverrides_interests_cleaned` | מוחק interests/uncoveredInterests מ-cityOverrides |
+| `cityHidden_cleaned_v124` | מסיר IDs יתומים מ-cityHiddenInterests |
+| `labels_migrated_to_customInterests_v1211` | מעביר labelOverride/labelEnOverride → customInterests.label/labelEn, מוחק מ-interestConfig |
+| `interest_ids_migrated_v1213` | משנה כל IDs לפורמט `i_english_name` |
+
+---
+
+### מבנה Interest ID — פורמט חדש
+
+**כלל:** כל ID מתחיל עם `i_` ואחריו שם אנגלי עם underscore:
+```
+i_temples, i_coffee, i_street_food_day, i_night_markets
+```
+
+**בעת יצירה:**
+- ID נגזר מ-`labelEn` בעת יצירה בלבד — לא משתנה לעולם
+- `labelEn` חובה (אחרת לא ניתן לשמור)
+- בדיקת ייחודיות על ה-ID החדש
+- שינוי `labelEn` לאחר יצירה = שינוי תצוגה בלבד, לא ID
+
+**Migration שרץ:**
+- 30 תחומים → כולם קיבלו `i_` prefix
+- עדכון ב: `customInterests[].id`, `interestConfig` keys, `interestStatus` keys, `locations[].interests[]`, `routes[].preferences.interests[]`, `routes[].stops[].interests[]`, `routes[].stops[]._debug.interestId`, `users[].interestStatus` keys
+
+---
+
+### Label Architecture — מקור יחיד
+
+**לפני:** שם יושב ב-2 מקומות: `customInterests.label` + `interestConfig.labelOverride`
+**אחרי:** שם יושב רק ב-`customInterests.label` (ו-`labelEn` ב-`customInterests.labelEn`)
+`interestConfig` = הגדרות חיפוש בלבד (types, blacklist, bestTime וכו')
+
+---
+
+### Settings → תחומים — שיפורי UI
+
+- **מציג את כל התחומים תמיד** — ללא סינון לפי `adminStatus` (אדמין צריך לראות הכל)
+- **כפתור ניראות לפי עיר** — modal עם checkbox לכל עיר (לא dropdown)
+  - מציג `🌍` אם גלוי בכל הערים, `🏙️ X/Y` אם חלקי
+  - `toggleCityForInterest` הועבר לרמה עליונה (נגיש מה-modal)
+- **תחומים עם `adminStatus: hidden`** — מוצגים באדום עם תג "מוסתר"
+- **כפתור "הסתר ריקים"** — מזהה orphaned רק אם icon=📍 AND label=id גולמי (לא תחומים שנוצרו ידנית)
+
+---
+
+### Performance — interestMap
+
+- `interestMap` useMemo קיים ב-`allInterestOptions` (object `{}` לא Map)
+- O(1) lookup: `interestMap[id]` במקום `customInterests.find(i => i.id === x)`
+- `toggleCityForInterest` עכשיו ברמה עליונה של הcomponent
+
+---
+
+### Firebase — מבנה נקי
+
+```
+customInterests/{id}:
+  id: "i_temples"          ← i_ prefix
+  label: "מקדשים"           ← שם עברית
+  labelEn: "Temples"        ← שם אנגלית (= בסיס ה-ID)
+  icon: 🛕
+
+settings/interestConfig/{id}:
+  types: [...]              ← הגדרות חיפוש ONLY
+  blacklist: [...]
+  bestTime: "day"
+  # NO labelOverride, NO labelEnOverride, NO iconOverride
+
+settings/cityHiddenInterests/{cityId}: [id1, id2]  ← IDs בלבד, מנוקה מ-IDs יתומים
+settings/cityOverrides/{cityId}:  ← ללא interests/uncoveredInterests
+```
 
 ---
 

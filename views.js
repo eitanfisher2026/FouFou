@@ -16,7 +16,7 @@
         borderRadius: '10px', border: '1px solid #e0e7ff',
         direction: isRTL ? 'rtl' : 'ltr'
       }}>
-        <span style={{ fontSize: '18px', flexShrink: 0 }}>{icon}</span>
+        <span style={{ fontSize: '18px', flexShrink: 0 }}>{renderIcon(icon, '18px')}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b', lineHeight: 1.2 }}>{title}</div>
           {subtitle && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{subtitle}</div>}
@@ -4113,7 +4113,7 @@
                 const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
                 return (
                   <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
-                    <span style={{ flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flexShrink: 0 }}>{renderIcon(icon, '20px')}</span>
                     <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
                     {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}

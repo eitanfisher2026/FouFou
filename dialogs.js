@@ -1089,7 +1089,7 @@
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              const compressed = await window.BKK.compressIcon(file, 64);
+                              const compressed = await window.BKK.compressIcon(file, 64, 2);
                               if (compressed) {
                                 setNewInterest({...newInterest, icon: compressed});
                               }
