@@ -2416,6 +2416,63 @@
       // were incorrectly flagged as orphans and deleted.
 
       // interests and interestConfig live entirely in Firebase — no hardcoded seeds or patches
+
+      // ONE-TIME PATCH: Fill missing interestConfig entries (v3.12.3)
+      // Adds Hebrew labels + icons + search config for built-in interests that have no config yet
+      if (localStorage.getItem('interest_config_patched_v123') !== 'true') {
+        const PATCH = {
+          beaches:       { labelOverride:'חופים',         labelEnOverride:'Beaches',                iconOverride:'🏖️', category:'attraction', group:'outdoors',  bestTime:'day',     types:['beach','natural_feature'],                                     blacklist:['hotel','resort','bar','restaurant'],         minStops:1,maxStops:6, routeSlot:'any',minGap:1,weight:3 },
+          coworking:     { labelOverride:'קוורקינג',       labelEnOverride:'Coworking',              iconOverride:'💻', category:'experience', group:'work',      bestTime:'day',     textSearch:'coworking space',                                          minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
+          culture:       { labelOverride:'תרבות',          labelEnOverride:'Culture',                iconOverride:'🎭', category:'attraction', group:'art',       bestTime:'day',     types:['museum','art_gallery'],                                        blacklist:['hotel','restaurant','parking'],               minStops:1,maxStops:8, routeSlot:'any',minGap:1,weight:3 },
+          history:       { labelOverride:'היסטוריה',       labelEnOverride:'History',                iconOverride:'🏺', category:'attraction', group:'heritage',  bestTime:'day',     types:['historical_landmark','museum'],                                blacklist:['hotel','restaurant','parking','mall'],        minStops:1,maxStops:8, routeSlot:'any',minGap:1,weight:3 },
+          shopping:      { labelOverride:'קניות',          labelEnOverride:'Shopping',               iconOverride:'🛍️', category:'shopping',   group:'shopping',  bestTime:'anytime', types:['shopping_mall','department_store','clothing_store'],           blacklist:['supermarket','convenience','pharmacy'],       minStops:1,maxStops:6, routeSlot:'any',minGap:1,weight:2 },
+          wellness:      { labelOverride:'בריאות ורווחה', labelEnOverride:'Wellness',               iconOverride:'🧘', category:'experience', group:'health',    bestTime:'anytime', types:['spa'],                                                         blacklist:['hotel','gym','fitness'],                      minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
+          accommodation: { labelOverride:'לינה',           labelEnOverride:'Accommodation',          iconOverride:'🏨', category:'break',      group:'practical', bestTime:'anytime', noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
+          business:      { labelOverride:'עסקים',          labelEnOverride:'Business',               iconOverride:'💼', category:'experience', group:'practical', bestTime:'day',     noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:1 },
+          fitness:       { labelOverride:'כושר וספורט',   labelEnOverride:'Fitness & Sports',       iconOverride:'🏋️', category:'experience', group:'health',    bestTime:'day',     types:['gym'],                                                         blacklist:['hotel','spa','massage'],                      minStops:1,maxStops:4, routeSlot:'any',minGap:1,weight:2 },
+          health:        { labelOverride:'בריאות',         labelEnOverride:'Health',                 iconOverride:'🏥', category:'break',      group:'health',    bestTime:'day',     noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
+          learning:      { labelOverride:'למידה וחוויות', labelEnOverride:'Learning & Experiences', iconOverride:'🎓', category:'experience', group:'culture',   bestTime:'day',     types:['university','school','library'],                               blacklist:['hotel','restaurant','mall'],                  minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
+          massage_spa:   { labelOverride:'עיסוי וספא',    labelEnOverride:'Massage & Spa',          iconOverride:'💆', category:'break',      group:'health',    bestTime:'anytime', types:['spa','beauty_salon'], textSearch:'thai massage spa',        blacklist:['tattoo','piercing','salon','hair'],           minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:2 },
+          transport:     { labelOverride:'תחבורה',         labelEnOverride:'Transport',              iconOverride:'🚆', category:'break',      group:'practical', bestTime:'anytime', noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
+        };
+        database.ref('settings/interestConfig').once('value').then(snap => {
+          const existing = snap.val() || {};
+          const writes = {};
+          Object.entries(PATCH).forEach(([id, cfg]) => {
+            const ex = existing[id] || {};
+            // Only patch if no labelOverride yet (don't overwrite user edits)
+            if (!ex.labelOverride || ex.labelOverride === id) {
+              writes[`settings/interestConfig/${id}`] = { ...ex, ...cfg };
+            }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('interest_config_patched_v123', 'true'))
+              .catch(e => console.error('[PATCH] interestConfig failed:', e));
+          } else {
+            localStorage.setItem('interest_config_patched_v123', 'true');
+          }
+        }).catch(e => console.error('[PATCH] interestConfig read failed:', e));
+      }
+
+      // ONE-TIME CLEANUP: Remove stale cityOverrides/interests from Firebase (v3.12.3)
+      if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
+        database.ref('settings/cityOverrides').once('value').then(snap => {
+          const data = snap.val() || {};
+          const writes = {};
+          Object.keys(data).forEach(cityId => {
+            if (data[cityId]?.interests) writes[`settings/cityOverrides/${cityId}/interests`] = null;
+            if (data[cityId]?.uncoveredInterests) writes[`settings/cityOverrides/${cityId}/uncoveredInterests`] = null;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('cityOverrides_interests_cleaned', 'true'))
+              .catch(e => console.error('[CLEANUP] cityOverrides failed:', e));
+          } else {
+            localStorage.setItem('cityOverrides_interests_cleaned', 'true');
+          }
+        });
+      }
     }
   }, []);
 
@@ -3083,19 +3140,10 @@
                 if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
                 if (co.theme.iconRight !== undefined) window.BKK.cities[cid].theme.iconRight = co.theme.iconRight;
               }
-              if (co.interests && co.interests.length > 0) {
-                window.BKK.cities[cid].interests = co.interests;
-                // interests now in Firebase — no longer read from city file
-                // Also update localStorage for fast offline access
-                try {
-                  const lsOverrides = JSON.parse(localStorage.getItem('city_interests_overrides') || '{}');
-                  lsOverrides[cid] = { interests: co.interests };
-                  localStorage.setItem('city_interests_overrides', JSON.stringify(lsOverrides));
-                } catch(e) {}
-              }
+              // interests no longer in cityOverrides — all interests live in Firebase customInterests
             });
             // Force React to re-read updated interestOptions
-            if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
+            if (false) { // no longer triggered by city interests
               setSelectedCityId(id => id); // trigger re-render
             }
           }
@@ -3204,15 +3252,10 @@
             if (co.dayStartHour != null) { window.BKK.dayStartHour = co.dayStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.dayStartHour = co.dayStartHour); }
             if (co.nightStartHour != null) { window.BKK.nightStartHour = co.nightStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.nightStartHour = co.nightStartHour); }
           }
-          if (co.interests && co.interests.length > 0) {
-            window.BKK.cities[cid].interests = co.interests;
-            // interests now in Firebase — no longer read from city file
-          }
+          // interests no longer in cityOverrides — all interests live in Firebase customInterests
 
         });
-        if (s.cityOverrides[window.BKK.selectedCityId]?.interests?.length > 0) {
-          setSelectedCityId(id => id);
-        }
+        // no longer triggered by city interests
       }
       
       console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
