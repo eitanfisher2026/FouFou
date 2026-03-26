@@ -1625,6 +1625,17 @@
                         // Prevent double-click
                         if (window._savingInterest) return;
                         window._savingInterest = true;
+
+                        // Validation: Google search interests must have types or textSearch
+                        if (!newInterest.noGoogleSearch && !newInterest.privateOnly) {
+                          const hasTypes = (newInterest.types || '').trim().length > 0;
+                          const hasTextSearch = (newInterest.textSearch || '').trim().length > 0;
+                          if (!hasTypes && !hasTextSearch) {
+                            showToast('⚠️ תחום מסוג גוגל חייב להכיל סוגי מקומות או מילות חיפוש', 'warning');
+                            window._savingInterest = false;
+                            return;
+                          }
+                        }
                         
                         const searchConfig = {};
                         if (newInterest.noGoogleSearch) {

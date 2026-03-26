@@ -2605,20 +2605,29 @@ const FouFouApp = () => {
       if (localStorage.getItem('interestConfig_orphans_cleaned_v1219') !== 'true') {
         Promise.all([
           database.ref('customInterests').once('value'),
-          database.ref('settings/interestConfig').once('value')
-        ]).then(([ciSnap, cfgSnap]) => {
+          database.ref('settings/interestConfig').once('value'),
+          database.ref('settings/interestStatus').once('value'),
+          database.ref('users').once('value'),
+        ]).then(([ciSnap, cfgSnap, statusSnap, usersSnap]) => {
           const ciIds = new Set(Object.values(ciSnap.val() || {}).map(v => v.id).filter(Boolean));
-          const cfgData = cfgSnap.val() || {};
           const writes = {};
-          Object.keys(cfgData).forEach(id => {
+          Object.keys(cfgSnap.val() || {}).forEach(id => {
             if (!ciIds.has(id)) writes[`settings/interestConfig/${id}`] = null;
+          });
+          Object.keys(statusSnap.val() || {}).forEach(id => {
+            if (!ciIds.has(id)) writes[`settings/interestStatus/${id}`] = null;
+          });
+          Object.entries(usersSnap.val() || {}).forEach(([uid, udata]) => {
+            Object.keys(udata?.interestStatus || {}).forEach(id => {
+              if (!ciIds.has(id)) writes[`users/${uid}/interestStatus/${id}`] = null;
+            });
           });
           if (Object.keys(writes).length > 0) {
             database.ref().update(writes)
               .then(() => {
                 localStorage.setItem('interestConfig_orphans_cleaned_v1219', 'true');
               })
-              .catch(e => console.error('[CLEANUP] orphan interestConfig failed:', e));
+              .catch(e => console.error('[CLEANUP] orphan cleanup failed:', e));
           } else {
             localStorage.setItem('interestConfig_orphans_cleaned_v1219', 'true');
           }
@@ -14810,6 +14819,16 @@ const FouFouApp = () => {
                         if (!newInterest.label.trim()) return;
                         if (window._savingInterest) return;
                         window._savingInterest = true;
+
+                        if (!newInterest.noGoogleSearch && !newInterest.privateOnly) {
+                          const hasTypes = (newInterest.types || '').trim().length > 0;
+                          const hasTextSearch = (newInterest.textSearch || '').trim().length > 0;
+                          if (!hasTypes && !hasTextSearch) {
+                            showToast('⚠️ תחום מסוג גוגל חייב להכיל סוגי מקומות או מילות חיפוש', 'warning');
+                            window._savingInterest = false;
+                            return;
+                          }
+                        }
                         
                         const searchConfig = {};
                         if (newInterest.noGoogleSearch) {
