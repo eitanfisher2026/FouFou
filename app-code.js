@@ -1069,7 +1069,7 @@ const FouFouApp = () => {
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapVersion, setMapVersion] = useState(0); // Increment to force map re-render
-  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', or 'sysparams'
+  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', 'sysparams', 'debug'
   const [editingParamKey, setEditingParamKey] = useState(null); // key of param being edited inline
   const [editingParamVal, setEditingParamVal] = useState('');
   const [editingArea, setEditingArea] = useState(null); // area being edited on map
@@ -1770,11 +1770,11 @@ const FouFouApp = () => {
   const [urlDebugLog, setUrlDebugLog] = useState([]);
   const googleInfoDebugLogRef = useRef([]);
   const [googleInfoDebugLog, setGoogleInfoDebugLog] = useState([]);
-  const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
 
   const filterLogRef = useRef([]);
   const [filterLog, setFilterLog] = useState([]);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [debugClaudeQ, setDebugClaudeQ] = useState('');
   
   const [debugSessions, setDebugSessions] = useState(() => {
     try { return JSON.parse(localStorage.getItem('foufou_debug_sessions') || '[]'); } catch { return []; }
@@ -1829,12 +1829,15 @@ const FouFouApp = () => {
       address: p.address || null,
       rank: p.rank,
       totalFromGoogle: p.totalFromGoogle,
+      googlePlaceId: p.googlePlaceId || null,
     }));
     const filtered = allResults.filter(p => p.status !== '✅ KEPT').map(p => ({
       name: p.name,
       rating: p.rating,
       reviews: p.reviews,
       primaryType: p.primaryType,
+      address: p.address || null,
+      googlePlaceId: p.googlePlaceId || null,
       layer: p.status,   // '❌ BLACKLIST' | '❌ TYPE MISMATCH' | '❌ NO MATCH' | '❌ CLOSED' | '❌ TOO FAR' | '❌ TOO FEW RATINGS'
       reason: p.reason || '',
     }));
@@ -1855,7 +1858,66 @@ const FouFouApp = () => {
     filterLogRef.current = [entry, ...filterLogRef.current.slice(0, 99)];
     setFilterLog([...filterLogRef.current]);
   };
-  
+
+  const buildClaudeContext = () => {
+    const lines = [];
+    lines.push('# FouFou Debug Context');
+    lines.push('App: FouFou v' + (window.BKK?.VERSION || '?') + ' | City: ' + selectedCityId + ' | ' + new Date().toLocaleString('he-IL'));
+    lines.push('');
+    debugSessions.forEach((s, si) => {
+      lines.push('='.repeat(60));
+      lines.push('SESSION ' + (si + 1) + ' — ' + s.time);
+      lines.push('City: ' + s.city + ' | Area: ' + (s.areaName || s.area) + ' | Mode: ' + s.searchMode + (s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''));
+      lines.push('Interests: ' + s.interests.map(i => i.label).join(', '));
+      if (s.stats) {
+        lines.push('Stats: custom=' + s.stats.custom + ' fetched=' + s.stats.fetched + ' total=' + s.stats.total + ' maxStops=' + s.stats.maxStops);
+        if (s.stats.interestResults) {
+          lines.push('Per-interest: ' + Object.entries(s.stats.interestResults).map(([k,v]) => k + '(g:' + (v.google ?? v.fetched) + ' c:' + v.custom + ' t:' + v.total + ')').join(' | '));
+        }
+      }
+      lines.push('');
+      (s.stops || []).forEach((st, i) => {
+        const d = st._debug;
+        lines.push('  ' + (i + 1) + '. ' + (st.custom ? '📌' : '🌐') + ' ' + st.name);
+        lines.push('     Rating: ⭐' + (st.rating || '?') + ' (' + (st.ratingCount || '?') + ' reviews)');
+        if (st.address) lines.push('     Address: ' + st.address);
+        if (d) {
+          lines.push('     Interest: ' + d.interestLabel + ' | Search: ' + (d.searchType || '-') + (d.query ? ' "' + d.query + '"' : ''));
+          if (d.placeTypes?.length) lines.push('     Types: ' + d.placeTypes.join(', '));
+          if (d.googleTypes?.length) lines.push('     Google types: ' + d.googleTypes.join(', '));
+          if (d.primaryType) lines.push('     Primary: ' + d.primaryType);
+          if (d.rank) lines.push('     Rank: #' + d.rank + '/' + d.totalFromGoogle);
+          if (d.blacklist?.length) lines.push('     Blacklist: ' + d.blacklist.join(', '));
+        }
+        lines.push('');
+      });
+      const sessLogs = searchDebugLogRef.current.filter(e => e.runId && e.runId === s.runId);
+      if (sessLogs.length > 0) {
+        lines.push('  --- API Log ---');
+        sessLogs.forEach(e => {
+          lines.push('  [' + e.category + '] ' + e.message);
+          if (e.data?.total !== undefined) lines.push('    Google:' + e.data.total + ' → Kept:' + e.data.kept + ' BL:-' + (e.data.blacklistFiltered || 0) + ' Type:-' + (e.data.typeFiltered || 0));
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  };
+
+  const askClaude = (question) => {
+    const ctx = buildClaudeContext();
+    const fullText = ctx + '\n\n' + '='.repeat(60) + '\n\nSHALOM FROM FOUFOU:\n' + question;
+    const encoded = encodeURIComponent(fullText);
+    if (encoded.length < 7500) {
+      window.open('https://claude.ai/new?q=' + encoded, '_blank');
+    } else {
+      navigator.clipboard?.writeText(fullText).then(() => {
+        showToast('📋 Context copied — paste in claude.ai', 'info');
+        window.open('https://claude.ai/new', '_blank');
+      }).catch(() => showToast('Context too large — use export instead', 'info'));
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('foufou_debug_mode', debugMode.toString());
   }, [debugMode]);
@@ -1988,84 +2050,6 @@ const FouFouApp = () => {
     }
   };
   
-  const shareDebugSessions = async () => {
-    if (debugSessions.length === 0 && googleInfoDebugLogRef.current.length === 0 && urlDebugLogRef.current.length === 0) return;
-    const lines = [];
-    debugSessions.forEach((s, si) => {
-      lines.push(`\n${'='.repeat(60)}`);
-      lines.push(`SESSION ${si + 1} — ${s.time} — ${s.city} / ${s.areaName || s.area} (${s.searchMode}${s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''})`);
-      lines.push(`Interests: ${s.interests.map(i => i.label).join(', ')}`);
-      if (s.stats) {
-        lines.push(`Stats: custom=${s.stats.custom} | fetched=${s.stats.fetched} | total=${s.stats.total} | maxStops=${s.stats.maxStops}`);
-        if (s.stats.interestLimits) lines.push(`Limits: ${Object.entries(s.stats.interestLimits).map(([k,v])=>`${k}=${v}`).join(', ')}`);
-        if (s.stats.interestResults) lines.push(`Results: ${Object.entries(s.stats.interestResults).map(([k,v])=>`${k}: custom=${v.custom}, google=${v.google??v.fetched}, total=${v.total}, limit=${v.limit??'?'}`).join(' | ')}`);
-      }
-      lines.push(`${'='.repeat(60)}`);
-      (s.stops || []).forEach((st, i) => {
-        const d = st._debug;
-        lines.push(`  ${i+1}. ${st.name} ${st.custom ? '📌' : '🌐'} ⭐${st.rating || '?'} (${st.ratingCount || '?'})`);
-        if (d) {
-          lines.push(`     Interest: ${d.interestLabel} | Source: ${d.source} | Search: ${d.searchType || '-'}`);
-          if (d.query) lines.push(`     Query: "${d.query}"`);
-          if (d.placeTypes) lines.push(`     Types: ${d.placeTypes.join(', ')}`);
-          if (d.googleTypes) lines.push(`     Google types: ${d.googleTypes.join(', ')}`);
-          if (d.primaryType) lines.push(`     Primary: ${d.primaryType}`);
-          if (d.rank) lines.push(`     Rank: ${d.rank}/${d.totalFromGoogle}`);
-          lines.push(`     Area: ${d.area} | Center: ${d.center || '-'} | Radius: ${d.radius || '-'}m`);
-        }
-        if (st.address) lines.push(`     Address: ${st.address}`);
-      });
-    });
-    if (googleInfoDebugLogRef.current.length > 0) {
-      lines.push('\n' + '='.repeat(60));
-      lines.push('GOOGLE INFO DEBUG');
-      lines.push('='.repeat(60));
-      googleInfoDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.locationName}`);
-        lines.push(`  Query: ${e.searchQuery}`);
-        lines.push(`  PlaceID: ${e.rawFromGoogle.placeId || '(none)'} ${e.rawFromGoogle.placeId ? (e.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}`);
-        lines.push(`  Name from Google: ${e.rawFromGoogle.name || '(none)'}`);
-        lines.push(`  Rating: ${e.rawFromGoogle.rating ? `${e.rawFromGoogle.rating} (${e.rawFromGoogle.ratingCount})` : '(none)'}`);
-        lines.push(`  Coords: ${e.rawFromGoogle.lat},${e.rawFromGoogle.lng}`);
-        lines.push(`  Primary type: ${e.rawFromGoogle.primaryType || '(none)'}`);
-        lines.push(`  Existing mapsUrl: ${e.existingMapsUrl || '(none)'}`);
-        lines.push(`  Built URL: ${e.builtUrl || '(none)'}`);
-      });
-    }
-    if (urlDebugLogRef.current.length > 0) {
-      lines.push('\n' + '='.repeat(60));
-      lines.push('URL BUILD DEBUG');
-      lines.push('='.repeat(60));
-      urlDebugLogRef.current.forEach((e, i) => {
-        const msg = e.message || '(no message)';
-        lines.push(`\n[${i+1}] ${msg}`);
-        const d = e.data;
-        if (d) {
-          lines.push(`  Name: ${d.name || '(none)'}`);
-          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
-          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
-          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${d.url || '#'}`);
-        }
-      });
-    }
-    const text = lines.join('\n');
-    const filename = `foufou-debug-${new Date().toISOString().slice(0,16).replace('T','-')}.txt`;
-    const file = new File([text], filename, { type: 'text/plain' });
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'FouFou Debug', text: 'FouFou debug log' });
-        return;
-      } catch(e) { /* user cancelled or failed — fall through to download */ }
-    }
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    a.click(); URL.revokeObjectURL(url);
-    showToast('📥 Debug file downloaded', 'success');
-  };
-
   const clearDebugSessions = () => {
     setDebugSessions([]);
     searchDebugLogRef.current = [];
@@ -4325,6 +4309,7 @@ const FouFouApp = () => {
             openNow: place.currentOpeningHours?.openNow ?? null,
             rank: placeIndex + 1,
             totalFromGoogle,
+            googlePlaceId: place.id || null,
           };
           
           const bStatus = place.businessStatus;
@@ -10760,7 +10745,13 @@ const FouFouApp = () => {
                       <span className={`font-medium text-sm truncate ${isHidden ? 'text-red-400 line-through' : isDraft ? 'text-amber-700' : !effectiveActive ? 'text-gray-500' : ''}`}>{tLabel(interest)}</span>
                       {favCount > 0 && <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>({favCount})</span>}
                       {interestConfig[interest.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
-                      {!isValid && !interestConfig[interest.id]?.noGoogleSearch && <span className="text-red-500 text-xs flex-shrink-0" title={t("interests.missingSearchConfig")}>⚠️</span>}
+                      {!interestConfig[interest.id]?.noGoogleSearch && (() => {
+                        const cfg = interestConfig[interest.id];
+                        const hasText = cfg?.textSearch;
+                        const hasTypes = cfg?.types?.length > 0;
+                        if (!hasText && !hasTypes) return <span className="text-red-500 text-xs flex-shrink-0" title={t("interests.missingSearchConfig")}>⚠️</span>;
+                        return <span title={hasText ? `🔤 text: "${cfg.textSearch}"` : `🏷️ types: ${cfg.types.join(', ')}`} style={{ fontSize: '11px', flexShrink: 0, cursor: 'default' }}>{hasText ? '🔤' : '🏷️'}</span>;
+                      })()}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
                       {/* Map button — show favorites filtered to this interest */}
@@ -10877,23 +10868,23 @@ const FouFouApp = () => {
             {renderContextHint('hint_settings')}
             
             {/* Settings Sub-Tabs */}
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-1 mb-3" style={{ flexWrap: 'nowrap' }}>
               <button
                 onClick={() => setSettingsTab('general')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'general' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >{`⚙️ ${t('settings.generalSettings')}`}</button>
+              >⚙️ כללי</button>
               <button
                 onClick={() => setSettingsTab('cities')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'cities' ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >{`🌍 ${t('settings.citiesAndAreas')}`}</button>
+              >🌍 ערים</button>
               {isAdmin && (
               <button
                 onClick={() => setSettingsTab('interests')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'interests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🏷️ תחומים</button>
@@ -10901,10 +10892,18 @@ const FouFouApp = () => {
               {isAdmin && (
               <button
                 onClick={() => setSettingsTab('sysparams')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >{`🔧 ${t('sysParams.tabTitle')}`}</button>
+              >🔧 פרמטרים</button>
+              )}
+              {debugMode && (
+              <button
+                onClick={() => setSettingsTab('debug')}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
+                  settingsTab === 'debug' ? 'bg-gray-800 text-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >🐛 {debugSessions.length > 0 ? `דיבאג (${debugSessions.length})` : 'דיבאג'}</button>
               )}
             </div>
 
@@ -12701,6 +12700,118 @@ const FouFouApp = () => {
               </div>
               );
             })()}
+
+            {/* ===== DEBUG TAB ===== */}
+            {settingsTab === 'debug' && debugMode && (() => {
+              const claudeQuestionTemplates = [
+                { label: '🔍 למה המקום נבחר?', q: 'למה המקום הזה נבחר במסלול? האם הוא מתאים לתחום? תסביר את הלוגיקה.' },
+                { label: '❌ למה חסרים מקומות?', q: 'המסלול קיבל מעט מקומות. למה? מה עלול לגרום ל-zero results?' },
+                { label: '🔧 שגיאת שמירה Firebase', q: 'יש בעיה בשמירה ל-Firebase ואין שגיאות בconsole. מה יכול לגרום לכך?' },
+                { label: '🏷️ בעיית types / סינון', q: 'הסינון של Google types לא עובד כמצופה. על סמך הcontext, מה הבעיה?' },
+                { label: '🐛 הסבר התנהגות', q: 'שים לב להתנהגות הבאה שאני רואה: [תאר כאן]. על סמץ הcontext, מה גורם לכך?' },
+                { label: '⚡ מסלול איטי', q: 'יצירת המסלול לוקחת הרבה זמן. מה יכול לגרום לכך?' },
+              ];
+
+              return (
+                <div style={{ paddingBottom: '16px' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>🐛 Deep Debug</div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {debugSessions.length > 0 && <button onClick={exportDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#2563eb', border: 'none', color: 'white', cursor: 'pointer' }}>📋 Export</button>}
+                      {debugSessions.length > 0 && <button onClick={clearDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#dc2626', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>}
+                    </div>
+                  </div>
+
+                  {/* Claude Bridge */}
+                  {debugSessions.length > 0 && (
+                    <div style={{ marginBottom: '16px', padding: '12px', background: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#0369a1', marginBottom: '8px' }}>🤖 שאל קלוד</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                        {claudeQuestionTemplates.map((tpl, ti) => (
+                          <button key={ti} onClick={() => setDebugClaudeQ(tpl.q)}
+                            style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '6px', background: '#e0f2fe', border: '1px solid #7dd3fc', cursor: 'pointer', color: '#0369a1' }}>
+                            {tpl.label}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={debugClaudeQ}
+                        onChange={e => setDebugClaudeQ(e.target.value)}
+                        placeholder="כתוב שאלה חופשית, או בחר template למעלה..."
+                        style={{ width: '100%', minHeight: '60px', fontSize: '12px', padding: '6px', borderRadius: '6px', border: '1px solid #bae6fd', resize: 'vertical', direction: 'rtl', boxSizing: 'border-box' }}
+                      />
+                      <button
+                        onClick={() => { if (debugClaudeQ.trim()) askClaude(debugClaudeQ); }}
+                        disabled={!debugClaudeQ.trim()}
+                        style={{ marginTop: '6px', width: '100%', padding: '8px', borderRadius: '8px', background: debugClaudeQ.trim() ? '#0369a1' : '#e5e7eb', color: debugClaudeQ.trim() ? 'white' : '#9ca3af', border: 'none', cursor: debugClaudeQ.trim() ? 'pointer' : 'default', fontWeight: 'bold', fontSize: '13px' }}
+                      >🤖 פתח claude.ai עם context</button>
+                    </div>
+                  )}
+
+                  {/* Sessions */}
+                  {debugSessions.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>🐛</div>
+                      <div>אין sessions עדיין</div>
+                      <div style={{ fontSize: '12px', marginTop: '4px' }}>צור מסלול עם debug mode פעיל</div>
+                    </div>
+                  ) : debugSessions.slice(-10).reverse().map((sess) => {
+                    const sessLogs = searchDebugLog.filter(e => e.runId && e.runId === sess.runId);
+                    return (
+                      <div key={sess.id} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: '1px solid #bfdbfe', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ padding: '8px 12px', background: '#dbeafe', fontSize: '12px', fontWeight: 'bold', color: '#1e3a5f' }}>
+                          {sess.time} — {sess.areaName || sess.area} ({sess.searchMode}{sess.radiusMeters ? ` ${sess.radiusMeters}m` : ''}) — {sess.interests.map(i => i.label).join(', ')} — {sess.stops.length} stops
+                        </div>
+                        {(sess.stops || []).map((st, i) => {
+                          const d = st._debug;
+                          const flagKey = sess.id + ':' + i;
+                          const isFlagged = debugFlagged.has(flagKey);
+                          return (
+                            <div key={i} style={{ padding: '7px 12px', borderTop: '1px solid #e5e7eb', fontSize: '11px', background: isFlagged ? '#fef3c7' : 'transparent', borderLeft: isFlagged ? '4px solid #f59e0b' : '4px solid transparent' }}>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'baseline' }}>
+                                <button onClick={() => toggleDebugFlag(flagKey)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '14px', opacity: isFlagged ? 1 : 0.3 }}>🚩</button>
+                                <span style={{ fontWeight: 'bold', color: '#6b7280', minWidth: '14px' }}>{i+1}.</span>
+                                <span style={{ fontWeight: 'bold' }}>{st.custom ? '📌' : '🌐'} {st.name}</span>
+                                <span style={{ color: '#6b7280' }}>⭐{st.rating || '?'} ({st.ratingCount || '?'})</span>
+                                {d?.rank && <span style={{ color: '#9ca3af', fontSize: '10px' }}>#{d.rank}/{d.totalFromGoogle}</span>}
+                              </div>
+                              {d && (
+                                <div style={{ fontSize: '10px', paddingLeft: '24px', marginTop: '2px', color: '#6b7280' }}>
+                                  {d.interestLabel} · {d.searchType === 'text' ? '🔤 "' + d.query + '"' : '🏷️ ' + (d.placeTypes || []).join(',')}
+                                  {d.primaryType && ' · ' + d.primaryType}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {sessLogs.length > 0 && (
+                          <details style={{ borderTop: '2px solid #fcd34d' }}>
+                            <summary style={{ cursor: 'pointer', padding: '6px 12px', background: '#fef9c3', fontSize: '11px', fontWeight: 'bold', color: '#92400e' }}>📊 API Log ({sessLogs.length})</summary>
+                            <div style={{ padding: '6px', fontSize: '10px', background: '#fffbeb' }}>
+                              {sessLogs.map((entry, idx) => (
+                                <div key={idx} style={{ marginBottom: '3px', padding: '3px 6px', borderRadius: '4px', background: entry.message.includes('📊') ? '#dcfce7' : entry.message.includes('❌') ? '#fee2e2' : 'white', border: '1px solid #e5e7eb' }}>
+                                  <div style={{ fontWeight: 'bold', color: '#1e3a5f' }}>{entry.message}</div>
+                                  {entry.data?.total !== undefined && <div style={{ color: '#374151' }}>Google:{entry.data.total} → Kept:{entry.data.kept} BL:-{entry.data.blacklistFiltered||0} Type:-{entry.data.typeFiltered||0}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {debugFlagged.size > 0 && (
+                    <button onClick={exportFlaggedStops}
+                      style={{ width: '100%', padding: '8px', borderRadius: '8px', background: '#f59e0b', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', marginTop: '8px' }}>
+                      🚩 Copy {debugFlagged.size} flagged stops
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
             </div>)}
             
           </div>
@@ -13199,6 +13310,11 @@ const FouFouApp = () => {
         {/* FILTER LOG — Full Screen Panel                          */}
         {/* ═══════════════════════════════════════════════════════ */}
         {showFilterPanel && (() => {
+          const mapsLink = (p) => {
+            if (p.googlePlaceId) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}&query_place_id=${p.googlePlaceId}`;
+            if (p.name && p.address) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + ' ' + p.address)}`;
+            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}`;
+          };
           const layerColor = {
             '❌ BLACKLIST':      { bg: '#fef2f2', border: '#fca5a5', badge: '#dc2626', text: 'Blacklist' },
             '❌ TYPE MISMATCH':  { bg: '#fff7ed', border: '#fdba74', badge: '#ea580c', text: 'Type' },
@@ -13269,7 +13385,7 @@ const FouFouApp = () => {
                           <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #f0fdf4', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                             {p.rank != null && <span style={{ color: '#6b7280', minWidth: '16px', fontSize: '10px' }}>#{p.rank}</span>}
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 'bold', color: '#111827' }}>{p.name}</div>
+                              <div style={{ fontWeight: 'bold' }}><a href={mapsLink(p)} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'none' }}>{p.name} 🔗</a></div>
                               <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <span>⭐{p.rating} ({p.reviews})</span>
                                 <span style={{ color: '#374151' }}>{p.primaryType}</span>
@@ -13306,7 +13422,7 @@ const FouFouApp = () => {
                             <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #fef2f2', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start', background: lc.bg }}>
                               <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '8px', background: lc.badge, color: 'white', fontWeight: 'bold', marginTop: '1px', whiteSpace: 'nowrap' }}>{lc.text}</span>
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 'bold', color: '#111827' }}>{p.name}</div>
+                                <div style={{ fontWeight: 'bold' }}><a href={mapsLink(p)} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'none' }}>{p.name} 🔗</a></div>
                                 <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                   <span>⭐{p.rating} ({p.reviews})</span>
                                   <span>{p.primaryType}</span>
@@ -13337,202 +13453,6 @@ const FouFouApp = () => {
                 )}
               </div>
             </div>
-          );
-        })()}
-
-        {/* Debug Search Log - Full Screen Modal */}
-        {showSearchDebugPanel && (() => {
-          return (
-          <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#f8fafc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#1e40af', color: 'white', flexShrink: 0 }}>
-              <h3 style={{ fontWeight: 'bold', fontSize: '14px' }}>🔍 Debug ({debugSessions.length} sessions{debugFlagged.size > 0 ? ` · ${debugFlagged.size}🚩` : ''})</h3>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                {debugFlagged.size > 0 && <button onClick={exportFlaggedStops} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#f59e0b', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>🚩 Copy {debugFlagged.size}</button>}
-                <button onClick={exportDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#2563eb', border: 'none', color: 'white', cursor: 'pointer' }}>📋 All</button>
-                <button onClick={shareDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#059669', border: 'none', color: 'white', cursor: 'pointer' }}>📤 שתף</button>
-                <button onClick={clearDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#dc2626', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
-                <button onClick={() => setShowSearchDebugPanel(false)} style={{ fontSize: '22px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', padding: '0 8px' }}>✕</button>
-              </div>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px', direction: 'ltr', textAlign: 'left' }}>
-              {debugSessions.length > 0 ? debugSessions.slice(-10).reverse().map((sess) => {
-                const sessLogs = searchDebugLog.filter(e => e.runId && e.runId === sess.runId);
-                return (
-                <div key={sess.id} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: '1px solid #bfdbfe', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                  <div style={{ padding: '8px 12px', background: '#dbeafe', fontSize: '12px', fontWeight: 'bold', color: '#1e3a5f' }}>
-                    {sess.time} — {sess.areaName || sess.area} ({sess.searchMode}{sess.radiusMeters ? ` ${sess.radiusMeters}m` : ''}) — {sess.interests.map(i => i.label).join(', ')} — {sess.stops.length} stops
-                  </div>
-                  {(sess.stops || []).map((st, i) => {
-                    const d = st._debug;
-                    const searchTypes = d?.placeTypes || [];
-                    const googleTypes = d?.googleTypes || [];
-                    const matchedTypes = googleTypes.filter(t => searchTypes.includes(t));
-                    const unmatchedGoogle = googleTypes.filter(t => !searchTypes.includes(t));
-                    const flagKey = `${sess.id}:${i}`;
-                    const isFlagged = debugFlagged.has(flagKey);
-                    return (
-                      <div key={i} style={{ padding: '8px 12px', borderTop: '1px solid #e5e7eb', fontSize: '11px', background: isFlagged ? '#fef3c7' : 'transparent', borderLeft: isFlagged ? '4px solid #f59e0b' : '4px solid transparent' }}>
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'baseline', marginBottom: '4px' }}>
-                          <button onClick={() => toggleDebugFlag(flagKey)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '14px', lineHeight: 1, opacity: isFlagged ? 1 : 0.3 }} title={isFlagged ? 'Unflag' : 'Flag for investigation'}>🚩</button>
-                          <span style={{ fontWeight: 'bold', color: '#6b7280', minWidth: '14px' }}>{i + 1}.</span>
-                          <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{st.custom ? '📌' : '🌐'} {st.name}</span>
-                          <span style={{ color: '#6b7280' }}>⭐{st.rating || '?'} ({st.ratingCount || '?'})</span>
-                          {d?.rank && <span style={{ color: '#9ca3af', fontSize: '10px' }}>#{d.rank}/{d.totalFromGoogle}</span>}
-                        </div>
-                        {d && (
-                          <div style={{ fontSize: '10px', lineHeight: '1.8', paddingLeft: '24px' }}>
-                            <div>
-                              <span style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: '3px', fontWeight: 'bold', color: '#1e40af' }}>{d.interestLabel}</span>
-                              {d.searchType === 'text' && <span style={{ marginLeft: '4px', background: '#f3e8ff', padding: '1px 6px', borderRadius: '3px', color: '#7c3aed' }}>🔤 "{d.query}"</span>}
-                              {d.primaryType && <span style={{ marginLeft: '4px', color: '#6b7280' }}>primary: <b>{d.primaryType}</b></span>}
-                            </div>
-                            {d.searchType === 'category' && searchTypes.length > 0 && (
-                              <div style={{ marginTop: '3px' }}>
-                                <span style={{ color: '#6b7280', fontWeight: 'bold' }}>Search: </span>
-                                {searchTypes.map((t, ti) => (
-                                  <span key={ti} style={{ display: 'inline-block', margin: '1px 2px', padding: '0 4px', borderRadius: '3px', fontSize: '9px', background: matchedTypes.includes(t) ? '#dcfce7' : '#f3f4f6', color: matchedTypes.includes(t) ? '#166534' : '#9ca3af', fontWeight: matchedTypes.includes(t) ? 'bold' : 'normal', border: `1px solid ${matchedTypes.includes(t) ? '#86efac' : '#e5e7eb'}` }}>{matchedTypes.includes(t) ? '✓ ' : ''}{t}</span>
-                                ))}
-                              </div>
-                            )}
-                            {googleTypes.length > 0 && (
-                              <div style={{ marginTop: '2px' }}>
-                                <span style={{ color: '#6b7280', fontWeight: 'bold' }}>Google: </span>
-                                {matchedTypes.map((t, ti) => (
-                                  <span key={'m'+ti} style={{ display: 'inline-block', margin: '1px 2px', padding: '0 4px', borderRadius: '3px', fontSize: '9px', background: '#dcfce7', color: '#166534', fontWeight: 'bold', border: '1px solid #86efac' }}>✓ {t}</span>
-                                ))}
-                                {unmatchedGoogle.map((t, ti) => (
-                                  <span key={'u'+ti} style={{ display: 'inline-block', margin: '1px 2px', padding: '0 4px', borderRadius: '3px', fontSize: '9px', background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb' }}>{t}</span>
-                                ))}
-                              </div>
-                            )}
-                            {d.blacklist && d.blacklist.length > 0 && (
-                              <div style={{ marginTop: '2px' }}>
-                                <span style={{ color: '#dc2626', fontWeight: 'bold' }}>Blacklist: </span>
-                                <span style={{ color: '#dc2626' }}>{d.blacklist.join(', ')}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {st.address && <div style={{ fontSize: '9px', color: '#9ca3af', paddingLeft: '24px', marginTop: '2px' }}>{st.address}</div>}
-                      </div>
-                    );
-                  })}
-                  {sessLogs.length > 0 && (
-                    <details style={{ borderTop: '2px solid #fcd34d' }}>
-                      <summary style={{ cursor: 'pointer', padding: '6px 12px', background: '#fef9c3', fontSize: '11px', fontWeight: 'bold', color: '#92400e' }}>
-                        📊 API Log ({sessLogs.length})
-                      </summary>
-                      <div style={{ padding: '6px', fontSize: '10px', background: '#fffbeb' }}>
-                        {sessLogs.map((entry, idx) => (
-                          <div key={idx} style={{ marginBottom: '4px', padding: '4px 6px', borderRadius: '4px', background: entry.message.includes('🔍') ? '#dbeafe' : entry.message.includes('📊') ? '#dcfce7' : entry.message.includes('✅') ? '#fef9c3' : entry.message.includes('❌') ? '#fee2e2' : 'white', border: '1px solid #e5e7eb' }}>
-                            <div style={{ fontWeight: 'bold', color: '#1e3a5f', fontSize: '10px' }}>{entry.message}</div>
-                            {entry.data && typeof entry.data === 'object' && (
-                              <div style={{ color: '#374151', lineHeight: '1.3', marginTop: '2px' }}>
-                                {entry.data.interest && (<div><b>Interest:</b> {entry.data.interest}</div>)}
-                                {entry.data.placeTypes && (<div><b>Types:</b> {Array.isArray(entry.data.placeTypes) ? entry.data.placeTypes.join(', ') : entry.data.placeTypes}</div>)}
-                                {entry.data.blacklist && entry.data.blacklist.length > 0 && (<div style={{color:'#dc2626'}}><b>BL:</b> {entry.data.blacklist.join(', ')}</div>)}
-                                {entry.data.total !== undefined && (<div><b>Google:</b> {entry.data.total} → Kept:{entry.data.kept} BL:-{entry.data.blacklistFiltered} Type:-{entry.data.typeFiltered} Rel:-{entry.data.relevanceFiltered}</div>)}
-                                {entry.data.places && entry.data.places.map((p, pi) => (
-                                  <div key={pi} style={{ padding: '1px 4px', marginTop: '1px', borderRadius: '3px', background: p.status?.includes('✅') ? '#dcfce7' : '#fee2e2', borderLeft: `2px solid ${p.status?.includes('✅') ? '#22c55e' : '#ef4444'}`, fontSize: '9px' }}>
-                                    {p.status} {p.name} — ⭐{p.rating} ({p.reviews}) — {p.primaryType}{p.reason ? ` | ${p.reason}` : ''}
-                                  </div>
-                                ))}
-                                {entry.data.finalPlaces && (<div><b>Final:</b> {entry.data.finalPlaces.join(' | ')}</div>)}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-                </div>
-                );
-              }) : (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '14px' }}>No sessions yet — generate a route with debug mode on</div>
-              )}
-              {(() => {
-                const sessionRunIds = new Set(debugSessions.map(s => s.runId).filter(Boolean));
-                const orphanLogs = searchDebugLog.filter(e => !e.runId || !sessionRunIds.has(e.runId));
-                if (orphanLogs.length === 0) return null;
-                return (
-                  <details style={{ marginTop: '8px' }}>
-                    <summary style={{ cursor: 'pointer', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', color: '#6b7280', border: '1px solid #d1d5db' }}>
-                      📊 Other API Logs ({orphanLogs.length})
-                    </summary>
-                    <div style={{ padding: '8px', fontSize: '10px', marginTop: '4px' }}>
-                      {[...orphanLogs].reverse().map((entry, idx) => (
-                        <div key={idx} style={{ marginBottom: '4px', padding: '4px 6px', borderRadius: '4px', background: entry.message.includes('🔍') ? '#dbeafe' : entry.message.includes('📊') ? '#dcfce7' : 'white', border: '1px solid #e5e7eb' }}>
-                          <div style={{ fontWeight: 'bold', color: '#1e3a5f', fontSize: '10px' }}>{new Date(entry.ts).toLocaleTimeString()} — {entry.message}</div>
-                          {entry.data && typeof entry.data === 'object' && (
-                            <div style={{ color: '#374151', lineHeight: '1.3' }}>
-                              {entry.data.interest && (<div><b>Interest:</b> {entry.data.interest}</div>)}
-                              {entry.data.total !== undefined && (<div><b>Google:</b> {entry.data.total} → Kept:{entry.data.kept}</div>)}
-                              {entry.data.places && entry.data.places.map((p, pi) => (
-                                <div key={pi} style={{ padding: '1px 4px', borderRadius: '3px', background: p.status?.includes('✅') ? '#dcfce7' : '#fee2e2', borderLeft: `2px solid ${p.status?.includes('✅') ? '#22c55e' : '#ef4444'}`, fontSize: '9px' }}>
-                                  {p.status} {p.name} — ⭐{p.rating} — {p.primaryType}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                );
-              })()}
-              {/* Google Info Debug section */}
-              {googleInfoDebugLog.length > 0 && (
-                <details style={{ marginTop: '8px' }}>
-                  <summary style={{ cursor: 'pointer', padding: '6px 10px', background: '#d1fae5', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', color: '#064e3b' }}>
-                    🔍 Google Info Debug ({googleInfoDebugLog.length}) — click to expand
-                  </summary>
-                  <div style={{ marginTop: '6px' }}>
-                    {googleInfoDebugLog.map((entry, idx) => (
-                      <div key={idx} style={{ marginBottom: '8px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bbf7d0', fontSize: '10px', fontFamily: 'monospace' }}>
-                        <div style={{ fontWeight: 'bold', color: '#064e3b', marginBottom: '4px' }}>📍 {entry.locationName}</div>
-                        <div style={{ color: '#6b7280', marginBottom: '3px' }}>Query: {entry.searchQuery}</div>
-                        <div>PlaceID: <span style={{ color: entry.rawFromGoogle.placeIdValid ? '#059669' : '#dc2626', fontWeight: 'bold' }}>{entry.rawFromGoogle.placeId || '(none)'}</span> {entry.rawFromGoogle.placeId ? (entry.rawFromGoogle.placeIdValid ? '✅' : '❌ INVALID') : ''}</div>
-                        <div>Name from Google: {entry.rawFromGoogle.name || '(none)'}</div>
-                        <div>Rating: {entry.rawFromGoogle.rating ? `⭐${entry.rawFromGoogle.rating} (${entry.rawFromGoogle.ratingCount})` : '(none)'}</div>
-                        <div>Coords: {entry.rawFromGoogle.lat},{entry.rawFromGoogle.lng}</div>
-                        <div>Existing mapsUrl: <span style={{ color: entry.existingMapsUrl ? '#059669' : '#9ca3af' }}>{entry.existingMapsUrl || '(none)'}</span></div>
-                        <div style={{ marginTop: '3px' }}>Built URL: <span style={{ color: entry.builtUrl ? '#2563eb' : '#dc2626', wordBreak: 'break-all' }}>{entry.builtUrl || '(none — no placeId)'}</span></div>
-                        {entry.builtUrl && <button onClick={() => navigator.clipboard?.writeText(entry.builtUrl).then(() => {})} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', cursor: 'pointer' }}>📋 Copy URL</button>}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-
-              {/* URL Debug section */}
-              {urlDebugLog.length > 0 && (
-                <details style={{ marginTop: '8px' }}>
-                  <summary style={{ cursor: 'pointer', padding: '6px 10px', background: '#dbeafe', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', color: '#1e3a5f' }}>
-                    🔗 URL Build Debug ({urlDebugLog.length}) — click to expand
-                  </summary>
-                  <div style={{ marginTop: '6px' }}>
-                    {[...urlDebugLog].reverse().map((entry, idx) => (
-                      <div key={idx} style={{ marginBottom: '8px', padding: '8px', borderRadius: '8px', background: 'white', border: '1px solid #bfdbfe', fontSize: '10px', fontFamily: 'monospace' }}>
-                        <div style={{ fontWeight: 'bold', color: '#1e3a5f', marginBottom: '4px' }}>{entry.message}</div>
-                        {entry.data && (<>
-                          <div>mapsUrl: <span style={{ color: entry.data.raw?.mapsUrl ? '#059669' : '#dc2626' }}>{entry.data.raw?.mapsUrl || '(none)'}</span></div>
-                          <div>placeId: <span style={{ color: entry.data.raw?.googlePlaceId ? '#059669' : '#dc2626' }}>{entry.data.raw?.googlePlaceId || '(none)'}</span></div>
-                          <div>lat/lng: {entry.data.raw?.lat},{entry.data.raw?.lng}</div>
-                          <div style={{ marginTop: '3px', fontWeight: 'bold' }}>Steps:</div>
-                          {(entry.data.steps || []).map((s, i) => (
-                            <div key={i} style={{ color: s.step?.includes('BROKEN') || s.step?.includes('FAILED') || s.step?.includes('INVALID') ? '#dc2626' : '#059669' }}>→ {s.step}</div>
-                          ))}
-                          <div style={{ marginTop: '3px', fontWeight: 'bold' }}>Final URL:</div>
-                          <div style={{ wordBreak: 'break-all', color: '#2563eb' }}>{entry.data.url || '#'}</div>
-                          {entry.data.url && <button onClick={() => navigator.clipboard?.writeText(entry.data.url).then(() => {})} style={{ marginTop: '4px', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer' }}>📋 Copy URL</button>}
-                        </>)}
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          </div>
           );
         })()}
 

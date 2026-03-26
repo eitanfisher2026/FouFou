@@ -754,7 +754,7 @@
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapVersion, setMapVersion] = useState(0); // Increment to force map re-render
-  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', or 'sysparams'
+  const [settingsTab, setSettingsTab] = useState('general'); // 'general', 'cities', 'interests', 'sysparams', 'debug'
   const [editingParamKey, setEditingParamKey] = useState(null); // key of param being edited inline
   const [editingParamVal, setEditingParamVal] = useState('');
   const [editingArea, setEditingArea] = useState(null); // area being edited on map
@@ -1525,13 +1525,13 @@
   const [urlDebugLog, setUrlDebugLog] = useState([]);
   const googleInfoDebugLogRef = useRef([]);
   const [googleInfoDebugLog, setGoogleInfoDebugLog] = useState([]);
-  const [showSearchDebugPanel, setShowSearchDebugPanel] = useState(false);
 
   // Filter Log — per-search breakdown of passed/filtered places
   // Shape: [{ interestId, interestLabel, searchType, query, placeTypes, blacklist, passed: [...], filtered: [...] }]
   const filterLogRef = useRef([]);
   const [filterLog, setFilterLog] = useState([]);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [debugClaudeQ, setDebugClaudeQ] = useState('');
   
   // Debug sessions — accumulated across searches, persisted to localStorage
   const [debugSessions, setDebugSessions] = useState(() => {
@@ -1596,12 +1596,15 @@
       address: p.address || null,
       rank: p.rank,
       totalFromGoogle: p.totalFromGoogle,
+      googlePlaceId: p.googlePlaceId || null,
     }));
     const filtered = allResults.filter(p => p.status !== '✅ KEPT').map(p => ({
       name: p.name,
       rating: p.rating,
       reviews: p.reviews,
       primaryType: p.primaryType,
+      address: p.address || null,
+      googlePlaceId: p.googlePlaceId || null,
       layer: p.status,   // '❌ BLACKLIST' | '❌ TYPE MISMATCH' | '❌ NO MATCH' | '❌ CLOSED' | '❌ TOO FAR' | '❌ TOO FEW RATINGS'
       reason: p.reason || '',
     }));
@@ -1622,7 +1625,68 @@
     filterLogRef.current = [entry, ...filterLogRef.current.slice(0, 99)];
     setFilterLog([...filterLogRef.current]);
   };
-  
+
+  // Build a structured context string from current debug sessions for Claude
+  const buildClaudeContext = () => {
+    const lines = [];
+    lines.push('# FouFou Debug Context');
+    lines.push('App: FouFou v' + (window.BKK?.VERSION || '?') + ' | City: ' + selectedCityId + ' | ' + new Date().toLocaleString('he-IL'));
+    lines.push('');
+    debugSessions.forEach((s, si) => {
+      lines.push('='.repeat(60));
+      lines.push('SESSION ' + (si + 1) + ' — ' + s.time);
+      lines.push('City: ' + s.city + ' | Area: ' + (s.areaName || s.area) + ' | Mode: ' + s.searchMode + (s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''));
+      lines.push('Interests: ' + s.interests.map(i => i.label).join(', '));
+      if (s.stats) {
+        lines.push('Stats: custom=' + s.stats.custom + ' fetched=' + s.stats.fetched + ' total=' + s.stats.total + ' maxStops=' + s.stats.maxStops);
+        if (s.stats.interestResults) {
+          lines.push('Per-interest: ' + Object.entries(s.stats.interestResults).map(([k,v]) => k + '(g:' + (v.google ?? v.fetched) + ' c:' + v.custom + ' t:' + v.total + ')').join(' | '));
+        }
+      }
+      lines.push('');
+      (s.stops || []).forEach((st, i) => {
+        const d = st._debug;
+        lines.push('  ' + (i + 1) + '. ' + (st.custom ? '📌' : '🌐') + ' ' + st.name);
+        lines.push('     Rating: ⭐' + (st.rating || '?') + ' (' + (st.ratingCount || '?') + ' reviews)');
+        if (st.address) lines.push('     Address: ' + st.address);
+        if (d) {
+          lines.push('     Interest: ' + d.interestLabel + ' | Search: ' + (d.searchType || '-') + (d.query ? ' "' + d.query + '"' : ''));
+          if (d.placeTypes?.length) lines.push('     Types: ' + d.placeTypes.join(', '));
+          if (d.googleTypes?.length) lines.push('     Google types: ' + d.googleTypes.join(', '));
+          if (d.primaryType) lines.push('     Primary: ' + d.primaryType);
+          if (d.rank) lines.push('     Rank: #' + d.rank + '/' + d.totalFromGoogle);
+          if (d.blacklist?.length) lines.push('     Blacklist: ' + d.blacklist.join(', '));
+        }
+        lines.push('');
+      });
+      const sessLogs = searchDebugLogRef.current.filter(e => e.runId && e.runId === s.runId);
+      if (sessLogs.length > 0) {
+        lines.push('  --- API Log ---');
+        sessLogs.forEach(e => {
+          lines.push('  [' + e.category + '] ' + e.message);
+          if (e.data?.total !== undefined) lines.push('    Google:' + e.data.total + ' → Kept:' + e.data.kept + ' BL:-' + (e.data.blacklistFiltered || 0) + ' Type:-' + (e.data.typeFiltered || 0));
+        });
+        lines.push('');
+      }
+    });
+    return lines.join('\n');
+  };
+
+  // Open claude.ai with context + question pre-filled
+  const askClaude = (question) => {
+    const ctx = buildClaudeContext();
+    const fullText = ctx + '\n\n' + '='.repeat(60) + '\n\nSHALOM FROM FOUFOU:\n' + question;
+    const encoded = encodeURIComponent(fullText);
+    if (encoded.length < 7500) {
+      window.open('https://claude.ai/new?q=' + encoded, '_blank');
+    } else {
+      navigator.clipboard?.writeText(fullText).then(() => {
+        showToast('📋 Context copied — paste in claude.ai', 'info');
+        window.open('https://claude.ai/new', '_blank');
+      }).catch(() => showToast('Context too large — use export instead', 'info'));
+    }
+  };
+
   // Save debug preferences
   useEffect(() => {
     localStorage.setItem('foufou_debug_mode', debugMode.toString());
@@ -1763,86 +1827,6 @@
   };
   
   // Share debug as file (mobile: Web Share API → WhatsApp/etc; desktop: download)
-  const shareDebugSessions = async () => {
-    if (debugSessions.length === 0 && googleInfoDebugLogRef.current.length === 0 && urlDebugLogRef.current.length === 0) return;
-    // Build same text as export
-    const lines = [];
-    debugSessions.forEach((s, si) => {
-      lines.push(`\n${'='.repeat(60)}`);
-      lines.push(`SESSION ${si + 1} — ${s.time} — ${s.city} / ${s.areaName || s.area} (${s.searchMode}${s.radiusMeters ? ' ' + s.radiusMeters + 'm' : ''})`);
-      lines.push(`Interests: ${s.interests.map(i => i.label).join(', ')}`);
-      if (s.stats) {
-        lines.push(`Stats: custom=${s.stats.custom} | fetched=${s.stats.fetched} | total=${s.stats.total} | maxStops=${s.stats.maxStops}`);
-        if (s.stats.interestLimits) lines.push(`Limits: ${Object.entries(s.stats.interestLimits).map(([k,v])=>`${k}=${v}`).join(', ')}`);
-        if (s.stats.interestResults) lines.push(`Results: ${Object.entries(s.stats.interestResults).map(([k,v])=>`${k}: custom=${v.custom}, google=${v.google??v.fetched}, total=${v.total}, limit=${v.limit??'?'}`).join(' | ')}`);
-      }
-      lines.push(`${'='.repeat(60)}`);
-      (s.stops || []).forEach((st, i) => {
-        const d = st._debug;
-        lines.push(`  ${i+1}. ${st.name} ${st.custom ? '📌' : '🌐'} ⭐${st.rating || '?'} (${st.ratingCount || '?'})`);
-        if (d) {
-          lines.push(`     Interest: ${d.interestLabel} | Source: ${d.source} | Search: ${d.searchType || '-'}`);
-          if (d.query) lines.push(`     Query: "${d.query}"`);
-          if (d.placeTypes) lines.push(`     Types: ${d.placeTypes.join(', ')}`);
-          if (d.googleTypes) lines.push(`     Google types: ${d.googleTypes.join(', ')}`);
-          if (d.primaryType) lines.push(`     Primary: ${d.primaryType}`);
-          if (d.rank) lines.push(`     Rank: ${d.rank}/${d.totalFromGoogle}`);
-          lines.push(`     Area: ${d.area} | Center: ${d.center || '-'} | Radius: ${d.radius || '-'}m`);
-        }
-        if (st.address) lines.push(`     Address: ${st.address}`);
-      });
-    });
-    if (googleInfoDebugLogRef.current.length > 0) {
-      lines.push('\n' + '='.repeat(60));
-      lines.push('GOOGLE INFO DEBUG');
-      lines.push('='.repeat(60));
-      googleInfoDebugLogRef.current.forEach((e, i) => {
-        lines.push(`\n[${i+1}] ${e.locationName}`);
-        lines.push(`  Query: ${e.searchQuery}`);
-        lines.push(`  PlaceID: ${e.rawFromGoogle.placeId || '(none)'} ${e.rawFromGoogle.placeId ? (e.rawFromGoogle.placeIdValid ? '✅ valid' : '❌ INVALID') : ''}`);
-        lines.push(`  Name from Google: ${e.rawFromGoogle.name || '(none)'}`);
-        lines.push(`  Rating: ${e.rawFromGoogle.rating ? `${e.rawFromGoogle.rating} (${e.rawFromGoogle.ratingCount})` : '(none)'}`);
-        lines.push(`  Coords: ${e.rawFromGoogle.lat},${e.rawFromGoogle.lng}`);
-        lines.push(`  Primary type: ${e.rawFromGoogle.primaryType || '(none)'}`);
-        lines.push(`  Existing mapsUrl: ${e.existingMapsUrl || '(none)'}`);
-        lines.push(`  Built URL: ${e.builtUrl || '(none)'}`);
-      });
-    }
-    if (urlDebugLogRef.current.length > 0) {
-      lines.push('\n' + '='.repeat(60));
-      lines.push('URL BUILD DEBUG');
-      lines.push('='.repeat(60));
-      urlDebugLogRef.current.forEach((e, i) => {
-        const msg = e.message || '(no message)';
-        lines.push(`\n[${i+1}] ${msg}`);
-        const d = e.data;
-        if (d) {
-          lines.push(`  Name: ${d.name || '(none)'}`);
-          lines.push(`  mapsUrl: ${d.raw?.mapsUrl || d.mapsUrl || '(none)'}`);
-          lines.push(`  placeId: ${d.raw?.googlePlaceId || d.placeId || '(none)'}`);
-          lines.push(`  lat/lng: ${d.raw?.lat || d.lat},${d.raw?.lng || d.lng}`);
-          (d.steps || []).forEach(s => lines.push(`  → ${s.step || s}${s.url ? ': ' + s.url : ''}`));
-          lines.push(`  Final URL: ${d.url || '#'}`);
-        }
-      });
-    }
-    const text = lines.join('\n');
-    const filename = `foufou-debug-${new Date().toISOString().slice(0,16).replace('T','-')}.txt`;
-    const file = new File([text], filename, { type: 'text/plain' });
-    // Try Web Share API (mobile)
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'FouFou Debug', text: 'FouFou debug log' });
-        return;
-      } catch(e) { /* user cancelled or failed — fall through to download */ }
-    }
-    // Fallback: download
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    a.click(); URL.revokeObjectURL(url);
-    showToast('📥 Debug file downloaded', 'success');
-  };
 
   // Clear debug sessions
   const clearDebugSessions = () => {
@@ -4385,6 +4369,7 @@
             openNow: place.currentOpeningHours?.openNow ?? null,
             rank: placeIndex + 1,
             totalFromGoogle,
+            googlePlaceId: place.id || null,
           };
           
           // Filter 0: Business status — filter out permanently or temporarily closed places
