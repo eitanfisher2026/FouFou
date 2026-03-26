@@ -2698,6 +2698,75 @@ const FouFouApp = () => {
         });
       }
 
+      if (localStorage.getItem('interest_ids_migrated_v1213') !== 'true') {
+        const toId = (s) => 'i_' + s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/interestConfig').once('value'),
+          database.ref('settings/interestStatus').once('value'),
+          database.ref('users').once('value'),
+          database.ref('cities').once('value'),
+        ]).then(([ciSnap, cfgSnap, statusSnap, usersSnap, citiesSnap]) => {
+          const ciData = ciSnap.val() || {};
+          const cfgData = cfgSnap.val() || {};
+          const statusData = statusSnap.val() || {};
+          const usersData = usersSnap.val() || {};
+          const citiesData = citiesSnap.val() || {};
+
+          const migration = {};
+          const fbKeyMap = {}; // old_id → fbKey
+          Object.entries(ciData).forEach(([fbKey, val]) => {
+            if (!val || !val.id) return;
+            const labelEn = (val.labelEn || '').trim();
+            if (!labelEn) return;
+            const newId = toId(labelEn);
+            if (newId !== val.id) {
+              migration[val.id] = newId;
+              fbKeyMap[val.id] = fbKey;
+            }
+          });
+
+          if (Object.keys(migration).length === 0) {
+            localStorage.setItem('interest_ids_migrated_v1213', 'true');
+            return;
+          }
+
+          const writes = {};
+          Object.entries(migration).forEach(([oldId, newId]) => {
+            const fbKey = fbKeyMap[oldId];
+            writes[`customInterests/${fbKey}/id`] = newId;
+            if (cfgData[oldId]) {
+              writes[`settings/interestConfig/${newId}`] = cfgData[oldId];
+              writes[`settings/interestConfig/${oldId}`] = null;
+            }
+            if (statusData[oldId] !== undefined) {
+              writes[`settings/interestStatus/${newId}`] = statusData[oldId];
+              writes[`settings/interestStatus/${oldId}`] = null;
+            }
+            Object.entries(citiesData).forEach(([cityId, cityData]) => {
+              Object.entries(cityData.locations || {}).forEach(([locId, loc]) => {
+                if (Array.isArray(loc.interests) && loc.interests.includes(oldId)) {
+                  writes[`cities/${cityId}/locations/${locId}/interests`] =
+                    loc.interests.map(i => i === oldId ? newId : i);
+                }
+              });
+            });
+            Object.entries(usersData).forEach(([uid, udata]) => {
+              if (udata?.interestStatus?.[oldId] !== undefined) {
+                writes[`users/${uid}/interestStatus/${newId}`] = udata.interestStatus[oldId];
+                writes[`users/${uid}/interestStatus/${oldId}`] = null;
+              }
+            });
+          });
+
+          database.ref().update(writes)
+            .then(() => {
+              localStorage.setItem('interest_ids_migrated_v1213', 'true');
+            })
+            .catch(e => console.error('[MIGRATION] ID rename failed:', e));
+        });
+      }
+
       if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
         database.ref('settings/cityOverrides').once('value').then(snap => {
           const data = snap.val() || {};
