@@ -2430,42 +2430,30 @@
 
       // interests and interestConfig live entirely in Firebase — no hardcoded seeds or patches
 
-      // ONE-TIME PATCH: Fill missing interestConfig entries (v3.12.3)
-      // Adds Hebrew labels + icons + search config for built-in interests that have no config yet
-      if (localStorage.getItem('interest_config_patched_v123') !== 'true') {
-        const PATCH = {
-          beaches:       { labelOverride:'חופים',         labelEnOverride:'Beaches',                iconOverride:'🏖️', category:'attraction', group:'outdoors',  bestTime:'day',     types:['beach','natural_feature'],                                     blacklist:['hotel','resort','bar','restaurant'],         minStops:1,maxStops:6, routeSlot:'any',minGap:1,weight:3 },
-          coworking:     { labelOverride:'קוורקינג',       labelEnOverride:'Coworking',              iconOverride:'💻', category:'experience', group:'work',      bestTime:'day',     textSearch:'coworking space',                                          minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
-          culture:       { labelOverride:'תרבות',          labelEnOverride:'Culture',                iconOverride:'🎭', category:'attraction', group:'art',       bestTime:'day',     types:['museum','art_gallery'],                                        blacklist:['hotel','restaurant','parking'],               minStops:1,maxStops:8, routeSlot:'any',minGap:1,weight:3 },
-          history:       { labelOverride:'היסטוריה',       labelEnOverride:'History',                iconOverride:'🏺', category:'attraction', group:'heritage',  bestTime:'day',     types:['historical_landmark','museum'],                                blacklist:['hotel','restaurant','parking','mall'],        minStops:1,maxStops:8, routeSlot:'any',minGap:1,weight:3 },
-          shopping:      { labelOverride:'קניות',          labelEnOverride:'Shopping',               iconOverride:'🛍️', category:'shopping',   group:'shopping',  bestTime:'anytime', types:['shopping_mall','department_store','clothing_store'],           blacklist:['supermarket','convenience','pharmacy'],       minStops:1,maxStops:6, routeSlot:'any',minGap:1,weight:2 },
-          wellness:      { labelOverride:'בריאות ורווחה', labelEnOverride:'Wellness',               iconOverride:'🧘', category:'experience', group:'health',    bestTime:'anytime', types:['spa'],                                                         blacklist:['hotel','gym','fitness'],                      minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
-          accommodation: { labelOverride:'לינה',           labelEnOverride:'Accommodation',          iconOverride:'🏨', category:'break',      group:'practical', bestTime:'anytime', noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
-          business:      { labelOverride:'עסקים',          labelEnOverride:'Business',               iconOverride:'💼', category:'experience', group:'practical', bestTime:'day',     noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:1 },
-          fitness:       { labelOverride:'כושר וספורט',   labelEnOverride:'Fitness & Sports',       iconOverride:'🏋️', category:'experience', group:'health',    bestTime:'day',     types:['gym'],                                                         blacklist:['hotel','spa','massage'],                      minStops:1,maxStops:4, routeSlot:'any',minGap:1,weight:2 },
-          health:        { labelOverride:'בריאות',         labelEnOverride:'Health',                 iconOverride:'🏥', category:'break',      group:'health',    bestTime:'day',     noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
-          learning:      { labelOverride:'למידה וחוויות', labelEnOverride:'Learning & Experiences', iconOverride:'🎓', category:'experience', group:'culture',   bestTime:'day',     types:['university','school','library'],                               blacklist:['hotel','restaurant','mall'],                  minStops:1,maxStops:5, routeSlot:'any',minGap:1,weight:2 },
-          massage_spa:   { labelOverride:'עיסוי וספא',    labelEnOverride:'Massage & Spa',          iconOverride:'💆', category:'break',      group:'health',    bestTime:'anytime', types:['spa','beauty_salon'], textSearch:'thai massage spa',        blacklist:['tattoo','piercing','salon','hair'],           minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:2 },
-          transport:     { labelOverride:'תחבורה',         labelEnOverride:'Transport',              iconOverride:'🚆', category:'break',      group:'practical', bestTime:'anytime', noGoogleSearch:true, privateOnly:true,                               minStops:1,maxStops:3, routeSlot:'any',minGap:1,weight:1 },
-        };
-        database.ref('settings/interestConfig').once('value').then(snap => {
-          const existing = snap.val() || {};
+      // ONE-TIME CLEANUP: Remove interestConfig entries with no matching customInterest (v3.12.19)
+      // Prevents zombie configs from reappearing after user deletes an interest
+      if (localStorage.getItem('interestConfig_orphans_cleaned_v1219') !== 'true') {
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/interestConfig').once('value')
+        ]).then(([ciSnap, cfgSnap]) => {
+          const ciIds = new Set(Object.values(ciSnap.val() || {}).map(v => v.id).filter(Boolean));
+          const cfgData = cfgSnap.val() || {};
           const writes = {};
-          Object.entries(PATCH).forEach(([id, cfg]) => {
-            const ex = existing[id] || {};
-            // Only patch if no labelOverride yet (don't overwrite user edits)
-            if (!ex.labelOverride || ex.labelOverride === id) {
-              writes[`settings/interestConfig/${id}`] = { ...ex, ...cfg };
-            }
+          Object.keys(cfgData).forEach(id => {
+            if (!ciIds.has(id)) writes[`settings/interestConfig/${id}`] = null;
           });
           if (Object.keys(writes).length > 0) {
             database.ref().update(writes)
-              .then(() => localStorage.setItem('interest_config_patched_v123', 'true'))
-              .catch(e => console.error('[PATCH] interestConfig failed:', e));
+              .then(() => {
+                console.log('[CLEANUP] Removed orphan interestConfig keys:', Object.keys(writes).join(', '));
+                localStorage.setItem('interestConfig_orphans_cleaned_v1219', 'true');
+              })
+              .catch(e => console.error('[CLEANUP] orphan interestConfig failed:', e));
           } else {
-            localStorage.setItem('interest_config_patched_v123', 'true');
+            localStorage.setItem('interestConfig_orphans_cleaned_v1219', 'true');
           }
-        }).catch(e => console.error('[PATCH] interestConfig read failed:', e));
+        });
       }
 
       // ONE-TIME RESTORE: Set culture and shopping back to active (v3.12.5)

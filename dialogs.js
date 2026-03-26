@@ -1697,6 +1697,7 @@
                               name: newInterest.label.trim(),
                               icon: newInterest.icon || '📍',
                               privateOnly: newInterest.privateOnly || false,
+                              noGoogleSearch: newInterest.noGoogleSearch || false,
                               locked: newInterest.locked || false,
                               category: newInterest.category || 'attraction',
                               weight: newInterest.weight || 3,
