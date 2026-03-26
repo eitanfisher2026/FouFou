@@ -2647,6 +2647,57 @@ const FouFouApp = () => {
           .catch(e => console.error('[RESTORE] culture/shopping failed:', e));
       }
 
+      if (localStorage.getItem('labels_migrated_to_customInterests_v1211') !== 'true') {
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/interestConfig').once('value')
+        ]).then(([ciSnap, cfgSnap]) => {
+          const ciData = ciSnap.val() || {};
+          const cfgData = cfgSnap.val() || {};
+          const writes = {};
+
+          const idToKey = {};
+          Object.entries(ciData).forEach(([fbKey, val]) => {
+            if (val && val.id) idToKey[val.id] = fbKey;
+          });
+
+          Object.entries(cfgData).forEach(([id, cfg]) => {
+            const labelOverride = cfg.labelOverride;
+            const labelEnOverride = cfg.labelEnOverride;
+            if (!labelOverride && !labelEnOverride) return;
+
+            const fbKey = idToKey[id];
+
+            if (id === 'nightlife') {
+              if (labelOverride) writes[`settings/interestConfig/${id}/labelOverride`] = null;
+              if (labelEnOverride) writes[`settings/interestConfig/${id}/labelEnOverride`] = null;
+              return;
+            }
+
+            if (fbKey) {
+              if (labelOverride) {
+                writes[`customInterests/${fbKey}/label`] = labelOverride;
+                writes[`settings/interestConfig/${id}/labelOverride`] = null;
+              }
+              if (labelEnOverride) {
+                writes[`customInterests/${fbKey}/labelEn`] = labelEnOverride;
+                writes[`settings/interestConfig/${id}/labelEnOverride`] = null;
+              }
+            }
+          });
+
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => {
+                localStorage.setItem('labels_migrated_to_customInterests_v1211', 'true');
+              })
+              .catch(e => console.error('[MIGRATION] labels migration failed:', e));
+          } else {
+            localStorage.setItem('labels_migrated_to_customInterests_v1211', 'true');
+          }
+        });
+      }
+
       if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
         database.ref('settings/cityOverrides').once('value').then(snap => {
           const data = snap.val() || {};
@@ -12001,7 +12052,7 @@ const FouFouApp = () => {
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
                     {/* City visibility button — opens dialog */}
-                    <button onClick={() => setCityVisibilityInterest(i)}
+                    <button onClick={() => setCityVisibilityInterest(i.id)}
                       title="ניהול ניראות לפי עיר"
                       style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
                       {cityLabel}
@@ -12993,7 +13044,9 @@ const FouFouApp = () => {
 
         {/* === CITY VISIBILITY DIALOG === */}
         {cityVisibilityInterest && (() => {
-          const i = cityVisibilityInterest;
+          const i = (customInterests || []).find(x => x.id === cityVisibilityInterest) 
+                 || allInterestOptions?.find(x => x.id === cityVisibilityInterest)
+                 || { id: cityVisibilityInterest, label: cityVisibilityInterest };
           const allCities = Object.values(window.BKK.cities || {});
           return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

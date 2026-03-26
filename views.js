@@ -4119,7 +4119,7 @@
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
                     {/* City visibility button — opens dialog */}
-                    <button onClick={() => setCityVisibilityInterest(i)}
+                    <button onClick={() => setCityVisibilityInterest(i.id)}
                       title="ניהול ניראות לפי עיר"
                       style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
                       {cityLabel}
@@ -5125,7 +5125,10 @@
 
         {/* === CITY VISIBILITY DIALOG === */}
         {cityVisibilityInterest && (() => {
-          const i = cityVisibilityInterest;
+          // Look up fresh on every render to avoid stale label/icon
+          const i = (customInterests || []).find(x => x.id === cityVisibilityInterest) 
+                 || allInterestOptions?.find(x => x.id === cityVisibilityInterest)
+                 || { id: cityVisibilityInterest, label: cityVisibilityInterest };
           const allCities = Object.values(window.BKK.cities || {});
           return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}

@@ -2479,6 +2479,62 @@
           .catch(e => console.error('[RESTORE] culture/shopping failed:', e));
       }
 
+      // ONE-TIME MIGRATION: Move labelOverride/labelEnOverride → customInterests.label/labelEn (v3.12.11)
+      // After this, interestConfig holds search config only — no display fields
+      if (localStorage.getItem('labels_migrated_to_customInterests_v1211') !== 'true') {
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/interestConfig').once('value')
+        ]).then(([ciSnap, cfgSnap]) => {
+          const ciData = ciSnap.val() || {};
+          const cfgData = cfgSnap.val() || {};
+          const writes = {};
+
+          // Build id → firebase key map
+          const idToKey = {};
+          Object.entries(ciData).forEach(([fbKey, val]) => {
+            if (val && val.id) idToKey[val.id] = fbKey;
+          });
+
+          Object.entries(cfgData).forEach(([id, cfg]) => {
+            const labelOverride = cfg.labelOverride;
+            const labelEnOverride = cfg.labelEnOverride;
+            if (!labelOverride && !labelEnOverride) return;
+
+            const fbKey = idToKey[id];
+
+            // nightlife: only delete overrides, keep current label
+            if (id === 'nightlife') {
+              if (labelOverride) writes[`settings/interestConfig/${id}/labelOverride`] = null;
+              if (labelEnOverride) writes[`settings/interestConfig/${id}/labelEnOverride`] = null;
+              return;
+            }
+
+            if (fbKey) {
+              if (labelOverride) {
+                writes[`customInterests/${fbKey}/label`] = labelOverride;
+                writes[`settings/interestConfig/${id}/labelOverride`] = null;
+              }
+              if (labelEnOverride) {
+                writes[`customInterests/${fbKey}/labelEn`] = labelEnOverride;
+                writes[`settings/interestConfig/${id}/labelEnOverride`] = null;
+              }
+            }
+          });
+
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => {
+                console.log('[MIGRATION] labels moved to customInterests:', Object.keys(writes).length, 'writes');
+                localStorage.setItem('labels_migrated_to_customInterests_v1211', 'true');
+              })
+              .catch(e => console.error('[MIGRATION] labels migration failed:', e));
+          } else {
+            localStorage.setItem('labels_migrated_to_customInterests_v1211', 'true');
+          }
+        });
+      }
+
       // ONE-TIME CLEANUP: Remove stale cityOverrides/interests from Firebase (v3.12.3)
       if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
         database.ref('settings/cityOverrides').once('value').then(snap => {
