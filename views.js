@@ -4130,10 +4130,10 @@
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
                     {/* City visibility button — opens inline checkboxes */}
-                    <details style={{ flexShrink: 0 }}>
+                    <details style={{ flexShrink: 0, position: 'relative' }}>
                       <summary style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', listStyle: 'none', userSelect: 'none' }}
                         title="ניהול ניראות לפי עיר">{cityLabel}</summary>
-                      <div style={{ position: 'absolute', zIndex: 50, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px' }}>
+                      <div style={{ position: 'absolute', zIndex: 50, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px', bottom: '100%', right: 0, marginBottom: '4px' }}>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '6px' }}>ניראות לפי עיר</div>
                         {allCities.map(city => {
                           const cityHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
