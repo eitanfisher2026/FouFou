@@ -63,9 +63,7 @@
         ".write": "auth != null && (!data.exists() && newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() >= 2)",
         ".validate": "newData.hasChildren(['text', 'userId', 'timestamp'])"
       },
-      ".indexOn": [
-        "timestamp"
-      ]
+      ".indexOn": ["timestamp"]
     },
     "$other": {
       ".read": false,

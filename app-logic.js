@@ -2792,6 +2792,37 @@
         });
       }
 
+      // ONE-TIME MIGRATION: Fill missing name/nameEn/icon in cities/{cityId}/general (v3.12.28)
+      if (localStorage.getItem('city_general_completed_v1228') !== 'true') {
+        const regEntries = Object.entries(window.BKK.cityRegistry || {});
+        Promise.all(
+          regEntries.map(([regKey, reg]) => database.ref(`cities/${reg.id}/general`).once('value').then(s => ({ regKey, reg, g: s.val() || {} })))
+        ).then(results => {
+          const writes = {};
+          results.forEach(({ regKey, reg, g }) => {
+            const cid = reg.id;
+            const cityJs = window.BKK.cities[cid] || {};
+            // name — use registry nameEn/name as source of truth
+            if (!g.name && (reg.name || cityJs.name)) writes[`cities/${cid}/general/name`] = reg.name || cityJs.name;
+            if (!g.nameEn && (reg.nameEn || cityJs.nameEn)) writes[`cities/${cid}/general/nameEn`] = reg.nameEn || cityJs.nameEn;
+            // icon — from JS file if missing
+            if (!g.icon && cityJs.icon && !cityJs.icon.startsWith('data:')) writes[`cities/${cid}/general/icon`] = cityJs.icon;
+            // dayStartHour/nightStartHour fallback
+            if (g.dayStartHour == null && cityJs.dayStartHour != null) writes[`cities/${cid}/general/dayStartHour`] = cityJs.dayStartHour;
+            if (g.nightStartHour == null && cityJs.nightStartHour != null) writes[`cities/${cid}/general/nightStartHour`] = cityJs.nightStartHour;
+            // color fallback
+            if (!g.color && cityJs.theme?.color) writes[`cities/${cid}/general/color`] = cityJs.theme.color;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => { console.log('[MIGRATION] city general completed:', Object.keys(writes).join(', ')); localStorage.setItem('city_general_completed_v1228', 'true'); })
+              .catch(e => console.error('[MIGRATION] city general complete failed:', e));
+          } else {
+            localStorage.setItem('city_general_completed_v1228', 'true');
+          }
+        });
+      }
+
       // ONE-TIME CLEANUP: Remove stale IDs from cityHiddenInterests (v3.12.4)
       // Removes interest IDs that no longer exist in customInterests
       if (localStorage.getItem('cityHidden_cleaned_v124') !== 'true') {
@@ -3127,9 +3158,12 @@
     if (isFirebaseAvailable && database) {
       database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
         const g = s.val();
-        if (!g || !window.BKK.cities[selectedCityId]) return;
+        if (!window.BKK.cities[selectedCityId]) return;
+        if (!g) return;
         const city = window.BKK.cities[selectedCityId];
-        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = g.icon; }
+        // Find registry key for this city (registry key may differ from internal id e.g. telaviv vs gushdan)
+        const regKey = Object.keys(window.BKK.cityRegistry || {}).find(k => window.BKK.cityRegistry[k].id === selectedCityId) || selectedCityId;
+        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[regKey]) window.BKK.cityRegistry[regKey].icon = g.icon; }
         if (g.iconLeft) { if (!city.theme) city.theme = {}; city.theme.iconLeft = g.iconLeft; }
         if (g.iconRight) { if (!city.theme) city.theme = {}; city.theme.iconRight = g.iconRight; }
         if (g.color) { if (!city.theme) city.theme = {}; city.theme.color = g.color; }
@@ -3137,6 +3171,8 @@
         if (g.nameEn) city.nameEn = g.nameEn;
         if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
         if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
+        // Trigger React re-render so header/UI picks up new values
+        setSelectedCityId(id => id);
       }).catch(() => {});
     }
   }, [selectedCityId]);

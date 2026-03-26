@@ -2926,6 +2926,32 @@ const FouFouApp = () => {
         });
       }
 
+      if (localStorage.getItem('city_general_completed_v1228') !== 'true') {
+        const regEntries = Object.entries(window.BKK.cityRegistry || {});
+        Promise.all(
+          regEntries.map(([regKey, reg]) => database.ref(`cities/${reg.id}/general`).once('value').then(s => ({ regKey, reg, g: s.val() || {} })))
+        ).then(results => {
+          const writes = {};
+          results.forEach(({ regKey, reg, g }) => {
+            const cid = reg.id;
+            const cityJs = window.BKK.cities[cid] || {};
+            if (!g.name && (reg.name || cityJs.name)) writes[`cities/${cid}/general/name`] = reg.name || cityJs.name;
+            if (!g.nameEn && (reg.nameEn || cityJs.nameEn)) writes[`cities/${cid}/general/nameEn`] = reg.nameEn || cityJs.nameEn;
+            if (!g.icon && cityJs.icon && !cityJs.icon.startsWith('data:')) writes[`cities/${cid}/general/icon`] = cityJs.icon;
+            if (g.dayStartHour == null && cityJs.dayStartHour != null) writes[`cities/${cid}/general/dayStartHour`] = cityJs.dayStartHour;
+            if (g.nightStartHour == null && cityJs.nightStartHour != null) writes[`cities/${cid}/general/nightStartHour`] = cityJs.nightStartHour;
+            if (!g.color && cityJs.theme?.color) writes[`cities/${cid}/general/color`] = cityJs.theme.color;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => { console.log('[MIGRATION] city general completed:', Object.keys(writes).join(', ')); localStorage.setItem('city_general_completed_v1228', 'true'); })
+              .catch(e => console.error('[MIGRATION] city general complete failed:', e));
+          } else {
+            localStorage.setItem('city_general_completed_v1228', 'true');
+          }
+        });
+      }
+
       if (localStorage.getItem('cityHidden_cleaned_v124') !== 'true') {
         Promise.all([
           database.ref('customInterests').once('value'),
@@ -3230,9 +3256,11 @@ const FouFouApp = () => {
     if (isFirebaseAvailable && database) {
       database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
         const g = s.val();
-        if (!g || !window.BKK.cities[selectedCityId]) return;
+        if (!window.BKK.cities[selectedCityId]) return;
+        if (!g) return;
         const city = window.BKK.cities[selectedCityId];
-        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = g.icon; }
+        const regKey = Object.keys(window.BKK.cityRegistry || {}).find(k => window.BKK.cityRegistry[k].id === selectedCityId) || selectedCityId;
+        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[regKey]) window.BKK.cityRegistry[regKey].icon = g.icon; }
         if (g.iconLeft) { if (!city.theme) city.theme = {}; city.theme.iconLeft = g.iconLeft; }
         if (g.iconRight) { if (!city.theme) city.theme = {}; city.theme.iconRight = g.iconRight; }
         if (g.color) { if (!city.theme) city.theme = {}; city.theme.color = g.color; }
@@ -3240,6 +3268,7 @@ const FouFouApp = () => {
         if (g.nameEn) city.nameEn = g.nameEn;
         if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
         if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
+        setSelectedCityId(id => id);
       }).catch(() => {});
     }
   }, [selectedCityId]);
@@ -10792,12 +10821,12 @@ const FouFouApp = () => {
                                   const file = e.target.files?.[0]; if (!file) return;
                                   const compressed = await window.BKK.compressIcon(file, 80);
                                   if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1);
-                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
+                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(compressed).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] icon save error:', e));
                                   }
                                 }} />
                               </label>
                               <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
+                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(emoji).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] icon save error:', e));
                               }, suggestions: [], loading: false })}
                                 style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
                               >✨</button>
@@ -10875,12 +10904,12 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconLeft = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(compressed).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] iconLeft save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(emoji).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] iconLeft save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
@@ -10902,12 +10931,12 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconRight = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(compressed).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] iconRight save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(emoji).then(() => setCityEditCounter(c => c + 1)).catch(e => console.error('[CITY] iconRight save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
