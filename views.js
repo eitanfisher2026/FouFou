@@ -4104,17 +4104,6 @@
                 addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
                 customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
               }
-              const toggleCityForInterest = (interestId, cityId) => {
-                const cur = cityHiddenInterests[cityId] || new Set();
-                const next = new Set(cur);
-                if (next.has(interestId)) next.delete(interestId); else next.add(interestId);
-                const arr = [...next];
-                setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
-                if (isFirebaseAvailable && database) {
-                  database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
-                    .catch(e => console.error('[CITY] toggle error:', e));
-                }
-              };
               const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
                 const isDraft = getAStatus(i) === 'draft';
