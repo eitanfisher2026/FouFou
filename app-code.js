@@ -11844,14 +11844,13 @@ const FouFouApp = () => {
             </div>
             )}
 
-            {/* Debug Mode Toggle */}
+            {/* Debug Mode Toggle — toggle only, filter+log in Debug tab */}
             <div className="mb-4">
               <div className="bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">{t("general.debugMode")}</h3>
                 <p className="text-xs text-gray-600 mb-2">
                   Show activity log for debugging (console F12)
                 </p>
-                
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -11863,91 +11862,14 @@ const FouFouApp = () => {
                     {debugMode ? t('toast.debugOn') : t('toast.debugOff')}
                   </span>
                 </label>
-                
                 {debugMode && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-1">Filter by category:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {['all', 'api', 'firebase', 'sync', 'route', 'interest', 'location', 'migration'].map(cat => (
-                        <button
-                          key={cat}
-                          onClick={() => toggleDebugCategory(cat)}
-                          className={`px-2 py-0.5 rounded text-xs font-bold transition ${
-                            debugCategories.includes(cat) || (cat !== 'all' && debugCategories.includes('all'))
-                              ? 'bg-gray-700 text-white' 
-                              : 'bg-gray-200 text-gray-500'
-                          }`}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    → פרטים ב-Tab <b>🐛 דיבאג</b>
                   </div>
                 )}
               </div>
             </div>
-            
-            {/* Search Debug Log Panel */}
-            {debugMode && searchDebugLog.length > 0 && (
-              <div className="mb-4">
-                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-amber-400 rounded-xl p-3">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h3 className="text-base font-bold text-amber-800">🔍 Search Debug Log ({searchDebugLog.length})</h3>
-                    <button onClick={() => { searchDebugLogRef.current = []; setSearchDebugLog([]); }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', background: '#fecaca', border: 'none', color: '#991b1b', cursor: 'pointer' }}>Clear</button>
-                  </div>
-                  <div style={{ maxHeight: '400px', overflowY: 'auto', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}>
-                    {[...searchDebugLog].reverse().map((entry, idx) => (
-                      <div key={idx} style={{ 
-                        marginBottom: '8px', padding: '8px', borderRadius: '8px',
-                        background: entry.message.includes('🔍') ? '#eff6ff' : entry.message.includes('📊') ? '#f0fdf4' : entry.message.includes('✅ FINAL') ? '#fefce8' : entry.message.includes('❌') ? '#fef2f2' : 'white',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        <div style={{ fontWeight: 'bold', color: '#1e3a5f', marginBottom: '4px' }}>
-                          {entry.message}
-                        </div>
-                        {entry.data && typeof entry.data === 'object' && (
-                          <div style={{ fontSize: '10px', color: '#4b5563' }}>
-                            {/* Search params */}
-                            {entry.data.interest && (<div><b>Interest:</b> {entry.data.interest} ({entry.data.interestId})</div>)}
-                            {entry.data.query && (<div><b>Query:</b> {entry.data.query}</div>)}
-                            {entry.data.placeTypes && (<div><b>Types:</b> {Array.isArray(entry.data.placeTypes) ? entry.data.placeTypes.join(', ') : entry.data.placeTypes}</div>)}
-                            {entry.data.blacklist && entry.data.blacklist.length > 0 && (<div><b>Blacklist:</b> {entry.data.blacklist.join(', ')}</div>)}
-                            {entry.data.radius && (<div><b>Center:</b> {entry.data.center} | <b>Radius:</b> {entry.data.radius}</div>)}
-                            
-                            {/* Results summary */}
-                            {entry.data.total !== undefined && (<div style={{ marginTop: '4px' }}><b>Google returned:</b> {entry.data.total} | <b>Kept:</b> {entry.data.kept} | <b>Blacklist:</b> -{entry.data.blacklistFiltered} | <b>Type:</b> -{entry.data.typeFiltered} | <b>Relevance:</b> -{entry.data.relevanceFiltered}</div>)}
-                            
-                            {/* Per-place details */}
-                            {entry.data.places && (
-                              <div style={{ marginTop: '4px' }}>
-                                {entry.data.places.map((p, pi) => (
-                                  <div key={pi} style={{ 
-                                    padding: '2px 4px', marginTop: '2px', borderRadius: '4px', fontSize: '10px',
-                                    background: p.status?.includes('✅') ? '#dcfce7' : '#fee2e2'
-                                  }}>
-                                    <span style={{ fontWeight: 'bold' }}>{p.status}</span> {p.name} — ⭐{p.rating} ({p.reviews}) — {p.primaryType}
-                                    {p.reason && (<span style={{ color: '#991b1b' }}> | {p.reason}</span>)}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Final places list */}
-                            {entry.data.finalPlaces && (
-                              <div style={{ marginTop: '4px' }}>
-                                <b>Final:</b> {entry.data.finalPlaces.join(' | ')}
-                              </div>
-                            )}
-                            {entry.data.removed && (<div><b>Removed:</b> blacklist:{entry.data.removed.blacklist} type:{entry.data.removed.type} relevance:{entry.data.removed.relevance} distance:{entry.data.removed.distance}</div>)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            
+
             {/* Admin Management - Password Based (Admin Only) */}
             {isCurrentUserAdmin && (
             <div className="mb-4">
@@ -12714,9 +12636,24 @@ const FouFouApp = () => {
 
               return (
                 <div style={{ paddingBottom: '16px' }}>
+
+                  {/* Category filter */}
+                  <div style={{ marginBottom: '12px', padding: '8px 10px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '5px' }}>Filter by category:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {['all', 'api', 'firebase', 'sync', 'route', 'interest', 'location', 'migration'].map(cat => (
+                        <button key={cat} onClick={() => toggleDebugCategory(cat)}
+                          style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: 'none',
+                            background: debugCategories.includes(cat) || (cat !== 'all' && debugCategories.includes('all')) ? '#374151' : '#e5e7eb',
+                            color: debugCategories.includes(cat) || (cat !== 'all' && debugCategories.includes('all')) ? 'white' : '#6b7280'
+                          }}>{cat}</button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>🐛 Deep Debug</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>🐛 Sessions ({debugSessions.length})</div>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {debugSessions.length > 0 && <button onClick={exportDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#2563eb', border: 'none', color: 'white', cursor: 'pointer' }}>📋 Export</button>}
                       {debugSessions.length > 0 && <button onClick={clearDebugSessions} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#dc2626', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>}
@@ -12749,14 +12686,17 @@ const FouFouApp = () => {
                     </div>
                   )}
 
-                  {/* Sessions */}
-                  {debugSessions.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>🐛</div>
-                      <div>אין sessions עדיין</div>
-                      <div style={{ fontSize: '12px', marginTop: '4px' }}>צור מסלול עם debug mode פעיל</div>
+                  {/* Empty state */}
+                  {debugSessions.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '24px 20px', color: '#9ca3af', background: '#f9fafb', borderRadius: '10px', marginBottom: '12px', border: '1px dashed #d1d5db' }}>
+                      <div style={{ fontSize: '28px', marginBottom: '6px' }}>🐛</div>
+                      <div style={{ fontWeight: 'bold', color: '#6b7280' }}>אין sessions עדיין</div>
+                      <div style={{ fontSize: '12px', marginTop: '4px' }}>צור מסלול כדי לאסוף נתוני debug</div>
                     </div>
-                  ) : debugSessions.slice(-10).reverse().map((sess) => {
+                  )}
+
+                  {/* Sessions */}
+                  {debugSessions.slice(-10).reverse().map((sess) => {
                     const sessLogs = searchDebugLog.filter(e => e.runId && e.runId === sess.runId);
                     return (
                       <div key={sess.id} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: '1px solid #bfdbfe', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
