@@ -11987,31 +11987,37 @@ const FouFouApp = () => {
               const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
                 const isDraft = getAStatus(i) === 'draft';
-                const allVisible = allCities.every(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
+                const isHidden = getAStatus(i) === 'hidden';
+                const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
+                const allVisible = visibleCities.length === allCities.length;
+                const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
                 return (
-                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isDraft ? '#fde68a' : '#e5e7eb', background: isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
+                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
                     <span style={{ flexShrink: 0 }}>{icon}</span>
-                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{tLabel(i) || i.label}</span>
+                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
                     {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
-                    {allVisible ? (
-                      <button onClick={() => { const cid = selectedCityId; const cur = cityHiddenInterests[cid] || new Set(); const next = new Set(cur); next.add(i.id); setCityHiddenInterests(prev => ({ ...prev, [cid]: next })); if (isFirebaseAvailable && database) database.ref(`settings/cityHiddenInterests/${cid}`).set([...next]).catch(() => {}); }}
-                        title="חשוף בכל הערים — לחץ להסתיר מעיר זו"
-                        style={{ fontSize: '16px', flexShrink: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0, lineHeight: 1 }}>🌍</button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                    {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
+                    {/* City visibility button — opens inline checkboxes */}
+                    <details style={{ flexShrink: 0 }}>
+                      <summary style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', listStyle: 'none', userSelect: 'none' }}
+                        title="ניהול ניראות לפי עיר">{cityLabel}</summary>
+                      <div style={{ position: 'absolute', zIndex: 50, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '6px' }}>ניראות לפי עיר</div>
                         {allCities.map(city => {
-                          const isHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
+                          const cityHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
                           return (
-                            <button key={city.id} onClick={() => { const cur = cityHiddenInterests[city.id] || new Set(); const next = new Set(cur); if (next.has(i.id)) next.delete(i.id); else next.add(i.id); setCityHiddenInterests(prev => ({ ...prev, [city.id]: next })); if (isFirebaseAvailable && database) database.ref(`settings/cityHiddenInterests/${city.id}`).set(next.size > 0 ? [...next] : null).catch(() => {}); }}
-                              title={`${tLabel(city)}: ${isHidden ? 'מוסתר — לחץ להציג' : 'חשוף — לחץ להסתיר'}`}
-                              style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-                                background: isHidden ? '#f3f4f6' : '#ecfdf5', borderColor: isHidden ? '#d1d5db' : '#6ee7b7', opacity: isHidden ? 0.4 : 1 }}
-                            >{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</button>
+                            <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 0', cursor: 'pointer', fontSize: '12px' }}>
+                              <input type="checkbox" checked={!cityHidden}
+                                onChange={() => toggleCityForInterest(i.id, city.id)}
+                                style={{ cursor: 'pointer' }} />
+                              <span>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                              <span>{tLabel(city) || city.nameEn || city.id}</span>
+                            </label>
                           );
                         })}
                       </div>
-                    )}
+                    </details>
                     <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
                   </div>
                 );
