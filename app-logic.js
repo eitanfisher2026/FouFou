@@ -2473,6 +2473,35 @@
           }
         });
       }
+
+      // ONE-TIME CLEANUP: Remove stale IDs from cityHiddenInterests (v3.12.4)
+      // Removes interest IDs that no longer exist in customInterests
+      if (localStorage.getItem('cityHidden_cleaned_v124') !== 'true') {
+        Promise.all([
+          database.ref('customInterests').once('value'),
+          database.ref('settings/cityHiddenInterests').once('value')
+        ]).then(([ciSnap, hiddenSnap]) => {
+          const validIds = new Set(
+            Object.values(ciSnap.val() || {}).map(v => v.id || '').filter(Boolean)
+          );
+          const hidden = hiddenSnap.val() || {};
+          const writes = {};
+          Object.entries(hidden).forEach(([cityId, arr]) => {
+            if (!Array.isArray(arr)) return;
+            const filtered = arr.filter(id => validIds.has(id));
+            if (filtered.length !== arr.length) {
+              writes[`settings/cityHiddenInterests/${cityId}`] = filtered.length > 0 ? filtered : null;
+            }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('cityHidden_cleaned_v124', 'true'))
+              .catch(e => console.error('[CLEANUP] cityHiddenInterests failed:', e));
+          } else {
+            localStorage.setItem('cityHidden_cleaned_v124', 'true');
+          }
+        });
+      }
     }
   }, []);
 
