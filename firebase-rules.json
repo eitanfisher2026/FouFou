@@ -2,6 +2,10 @@
   "rules": {
     "cities": {
       "$cityId": {
+        "general": {
+          ".read": true,
+          ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
+        },
         "locations": {
           ".read": true,
           ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous'"

@@ -2868,14 +2868,17 @@ const FouFouApp = () => {
 
       if (localStorage.getItem('city_icons_to_general_v1223') !== 'true') {
         const cityIds = Object.values(window.BKK.cityRegistry || {}).map(r => r.id);
-        Promise.all(cityIds.map(cid => database.ref(`cities/${cid}`).once('value'))).then(snaps => {
+        Promise.all(cityIds.flatMap(cid => [
+          database.ref(`cities/${cid}/icon`).once('value').then(s => ({ cid, field: 'icon', val: s.val() })),
+          database.ref(`cities/${cid}/iconLeft`).once('value').then(s => ({ cid, field: 'iconLeft', val: s.val() })),
+          database.ref(`cities/${cid}/iconRight`).once('value').then(s => ({ cid, field: 'iconRight', val: s.val() })),
+        ])).then(results => {
           const writes = {};
-          snaps.forEach((snap, i) => {
-            const cid = cityIds[i];
-            const data = snap.val() || {};
-            if (data.icon) { writes[`cities/${cid}/general/icon`] = data.icon; writes[`cities/${cid}/icon`] = null; }
-            if (data.iconLeft) { writes[`cities/${cid}/general/iconLeft`] = data.iconLeft; writes[`cities/${cid}/iconLeft`] = null; }
-            if (data.iconRight) { writes[`cities/${cid}/general/iconRight`] = data.iconRight; writes[`cities/${cid}/iconRight`] = null; }
+          results.forEach(({ cid, field, val }) => {
+            if (val) {
+              writes[`cities/${cid}/general/${field}`] = val;
+              writes[`cities/${cid}/${field}`] = null;
+            }
           });
           if (Object.keys(writes).length > 0) {
             database.ref().update(writes)
@@ -2884,7 +2887,7 @@ const FouFouApp = () => {
           } else {
             localStorage.setItem('city_icons_to_general_v1223', 'true');
           }
-        });
+        }).catch(() => localStorage.setItem('city_icons_to_general_v1223', 'true'));
       }
 
       if (localStorage.getItem('city_general_migrated_v1225') !== 'true') {
