@@ -2850,9 +2850,9 @@ const FouFouApp = () => {
           const writes = {};
           Object.entries(data).forEach(([cityId, co]) => {
             if (co.theme) {
-              if (co.theme.icon) writes[`cities/${cityId}/icon`] = co.theme.icon;
-              if (co.theme.iconLeft) writes[`cities/${cityId}/iconLeft`] = co.theme.iconLeft;
-              if (co.theme.iconRight) writes[`cities/${cityId}/iconRight`] = co.theme.iconRight;
+              if (co.theme.icon) writes[`cities/${cityId}/general/icon`] = co.theme.icon;
+              if (co.theme.iconLeft) writes[`cities/${cityId}/general/iconLeft`] = co.theme.iconLeft;
+              if (co.theme.iconRight) writes[`cities/${cityId}/general/iconRight`] = co.theme.iconRight;
               writes[`settings/cityOverrides/${cityId}/theme`] = null;
             }
           });
@@ -2862,6 +2862,63 @@ const FouFouApp = () => {
               .catch(e => console.error('[MIGRATION] city icons failed:', e));
           } else {
             localStorage.setItem('city_icons_migrated_v1221', 'true');
+          }
+        });
+      }
+
+      if (localStorage.getItem('city_icons_to_general_v1223') !== 'true') {
+        const cityIds = Object.values(window.BKK.cityRegistry || {}).map(r => r.id);
+        Promise.all(cityIds.map(cid => database.ref(`cities/${cid}`).once('value'))).then(snaps => {
+          const writes = {};
+          snaps.forEach((snap, i) => {
+            const cid = cityIds[i];
+            const data = snap.val() || {};
+            if (data.icon) { writes[`cities/${cid}/general/icon`] = data.icon; writes[`cities/${cid}/icon`] = null; }
+            if (data.iconLeft) { writes[`cities/${cid}/general/iconLeft`] = data.iconLeft; writes[`cities/${cid}/iconLeft`] = null; }
+            if (data.iconRight) { writes[`cities/${cid}/general/iconRight`] = data.iconRight; writes[`cities/${cid}/iconRight`] = null; }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_icons_to_general_v1223', 'true'))
+              .catch(e => console.error('[MIGRATION] city icons to general failed:', e));
+          } else {
+            localStorage.setItem('city_icons_to_general_v1223', 'true');
+          }
+        });
+      }
+
+      if (localStorage.getItem('city_general_migrated_v1225') !== 'true') {
+        const cityIds = Object.values(window.BKK.cityRegistry || {}).map(r => r.id);
+        Promise.all([
+          database.ref('settings/cityOverrides').once('value'),
+          ...cityIds.map(cid => database.ref(`cities/${cid}/general`).once('value').then(s => ({ cid, val: s.val() || {} })))
+        ]).then(([overridesSnap, ...cityGenerals]) => {
+          const overrides = overridesSnap.val() || {};
+          const writes = {};
+          cityIds.forEach((cid, i) => {
+            const existing = cityGenerals[i].val;
+            const co = overrides[cid] || {};
+            const cityJs = window.BKK.cities[cid] || {};
+            if (existing.dayStartHour == null) {
+              const val = co.dayStartHour ?? cityJs.dayStartHour ?? null;
+              if (val != null) writes[`cities/${cid}/general/dayStartHour`] = val;
+            }
+            if (existing.nightStartHour == null) {
+              const val = co.nightStartHour ?? cityJs.nightStartHour ?? null;
+              if (val != null) writes[`cities/${cid}/general/nightStartHour`] = val;
+            }
+            if (existing.color == null && cityJs.theme?.color) {
+              writes[`cities/${cid}/general/color`] = cityJs.theme.color;
+            }
+            if (co.dayStartHour != null) writes[`settings/cityOverrides/${cid}/dayStartHour`] = null;
+            if (co.nightStartHour != null) writes[`settings/cityOverrides/${cid}/nightStartHour`] = null;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_general_migrated_v1225', 'true'))
+              .catch(e => console.error('[MIGRATION] city general failed:', e));
+          } else {
+            localStorage.setItem('city_general_migrated_v1225', 'true');
           }
         });
       }
@@ -3168,14 +3225,18 @@ const FouFouApp = () => {
     }
 
     if (isFirebaseAvailable && database) {
-      database.ref(`cities/${selectedCityId}/icon`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { window.BKK.cities[selectedCityId].icon = v; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = v; }
-      }).catch(() => {});
-      database.ref(`cities/${selectedCityId}/iconLeft`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconLeft = v; }
-      }).catch(() => {});
-      database.ref(`cities/${selectedCityId}/iconRight`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconRight = v; }
+      database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
+        const g = s.val();
+        if (!g || !window.BKK.cities[selectedCityId]) return;
+        const city = window.BKK.cities[selectedCityId];
+        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = g.icon; }
+        if (g.iconLeft) { if (!city.theme) city.theme = {}; city.theme.iconLeft = g.iconLeft; }
+        if (g.iconRight) { if (!city.theme) city.theme = {}; city.theme.iconRight = g.iconRight; }
+        if (g.color) { if (!city.theme) city.theme = {}; city.theme.color = g.color; }
+        if (g.name) city.name = g.name;
+        if (g.nameEn) city.nameEn = g.nameEn;
+        if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
+        if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
       }).catch(() => {});
     }
   }, [selectedCityId]);
@@ -3473,23 +3534,6 @@ const FouFouApp = () => {
           
           if (s.cityOverrides) {
             window.BKK._cityOverrides = s.cityOverrides;
-            const cityId = window.BKK.selectedCityId;
-            Object.keys(s.cityOverrides).forEach(cid => {
-              const co = s.cityOverrides[cid];
-              if (!window.BKK.cities[cid]) return;
-              if (cid === cityId) {
-                if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
-                if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
-              }
-              if (co.theme) {
-                if (!window.BKK.cities[cid].theme) window.BKK.cities[cid].theme = {};
-                if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
-                if (co.theme.iconRight !== undefined) window.BKK.cities[cid].theme.iconRight = co.theme.iconRight;
-              }
-            });
-            if (false) { // no longer triggered by city interests
-              setSelectedCityId(id => id); // trigger re-render
-            }
           }
           
           if (s.systemParams) {
@@ -3575,16 +3619,6 @@ const FouFouApp = () => {
       }
       if (s.cityOverrides) {
         window.BKK._cityOverrides = s.cityOverrides;
-        const cityId = window.BKK.selectedCityId;
-        Object.keys(s.cityOverrides).forEach(cid => {
-          const co = s.cityOverrides[cid];
-          if (!window.BKK.cities[cid]) return;
-          if (cid === cityId) {
-            if (co.dayStartHour != null) { window.BKK.dayStartHour = co.dayStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.dayStartHour = co.dayStartHour); }
-            if (co.nightStartHour != null) { window.BKK.nightStartHour = co.nightStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.nightStartHour = co.nightStartHour); }
-          }
-
-        });
       }
       
     });
@@ -3751,11 +3785,6 @@ const FouFouApp = () => {
     if (!window.BKK.cities[cityId]) return;
     
     window.BKK.selectCity(cityId);
-    const overrides = window.BKK._cityOverrides?.[cityId];
-    if (overrides) {
-      if (overrides.dayStartHour != null) { window.BKK.dayStartHour = overrides.dayStartHour; window.BKK.selectedCity.dayStartHour = overrides.dayStartHour; }
-      if (overrides.nightStartHour != null) { window.BKK.nightStartHour = overrides.nightStartHour; window.BKK.selectedCity.nightStartHour = overrides.nightStartHour; }
-    }
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
     setCustomLocations([]); // Clear immediately — Firebase listener for new city will repopulate
@@ -10760,12 +10789,12 @@ const FouFouApp = () => {
                                   const file = e.target.files?.[0]; if (!file) return;
                                   const compressed = await window.BKK.compressIcon(file, 80);
                                   if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1);
-                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
+                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
                                   }
                                 }} />
                               </label>
                               <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
+                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
                               }, suggestions: [], loading: false })}
                                 style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
                               >✨</button>
@@ -10826,6 +10855,7 @@ const FouFouApp = () => {
                         onChange={(e) => { 
                           city.theme.color = e.target.value;
                           setCityModified(true); setCityEditCounter(c => c + 1);
+                          if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/color`).set(e.target.value).catch(e => console.error('[CITY] color save error:', e));
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
@@ -10842,12 +10872,12 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconLeft = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
@@ -10869,12 +10899,12 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconRight = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
@@ -10910,7 +10940,7 @@ const FouFouApp = () => {
                         const city = window.BKK.selectedCity;
                         if (city) city.dayStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`settings/cityOverrides/${selectedCityId}/dayStartHour`).set(clamped);
+                          database.ref(`cities/${selectedCityId}/general/dayStartHour`).set(clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -10931,7 +10961,7 @@ const FouFouApp = () => {
                         const city = window.BKK.selectedCity;
                         if (city) city.nightStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`settings/cityOverrides/${selectedCityId}/nightStartHour`).set(clamped);
+                          database.ref(`cities/${selectedCityId}/general/nightStartHour`).set(clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };

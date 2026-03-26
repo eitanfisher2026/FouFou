@@ -2640,12 +2640,12 @@
                                   const file = e.target.files?.[0]; if (!file) return;
                                   const compressed = await window.BKK.compressIcon(file, 80);
                                   if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1);
-                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
+                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
                                   }
                                 }} />
                               </label>
                               <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
+                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
                               }, suggestions: [], loading: false })}
                                 style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
                               >✨</button>
@@ -2707,6 +2707,7 @@
                         onChange={(e) => { 
                           city.theme.color = e.target.value;
                           setCityModified(true); setCityEditCounter(c => c + 1);
+                          if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/color`).set(e.target.value).catch(e => console.error('[CITY] color save error:', e));
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
@@ -2723,12 +2724,12 @@
                               if (compressed) {
                                   city.theme.iconLeft = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
@@ -2750,12 +2751,12 @@
                               if (compressed) {
                                   city.theme.iconRight = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
                                 }
                             }} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
-                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/general/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
                           }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
@@ -2791,7 +2792,7 @@
                         const city = window.BKK.selectedCity;
                         if (city) city.dayStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`settings/cityOverrides/${selectedCityId}/dayStartHour`).set(clamped);
+                          database.ref(`cities/${selectedCityId}/general/dayStartHour`).set(clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -2812,7 +2813,7 @@
                         const city = window.BKK.selectedCity;
                         if (city) city.nightStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`settings/cityOverrides/${selectedCityId}/nightStartHour`).set(clamped);
+                          database.ref(`cities/${selectedCityId}/general/nightStartHour`).set(clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };

@@ -2710,9 +2710,9 @@
           const writes = {};
           Object.entries(data).forEach(([cityId, co]) => {
             if (co.theme) {
-              if (co.theme.icon) writes[`cities/${cityId}/icon`] = co.theme.icon;
-              if (co.theme.iconLeft) writes[`cities/${cityId}/iconLeft`] = co.theme.iconLeft;
-              if (co.theme.iconRight) writes[`cities/${cityId}/iconRight`] = co.theme.iconRight;
+              if (co.theme.icon) writes[`cities/${cityId}/general/icon`] = co.theme.icon;
+              if (co.theme.iconLeft) writes[`cities/${cityId}/general/iconLeft`] = co.theme.iconLeft;
+              if (co.theme.iconRight) writes[`cities/${cityId}/general/iconRight`] = co.theme.iconRight;
               writes[`settings/cityOverrides/${cityId}/theme`] = null;
             }
           });
@@ -2722,6 +2722,69 @@
               .catch(e => console.error('[MIGRATION] city icons failed:', e));
           } else {
             localStorage.setItem('city_icons_migrated_v1221', 'true');
+          }
+        });
+      }
+
+      // ONE-TIME MIGRATION: Move cities/{cityId}/icon|iconLeft|iconRight → cities/{cityId}/general/ (v3.12.23)
+      if (localStorage.getItem('city_icons_to_general_v1223') !== 'true') {
+        const cityIds = Object.values(window.BKK.cityRegistry || {}).map(r => r.id);
+        Promise.all(cityIds.map(cid => database.ref(`cities/${cid}`).once('value'))).then(snaps => {
+          const writes = {};
+          snaps.forEach((snap, i) => {
+            const cid = cityIds[i];
+            const data = snap.val() || {};
+            if (data.icon) { writes[`cities/${cid}/general/icon`] = data.icon; writes[`cities/${cid}/icon`] = null; }
+            if (data.iconLeft) { writes[`cities/${cid}/general/iconLeft`] = data.iconLeft; writes[`cities/${cid}/iconLeft`] = null; }
+            if (data.iconRight) { writes[`cities/${cid}/general/iconRight`] = data.iconRight; writes[`cities/${cid}/iconRight`] = null; }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_icons_to_general_v1223', 'true'))
+              .catch(e => console.error('[MIGRATION] city icons to general failed:', e));
+          } else {
+            localStorage.setItem('city_icons_to_general_v1223', 'true');
+          }
+        });
+      }
+
+      // ONE-TIME MIGRATION: Move dayStartHour/nightStartHour/color → cities/{cityId}/general (v3.12.25)
+      if (localStorage.getItem('city_general_migrated_v1225') !== 'true') {
+        const cityIds = Object.values(window.BKK.cityRegistry || {}).map(r => r.id);
+        Promise.all([
+          database.ref('settings/cityOverrides').once('value'),
+          ...cityIds.map(cid => database.ref(`cities/${cid}/general`).once('value').then(s => ({ cid, val: s.val() || {} })))
+        ]).then(([overridesSnap, ...cityGenerals]) => {
+          const overrides = overridesSnap.val() || {};
+          const writes = {};
+          cityIds.forEach((cid, i) => {
+            const existing = cityGenerals[i].val;
+            const co = overrides[cid] || {};
+            const cityJs = window.BKK.cities[cid] || {};
+            // dayStartHour: cityOverrides > JS file > default
+            if (existing.dayStartHour == null) {
+              const val = co.dayStartHour ?? cityJs.dayStartHour ?? null;
+              if (val != null) writes[`cities/${cid}/general/dayStartHour`] = val;
+            }
+            // nightStartHour: cityOverrides > JS file > default
+            if (existing.nightStartHour == null) {
+              const val = co.nightStartHour ?? cityJs.nightStartHour ?? null;
+              if (val != null) writes[`cities/${cid}/general/nightStartHour`] = val;
+            }
+            // color: theme.color from JS file
+            if (existing.color == null && cityJs.theme?.color) {
+              writes[`cities/${cid}/general/color`] = cityJs.theme.color;
+            }
+            // Clean up cityOverrides dayStartHour/nightStartHour
+            if (co.dayStartHour != null) writes[`settings/cityOverrides/${cid}/dayStartHour`] = null;
+            if (co.nightStartHour != null) writes[`settings/cityOverrides/${cid}/nightStartHour`] = null;
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_general_migrated_v1225', 'true'))
+              .catch(e => console.error('[MIGRATION] city general failed:', e));
+          } else {
+            localStorage.setItem('city_general_migrated_v1225', 'true');
           }
         });
       }
@@ -3057,16 +3120,20 @@
       markLoaded('locations');
     }
 
-    // Load city icons (icon/iconLeft/iconRight) from Firebase cities/{cityId}
+    // Load city general data (icon/iconLeft/iconRight/name/color/hours) from Firebase cities/{cityId}/general
     if (isFirebaseAvailable && database) {
-      database.ref(`cities/${selectedCityId}/icon`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { window.BKK.cities[selectedCityId].icon = v; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = v; }
-      }).catch(() => {});
-      database.ref(`cities/${selectedCityId}/iconLeft`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconLeft = v; }
-      }).catch(() => {});
-      database.ref(`cities/${selectedCityId}/iconRight`).once('value').then(s => {
-        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconRight = v; }
+      database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
+        const g = s.val();
+        if (!g || !window.BKK.cities[selectedCityId]) return;
+        const city = window.BKK.cities[selectedCityId];
+        if (g.icon) { city.icon = g.icon; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = g.icon; }
+        if (g.iconLeft) { if (!city.theme) city.theme = {}; city.theme.iconLeft = g.iconLeft; }
+        if (g.iconRight) { if (!city.theme) city.theme = {}; city.theme.iconRight = g.iconRight; }
+        if (g.color) { if (!city.theme) city.theme = {}; city.theme.color = g.color; }
+        if (g.name) city.name = g.name;
+        if (g.nameEn) city.nameEn = g.nameEn;
+        if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
+        if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
       }).catch(() => {});
     }
   }, [selectedCityId]);
@@ -3419,28 +3486,7 @@
           // City overrides
           if (s.cityOverrides) {
             window.BKK._cityOverrides = s.cityOverrides;
-            const cityId = window.BKK.selectedCityId;
-            Object.keys(s.cityOverrides).forEach(cid => {
-              const co = s.cityOverrides[cid];
-              if (!window.BKK.cities[cid]) return;
-              // Apply day/night hours
-              if (cid === cityId) {
-                if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
-                if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
-              }
-              // Apply theme icons from cities/{cid}/icon|iconLeft|iconRight
-              // (old cityOverrides/theme is being migrated to cities/{cid})
-              if (co.theme) {
-                if (!window.BKK.cities[cid].theme) window.BKK.cities[cid].theme = {};
-                if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
-                if (co.theme.iconRight !== undefined) window.BKK.cities[cid].theme.iconRight = co.theme.iconRight;
-              }
-              // interests no longer in cityOverrides — all interests live in Firebase customInterests
-            });
-            // Force React to re-read updated interestOptions
-            if (false) { // no longer triggered by city interests
-              setSelectedCityId(id => id); // trigger re-render
-            }
+            // cityOverrides retained for migration purposes only — general data now in cities/{cityId}/general
           }
           
           // System params
@@ -3539,18 +3585,7 @@
       }
       if (s.cityOverrides) {
         window.BKK._cityOverrides = s.cityOverrides;
-        const cityId = window.BKK.selectedCityId;
-        Object.keys(s.cityOverrides).forEach(cid => {
-          const co = s.cityOverrides[cid];
-          if (!window.BKK.cities[cid]) return;
-          if (cid === cityId) {
-            if (co.dayStartHour != null) { window.BKK.dayStartHour = co.dayStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.dayStartHour = co.dayStartHour); }
-            if (co.nightStartHour != null) { window.BKK.nightStartHour = co.nightStartHour; window.BKK.selectedCity && (window.BKK.selectedCity.nightStartHour = co.nightStartHour); }
-          }
-          // interests no longer in cityOverrides — all interests live in Firebase customInterests
-
-        });
-        // no longer triggered by city interests
+        // cityOverrides retained for migration purposes only — general data now in cities/{cityId}/general
       }
       
       console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
@@ -3735,12 +3770,7 @@
     if (!window.BKK.cities[cityId]) return;
     
     window.BKK.selectCity(cityId);
-    // Apply Firebase overrides for day/night hours
-    const overrides = window.BKK._cityOverrides?.[cityId];
-    if (overrides) {
-      if (overrides.dayStartHour != null) { window.BKK.dayStartHour = overrides.dayStartHour; window.BKK.selectedCity.dayStartHour = overrides.dayStartHour; }
-      if (overrides.nightStartHour != null) { window.BKK.nightStartHour = overrides.nightStartHour; window.BKK.selectedCity.nightStartHour = overrides.nightStartHour; }
-    }
+    // day/night hours and icons loaded from cities/{cityId}/general by useEffect on selectedCityId
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
     setCustomLocations([]); // Clear immediately — Firebase listener for new city will repopulate
