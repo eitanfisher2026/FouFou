@@ -3171,8 +3171,8 @@
         if (g.nameEn) city.nameEn = g.nameEn;
         if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
         if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
-        // Trigger React re-render so header/UI picks up new values
-        setSelectedCityId(id => id);
+        // Trigger React re-render so header/UI picks up new values from general
+        setCityEditCounter(c => c + 1);
       }).catch(() => {});
     }
   }, [selectedCityId]);
