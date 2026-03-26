@@ -1044,6 +1044,7 @@ const FouFouApp = () => {
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
+  const [cityVisibilityInterest, setCityVisibilityInterest] = useState(null); // interest object for city visibility dialog
   const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', nameKeywords: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, minRatingCount: null, lowRatingCount: null });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
@@ -11998,26 +11999,12 @@ const FouFouApp = () => {
                     {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
                     {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
                     {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
-                    {/* City visibility button — opens inline checkboxes */}
-                    <details style={{ flexShrink: 0, position: 'relative' }}>
-                      <summary style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', listStyle: 'none', userSelect: 'none' }}
-                        title="ניהול ניראות לפי עיר">{cityLabel}</summary>
-                      <div style={{ position: 'absolute', zIndex: 50, background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px', bottom: '100%', right: 0, marginBottom: '4px' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '6px' }}>ניראות לפי עיר</div>
-                        {allCities.map(city => {
-                          const cityHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
-                          return (
-                            <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 0', cursor: 'pointer', fontSize: '12px' }}>
-                              <input type="checkbox" checked={!cityHidden}
-                                onChange={() => toggleCityForInterest(i.id, city.id)}
-                                style={{ cursor: 'pointer' }} />
-                              <span>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
-                              <span>{tLabel(city) || city.nameEn || city.id}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </details>
+                    {/* City visibility button — opens dialog */}
+                    <button onClick={() => setCityVisibilityInterest(i)}
+                      title="ניהול ניראות לפי עיר"
+                      style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
+                      {cityLabel}
+                    </button>
                     <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
                   </div>
                 );
@@ -13002,6 +12989,42 @@ const FouFouApp = () => {
             <span style={{ fontSize: '10px', opacity: 0.8 }}>tap to exit</span>
           </div>
         )}
+
+        {/* === CITY VISIBILITY DIALOG === */}
+        {cityVisibilityInterest && (() => {
+          const i = cityVisibilityInterest;
+          const allCities = Object.values(window.BKK.cities || {});
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={() => setCityVisibilityInterest(null)}>
+              <div style={{ background: 'white', borderRadius: '12px', padding: '20px', minWidth: '260px', maxWidth: '340px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                    <span style={{ marginLeft: '6px' }}>{i.icon?.startsWith?.('data:') ? '' : (i.icon || '📍')}</span>
+                    {tLabel(i) || i.label}
+                  </div>
+                  <button onClick={() => setCityVisibilityInterest(null)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280' }}>✕</button>
+                </div>
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px' }}>ניראות לפי עיר</div>
+                {allCities.map(city => {
+                  const isHidden = (cityHiddenInterests[city.id] || new Set()).has(i.id);
+                  return (
+                    <label key={city.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', borderRadius: '8px', cursor: 'pointer', marginBottom: '4px', background: isHidden ? '#f9fafb' : '#f0fdf4', border: '1px solid', borderColor: isHidden ? '#e5e7eb' : '#bbf7d0' }}>
+                      <input type="checkbox" checked={!isHidden}
+                        onChange={() => toggleCityForInterest(i.id, city.id)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '18px' }}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                      <span style={{ fontSize: '14px', fontWeight: '500' }}>{tLabel(city) || city.nameEn || city.id}</span>
+                      <span style={{ marginRight: 'auto', fontSize: '11px', color: isHidden ? '#9ca3af' : '#16a34a' }}>{isHidden ? 'מוסתר' : 'גלוי'}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* === DIALOGS (from dialogs.js) === */}
 
