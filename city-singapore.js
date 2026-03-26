@@ -1,14 +1,13 @@
-// City data: singapore
+// City data: Singapore
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.singapore = {
   "id": "singapore",
   "name": "סינגפור",
   "nameEn": "Singapore",
   "country": "Singapore",
-  "icon": "🦁",
-  "secondaryIcon": "🌴",
+  "icon": "📍",
   "theme": {
-    "color": "#c0392b",
+    "color": "#c7665c",
     "iconLeft": "",
     "iconRight": ""
   },
@@ -83,73 +82,5 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interestToGooglePlaces": {
-    "food": [
-      "restaurant",
-      "meal_takeaway"
-    ],
-    "cafes": [
-      "cafe",
-      "coffee_shop"
-    ],
-    "hawkers": [
-      "restaurant"
-    ],
-    "temples": [
-      "hindu_temple",
-      "church",
-      "mosque",
-      "synagogue"
-    ],
-    "gardens": [
-      "park",
-      "botanical_garden"
-    ],
-    "architecture": [
-      "historical_landmark"
-    ],
-    "graffiti": [
-      "art_gallery"
-    ],
-    "galleries": [
-      "art_gallery",
-      "museum"
-    ],
-    "markets": [
-      "market",
-      "shopping_mall"
-    ],
-    "nightlife": [
-      "bar",
-      "night_club"
-    ],
-    "shopping": [
-      "shopping_mall",
-      "store"
-    ],
-    "rooftop": [
-      "bar",
-      "restaurant"
-    ]
-  },
-  "textSearchInterests": {
-    "graffiti": "street art",
-    "hawkers": "hawker centre",
-    "gardens": "garden"
-  },
-  "interestTooltips": {
-    "food": "מסעדות מכל העולם",
-    "cafes": "בתי קפה",
-    "hawkers": "מרכזי הוקרס — אוכל רחוב סינגפורי",
-    "temples": "מקדשים בודהיסטיים, הינדיים, מסגדים",
-    "gardens": "גנים בוטניים ופארקים",
-    "architecture": "קולוניאלי, שופהאוסים, מודרני",
-    "graffiti": "אומנות רחוב",
-    "galleries": "גלריות ומוזיאונים",
-    "markets": "שווקים ובזארים",
-    "nightlife": "ברים ומועדונים",
-    "shopping": "קניונים וחנויות",
-    "rooftop": "ברים ומסעדות על גגות"
-  },
   "systemRoutes": []
 };

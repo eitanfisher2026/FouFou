@@ -2844,6 +2844,28 @@ const FouFouApp = () => {
         });
       }
 
+      if (localStorage.getItem('city_icons_migrated_v1221') !== 'true') {
+        database.ref('settings/cityOverrides').once('value').then(snap => {
+          const data = snap.val() || {};
+          const writes = {};
+          Object.entries(data).forEach(([cityId, co]) => {
+            if (co.theme) {
+              if (co.theme.icon) writes[`cities/${cityId}/icon`] = co.theme.icon;
+              if (co.theme.iconLeft) writes[`cities/${cityId}/iconLeft`] = co.theme.iconLeft;
+              if (co.theme.iconRight) writes[`cities/${cityId}/iconRight`] = co.theme.iconRight;
+              writes[`settings/cityOverrides/${cityId}/theme`] = null;
+            }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_icons_migrated_v1221', 'true'))
+              .catch(e => console.error('[MIGRATION] city icons failed:', e));
+          } else {
+            localStorage.setItem('city_icons_migrated_v1221', 'true');
+          }
+        });
+      }
+
       if (localStorage.getItem('cityHidden_cleaned_v124') !== 'true') {
         Promise.all([
           database.ref('customInterests').once('value'),
@@ -3143,6 +3165,18 @@ const FouFouApp = () => {
       setCustomLocations([]);
       setLocationsLoading(false);
       markLoaded('locations');
+    }
+
+    if (isFirebaseAvailable && database) {
+      database.ref(`cities/${selectedCityId}/icon`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { window.BKK.cities[selectedCityId].icon = v; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = v; }
+      }).catch(() => {});
+      database.ref(`cities/${selectedCityId}/iconLeft`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconLeft = v; }
+      }).catch(() => {});
+      database.ref(`cities/${selectedCityId}/iconRight`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconRight = v; }
+      }).catch(() => {});
     }
   }, [selectedCityId]);
 
@@ -10725,10 +10759,14 @@ const FouFouApp = () => {
                                 <input type="file" accept="image/*,image/jpeg,image/jfif" className="hidden" onChange={async (e) => {
                                   const file = e.target.files?.[0]; if (!file) return;
                                   const compressed = await window.BKK.compressIcon(file, 80);
-                                  if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1); }
+                                  if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1);
+                                    if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(compressed).catch(e => console.error('[CITY] icon save error:', e));
+                                  }
                                 }} />
                               </label>
-                              <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                              <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
+                                if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/icon`).set(emoji).catch(e => console.error('[CITY] icon save error:', e));
+                              }, suggestions: [], loading: false })}
                                 style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
                               >✨</button>
                             </div>
@@ -10804,11 +10842,13 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconLeft = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconLeft: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(compressed).catch(e => console.error('[CITY] iconLeft save error:', e));
                                 }
                             }} />
                           </label>
-                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconLeft`).set(emoji).catch(e => console.error('[CITY] iconLeft save error:', e));
+                          }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
                         </div>
@@ -10829,11 +10869,13 @@ const FouFouApp = () => {
                               if (compressed) {
                                   city.theme.iconRight = compressed;
                                   setCityModified(true); setCityEditCounter(c => c + 1);
-                                  if (isFirebaseAvailable && database) database.ref(`settings/cityOverrides/${city.id}/theme`).update({ iconRight: compressed }).catch(e => console.error('[CITY] theme save error:', e));
+                                  if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(compressed).catch(e => console.error('[CITY] iconRight save error:', e));
                                 }
                             }} />
                           </label>
-                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1); }, suggestions: [], loading: false })}
+                          <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
+                            if (isFirebaseAvailable && database) database.ref(`cities/${city.id}/iconRight`).set(emoji).catch(e => console.error('[CITY] iconRight save error:', e));
+                          }, suggestions: [], loading: false })}
                             style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706' }} title="בחר אמוג'י"
                           >✨</button>
                         </div>

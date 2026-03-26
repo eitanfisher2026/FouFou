@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.12.20
+// FouFou app-data.js v3.12.21
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2786,27 +2786,26 @@ window.BKK.seedSystemRoutes = function(database) {
   });
 };
 
-// City data: gushdan
+// City data: Tel Aviv
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.gushdan = {
   "id": "gushdan",
-  "name": "גוש דן",
-  "nameEn": "Gush Dan",
+  "name": "תל אביב",
+  "nameEn": "Tel Aviv",
   "country": "Israel",
   "icon": "🏖️",
-  "secondaryIcon": "☀️",
   "theme": {
     "color": "#2980b9",
-    "iconLeft": "🏖️",
-    "iconRight": "🌆"
+    "iconLeft": "",
+    "iconRight": ""
   },
   "active": true,
   "distanceMultiplier": 1.2,
   "dayStartHour": 7,
   "nightStartHour": 18,
   "center": {
-    "lat": 32.0802,
-    "lng": 34.8871
+    "lat": 32.0418,
+    "lng": 34.8761
   },
   "allCityRadius": 15000,
   "areas": [
@@ -2816,9 +2815,9 @@ window.BKK.cityData.gushdan = {
       "labelEn": "North Tel Aviv",
       "desc": "הנמל, פארק הירקון, בזל",
       "descEn": "Port, Yarkon Park, Basel",
-      "lat": 32.1117,
-      "lng": 34.7971,
-      "radius": 3000,
+      "lat": 32.1111,
+      "lng": 34.804,
+      "radius": 3400,
       "size": "large",
       "safety": "safe"
     },
@@ -2828,8 +2827,8 @@ window.BKK.cityData.gushdan = {
       "labelEn": "Central Tel Aviv",
       "desc": "רוטשילד, דיזנגוף, הבימה",
       "descEn": "Rothschild, Dizengoff, Habima",
-      "lat": 32.0677,
-      "lng": 34.7762,
+      "lat": 32.0803,
+      "lng": 34.7779,
       "radius": 2000,
       "size": "large",
       "safety": "safe"
@@ -2876,8 +2875,8 @@ window.BKK.cityData.gushdan = {
       "labelEn": "Petah Tikva",
       "desc": "מסעדות, פארקים, קניונים",
       "descEn": "Restaurants, parks, malls",
-      "lat": 32.0994,
-      "lng": 34.8885,
+      "lat": 32.1047,
+      "lng": 34.8843,
       "radius": 4100,
       "size": "large",
       "safety": "safe"
@@ -2888,8 +2887,8 @@ window.BKK.cityData.gushdan = {
       "labelEn": "Herzliya",
       "desc": "מרינה, חופים, הייטק",
       "descEn": "Marina, beaches, hi-tech",
-      "lat": 32.1646,
-      "lng": 34.8325,
+      "lat": 32.1564,
+      "lng": 34.8294,
       "radius": 3700,
       "size": "large",
       "safety": "safe"
@@ -2899,9 +2898,9 @@ window.BKK.cityData.gushdan = {
       "label": "רמת גן וגבעתיים",
       "labelEn": "Ramat Gan & Givatayim",
       "desc": "הבורסה, ספארי, פארקים",
-      "lat": 32.0558,
-      "lng": 34.8129,
-      "radius": 2500,
+      "lat": 32.0546,
+      "lng": 34.815,
+      "radius": 2800,
       "size": "large",
       "safety": "safe"
     },
@@ -2911,79 +2910,13 @@ window.BKK.cityData.gushdan = {
       "labelEn": "Bnei Brak",
       "desc": "שווקים, אוכל, תרבות חרדית",
       "descEn": "Markets, food, ultra-orthodox culture",
-      "lat": 32.0837,
-      "lng": 34.8332,
-      "radius": 1100,
+      "lat": 32.0861,
+      "lng": 34.8335,
+      "radius": 1200,
       "size": "medium",
       "safety": "safe"
     }
   ],
-  "interestToGooglePlaces": {
-    "food": [
-      "restaurant",
-      "meal_takeaway"
-    ],
-    "cafes": [
-      "cafe",
-      "coffee_shop"
-    ],
-    "beaches": [
-      "beach"
-    ],
-    "graffiti": [
-      "art_gallery"
-    ],
-    "galleries": [
-      "art_gallery",
-      "museum"
-    ],
-    "architecture": [
-      "historical_landmark"
-    ],
-    "markets": [
-      "market",
-      "shopping_mall"
-    ],
-    "nightlife": [
-      "bar",
-      "night_club"
-    ],
-    "parks": [
-      "park"
-    ],
-    "shopping": [
-      "shopping_mall",
-      "store"
-    ],
-    "culture": [
-      "performing_arts_theater",
-      "cultural_center",
-      "museum"
-    ],
-    "history": [
-      "historical_landmark",
-      "museum"
-    ]
-  },
-  "textSearchInterests": {
-    "graffiti": "street art",
-    "architecture": "bauhaus building",
-    "beaches": "beach"
-  },
-  "interestTooltips": {
-    "food": "מסעדות ואוכל רחוב",
-    "cafes": "בתי קפה",
-    "beaches": "חופים וטיילות",
-    "graffiti": "אומנות רחוב וגרפיטי",
-    "galleries": "גלריות ומוזיאונים",
-    "architecture": "מבני באוהאוס ואדריכלות",
-    "markets": "שווקים ובזארים",
-    "nightlife": "ברים ומועדונים",
-    "parks": "פארקים וגנים",
-    "shopping": "קניונים וחנויות",
-    "culture": "תיאטרון, מוזיקה, מופעים",
-    "history": "אתרים היסטוריים ומוזיאונים"
-  },
   "systemRoutes": []
 };
 
@@ -3186,17 +3119,16 @@ window.BKK.cityData.malaga = {
   "systemRoutes": []
 };
 
-// City data: singapore
+// City data: Singapore
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.singapore = {
   "id": "singapore",
   "name": "סינגפור",
   "nameEn": "Singapore",
   "country": "Singapore",
-  "icon": "🦁",
-  "secondaryIcon": "🌴",
+  "icon": "📍",
   "theme": {
-    "color": "#c0392b",
+    "color": "#c7665c",
     "iconLeft": "",
     "iconRight": ""
   },
@@ -3271,74 +3203,6 @@ window.BKK.cityData.singapore = {
       "safety": "safe"
     }
   ],
-  "interestToGooglePlaces": {
-    "food": [
-      "restaurant",
-      "meal_takeaway"
-    ],
-    "cafes": [
-      "cafe",
-      "coffee_shop"
-    ],
-    "hawkers": [
-      "restaurant"
-    ],
-    "temples": [
-      "hindu_temple",
-      "church",
-      "mosque",
-      "synagogue"
-    ],
-    "gardens": [
-      "park",
-      "botanical_garden"
-    ],
-    "architecture": [
-      "historical_landmark"
-    ],
-    "graffiti": [
-      "art_gallery"
-    ],
-    "galleries": [
-      "art_gallery",
-      "museum"
-    ],
-    "markets": [
-      "market",
-      "shopping_mall"
-    ],
-    "nightlife": [
-      "bar",
-      "night_club"
-    ],
-    "shopping": [
-      "shopping_mall",
-      "store"
-    ],
-    "rooftop": [
-      "bar",
-      "restaurant"
-    ]
-  },
-  "textSearchInterests": {
-    "graffiti": "street art",
-    "hawkers": "hawker centre",
-    "gardens": "garden"
-  },
-  "interestTooltips": {
-    "food": "מסעדות מכל העולם",
-    "cafes": "בתי קפה",
-    "hawkers": "מרכזי הוקרס — אוכל רחוב סינגפורי",
-    "temples": "מקדשים בודהיסטיים, הינדיים, מסגדים",
-    "gardens": "גנים בוטניים ופארקים",
-    "architecture": "קולוניאלי, שופהאוסים, מודרני",
-    "graffiti": "אומנות רחוב",
-    "galleries": "גלריות ומוזיאונים",
-    "markets": "שווקים ובזארים",
-    "nightlife": "ברים ומועדונים",
-    "shopping": "קניונים וחנויות",
-    "rooftop": "ברים ומסעדות על גגות"
-  },
   "systemRoutes": []
 };
 
@@ -3390,7 +3254,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.12.20';
+window.BKK.VERSION = '3.12.21';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

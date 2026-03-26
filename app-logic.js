@@ -2703,6 +2703,29 @@
         });
       }
 
+      // ONE-TIME MIGRATION: Move cityOverrides/theme icons → cities/{cityId}/icon|iconLeft|iconRight (v3.12.21)
+      if (localStorage.getItem('city_icons_migrated_v1221') !== 'true') {
+        database.ref('settings/cityOverrides').once('value').then(snap => {
+          const data = snap.val() || {};
+          const writes = {};
+          Object.entries(data).forEach(([cityId, co]) => {
+            if (co.theme) {
+              if (co.theme.icon) writes[`cities/${cityId}/icon`] = co.theme.icon;
+              if (co.theme.iconLeft) writes[`cities/${cityId}/iconLeft`] = co.theme.iconLeft;
+              if (co.theme.iconRight) writes[`cities/${cityId}/iconRight`] = co.theme.iconRight;
+              writes[`settings/cityOverrides/${cityId}/theme`] = null;
+            }
+          });
+          if (Object.keys(writes).length > 0) {
+            database.ref().update(writes)
+              .then(() => localStorage.setItem('city_icons_migrated_v1221', 'true'))
+              .catch(e => console.error('[MIGRATION] city icons failed:', e));
+          } else {
+            localStorage.setItem('city_icons_migrated_v1221', 'true');
+          }
+        });
+      }
+
       // ONE-TIME CLEANUP: Remove stale IDs from cityHiddenInterests (v3.12.4)
       // Removes interest IDs that no longer exist in customInterests
       if (localStorage.getItem('cityHidden_cleaned_v124') !== 'true') {
@@ -3032,6 +3055,19 @@
       setCustomLocations([]);
       setLocationsLoading(false);
       markLoaded('locations');
+    }
+
+    // Load city icons (icon/iconLeft/iconRight) from Firebase cities/{cityId}
+    if (isFirebaseAvailable && database) {
+      database.ref(`cities/${selectedCityId}/icon`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { window.BKK.cities[selectedCityId].icon = v; if (window.BKK.cityRegistry[selectedCityId]) window.BKK.cityRegistry[selectedCityId].icon = v; }
+      }).catch(() => {});
+      database.ref(`cities/${selectedCityId}/iconLeft`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconLeft = v; }
+      }).catch(() => {});
+      database.ref(`cities/${selectedCityId}/iconRight`).once('value').then(s => {
+        const v = s.val(); if (v && window.BKK.cities[selectedCityId]) { if (!window.BKK.cities[selectedCityId].theme) window.BKK.cities[selectedCityId].theme = {}; window.BKK.cities[selectedCityId].theme.iconRight = v; }
+      }).catch(() => {});
     }
   }, [selectedCityId]);
 
@@ -3392,7 +3428,8 @@
                 if (co.dayStartHour != null) window.BKK.dayStartHour = co.dayStartHour;
                 if (co.nightStartHour != null) window.BKK.nightStartHour = co.nightStartHour;
               }
-              // Apply theme icons (iconLeft/iconRight stored as data URLs in Firebase)
+              // Apply theme icons from cities/{cid}/icon|iconLeft|iconRight
+              // (old cityOverrides/theme is being migrated to cities/{cid})
               if (co.theme) {
                 if (!window.BKK.cities[cid].theme) window.BKK.cities[cid].theme = {};
                 if (co.theme.iconLeft !== undefined) window.BKK.cities[cid].theme.iconLeft = co.theme.iconLeft;
