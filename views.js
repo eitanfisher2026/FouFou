@@ -4164,8 +4164,8 @@
                 }
                 return customInterests.find(i => i.id === id) || { id };
               }).filter(Boolean);
+              // Settings tab always shows ALL interests — admin needs to see hidden ones too
               const allInterestsSorted = fullList
-                .filter(i => (interestConfig[i.id]?.adminStatus || 'active') !== 'hidden')
                 .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
               const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;

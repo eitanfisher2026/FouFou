@@ -2455,6 +2455,17 @@
         }).catch(e => console.error('[PATCH] interestConfig read failed:', e));
       }
 
+      // ONE-TIME RESTORE: Set culture and shopping back to active (v3.12.5)
+      if (localStorage.getItem('restore_culture_shopping_v125') !== 'true') {
+        const writes = {};
+        ['culture', 'shopping'].forEach(id => {
+          writes[`settings/interestConfig/${id}/adminStatus`] = 'active';
+        });
+        database.ref().update(writes)
+          .then(() => localStorage.setItem('restore_culture_shopping_v125', 'true'))
+          .catch(e => console.error('[RESTORE] culture/shopping failed:', e));
+      }
+
       // ONE-TIME CLEANUP: Remove stale cityOverrides/interests from Firebase (v3.12.3)
       if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
         database.ref('settings/cityOverrides').once('value').then(snap => {

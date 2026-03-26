@@ -2624,6 +2624,16 @@ const FouFouApp = () => {
         }).catch(e => console.error('[PATCH] interestConfig read failed:', e));
       }
 
+      if (localStorage.getItem('restore_culture_shopping_v125') !== 'true') {
+        const writes = {};
+        ['culture', 'shopping'].forEach(id => {
+          writes[`settings/interestConfig/${id}/adminStatus`] = 'active';
+        });
+        database.ref().update(writes)
+          .then(() => localStorage.setItem('restore_culture_shopping_v125', 'true'))
+          .catch(e => console.error('[RESTORE] culture/shopping failed:', e));
+      }
+
       if (localStorage.getItem('cityOverrides_interests_cleaned') !== 'true') {
         database.ref('settings/cityOverrides').once('value').then(snap => {
           const data = snap.val() || {};
@@ -12023,7 +12033,6 @@ const FouFouApp = () => {
                 return customInterests.find(i => i.id === id) || { id };
               }).filter(Boolean);
               const allInterestsSorted = fullList
-                .filter(i => (interestConfig[i.id]?.adminStatus || 'active') !== 'hidden')
                 .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
               const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
               const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
