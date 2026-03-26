@@ -2541,22 +2541,26 @@
       //          locations[].interests arrays, users[].interestStatus keys
       if (localStorage.getItem('interest_ids_migrated_v1213') !== 'true') {
         const toId = (s) => 'i_' + s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        const cityIds = Object.keys(window.BKK.cities || {});
         Promise.all([
           database.ref('customInterests').once('value'),
           database.ref('settings/interestConfig').once('value'),
           database.ref('settings/interestStatus').once('value'),
           database.ref('users').once('value'),
-          database.ref('cities').once('value'),
-        ]).then(([ciSnap, cfgSnap, statusSnap, usersSnap, citiesSnap]) => {
+          // Read each city's locations + routes individually
+          ...cityIds.map(cid => Promise.all([
+            database.ref(`cities/${cid}/locations`).once('value'),
+            database.ref(`cities/${cid}/routes`).once('value')
+          ]).then(([locSnap, routeSnap]) => ({ cityId: cid, snap: locSnap, routesSnap: routeSnap })))
+        ]).then(([ciSnap, cfgSnap, statusSnap, usersSnap, ...citySnaps]) => {
           const ciData = ciSnap.val() || {};
           const cfgData = cfgSnap.val() || {};
           const statusData = statusSnap.val() || {};
           const usersData = usersSnap.val() || {};
-          const citiesData = citiesSnap.val() || {};
 
           // Build migration map: old_id → new_id
           const migration = {};
-          const fbKeyMap = {}; // old_id → fbKey
+          const fbKeyMap = {};
           Object.entries(ciData).forEach(([fbKey, val]) => {
             if (!val || !val.id) return;
             const labelEn = (val.labelEn || '').trim();
@@ -2588,12 +2592,39 @@
               writes[`settings/interestStatus/${newId}`] = statusData[oldId];
               writes[`settings/interestStatus/${oldId}`] = null;
             }
-            // 4. locations interests arrays
-            Object.entries(citiesData).forEach(([cityId, cityData]) => {
-              Object.entries(cityData.locations || {}).forEach(([locId, loc]) => {
+            // 4. locations + routes — from individually fetched cities
+            citySnaps.forEach(({ cityId, snap, routesSnap }) => {
+              // locations
+              const locsData = snap.val() || {};
+              Object.entries(locsData).forEach(([locId, loc]) => {
                 if (Array.isArray(loc.interests) && loc.interests.includes(oldId)) {
-                  writes[`cities/${cityId}/locations/${locId}/interests`] =
-                    loc.interests.map(i => i === oldId ? newId : i);
+                  const key = `cities/${cityId}/locations/${locId}/interests`;
+                  const current = writes[key] || loc.interests;
+                  writes[key] = current.map(i => i === oldId ? newId : i);
+                }
+              });
+              // routes: preferences.interests, stops[].interests, stops[]._debug.interestId
+              const routesData = (routesSnap && routesSnap.val()) || {};
+              Object.entries(routesData).forEach(([routeId, route]) => {
+                const prefInts = route.preferences?.interests;
+                if (Array.isArray(prefInts) && prefInts.includes(oldId)) {
+                  const key = `cities/${cityId}/routes/${routeId}/preferences/interests`;
+                  const current = writes[key] || prefInts;
+                  writes[key] = current.map(i => i === oldId ? newId : i);
+                }
+                const stops = route.stops;
+                if (Array.isArray(stops)) {
+                  stops.forEach((stop, idx) => {
+                    if (!stop) return;
+                    if (Array.isArray(stop.interests) && stop.interests.includes(oldId)) {
+                      const key = `cities/${cityId}/routes/${routeId}/stops/${idx}/interests`;
+                      const current = writes[key] || stop.interests;
+                      writes[key] = current.map(i => i === oldId ? newId : i);
+                    }
+                    if (stop._debug?.interestId === oldId) {
+                      writes[`cities/${cityId}/routes/${routeId}/stops/${idx}/_debug/interestId`] = newId;
+                    }
+                  });
                 }
               });
             });
@@ -2612,7 +2643,7 @@
               localStorage.setItem('interest_ids_migrated_v1213', 'true');
             })
             .catch(e => console.error('[MIGRATION] ID rename failed:', e));
-        });
+        }).catch(e => console.error('[MIGRATION] ID rename read failed:', e));
       }
 
       // ONE-TIME CLEANUP: Remove stale cityOverrides/interests from Firebase (v3.12.3)
