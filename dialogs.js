@@ -856,7 +856,7 @@
                               () => {
                                 setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
                                 if (editingLocation.firebaseId && isFirebaseAvailable && database) {
-                                  database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
+                                  removeLocationGooglePlaceId(selectedCityId, editingLocation.firebaseId);
                                   setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
                                   showToast('✅ Place ID נמחק', 'success');
                                 }
@@ -1468,8 +1468,7 @@
                     const arr = [...next];
                     setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
                     if (isFirebaseAvailable && database) {
-                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
-                        .catch(e => console.error('[CITY] toggle error:', e));
+                      saveCityHiddenInterests(cityId, arr);
                     }
                   };
                   return (
@@ -1519,7 +1518,7 @@
                                 const updCfg = { ...interestConfig, [interestId]: { ...cfg, adminStatus: s } };
                                 setInterestConfig(updCfg);
                                 if (isFirebaseAvailable && database) {
-                                  try { await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(s); } catch(e) {}
+                                  await saveInterestAdminStatusAsync(interestId, s);
                                 }
                                 const labels = { active: '🟢', draft: '🟡', hidden: '🔴' };
                                 showToast(`${labels[s]} ${tLabel(editingCustomInterest) || interestId} → ${s}`, 'info');
@@ -1555,7 +1554,7 @@
                       // Update local state immediately so UI responds — Firebase listener may lag
                       setInterestCounters(prev => ({ ...prev, [editingCustomInterest.id]: newCounter }));
                       if (isFirebaseAvailable && database) {
-                        database.ref(`cities/${selectedCityId}/interestCounters/${editingCustomInterest.id}`).set(newCounter);
+                        saveInterestCounter(selectedCityId, editingCustomInterest.id, newCounter);
                       }
                     };
                     return (
@@ -1590,7 +1589,7 @@
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
                                 if (isFirebaseAvailable && database) {
-                                  database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
+                                  removeInterestConfig(editingCustomInterest.id);
                                 }
                                 showToast(t('interests.builtInRemoved'), 'success');
                               } else {
@@ -1695,7 +1694,7 @@
                             if (isFirebaseAvailable && database) {
                               // Update local state immediately — Firebase listener may lag
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
-                              database.ref(`settings/interestConfig/${interestId}`).set(configData);
+                              saveInterestConfig(interestId, configData);
                             } else {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
                             }
@@ -1725,12 +1724,12 @@
                             if (isFirebaseAvailable && database) {
                               // Update local state immediately — Firebase listener may lag
                               setCustomInterests(prev => prev.map(ci => ci.id === interestId ? updatedInterest : ci));
-                              database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
+                              saveCustomInterestAndConfig(editingCustomInterest.firebaseId, interestId, updatedInterest, null);
                               if (Object.keys(searchConfig).length > 0) {
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
                                 setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
-                                database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
+                                saveInterestConfig(interestId, mergedConfig);
                               }
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
@@ -1814,42 +1813,30 @@
                             next.add(interestId);
                             setCityHiddenInterests(prev => ({ ...prev, [cid]: next }));
                             if (isFirebaseAvailable && database) {
-                              database.ref(`settings/cityHiddenInterests/${cid}`).set([...next])
-                                .catch(e => console.error('[INTEREST] hide in city error:', e));
+                              saveCityHiddenInterests(cid, [...next]);
                             }
                           });
                           
                           // Save in background
-                          if (isFirebaseAvailable && database) {
-                            database.ref(`customInterests/${interestId}`).set(newInterestData)
-                              .then(() => {
-                                console.log(`[INTEREST-SAVE] Saved to Firebase: ${interestId}`);
-                                recentlyAddedRef.current.delete(interestId);
-                                showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
-                                // Verify: read back to confirm server actually persisted it
-                                database.ref(`customInterests/${interestId}`).once('value').then(snap => {
-                                  if (!snap.val()) {
-                                    console.error(`[INTEREST-SAVE] ⚠️ VERIFICATION FAILED — saved but read-back is null! Server may have rejected the write.`);
-                                    showToast(`⚠️ "${newInterestData.label}" may not have been saved to server`, 'warning', 'sticky');
-                                  } else {
-                                    console.log(`[INTEREST-SAVE] ✅ Verified on server: ${interestId}`);
-                                  }
-                                });
-                              })
-                              .catch(e => {
-                                console.error(`[INTEREST-SAVE] FAILED: ${interestId}`, e);
-                                showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
-                                saveToPendingInterest(newInterestData, searchConfig);
-                              });
-                            // Enable interest status in Firebase
+                          const saved = saveNewCustomInterest(
+                            interestId, newInterestData,
+                            () => {
+                              console.log(`[INTEREST-SAVE] Saved to Firebase: ${interestId}`);
+                              recentlyAddedRef.current.delete(interestId);
+                              showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
+                            },
+                            (e) => {
+                              console.error(`[INTEREST-SAVE] FAILED: ${interestId}`, e);
+                              showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
+                              saveToPendingInterest(newInterestData, searchConfig);
+                            }
+                          );
+                          if (saved) {
                             const userId = authUser?.uid || 'unknown';
-                            database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
-                            // Also save admin-level status
-                            database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
+                            saveNewInterestStatus(userId, interestId);
+                            saveNewInterestStatus(null, interestId);
                             if (Object.keys(searchConfig).length > 0) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig)
-                                .then(() => console.log(`[INTEREST-SAVE] Config saved: ${interestId}`))
-                                .catch(e => console.error(`[INTEREST-SAVE] Config FAILED: ${interestId}`, e));
+                              saveInterestConfig(interestId, searchConfig);
                             }
                           } else {
                             const updated = [...customInterests, newInterestData];
@@ -2651,10 +2638,7 @@
                     onClick={() => {
                       showConfirm(t('settings.deleteAllFeedback'), () => {
                         if (isFirebaseAvailable && database) {
-                          database.ref('feedback').remove().then(() => {
-                            setFeedbackList([]);
-                            showToast(t('toast.allFeedbackDeleted'), 'success');
-                          });
+                          clearFeedbackList();
                         }
                       });
                     }}
@@ -3660,7 +3644,7 @@
           if (!window.confirm(`מחק משתמש "${displayName}"?
 פעולה זו אינה ניתנת לביטול.`)) return;
           try {
-            await database.ref(`users/${uid}`).remove();
+            await deleteUser(uid);
             showToast(`🗑️ "${displayName}" ${t('general.removed') || 'נמחק'}`, 'success');
             authLoadAllUsers();
           } catch (e) {

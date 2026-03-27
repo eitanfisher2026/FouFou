@@ -823,7 +823,6 @@ const FouFouApp = () => {
   // === SHARED HELPERS (avoid code duplication) ===
   
   const isStopDisabled = (stop) => disabledStops.includes((stop.name || '').toLowerCase().trim()) || !!stop.trailSkipped;
-  const isStopDisabledRef = (stop) => (disabledStopsRef.current || []).includes((stop.name || '').toLowerCase().trim());
   
   const runSmartPlanRef = React.useRef(null);
   const scheduleReoptimize = () => {
@@ -2283,6 +2282,148 @@ const FouFouApp = () => {
       });
   };
 
+  const saveSpeechRate = (rate) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] speechRate → ${rate}`);
+    database.ref('settings/systemParams/speechRate').set(rate);
+  };
+
+  const saveLocationLocked = (cityId, firebaseId, locked) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] location locked=${locked}`, { cityId, firebaseId });
+    database.ref(`cities/${cityId}/locations/${firebaseId}/locked`).set(locked);
+  };
+
+  const saveInterestAdminStatus = (interestId, status) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] interestConfig/${interestId}/adminStatus → ${status}`);
+    database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(status).catch(() => {});
+  };
+
+  const saveSystemParam = (key, value) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] systemParams/${key} → ${value}`);
+    database.ref(`settings/systemParams/${key}`).set(value);
+  };
+
+  const resetSystemParams = (defaults) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] systemParams RESET`, { keys: Object.keys(defaults) });
+    database.ref('settings/systemParams').set(defaults);
+  };
+
+  const saveBulkUpdate = async (batch) => {
+    if (!isFirebaseAvailable || !database) return;
+    if (Object.keys(batch).length === 0) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] bulkUpdate ${Object.keys(batch).length} keys`);
+    await database.ref().update(batch);
+  };
+
+  const clearAccessLog = async () => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[SETTINGS-SAVE] accessLog.remove()`);
+    await database.ref('accessLog').remove();
+  };
+
+  const removeLocationGooglePlaceId = (cityId, firebaseId) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] remove googlePlaceId`, { cityId, firebaseId });
+    database.ref(`cities/${cityId}/locations/${firebaseId}/googlePlaceId`).remove();
+  };
+
+  const saveCityHiddenInterests = (cityId, arr) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] cityHiddenInterests/${cityId}`, { count: arr.length });
+    database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
+      .catch(e => console.error('[CITY] toggle error:', e));
+  };
+
+  const saveInterestAdminStatusAsync = async (interestId, status) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] interestConfig/${interestId}/adminStatus → ${status}`);
+    try { await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(status); } catch(e) {}
+  };
+
+  const saveInterestCounter = (cityId, interestId, counter) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] interestCounters/${interestId} → ${counter}`);
+    database.ref(`cities/${cityId}/interestCounters/${interestId}`).set(counter);
+  };
+
+  const removeInterestConfig = (interestId) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] remove interestConfig/${interestId}`);
+    database.ref(`settings/interestConfig/${interestId}`).remove();
+  };
+
+  const saveInterestConfig = (interestId, configData) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] interestConfig/${interestId}`, { keys: Object.keys(configData) });
+    database.ref(`settings/interestConfig/${interestId}`).set(configData);
+  };
+
+  const saveCustomInterestAndConfig = (firebaseId, interestId, updatedInterest, mergedConfig) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] customInterest+config`, { firebaseId, interestId });
+    database.ref(`customInterests/${firebaseId || interestId}`).update(updatedInterest);
+    if (mergedConfig) database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
+  };
+
+  const saveNewInterest = (interestId, newInterestData, hiddenCityIds, userId, searchConfig) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] new interest ${interestId}`, { hiddenCities: hiddenCityIds.length });
+    database.ref(`customInterests/${interestId}`).set(newInterestData);
+    hiddenCityIds.forEach(cid => {
+      const cur = new Set(cityHiddenInterests[cid] || []);
+      cur.add(interestId);
+      database.ref(`settings/cityHiddenInterests/${cid}`).set([...cur]);
+    });
+    if (userId) database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
+    database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
+    if (searchConfig) database.ref(`settings/interestConfig/${interestId}`).set(searchConfig);
+  };
+
+  const clearFeedbackList = () => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] feedback.remove()`);
+    database.ref('feedback').remove().then(() => {
+      setFeedbackList([]);
+      showToast(t('toast.allFeedbackDeleted'), 'success');
+    });
+  };
+
+  const deleteUser = async (uid) => {
+    if (!isFirebaseAvailable || !database) return;
+    addDebugLog('firebase', `[DIALOG-SAVE] users/${uid}.remove()`);
+    await database.ref(`users/${uid}`).remove();
+  };
+
+  const saveNewInterestStatus = (userId, interestId) => {
+    if (!isFirebaseAvailable || !database) return;
+    if (userId) database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
+    else database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
+  };
+
+  const saveNewCustomInterest = (interestId, newInterestData, onSuccess, onError) => {
+    if (!isFirebaseAvailable || !database) return false;
+    addDebugLog('firebase', `[DIALOG-SAVE] new customInterest ${interestId}`);
+    database.ref(`customInterests/${interestId}`).set(newInterestData)
+      .then(() => {
+        database.ref(`customInterests/${interestId}`).once('value').then(snap => {
+          if (!snap.val()) {
+            console.error(`[INTEREST-SAVE] ⚠️ VERIFICATION FAILED for ${interestId}`);
+            showToast(`⚠️ "${newInterestData.label}" may not have been saved to server`, 'warning');
+          }
+        });
+        if (onSuccess) onSuccess();
+      })
+      .catch(e => {
+        addDebugLog('firebase', `[DIALOG-SAVE] ❌ customInterest FAILED ${interestId}`, { error: e.message });
+        if (onError) onError(e);
+      });
+    return true;
+  };
+
   const saveHelpContent = (sectionId, text) => {
     if (!isFirebaseAvailable || !database) return;
     const lang = window.BKK.i18n.currentLang || 'he';
@@ -2638,31 +2779,6 @@ const FouFouApp = () => {
       const duration = customDuration || (window.BKK.systemParams?.toastDuration ?? 3000);
       setTimeout(() => setToastMessage(null), duration);
     }
-  };
-
-  const validateStartPoint = async () => {
-    const text = formData.startPoint?.trim();
-    if (!text) {
-      showToast(t('form.enterAddressOrName'), 'warning');
-      return;
-    }
-    
-    setIsLocating(true);
-    try {
-      const result = await window.BKK.geocodeAddress(text);
-      if (result) {
-        const validatedAddress = result.address || result.displayName || text;
-        setStartPointCoords({ lat: result.lat, lng: result.lng, address: validatedAddress });
-        setFormData(prev => ({ ...prev, startPoint: validatedAddress }));
-        showToast(`${t("toast.addressVerified")} ${result.displayName || result.address}`, 'success');
-      } else {
-        showToast(t('places.addressNotFound'), 'warning');
-      }
-    } catch (err) {
-      console.error('[START_POINT] Geocode error:', err);
-      showToast(t('toast.addressSearchError'), 'error');
-    }
-    setIsLocating(false);
   };
 
   useEffect(() => {
@@ -4043,7 +4159,6 @@ const FouFouApp = () => {
   };
   
   const checkLocationInArea = window.BKK.checkLocationInArea;
-  const getButtonStyle = window.BKK.getButtonStyle;
 
   const GOOGLE_PLACES_TEXT_SEARCH_URL = window.BKK.GOOGLE_PLACES_TEXT_SEARCH_URL || 'https://places.googleapis.com/v1/places:searchText';
 
@@ -4816,58 +4931,6 @@ const FouFouApp = () => {
   };
 
   const [urlAuditResult, setUrlAuditResult] = useState(null);
-  const auditAndFixUrls = () => {
-    const isValidGPID = (pid) => pid && typeof pid === 'string' && /^(ChIJ|EiI|GhIJ)/.test(pid);
-    const cityLocs = customLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId);
-    const issues = [];
-    const fixes = {};
-    const memoryFixes = [];
-    
-    cityLocs.forEach(loc => {
-      const problems = [];
-      const locFixes = {};
-      
-      if (loc.googlePlaceId && !isValidGPID(loc.googlePlaceId)) {
-        problems.push('❌ googlePlaceId מזוהם: ' + loc.googlePlaceId.substring(0, 20));
-        if (loc.firebaseId) fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/googlePlaceId`] = null;
-        locFixes.googlePlaceId = null;
-      }
-      
-      const url = loc.mapsUrl || '';
-      if (url && !url.includes('google.com/maps') && url !== '#' && url.length > 0) {
-        problems.push('❌ URL לא תקין: ' + url.substring(0, 40));
-      } else if (url && url.match(/query_place_id=/) && !isValidGPID((url.match(/query_place_id=([^&]+)/) || [])[1])) {
-        problems.push('❌ URL עם placeId מזוהם');
-      }
-      
-      if (problems.length > 0) {
-        const cleanLoc = { ...loc, ...(locFixes.googlePlaceId === null ? { googlePlaceId: null } : {}) };
-        const newUrl = window.BKK.getGoogleMapsUrl(cleanLoc);
-        if (newUrl !== url && loc.firebaseId) {
-          fixes[`cities/${selectedCityId}/locations/${loc.firebaseId}/mapsUrl`] = newUrl;
-          locFixes.mapsUrl = newUrl;
-        }
-        memoryFixes.push({ id: loc.id, name: loc.name, ...locFixes });
-        issues.push({ name: loc.name, problems, fixed: true });
-      }
-      
-      if (!loc.googlePlaceId && loc.fromGoogle && loc.name) {
-        issues.push({ name: loc.name, problems: ['⚠️ אין googlePlaceId — רענון דירוג יהיה יקר'], fixed: false });
-      }
-    });
-    
-    if (Object.keys(fixes).length > 0 && isFirebaseAvailable && database) {
-      database.ref().update(fixes)
-        .then(() => showToast(`🔧 ${(t('toast.memoryFixesDone') || 'תוקנו {count} מקומות').replace('{count}', memoryFixes.length)}`, 'success'))
-        .catch(e => showToast('שגיאה: ' + e.message, 'error'));
-      setCustomLocations(prev => prev.map(loc => {
-        const fix = memoryFixes.find(f => f.id === loc.id);
-        return fix ? { ...loc, ...fix } : loc;
-      }));
-    }
-    
-    setUrlAuditResult({ total: cityLocs.length, issues, fixCount: memoryFixes.length });
-  };
 
   const refreshSingleGoogleRating = async (loc, inPlaceCallback = null) => {
     if (!GOOGLE_PLACES_API_KEY) {
@@ -5317,47 +5380,6 @@ const FouFouApp = () => {
 
   const uploadImage = window.BKK.uploadImage;
   
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-      showToast(t('places.selectImageFile'), 'error');
-      return;
-    }
-    
-    try {
-      showToast(t('toast.uploadingImage'), 'info');
-      const locationId = newLocation.id || 'loc_' + Date.now();
-      const imageUrl = await uploadImage(file, selectedCityId, locationId);
-      setNewLocation(prev => ({ ...prev, uploadedImage: imageUrl }));
-      showToast(t('toast.imageUploaded'), 'success');
-    } catch (error) {
-      console.error('[IMAGE] Upload error:', error);
-      showToast(t('toast.imageUploadError'), 'error');
-    }
-  };
-
-  const toggleInterest = (id) => {
-    const isCurrentlySelected = formData.interests.includes(id);
-    setFormData(prev => ({
-      ...prev,
-      interests: isCurrentlySelected
-        ? prev.interests.filter(i => i !== id)
-        : [...prev.interests, id]
-    }));
-    if (!isCurrentlySelected) {
-      const interestObj = allInterestOptions.find(o => o.id === id);
-      if (interestObj?.privateOnly) {
-        const label = tLabel(interestObj) || id;
-        showToast(
-          `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-          'info'
-        );
-      }
-    }
-  };
-
   useEffect(() => {
     if (!isDataLoaded) return;
     if (formData.interests.length === 0) return;
@@ -11181,7 +11203,7 @@ const FouFouApp = () => {
                         onChange={(e) => { 
                           city.theme.color = e.target.value;
                           setCityModified(true); setCityEditCounter(c => c + 1);
-                          if (isFirebaseAvailable && database && isUnlocked) database.ref(`cities/${city.id}/general/color`).set(e.target.value).catch(e => { console.error('[CITY] color save error:', e); showToast('❌ שגיאת שמירה: ' + e.message, 'error'); });
+                          saveCityGeneralField(city.id, 'color', e.target.value);
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
@@ -11266,7 +11288,7 @@ const FouFouApp = () => {
                         const city = window.BKK.selectedCity;
                         if (city) city.dayStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`cities/${selectedCityId}/general/dayStartHour`).set(clamped);
+                          saveCityGeneralField(selectedCityId, 'dayStartHour', clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -11287,7 +11309,7 @@ const FouFouApp = () => {
                         const city = window.BKK.selectedCity;
                         if (city) city.nightStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`cities/${selectedCityId}/general/nightStartHour`).set(clamped);
+                          saveCityGeneralField(selectedCityId, 'nightStartHour', clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -11869,7 +11891,7 @@ const FouFouApp = () => {
                         const updated = { ...systemParams, speechRate: rate };
                         window.BKK.systemParams = updated;
                         setSystemParams(updated);
-                        if (isFirebaseAvailable && database) database.ref('settings/systemParams/speechRate').set(rate);
+                        saveSpeechRate(rate);
                       }}
                       style={{
                         padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
@@ -11965,7 +11987,7 @@ const FouFouApp = () => {
                           let count = 0;
                           myDrafts.forEach(loc => {
                             if (loc.firebaseId && isFirebaseAvailable && database) {
-                              database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/locked`).set(true);
+                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
                               count++;
                             }
                           });
@@ -11986,7 +12008,7 @@ const FouFouApp = () => {
                           let count = 0;
                           cityLocs.forEach(loc => {
                             if (loc.firebaseId && isFirebaseAvailable && database) {
-                              database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/locked`).set(true);
+                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
                               count++;
                             }
                           });
@@ -12332,7 +12354,7 @@ const FouFouApp = () => {
                           onClick={async () => {
                             if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
                             try {
-                              await database.ref('accessLog').remove();
+                              await clearAccessLog();
                               showToast('✅ Old accessLog deleted', 'success');
                             } catch (e) {
                               showToast(`❌ Failed: ${e.message}`, 'error');
@@ -12381,7 +12403,7 @@ const FouFouApp = () => {
                                     if (pk && !pk.startsWith('(no name)')) batch[`cities/${cityId}/reviews/${pk}`] = null;
                                   }
                                 });
-                                if (database && Object.keys(batch).length > 0) await database.ref().update(batch);
+                                if (Object.keys(batch).length > 0) await saveBulkUpdate(batch);
                                 setCustomLocations(prev => prev.filter(l => !toDelete.find(d => d.firebaseId === l.firebaseId)));
                                 showToast((t('toast.cleanupDeleted') || 'Deleted {count} wrong-city locations').replace('{count}', toDelete.length), 'success', 'sticky');
                               } catch(e) { showToast(`Cleanup failed: ${e.message}`, 'error'); }
@@ -12590,7 +12612,7 @@ const FouFouApp = () => {
                                   const cfg = { ...(interestConfig[i.id] || {}), adminStatus: 'hidden' };
                                   setInterestConfig(prev => ({ ...prev, [i.id]: cfg }));
                                   if (isFirebaseAvailable && database) {
-                                    database.ref(`settings/interestConfig/${i.id}/adminStatus`).set('hidden').catch(() => {});
+                                    saveInterestAdminStatus(i.id, 'hidden');
                                   }
                                 }
                               });
@@ -12669,7 +12691,7 @@ const FouFouApp = () => {
                 window.BKK.systemParams = updated;
                 setSystemParams(updated);
                 if (isFirebaseAvailable && database) {
-                  database.ref(`settings/systemParams/${key}`).set(parsed);
+                  saveSystemParam(key, parsed);
                 }
                 if (key === 'maxStops') setFormData(prev => ({...prev, maxStops: parsed}));
                 if (key === 'fetchMoreCount') setFormData(prev => ({...prev, fetchMoreCount: parsed}));
@@ -12684,7 +12706,7 @@ const FouFouApp = () => {
                 setGoogleMaxWaypoints(defaults.googleMaxWaypoints);
                 window.BKK._defaultRadius = defaults.defaultRadius;
                 if (isFirebaseAvailable && database) {
-                  database.ref('settings/systemParams').set(defaults);
+                  resetSystemParams(defaults);
                 }
                 showToast(t('sysParams.resetDone'), 'success');
               };
@@ -14353,7 +14375,7 @@ const FouFouApp = () => {
                               () => {
                                 setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
                                 if (editingLocation.firebaseId && isFirebaseAvailable && database) {
-                                  database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseId}/googlePlaceId`).remove();
+                                  removeLocationGooglePlaceId(selectedCityId, editingLocation.firebaseId);
                                   setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
                                   showToast('✅ Place ID נמחק', 'success');
                                 }
@@ -14960,8 +14982,7 @@ const FouFouApp = () => {
                     const arr = [...next];
                     setCityHiddenInterests(prev => ({ ...prev, [cityId]: next }));
                     if (isFirebaseAvailable && database) {
-                      database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
-                        .catch(e => console.error('[CITY] toggle error:', e));
+                      saveCityHiddenInterests(cityId, arr);
                     }
                   };
                   return (
@@ -15010,7 +15031,7 @@ const FouFouApp = () => {
                                 const updCfg = { ...interestConfig, [interestId]: { ...cfg, adminStatus: s } };
                                 setInterestConfig(updCfg);
                                 if (isFirebaseAvailable && database) {
-                                  try { await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(s); } catch(e) {}
+                                  await saveInterestAdminStatusAsync(interestId, s);
                                 }
                                 const labels = { active: '🟢', draft: '🟡', hidden: '🔴' };
                                 showToast(`${labels[s]} ${tLabel(editingCustomInterest) || interestId} → ${s}`, 'info');
@@ -15045,7 +15066,7 @@ const FouFouApp = () => {
                       const newCounter = Math.max(0, v - 1);
                       setInterestCounters(prev => ({ ...prev, [editingCustomInterest.id]: newCounter }));
                       if (isFirebaseAvailable && database) {
-                        database.ref(`cities/${selectedCityId}/interestCounters/${editingCustomInterest.id}`).set(newCounter);
+                        saveInterestCounter(selectedCityId, editingCustomInterest.id, newCounter);
                       }
                     };
                     return (
@@ -15080,7 +15101,7 @@ const FouFouApp = () => {
                             showConfirm(msg, () => {
                               if (newInterest.builtIn) {
                                 if (isFirebaseAvailable && database) {
-                                  database.ref(`settings/interestConfig/${editingCustomInterest.id}`).remove();
+                                  removeInterestConfig(editingCustomInterest.id);
                                 }
                                 showToast(t('interests.builtInRemoved'), 'success');
                               } else {
@@ -15176,7 +15197,7 @@ const FouFouApp = () => {
                             }
                             if (isFirebaseAvailable && database) {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
-                              database.ref(`settings/interestConfig/${interestId}`).set(configData);
+                              saveInterestConfig(interestId, configData);
                             } else {
                               setInterestConfig(prev => ({...prev, [interestId]: configData}));
                             }
@@ -15204,12 +15225,12 @@ const FouFouApp = () => {
                             
                             if (isFirebaseAvailable && database) {
                               setCustomInterests(prev => prev.map(ci => ci.id === interestId ? updatedInterest : ci));
-                              database.ref(`customInterests/${editingCustomInterest.firebaseId || interestId}`).update(updatedInterest);
+                              saveCustomInterestAndConfig(editingCustomInterest.firebaseId, interestId, updatedInterest, null);
                               if (Object.keys(searchConfig).length > 0) {
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
                                 setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
-                                database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
+                                saveInterestConfig(interestId, mergedConfig);
                               }
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
@@ -15284,35 +15305,28 @@ const FouFouApp = () => {
                             next.add(interestId);
                             setCityHiddenInterests(prev => ({ ...prev, [cid]: next }));
                             if (isFirebaseAvailable && database) {
-                              database.ref(`settings/cityHiddenInterests/${cid}`).set([...next])
-                                .catch(e => console.error('[INTEREST] hide in city error:', e));
+                              saveCityHiddenInterests(cid, [...next]);
                             }
                           });
                           
-                          if (isFirebaseAvailable && database) {
-                            database.ref(`customInterests/${interestId}`).set(newInterestData)
-                              .then(() => {
-                                recentlyAddedRef.current.delete(interestId);
-                                showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
-                                database.ref(`customInterests/${interestId}`).once('value').then(snap => {
-                                  if (!snap.val()) {
-                                    console.error(`[INTEREST-SAVE] ⚠️ VERIFICATION FAILED — saved but read-back is null! Server may have rejected the write.`);
-                                    showToast(`⚠️ "${newInterestData.label}" may not have been saved to server`, 'warning', 'sticky');
-                                  } else {
-                                  }
-                                });
-                              })
-                              .catch(e => {
-                                console.error(`[INTEREST-SAVE] FAILED: ${interestId}`, e);
-                                showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
-                                saveToPendingInterest(newInterestData, searchConfig);
-                              });
+                          const saved = saveNewCustomInterest(
+                            interestId, newInterestData,
+                            () => {
+                              recentlyAddedRef.current.delete(interestId);
+                              showToast(`✅ ${newInterestData.label} — ${t('interests.interestAdded')}`, 'success');
+                            },
+                            (e) => {
+                              console.error(`[INTEREST-SAVE] FAILED: ${interestId}`, e);
+                              showToast(`❌ ${t('toast.saveError')}: ${e.message}`, 'error', 'sticky');
+                              saveToPendingInterest(newInterestData, searchConfig);
+                            }
+                          );
+                          if (saved) {
                             const userId = authUser?.uid || 'unknown';
-                            database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
-                            database.ref(`settings/interestStatus/${interestId}`).set(true).catch(() => {});
+                            saveNewInterestStatus(userId, interestId);
+                            saveNewInterestStatus(null, interestId);
                             if (Object.keys(searchConfig).length > 0) {
-                              database.ref(`settings/interestConfig/${interestId}`).set(searchConfig)
-                                .catch(e => console.error(`[INTEREST-SAVE] Config FAILED: ${interestId}`, e));
+                              saveInterestConfig(interestId, searchConfig);
                             }
                           } else {
                             const updated = [...customInterests, newInterestData];
@@ -16110,10 +16124,7 @@ const FouFouApp = () => {
                     onClick={() => {
                       showConfirm(t('settings.deleteAllFeedback'), () => {
                         if (isFirebaseAvailable && database) {
-                          database.ref('feedback').remove().then(() => {
-                            setFeedbackList([]);
-                            showToast(t('toast.allFeedbackDeleted'), 'success');
-                          });
+                          clearFeedbackList();
                         }
                       });
                     }}
@@ -17109,7 +17120,7 @@ const FouFouApp = () => {
           if (!window.confirm(`מחק משתמש "${displayName}"?
 פעולה זו אינה ניתנת לביטול.`)) return;
           try {
-            await database.ref(`users/${uid}`).remove();
+            await deleteUser(uid);
             showToast(`🗑️ "${displayName}" ${t('general.removed') || 'נמחק'}`, 'success');
             authLoadAllUsers();
           } catch (e) {

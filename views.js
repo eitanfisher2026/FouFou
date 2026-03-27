@@ -2722,7 +2722,7 @@
                         onChange={(e) => { 
                           city.theme.color = e.target.value;
                           setCityModified(true); setCityEditCounter(c => c + 1);
-                          if (isFirebaseAvailable && database && isUnlocked) database.ref(`cities/${city.id}/general/color`).set(e.target.value).catch(e => { console.error('[CITY] color save error:', e); showToast('❌ שגיאת שמירה: ' + e.message, 'error'); });
+                          saveCityGeneralField(city.id, 'color', e.target.value);
                         }}
                         style={{ width: '28px', height: '22px', border: 'none', cursor: 'pointer', borderRadius: '4px', padding: 0 }}
                       />
@@ -2807,7 +2807,7 @@
                         const city = window.BKK.selectedCity;
                         if (city) city.dayStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`cities/${selectedCityId}/general/dayStartHour`).set(clamped);
+                          saveCityGeneralField(selectedCityId, 'dayStartHour', clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -2828,7 +2828,7 @@
                         const city = window.BKK.selectedCity;
                         if (city) city.nightStartHour = clamped;
                         if (isFirebaseAvailable && database && isUnlocked) {
-                          database.ref(`cities/${selectedCityId}/general/nightStartHour`).set(clamped);
+                          saveCityGeneralField(selectedCityId, 'nightStartHour', clamped);
                         }
                         setFormData(prev => ({...prev}));
                       };
@@ -3417,7 +3417,7 @@
                         const updated = { ...systemParams, speechRate: rate };
                         window.BKK.systemParams = updated;
                         setSystemParams(updated);
-                        if (isFirebaseAvailable && database) database.ref('settings/systemParams/speechRate').set(rate);
+                        saveSpeechRate(rate);
                       }}
                       style={{
                         padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
@@ -3514,7 +3514,7 @@
                           let count = 0;
                           myDrafts.forEach(loc => {
                             if (loc.firebaseId && isFirebaseAvailable && database) {
-                              database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/locked`).set(true);
+                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
                               count++;
                             }
                           });
@@ -3535,7 +3535,7 @@
                           let count = 0;
                           cityLocs.forEach(loc => {
                             if (loc.firebaseId && isFirebaseAvailable && database) {
-                              database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}/locked`).set(true);
+                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
                               count++;
                             }
                           });
@@ -3888,7 +3888,7 @@
                           onClick={async () => {
                             if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
                             try {
-                              await database.ref('accessLog').remove();
+                              await clearAccessLog();
                               showToast('✅ Old accessLog deleted', 'success');
                             } catch (e) {
                               showToast(`❌ Failed: ${e.message}`, 'error');
@@ -3937,7 +3937,7 @@
                                     if (pk && !pk.startsWith('(no name)')) batch[`cities/${cityId}/reviews/${pk}`] = null;
                                   }
                                 });
-                                if (database && Object.keys(batch).length > 0) await database.ref().update(batch);
+                                if (Object.keys(batch).length > 0) await saveBulkUpdate(batch);
                                 setCustomLocations(prev => prev.filter(l => !toDelete.find(d => d.firebaseId === l.firebaseId)));
                                 showToast((t('toast.cleanupDeleted') || 'Deleted {count} wrong-city locations').replace('{count}', toDelete.length), 'success', 'sticky');
                                 console.log(`[CLEANUP] Geo-deleted ${toDelete.length} outliers from ${cityId}`);
@@ -4161,7 +4161,7 @@
                                   const cfg = { ...(interestConfig[i.id] || {}), adminStatus: 'hidden' };
                                   setInterestConfig(prev => ({ ...prev, [i.id]: cfg }));
                                   if (isFirebaseAvailable && database) {
-                                    database.ref(`settings/interestConfig/${i.id}/adminStatus`).set('hidden').catch(() => {});
+                                    saveInterestAdminStatus(i.id, 'hidden');
                                   }
                                 }
                               });
@@ -4240,7 +4240,7 @@
                 window.BKK.systemParams = updated;
                 setSystemParams(updated);
                 if (isFirebaseAvailable && database) {
-                  database.ref(`settings/systemParams/${key}`).set(parsed);
+                  saveSystemParam(key, parsed);
                 }
                 // Live-apply app settings
                 if (key === 'maxStops') setFormData(prev => ({...prev, maxStops: parsed}));
@@ -4256,7 +4256,7 @@
                 setGoogleMaxWaypoints(defaults.googleMaxWaypoints);
                 window.BKK._defaultRadius = defaults.defaultRadius;
                 if (isFirebaseAvailable && database) {
-                  database.ref('settings/systemParams').set(defaults);
+                  resetSystemParams(defaults);
                 }
                 showToast(t('sysParams.resetDone'), 'success');
               };
