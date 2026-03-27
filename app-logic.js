@@ -1537,7 +1537,7 @@
     try { return JSON.parse(localStorage.getItem('foufou_debug_sessions') || '[]'); } catch { return []; }
   });
   // Debug popup removed — using floating debug panel instead
-  const debugModeRef = useRef(debugMode);
+  const debugModeRef = useRef(localStorage.getItem('foufou_debug_mode') === 'true');
   const debugCategoriesRef = useRef(debugCategories);
   useEffect(() => { debugModeRef.current = debugMode; }, [debugMode]);
   useEffect(() => { debugCategoriesRef.current = debugCategories; }, [debugCategories]);
