@@ -31,7 +31,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.12.43` (Mar 27, 2026)
+- **גרסה:** `3.12.44` (Mar 27, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail

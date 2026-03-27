@@ -1933,6 +1933,9 @@
       showToast('❌ Icon upload error: ' + e.message, 'error');
     }
   };
+  // Expose for Console testing
+  window.BKK._handleCityIconUpload = handleCityIconUpload;
+  window.BKK._saveCityGeneralField = (cityId, field, value) => saveCityGeneralField(cityId, field, value);
 
   const saveCityGeneralField = (cityId, field, value) => {
     if (!isFirebaseAvailable || !database) {
