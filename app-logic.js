@@ -3389,6 +3389,7 @@
     if (isFirebaseAvailable && database) {
       database.ref(`cities/${selectedCityId}/general`).once('value').then(s => {
         const g = s.val();
+        addDebugLog('firebase', `[CITY-LOAD] cities/${selectedCityId}/general`, { hasData: !!g, icon: g?.icon?.substring(0,20), iconLeft: g?.iconLeft?.substring(0,20) });
         if (!window.BKK.cities[selectedCityId]) return;
         if (!g) return;
         const city = window.BKK.cities[selectedCityId];
@@ -3402,6 +3403,7 @@
         if (g.nameEn) city.nameEn = g.nameEn;
         if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
         if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
+        addDebugLog('firebase', `[CITY-LOAD] Applied to city object`, { cityIcon: city.icon?.substring(0,20), sameRef: city === window.BKK.selectedCity });
         // Trigger React re-render so header/UI picks up new values from general
         setCityEditCounter(c => c + 1);
       }).catch(() => {});
