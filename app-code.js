@@ -12763,6 +12763,8 @@ const FouFouApp = () => {
               );
             })()}
 
+            </div>)}
+
             {/* ===== DEBUG TAB ===== */}
             {settingsTab === 'debug' && debugMode && (
               <DebugTab
@@ -12780,7 +12782,6 @@ const FouFouApp = () => {
                 askClaude={askClaude}
               />
             )}
-            </div>)}
             
           </div>
         )}
