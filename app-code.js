@@ -2259,6 +2259,33 @@ const FouFouApp = () => {
     }).catch(() => {});
   }, [isFirebaseAvailable]);
 
+  const handleCityIconUpload = async (file, cityId, field, maxSize) => {
+    if (!file) return;
+    addDebugLog('firebase', `[CITY-ICON] handleCityIconUpload called`, { cityId, field, fileName: file.name, fileSize: file.size });
+    try {
+      const compressed = await window.BKK.compressIcon(file, maxSize || 80);
+      addDebugLog('firebase', `[CITY-ICON] compressIcon result`, { hasResult: !!compressed, length: compressed?.length });
+      if (!compressed) {
+        showToast('❌ Failed to compress icon', 'error');
+        return;
+      }
+      const city = window.BKK.cities?.[cityId];
+      if (city) {
+        if (field === 'icon') city.icon = compressed;
+        else if (field === 'iconLeft') { if (!city.theme) city.theme = {}; city.theme.iconLeft = compressed; }
+        else if (field === 'iconRight') { if (!city.theme) city.theme = {}; city.theme.iconRight = compressed; }
+      }
+      const regKey = Object.keys(window.BKK.cityRegistry || {}).find(k => window.BKK.cityRegistry[k].id === cityId);
+      if (regKey && field === 'icon') window.BKK.cityRegistry[regKey].icon = compressed;
+      setCityModified(true);
+      setCityEditCounter(c => c + 1);
+      saveCityGeneralField(cityId, field, compressed);
+    } catch (e) {
+      addDebugLog('firebase', `[CITY-ICON] ❌ error`, { error: e.message });
+      showToast('❌ Icon upload error: ' + e.message, 'error');
+    }
+  };
+
   const saveCityGeneralField = (cityId, field, value) => {
     if (!isFirebaseAvailable || !database) {
       showToast('❌ Firebase not available', 'error');
@@ -11133,13 +11160,7 @@ const FouFouApp = () => {
                             <div style={{ display: 'flex', gap: '3px' }}>
                               <label style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontWeight: 'bold' }} title="העלה קובץ">
                                 📁
-                                <input type="file" accept="image/*,image/jpeg,image/jfif" className="hidden" onChange={async (e) => {
-                                  const file = e.target.files?.[0]; if (!file) return;
-                                  const compressed = await window.BKK.compressIcon(file, 80);
-                                  if (compressed) { city.icon = compressed; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = compressed; setCityModified(true); setCityEditCounter(c => c + 1);
-                                    saveCityGeneralField(city.id, 'icon', compressed);
-                                  }
-                                }} />
+                                <input type="file" accept="image/*,image/jpeg,image/jfif" className="hidden" onChange={(e) => handleCityIconUpload(e.target.files?.[0], city.id, 'icon', 80)} />
                               </label>
                               <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
                                 saveCityGeneralField(city.id, 'icon', emoji);
@@ -11214,15 +11235,7 @@ const FouFouApp = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '2px' }}>
                           <label style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }} title="העלה קובץ">
-                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0]; if (!file) return;
-                              const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) {
-                                  city.theme.iconLeft = compressed;
-                                  setCityModified(true); setCityEditCounter(c => c + 1);
-                                  saveCityGeneralField(city.id, 'iconLeft', compressed);
-                                }
-                            }} />
+                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={(e) => handleCityIconUpload(e.target.files?.[0], city.id, 'iconLeft', 64)} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' left side icon', callback: (emoji) => { city.theme.iconLeft = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
                             saveCityGeneralField(city.id, 'iconLeft', emoji);
@@ -11241,15 +11254,7 @@ const FouFouApp = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '2px' }}>
                           <label style={{ fontSize: '9px', padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151' }} title="העלה קובץ">
-                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0]; if (!file) return;
-                              const compressed = await window.BKK.compressIcon(file, 64);
-                              if (compressed) {
-                                  city.theme.iconRight = compressed;
-                                  setCityModified(true); setCityEditCounter(c => c + 1);
-                                  saveCityGeneralField(city.id, 'iconRight', compressed);
-                                }
-                            }} />
+                            📁<input type="file" accept="image/*,image/jfif" className="hidden" onChange={(e) => handleCityIconUpload(e.target.files?.[0], city.id, 'iconRight', 64)} />
                           </label>
                           <button onClick={() => setIconPickerConfig({ description: (city.nameEn || city.name || '') + ' right side icon', callback: (emoji) => { city.theme.iconRight = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
                             saveCityGeneralField(city.id, 'iconRight', emoji);

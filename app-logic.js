@@ -1902,6 +1902,38 @@
 
   // Save a single field to cities/{cityId}/general in Firebase
   // Called from views.js city icon/color/name handlers — must live here (before 500KB Babel limit)
+  // Handle city icon file upload — compresses and saves to Firebase
+  // Must live here (app-logic.js, ~115KB) not in views.js (>500KB in bundle)
+  const handleCityIconUpload = async (file, cityId, field, maxSize) => {
+    if (!file) return;
+    addDebugLog('firebase', `[CITY-ICON] handleCityIconUpload called`, { cityId, field, fileName: file.name, fileSize: file.size });
+    try {
+      const compressed = await window.BKK.compressIcon(file, maxSize || 80);
+      addDebugLog('firebase', `[CITY-ICON] compressIcon result`, { hasResult: !!compressed, length: compressed?.length });
+      if (!compressed) {
+        showToast('❌ Failed to compress icon', 'error');
+        return;
+      }
+      // Update local city object immediately
+      const city = window.BKK.cities?.[cityId];
+      if (city) {
+        if (field === 'icon') city.icon = compressed;
+        else if (field === 'iconLeft') { if (!city.theme) city.theme = {}; city.theme.iconLeft = compressed; }
+        else if (field === 'iconRight') { if (!city.theme) city.theme = {}; city.theme.iconRight = compressed; }
+      }
+      // Update cityRegistry too
+      const regKey = Object.keys(window.BKK.cityRegistry || {}).find(k => window.BKK.cityRegistry[k].id === cityId);
+      if (regKey && field === 'icon') window.BKK.cityRegistry[regKey].icon = compressed;
+      setCityModified(true);
+      setCityEditCounter(c => c + 1);
+      // Save to Firebase
+      saveCityGeneralField(cityId, field, compressed);
+    } catch (e) {
+      addDebugLog('firebase', `[CITY-ICON] ❌ error`, { error: e.message });
+      showToast('❌ Icon upload error: ' + e.message, 'error');
+    }
+  };
+
   const saveCityGeneralField = (cityId, field, value) => {
     if (!isFirebaseAvailable || !database) {
       showToast('❌ Firebase not available', 'error');
