@@ -1901,6 +1901,31 @@
     }).catch(() => {});
   }, [isFirebaseAvailable]);
 
+  // Save a single field to cities/{cityId}/general in Firebase
+  // Called from views.js city icon/color/name handlers — must live here (before 500KB Babel limit)
+  const saveCityGeneralField = (cityId, field, value) => {
+    if (!isFirebaseAvailable || !database) {
+      showToast('❌ Firebase not available', 'error');
+      addDebugLog('firebase', `[CITY-SAVE] BLOCKED — Firebase not available`, { cityId, field });
+      return;
+    }
+    if (!isUnlocked) {
+      showToast('❌ No permission to save', 'error');
+      addDebugLog('firebase', `[CITY-SAVE] BLOCKED — isUnlocked=false`, { cityId, field, isUnlocked, isEditor });
+      return;
+    }
+    addDebugLog('firebase', `[CITY-SAVE] Saving cities/${cityId}/general/${field}`, { cityId, field, valueType: typeof value, valueLength: value?.length });
+    database.ref(`cities/${cityId}/general/${field}`).set(value)
+      .then(() => {
+        addDebugLog('firebase', `[CITY-SAVE] ✅ Saved cities/${cityId}/general/${field}`);
+        setCityEditCounter(c => c + 1);
+      })
+      .catch(e => {
+        addDebugLog('firebase', `[CITY-SAVE] ❌ Error saving cities/${cityId}/general/${field}`, { error: e.message, code: e.code });
+        showToast('❌ שגיאת שמירה: ' + e.message, 'error');
+      });
+  };
+
   const saveHelpContent = (sectionId, text) => {
     if (!isFirebaseAvailable || !database) return;
     const lang = window.BKK.i18n.currentLang || 'he';
