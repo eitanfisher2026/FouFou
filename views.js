@@ -4358,6 +4358,8 @@
               );
             })()}
 
+
+
             {/* ===== DEBUG TAB ===== */}
             {settingsTab === 'debug' && debugMode && (() => {
               const claudeQuestionTemplates = [
@@ -4486,7 +4488,6 @@
                 </div>
               );
             })()}
-
             </div>)}
             
           </div>

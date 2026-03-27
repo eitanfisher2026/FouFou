@@ -12751,7 +12751,6 @@ const FouFouApp = () => {
                 </div>
               );
             })()}
-
             </div>)}
             
           </div>
