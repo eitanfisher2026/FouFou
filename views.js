@@ -2060,12 +2060,7 @@
                     <option value="interest">🏷️ {t('places.byInterest') || 'לפי תחום'}</option>
                     <option value="area">📍 {t('places.byArea') || 'לפי אזור'}</option>
                   </select>
-                  {/* Favorites map button */}
-                  <button
-                    onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); }}
-                    style={{ padding: '2px 8px', borderRadius: '8px', border: '1px solid #c084fc', background: '#f3e8ff', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold', color: '#7c3aed', whiteSpace: 'nowrap' }}
-                    title={t("wizard.showMap")}
-                  >🗺️</button>
+                  {/* Favorites map button moved to action row */}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: '1', minWidth: '120px' }}>
                   <input
@@ -2088,44 +2083,8 @@
                   )}
                 </div>
               </div>
-              {/* Row 2: Action buttons */}
+              {/* Row 2: Action buttons — Snap place removed (use floating camera button) */}
               <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                <button
-                  onClick={() => {
-                    const defaultInterests = lastCaptureInterestsRef.current.length > 0
-                      ? lastCaptureInterestsRef.current
-                      : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
-                    const initLocation = {
-                      name: '', description: '', notes: '',
-                      area: formData.area,
-                      areas: formData.area ? [formData.area] : [],
-                      interests: defaultInterests,
-                      lat: null, lng: null, mapsUrl: '', address: '',
-                      uploadedImage: null, imageUrls: [],
-                      nearestStop: null, gpsLoading: true
-                    };
-                    setNewLocation(initLocation);
-                    setShowQuickCapture(true);
-                    if (navigator.geolocation) {
-                      window.BKK.getValidatedGps(
-                        (pos) => {
-                          const lat = pos.coords.latitude;
-                          const lng = pos.coords.longitude;
-                          const detected = window.BKK.getAreasForCoordinates(lat, lng);
-                          const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
-                          setNewLocation(prev => ({...prev, lat, lng, gpsLoading: false, ...areaUpdates}));
-                        },
-                        (reason) => {
-                          setNewLocation(prev => ({...prev, gpsLoading: false, gpsBlocked: true}));
-                          showToast(reason === 'outside_city' ? t('toast.outsideCity') : reason === 'denied' ? t('toast.locationNoPermission') : t('toast.noGpsSignal'), 'warning', 'sticky');
-                        }
-                      );
-                    }
-                  }}
-                  className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-green-600"
-                >
-                  {`📸 ${t("places.addFromCamera")}`}
-                </button>
                 <button
                   onClick={() => {
                     const lastInterests = lastCaptureInterestsRef.current?.length > 0
@@ -2138,6 +2097,12 @@
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                 >
                   {`✏️ ${t("places.addManually")}`}
+                </button>
+                <button
+                  onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); }}
+                  style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #c084fc', background: '#f3e8ff', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', color: '#7c3aed', whiteSpace: 'nowrap' }}
+                >
+                  🗺️ {t('form.favoritesMap')}
                 </button>
               </div>
 

@@ -575,3 +575,28 @@ const ReviewTextWithTranslate = ({ text, translateText, detectNeedsTranslation }
     </div>
   );
 };
+
+// AutoTranslateText — automatically translates text if language doesn't match UI
+// Shows original while loading, replaces with translation on completion
+// No state saved — display only, on-the-fly via MyMemory API
+const AutoTranslateText = ({ text, style, className, prefix, translateText, detectNeedsTranslation }) => {
+  const [display, setDisplay] = React.useState(text);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    setDisplay(text); // reset when text changes
+    if (!text || text.trim().length < 3) return;
+    const targetLang = detectNeedsTranslation(text);
+    if (!targetLang) return;
+    setLoading(true);
+    translateText(text, targetLang)
+      .then(translated => { setDisplay(translated); setLoading(false); })
+      .catch(() => setLoading(false)); // on error, keep original
+  }, [text]);
+
+  return (
+    <span style={{ ...style, opacity: loading ? 0.5 : 1, transition: 'opacity 0.3s' }} className={className}>
+      {prefix}{display}
+    </span>
+  );
+};

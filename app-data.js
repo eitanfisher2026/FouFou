@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.13.2
+// FouFou app-data.js v3.13.3
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -434,6 +434,8 @@ form: {
   findLocationFirst: 'אנא מצא את המיקום הנוכחי שלך תחילה',
   needGpsFirst: 'צריך להגדיר מיקום GPS קודם',
   selectAreaAndInterest: 'אנא בחר איזור ולפחות תחום עניין אחד',
+  selectAreaFirst: 'אנא בחר איזור לפני יצירת המסלול',
+  favoritesMap: 'מפת מועדפים',
   selectAtLeastOneInterest: 'אנא בחר לפחות תחום עניין אחד',
   showSearchRadius: 'הצג רדיוס חיפוש',
   gpsRadiusHint: 'חיפוש לפי GPS (1 ק"מ)',
@@ -1494,6 +1496,8 @@ form: {
   findLocationFirst: 'Please find your current location first',
   needGpsFirst: 'Need to set GPS location first',
   selectAreaAndInterest: 'Please select an area and at least one interest',
+  selectAreaFirst: 'Please select an area before generating the route',
+  favoritesMap: 'Favorites Map',
   selectAtLeastOneInterest: 'Please select at least one interest',
   showSearchRadius: 'Show search radius',
   gpsRadiusHint: 'Search by GPS (1 km)',
@@ -3260,7 +3264,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.13.2';
+window.BKK.VERSION = '3.13.3';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

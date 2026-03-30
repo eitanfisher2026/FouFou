@@ -476,10 +476,7 @@
                 {/* Description + Notes */}
                 <div className="space-y-1.5">
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <label className="block text-xs font-bold">{`📝 ${t("places.description")}`}</label>
-                      <TranslateButton text={newLocation.description || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, description: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
-                    </div>
+                    <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -593,10 +590,7 @@
                     );
                   })()}
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <label className="block text-xs font-bold">{`💭 ${t("places.notes")}`}</label>
-                      <TranslateButton text={newLocation.notes || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, notes: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
-                    </div>
+                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -2333,18 +2327,18 @@
                   )}
                 </div>
 
-                {/* Description */}
+                {/* Description — auto-translated if language mismatch */}
                 {modalImageCtx?.description && (
-                  <div style={{ padding: '12px 16px 8px', fontSize: '13px', color: '#374151', lineHeight: 1.55, whiteSpace: 'pre-line' }}>
-                    {modalImageCtx.description}
+                  <div style={{ padding: '12px 16px 8px', lineHeight: 1.55, whiteSpace: 'pre-line' }}>
+                    <AutoTranslateText text={modalImageCtx.description} style={{ fontSize: '13px', color: '#374151' }} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
                   </div>
                 )}
 
-                {/* Notes — only if content exists */}
+                {/* Notes — auto-translated if language mismatch */}
                 {loc?.notes?.trim() && (
                   <div style={{ padding: '4px 16px 8px' }}>
                     <div style={{ background: '#fffbeb', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', color: '#92400e', lineHeight: 1.5 }}>
-                      💭 {loc.notes}
+                      <AutoTranslateText text={loc.notes} prefix="💭 " translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
                     </div>
                   </div>
                 )}

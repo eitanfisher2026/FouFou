@@ -6175,8 +6175,16 @@
         return;
       }
     } else {
-      if (!formData.area || formData.interests.length === 0) {
+      if (!formData.area && formData.interests.length === 0) {
         showToast(t('form.selectAreaAndInterest'), 'warning');
+        return;
+      }
+      if (!formData.area) {
+        showToast(t('form.selectAreaFirst'), 'warning');
+        return;
+      }
+      if (formData.interests.length === 0) {
+        showToast(t('form.selectAtLeastOneInterest'), 'warning');
         return;
       }
     }
