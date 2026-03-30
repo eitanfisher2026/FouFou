@@ -23,10 +23,27 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.13.15` (Mar 30, 2026)
+- **גרסה:** `3.14.0` (Mar 30, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## ✅ Major Changes — Session Mar 30, 2026 (v3.13.15 → v3.14.0)
+
+### 🚀 Pre-compiled Build Pipeline — Browser Babel Removed
+- **Root cause solved permanently:** Babel standalone deoptimises files >500KB in the browser, silently breaking event handlers in `views.js`/`dialogs.js`.
+- **Fix:** JSX is now compiled at build time (developer machine / Claude), not in the browser.
+- `compile.js` added — runs after `build.py` concatenates sources. Pipeline: JSX ~950KB → Babel transform → Terser minify → **plain JS ~637KB** shipped to browser.
+- `Babel.transform()` removed from `index.html` loader. Browser just does `fetch → script inject`.
+- Babel CDN script (~350KB) removed from `index.html` — faster first load.
+- `mangle: false` in Terser — function names preserved (React hooks + `window.BKK.*`).
+- Balance check updated: now runs on **source files**, not compiled output.
+
+### 🧹 Dead Code Removed
+- `setIsUnlocked` and `setIsCurrentUserAdmin` — two noop functions in `app-logic.js`, never called.
+- Duplicate comment line in `app-logic.js` (line 7505).
 
 ---
 
@@ -187,34 +204,57 @@ Generated (DO NOT EDIT):
 ```bash
 cd /home/claude/project
 
-# 1. Build
+# 1. Build (concatenates sources + pre-compiles JSX → plain JS → minified)
 python3 build.py
 
-# 2. Balance check
+# 2. Balance check — run on SOURCE files (not compiled app-code.js)
 python3 -c "
-with open('app-code.js') as f: c = f.read()
-p=c.count('(')-c.count(')'); b=c.count('{')-c.count('}'); k=c.count('[')-c.count(']')
+import re, sys
+def strip(code):
+    lines = code.split('\n'); result = []; skip = 0
+    for line in lines:
+        s = line.strip()
+        if skip > 0:
+            skip += s.count('{') + s.count('(') + s.count('[')
+            skip -= s.count('}') + s.count(')') + s.count(']')
+            if skip <= 0: skip = 0
+            continue
+        if re.match(r'\s*console\.(log|warn|info)\s*\(', s):
+            o = s.count('(') + s.count('{') + s.count('[')
+            c2 = s.count(')') + s.count('}') + s.count(']')
+            if o > c2: skip = o - c2
+            continue
+        if s.startswith('//') and not s.startswith('// __INSERT') and not s.startswith('// ==='): continue
+        result.append(line)
+    return '\n'.join(result)
+template = open('_app-code-template.js').read()
+qa = open('quick-add-component.js').read()
+al = strip(open('app-logic.js').read())
+v = strip(open('views.js').read())
+d = strip(open('dialogs.js').read())
+raw = template.replace('// __INSERT_QUICK_ADD_COMPONENT__', qa).replace('// __INSERT_APP_LOGIC__', al).replace('// __INSERT_VIEWS__', v).replace('// __INSERT_DIALOGS__', d)
+p=raw.count('(')-raw.count(')'); b=raw.count('{')-raw.count('}'); k=raw.count('[')-raw.count(']')
 print(f'Balance: () {p:+d}  {{}} {b:+d}  [] {k:+d}')
 assert p==0 and b==-3 and k==-2, 'FAIL'
 print('OK')
 "
-# BASELINE: () +0  {} -3  [] -2
+# BASELINE (source): () +0  {} -3  [] -2
 # Per-file: app-logic.js () -3  {} +0  [] +0
 #           views.js     () +1  {} -3  [] -2
 #           dialogs.js   () +0  {} +0  [] +0
 #           quick-add    () +0  {} +0  [] +0
+# NOTE: compiled app-code.js shows () -1 — that's Babel/Terser transform artefact, normal.
 
 # 3. Parse check
 node -e "const window={BKK:{}}; const localStorage={getItem:()=>null}; eval(require('fs').readFileSync('app-data.js','utf8')); console.log('OK')" 2>&1 | grep -v CONFIG | grep -v I18N
 
-# 4. Babel safety — must be 0
+# 4. Babel safety — check SOURCE files (compiled output has no JSX anyway)
 python3 -c "
 import re
 with open('app-code.js') as f: c = f.read()
-writes = [m.start() for m in re.finditer(r'database\.ref\(', c)
-          if m.start() > 512000 and re.search(r'\.(set|update|remove|push)\(', c[m.start():m.start()+150])]
-print(f'Firebase writes past 500KB: {len(writes)}')
-assert len(writes) == 0, 'FAIL'
+jsx = len(re.findall(r'<[A-Z][A-Za-z]+[\s/>]', c))
+print(f'JSX tags in compiled output: {jsx}  (must be 0)')
+assert jsx == 0, 'FAIL — compile step did not run'
 print('OK')
 "
 ```
@@ -228,18 +268,17 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.13.0'/VERSION = '3.13.1'/" config.js
-python3 -c "import re; s=open('config.js').read(); v=re.search(r\"VERSION\s*=\s*'([^']+)'\", s).group(1); open('version.json','w').write('{\"version\": \"'+v+'\"}')"
+sed -i "s/VERSION = '3.13.0'/VERSION = '3.14.0'/" config.js
 python3 build.py
 zip github-upload-vX_Y_Z.zip \
   index.html app-data.js app-code.js \
   i18n.js config.js utils.js app-logic.js views.js dialogs.js \
   quick-add-component.js \
   city-bangkok.js city-telaviv.js city-singapore.js city-malaga.js \
-  _source-template.html _app-code-template.js build.py README.md .nojekyll \
+  _source-template.html _app-code-template.js build.py compile.js README.md .nojekyll \
   CLAUDE_CONTEXT.md manifest.json favicon.ico version.json \
   icon-16x16.png icon-32x32.png icon-180x180.png icon-192x192.png icon-512x512.png \
-  firebase-rules.json
+  firebase-rules.json package.json
 ```
 
 ---
@@ -253,7 +292,13 @@ zip github-upload-vX_Y_Z.zip \
 
 ## CRITICAL RULES — Never Break
 
-### Babel 500KB
+### Build Pipeline (v3.14.0+)
+- `app-code.js` shipped to browser is **pre-compiled plain JS** — no JSX, no browser Babel
+- Browser Babel CDN is **removed**. Do NOT add it back.
+- Balance check runs on **source files**, not compiled `app-code.js`
+- If `node_modules/` is missing → run `npm install` in project dir before building
+
+### Source Code Discipline (500KB rule still applies to source)
 - No `database.ref().set/update/remove()` in `views.js`/`dialogs.js`
 - No multi-line `async` handlers in `views.js`/`dialogs.js`
 - All Firebase writes → named function in `app-logic.js`
@@ -284,15 +329,32 @@ zip github-upload-vX_Y_Z.zip \
 ## Architecture — Build Pipeline
 
 ```
-_app-code-template.js
-  + quick-add-component.js  (QuickAddPlaceDialog + DebugTab)
-  + app-logic.js            (state + logic + ALL Firebase writes)
-  + views.js                (JSX renders)
-  + dialogs.js              (JSX dialogs)
-  = app-code.js
+Step 1 — python3 build.py (concatenate + strip console.logs):
+  _app-code-template.js
+    + quick-add-component.js  (QuickAddPlaceDialog + DebugTab)
+    + app-logic.js            (state + logic + ALL Firebase writes)
+    + views.js                (JSX renders)
+    + dialogs.js              (JSX dialogs)
+    = app-code.js  [JSX source, ~950KB]
 
-_source-template.html + i18n.js + city-*.js + config.js + utils.js = app-data.js
+  _source-template.html + i18n.js + city-*.js + config.js + utils.js = app-data.js
+
+Step 2 — node compile.js (called automatically by build.py):
+  app-code.js [JSX ~950KB]
+    → Babel transform (JSX → plain JS, ~900KB)
+    → Terser minify (mangle:false)
+    = app-code.js [plain JS, ~637KB, shipped to browser]
+
+Browser loads:
+  app-code.js  → plain JS, no Babel needed, direct script inject
+  NO browser-side Babel (removed in v3.14.0 — was causing 500KB deoptimisation)
 ```
+
+**compile.js rules:**
+- `mangle: false` — NEVER change. Mangling breaks React hooks + `window.BKK.*` references
+- `drop_console: false` — keep console.log for runtime debug
+- `unused: false` — don't remove functions terser thinks are unused (may be called from HTML/eval)
+- Requires: `node_modules/` present (run `npm install` if missing, package.json is in the zip)
 
 ---
 
@@ -460,7 +522,7 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 8. Icon rendered as raw text — always `startsWith('data:') ? <img> : icon`
 9. `noGoogleSearch` not saved to customInterests
 10. Hardcoded IDs patched to Firebase
-11. **Firebase write past 500KB** — extract to app-logic.js
+11. **Firebase write in views.js/dialogs.js** — always extract to app-logic.js (source discipline, browser Babel no longer the enforcer)
 12. **כפתור סגירה ✕** — חייב תמיד להיות בפינה **שמאלית** עליונה בעברית RTL, ובפינה **ימנית** עליונה באנגלית LTR. חל על כל דיאלוג, פופאפ, bottom sheet, ו-modal. טכניקה: DOM order [FouFou/first-element][content][X] + `direction: isRTL ? 'rtl' : 'ltr'` על הcontainer → X תמיד בצד הנכון אוטומטית.
 12. **City general load after `return () => cleanup`** — must be BEFORE
 13. **`debugModeRef = useRef(debugMode)`** — must be `useRef(localStorage...)`

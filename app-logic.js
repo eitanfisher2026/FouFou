@@ -65,8 +65,7 @@
   // But keep real admin check for impersonation UI itself
   const isRealAdmin = userRole >= 2;
   const isUnlocked = isEditor; // backward compat — most old checks mean "can edit content"
-  const setIsUnlocked = () => {}; // noop — role is determined by Firebase Auth
-  const setIsCurrentUserAdmin = () => {}; // noop — role is determined by Firebase Auth
+
 
   // ═══════════════════════════════════════════════════════════════
   // AUTH LISTENER — watches Firebase Auth state changes
@@ -7502,7 +7501,6 @@
     showToast(`${labels[next]} ${interestId} → ${next}`, 'info');
   };
 
-  // Check if interest has valid search config
   // Check if interest has valid search config
   // RULE: behavior (noGoogleSearch, types, textSearch) comes from interestConfig (Firebase) only
   // City files only indicate availability — NOT behavior
