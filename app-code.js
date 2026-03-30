@@ -7110,49 +7110,91 @@ const FouFouApp = () => {
 
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = interestMap[interestId];
-    
-    const locationsUsingInterest = customLocations.filter(loc => 
+    const interestName = tLabel(interestToDelete) || interestId;
+
+    const affectedLocs = customLocations.filter(loc =>
       loc.interests && loc.interests.includes(interestId)
     );
-    
-    setCustomInterests(prev => prev.filter(i => i.id !== interestId));
-    
-    if (isFirebaseAvailable && database) {
-      const toastFn = () => {
-        if (locationsUsingInterest.length > 0) {
-          showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
-        } else {
-          showToast(t('interests.interestDeleted'), 'success');
-        }
-      };
-      if (interestToDelete && interestToDelete.firebaseId) {
-        database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
-          .then(() => {
-            toastFn();
-            database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-            database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
-          })
-          .catch((error) => {
+    const affectedCities = [...new Set(affectedLocs.map(l => l.cityId || selectedCityId))];
+    const totalCount = affectedLocs.length;
+
+    const warningMsg = totalCount > 0
+      ? (t('interests.interestDeleteWarning') || 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות ב-{cities} ערים.')
+          .replace('{name}', interestName).replace('{count}', totalCount).replace('{cities}', affectedCities.length)
+      : (t('interests.interestDeleteWarningNoPlaces') || 'למחוק את התחום "{name}"?')
+          .replace('{name}', interestName);
+
+    showConfirm(warningMsg, () => {
+      setCustomInterests(prev => prev.filter(i => i.id !== interestId));
+      if (totalCount > 0) {
+        setCustomLocations(prev => prev.map(loc => {
+          if (!loc.interests || !loc.interests.includes(interestId)) return loc;
+          return { ...loc, interests: loc.interests.filter(id => id !== interestId) };
+        }));
+      }
+
+      if (isFirebaseAvailable && database) {
+        const doDelete = async () => {
+          try {
+            const fbId = interestToDelete?.firebaseId;
+            if (fbId) {
+              await database.ref(`customInterests/${fbId}`).remove();
+            } else {
+              const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
+              if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+            }
+            await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+            await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
+            if (totalCount > 0) {
+              const writes = {};
+              affectedLocs.forEach(loc => {
+                if (loc.firebaseId) {
+                  const cityId = loc.cityId || selectedCityId;
+                  const newInterests = (loc.interests || []).filter(id => id !== interestId);
+                  writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+                }
+              });
+              if (Object.keys(writes).length > 0) await database.ref().update(writes);
+            }
+            const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
+            if (hiddenSnap.val()) {
+              const hw = {};
+              Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
+                if (Array.isArray(arr) && arr.includes(interestId)) {
+                  const cleaned = arr.filter(id => id !== interestId);
+                  hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
+                }
+              });
+              if (Object.keys(hw).length > 0) await database.ref().update(hw);
+            }
+            const usersSnap = await database.ref('users').once('value');
+            if (usersSnap.val()) {
+              const uw = {};
+              Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
+                if (udata?.interestStatus?.[interestId] !== undefined) {
+                  uw[`users/${uid}/interestStatus/${interestId}`] = null;
+                }
+              });
+              if (Object.keys(uw).length > 0) await database.ref().update(uw);
+            }
+            const msg = totalCount > 0
+              ? (t('interests.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
+              : t('interests.interestDeleted');
+            showToast(msg, 'success');
+            addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
+          } catch (error) {
             console.error('[FIREBASE] Error deleting interest:', error);
             setCustomInterests(prev => [...prev, interestToDelete]);
             showToast(t('toast.deleteError'), 'error');
-          });
-      } else {
-        database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value').then(snap => {
-          if (snap.val()) {
-            Object.keys(snap.val()).forEach(key => database.ref(`customInterests/${key}`).remove());
           }
-          toastFn();
-        }).catch(() => toastFn());
-        database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-      }
-    } else {
-      if (locationsUsingInterest.length > 0) {
-        showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
+        };
+        doDelete();
       } else {
-        showToast(t('interests.interestDeleted'), 'success');
+        showToast(totalCount > 0
+          ? (t('interests.interestDeletedFull') || '').replace('{count}', totalCount)
+          : t('interests.interestDeleted'), 'success');
       }
-    }
+    }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
   };
 
   const cycleAdminStatus = async (interestId) => {
@@ -13272,13 +13314,9 @@ const FouFouApp = () => {
                 return (
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', maxHeight: '55%', overflowY: 'auto' }}
                     onClick={e => e.stopPropagation()}>
-                    {/* Close handle + X button */}
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ flex: 1, height: '4px', borderRadius: '2px', background: '#d1d5db', maxWidth: '36px', margin: '0 auto' }}></div>
-                      <button onClick={() => setMapBottomSheet(null)}
-                        style={{ position: 'absolute', top: '12px', left: '14px', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>✕</button>
-                    </div>
-                    {/* Header: image + name + FouFou icon */}
+                    {/* Drag handle */}
+                    <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1d5db', margin: '0 auto 10px' }}></div>
+                    {/* Header: image + name + FouFou icon + X */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
                       {hasImg && (
                         <img src={imgSrc} alt=""
@@ -13286,14 +13324,16 @@ const FouFouApp = () => {
                           style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', flexShrink: 0, border: '2px solid #e5e7eb' }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Name + FouFou icon */}
+                        {/* Name + FouFou icon — on same line, X at end */}
                         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ flex: 1 }}>{loc.name}</span>
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalImage(loc.uploadedImage || '__placeholder__'); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
-                            style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}
+                            style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                             title={t('general.placeInfo') || 'פרטים'}
                           ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
+                          <span style={{ flex: 1 }}>{loc.name}</span>
+                          <button onClick={() => setMapBottomSheet(null)}
+                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
                         </div>
                         {/* Interest labels */}
                         {intLabels && <div style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 600, marginBottom: '4px' }}>{intLabels}</div>}
@@ -15992,16 +16032,17 @@ const FouFouApp = () => {
                     );
                   })()}
                 </div>
-                {/* Row 2: Edit or Details */}
-                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) ? (
-                  <button onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-                  >✏️ {t('general.edit') || 'ערוך'}</button>
-                ) : loc ? (
-                  <button onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-                  >📋 {t('general.details') || 'פרטים'}</button>
-                ) : null}
+                {/* FouFou icon button — opens full location dialog (edit or read-only) */}
+                {loc && (
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <button onClick={() => { close(); handleEditLocation(loc); }}
+                      style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      title={isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
+                    >
+                      <img src="icon-32x32.png" alt="FouFou" style={{ width: '22px', height: '22px' }} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

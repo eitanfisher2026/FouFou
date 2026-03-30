@@ -4677,13 +4677,9 @@
                 return (
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', maxHeight: '55%', overflowY: 'auto' }}
                     onClick={e => e.stopPropagation()}>
-                    {/* Close handle + X button */}
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                      <div style={{ flex: 1, height: '4px', borderRadius: '2px', background: '#d1d5db', maxWidth: '36px', margin: '0 auto' }}></div>
-                      <button onClick={() => setMapBottomSheet(null)}
-                        style={{ position: 'absolute', top: '12px', left: '14px', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>✕</button>
-                    </div>
-                    {/* Header: image + name + FouFou icon */}
+                    {/* Drag handle */}
+                    <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1d5db', margin: '0 auto 10px' }}></div>
+                    {/* Header: image + name + FouFou icon + X */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
                       {hasImg && (
                         <img src={imgSrc} alt=""
@@ -4691,14 +4687,16 @@
                           style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', flexShrink: 0, border: '2px solid #e5e7eb' }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Name + FouFou icon */}
+                        {/* Name + FouFou icon — on same line, X at end */}
                         <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ flex: 1 }}>{loc.name}</span>
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalImage(loc.uploadedImage || '__placeholder__'); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
-                            style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}
+                            style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                             title={t('general.placeInfo') || 'פרטים'}
                           ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
+                          <span style={{ flex: 1 }}>{loc.name}</span>
+                          <button onClick={() => setMapBottomSheet(null)}
+                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
                         </div>
                         {/* Interest labels */}
                         {intLabels && <div style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 600, marginBottom: '4px' }}>{intLabels}</div>}

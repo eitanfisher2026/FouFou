@@ -7343,57 +7343,99 @@
 
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = interestMap[interestId];
-    
-    // Check if any custom locations use this interest
-    const locationsUsingInterest = customLocations.filter(loc => 
+    const interestName = tLabel(interestToDelete) || interestId;
+
+    // Build impact summary — which locations in which cities use this interest
+    const affectedLocs = customLocations.filter(loc =>
       loc.interests && loc.interests.includes(interestId)
     );
-    
-    // Optimistic local update — remove immediately (per CLAUDE_CONTEXT rule)
-    setCustomInterests(prev => prev.filter(i => i.id !== interestId));
-    
-    // Delete from Firebase (or localStorage fallback)
-    if (isFirebaseAvailable && database) {
-      // DYNAMIC MODE: Firebase (shared)
-      const toastFn = () => {
-        if (locationsUsingInterest.length > 0) {
-          showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
-        } else {
-          showToast(t('interests.interestDeleted'), 'success');
-        }
-      };
-      if (interestToDelete && interestToDelete.firebaseId) {
-        database.ref(`customInterests/${interestToDelete.firebaseId}`).remove()
-          .then(() => {
-            toastFn();
-            // Also clean up interestConfig if exists
-            database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-            database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
-          })
-          .catch((error) => {
+    const affectedCities = [...new Set(affectedLocs.map(l => l.cityId || selectedCityId))];
+    const totalCount = affectedLocs.length;
+
+    // Build warning message
+    const warningMsg = totalCount > 0
+      ? (t('interests.interestDeleteWarning') || 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות ב-{cities} ערים.')
+          .replace('{name}', interestName).replace('{count}', totalCount).replace('{cities}', affectedCities.length)
+      : (t('interests.interestDeleteWarningNoPlaces') || 'למחוק את התחום "{name}"?')
+          .replace('{name}', interestName);
+
+    showConfirm(warningMsg, () => {
+      // Optimistic local update
+      setCustomInterests(prev => prev.filter(i => i.id !== interestId));
+      if (totalCount > 0) {
+        setCustomLocations(prev => prev.map(loc => {
+          if (!loc.interests || !loc.interests.includes(interestId)) return loc;
+          return { ...loc, interests: loc.interests.filter(id => id !== interestId) };
+        }));
+      }
+
+      if (isFirebaseAvailable && database) {
+        const doDelete = async () => {
+          try {
+            // 1. Delete customInterest entry
+            const fbId = interestToDelete?.firebaseId;
+            if (fbId) {
+              await database.ref(`customInterests/${fbId}`).remove();
+            } else {
+              const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
+              if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+            }
+            // 2. Delete interestConfig + interestStatus
+            await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+            await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
+            // 3. Remove from locations in all cities
+            if (totalCount > 0) {
+              const writes = {};
+              affectedLocs.forEach(loc => {
+                if (loc.firebaseId) {
+                  const cityId = loc.cityId || selectedCityId;
+                  const newInterests = (loc.interests || []).filter(id => id !== interestId);
+                  writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+                }
+              });
+              if (Object.keys(writes).length > 0) await database.ref().update(writes);
+            }
+            // 4. Remove from cityHiddenInterests
+            const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
+            if (hiddenSnap.val()) {
+              const hw = {};
+              Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
+                if (Array.isArray(arr) && arr.includes(interestId)) {
+                  const cleaned = arr.filter(id => id !== interestId);
+                  hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
+                }
+              });
+              if (Object.keys(hw).length > 0) await database.ref().update(hw);
+            }
+            // 5. Remove from all users' interestStatus
+            const usersSnap = await database.ref('users').once('value');
+            if (usersSnap.val()) {
+              const uw = {};
+              Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
+                if (udata?.interestStatus?.[interestId] !== undefined) {
+                  uw[`users/${uid}/interestStatus/${interestId}`] = null;
+                }
+              });
+              if (Object.keys(uw).length > 0) await database.ref().update(uw);
+            }
+            const msg = totalCount > 0
+              ? (t('interests.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
+              : t('interests.interestDeleted');
+            showToast(msg, 'success');
+            addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
+          } catch (error) {
             console.error('[FIREBASE] Error deleting interest:', error);
-            // Revert optimistic update
             setCustomInterests(prev => [...prev, interestToDelete]);
             showToast(t('toast.deleteError'), 'error');
-          });
-      } else {
-        // No firebaseId — try deleting by id directly (fallback)
-        database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value').then(snap => {
-          if (snap.val()) {
-            Object.keys(snap.val()).forEach(key => database.ref(`customInterests/${key}`).remove());
           }
-          toastFn();
-        }).catch(() => toastFn());
-        database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-      }
-    } else {
-      // STATIC MODE: localStorage (local) — already removed by optimistic update above
-      if (locationsUsingInterest.length > 0) {
-        showToast(`${t("toast.interestDeletedWithPlaces")} (${locationsUsingInterest.length})`, 'success');
+        };
+        doDelete();
       } else {
-        showToast(t('interests.interestDeleted'), 'success');
+        showToast(totalCount > 0
+          ? (t('interests.interestDeletedFull') || '').replace('{count}', totalCount)
+          : t('interests.interestDeleted'), 'success');
       }
-    }
+    }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
   };
 
   // Toggle interest active/inactive status (per-user)

@@ -2401,16 +2401,17 @@
                     );
                   })()}
                 </div>
-                {/* Row 2: Edit or Details */}
-                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) ? (
-                  <button onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-                  >✏️ {t('general.edit') || 'ערוך'}</button>
-                ) : loc ? (
-                  <button onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
-                  >📋 {t('general.details') || 'פרטים'}</button>
-                ) : null}
+                {/* FouFou icon button — opens full location dialog (edit or read-only) */}
+                {loc && (
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <button onClick={() => { close(); handleEditLocation(loc); }}
+                      style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      title={isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
+                    >
+                      <img src="icon-32x32.png" alt="FouFou" style={{ width: '22px', height: '22px' }} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.13.5
+// FouFou app-data.js v3.13.8
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -814,6 +814,9 @@ toast: {
   googleApiUnavailable: 'Google API זמנית לא זמין — נסה שוב בעוד כמה שניות',
   googleApiQuota: 'Google API: חריגה ממכסה — נסה שוב מאוחר יותר',
   interestDeletedWithPlaces: 'תחום נמחק (מקומות עדיין משתמשים בו)',
+  interestDeleteWarning: 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות מועדפים ב-{cities} ערים. פעולה זו אינה ניתנת לביטול.',
+  interestDeleteWarningNoPlaces: 'למחוק את התחום "{name}"? פעולה זו אינה ניתנת לביטול.',
+  interestDeletedFull: 'תחום נמחק ונוקה מ-{count} מקומות',
   outsideAreaWarning: 'אזהרה: המיקום מחוץ לאזורים שנבחרו. נשמר בכל זאת.',
   fileDownloaded: 'הקובץ הורד!',
   invalidFileNoData: 'קובץ לא תקין - לא נמצאו נתונים',
@@ -1881,6 +1884,9 @@ toast: {
   googleApiUnavailable: 'Google API temporarily unavailable — try again in a few seconds',
   googleApiQuota: 'Google API quota exceeded — try again later',
   interestDeletedWithPlaces: 'Interest deleted (places still using it)',
+  interestDeleteWarning: 'Deleting interest "{name}" will remove it from {count} favorite places across {cities} cities. This cannot be undone.',
+  interestDeleteWarningNoPlaces: 'Delete interest "{name}"? This cannot be undone.',
+  interestDeletedFull: 'Interest deleted and cleaned from {count} places',
   outsideAreaWarning: 'Warning: Location outside selected areas. Saved anyway.',
   fileDownloaded: 'File downloaded!',
   invalidFileNoData: 'Invalid file - no data found',
@@ -3266,7 +3272,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.13.5';
+window.BKK.VERSION = '3.13.8';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
