@@ -2351,65 +2351,66 @@
                         ⭐ {gR.toFixed?.(1) || gR}{loc?.googleRatingCount ? <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({loc.googleRatingCount})</span> : null}
                       </span>
                     )}
-                    {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
-                    {ra && (
+                    {(gR || ra) && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
+                    {ra ? (
                       <button
                         onClick={() => { close(); openReviewDialog(loc); }}
                         style={{ background: '#f5f3ff', border: '1.5px solid #fcd34d', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >🌟 {ra.avg.toFixed(1)} · {window.BKK.i18n.currentLang === 'en' ? `Reviews (${ra.count})` : `ביקורות (${ra.count})`}</button>
+                    ) : (
+                      <button
+                        onClick={() => { close(); openReviewDialog(loc); }}
+                        style={{ background: '#fef3c7', border: '1.5px solid #fcd34d', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#92400e', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >🌟 {t('reviews.rate')}</button>
                     )}
                   </span>
                 </div>
               </div>
 
-              {/* Action bar */}
-              <div style={{ padding: '10px 12px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {mapsUrl && (
-                  activeTrail ? (
-                    <button
-                      onClick={() => {
-                        const msg = window.BKK.i18n.currentLang === 'en'
-                          ? '⚠️ On mobile, opening Google Maps may interrupt your active navigation. Continue?'
-                          : '⚠️ בטלפון, פתיחת גוגל מפס עשויה לעצור את הניווט הפעיל. להמשיך?';
-                        if (window.confirm(msg)) { window.open(mapsUrl, '_blank'); }
-                      }}
-                      style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('route.navigate') || 'נווט'}</button>
-                  ) : (
-                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ flex: 1, minWidth: '80px', background: '#2563eb', color: 'white', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🧭 {t('route.navigate') || 'נווט'}</a>
-                  )
-                )}
-                <button
-                  onClick={() => { close(); if (loc) openReviewDialog(loc); }}
-                  style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-                >🌟 {t('reviews.rate')}</button>
+              {/* Action bar — matches bottom sheet layout */}
+              <div style={{ padding: '10px 12px', borderTop: '1px solid #f3f4f6', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Row 1: Navigate + Open in Google */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {mapsUrl && (
+                    activeTrail ? (
+                      <button
+                        onClick={() => {
+                          const msg = window.BKK.i18n.currentLang === 'en'
+                            ? '⚠️ On mobile, opening Google Maps may interrupt your active navigation. Continue?'
+                            : '⚠️ בטלפון, פתיחת גוגל מפס עשויה לעצור את הניווט הפעיל. להמשיך?';
+                          if (window.confirm(msg)) { window.open(mapsUrl, '_blank'); }
+                        }}
+                        style={{ flex: 1, background: '#2563eb', color: 'white', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, textAlign: 'center', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      >🧭 {t('route.navigate') || 'נווט'}</button>
+                    ) : (
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ flex: 1, background: '#2563eb', color: 'white', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      >🧭 {t('route.navigate') || 'נווט'}</a>
+                    )
+                  )}
+                  {loc && (() => {
+                    const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
+                    if (!googleViewUrl) return null;
+                    const btnLabel = isCoordOnly
+                      ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל')
+                      : (t('general.openInGoogle') || 'פתח בגוגל');
+                    return (
+                      <a href={googleViewUrl} target="_blank" rel="noopener noreferrer"
+                        style={{ flex: 1, background: '#ecfdf5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                      >🔍 {btnLabel}</a>
+                    );
+                  })()}
+                </div>
+                {/* Row 2: Edit or Details */}
                 {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) ? (
-                  <button
-                    onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  <button onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
                   >✏️ {t('general.edit') || 'ערוך'}</button>
                 ) : loc ? (
-                  <button
-                    onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  <button onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ width: '100%', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '10px 8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
                   >📋 {t('general.details') || 'פרטים'}</button>
                 ) : null}
-                {loc && (() => {
-                  const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
-                  if (!googleViewUrl) return null;
-                  const btnLabel = isCoordOnly
-                    ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל')
-                    : (t('general.openInGoogle') || 'פתח בגוגל');
-                  return (
-                    <a
-                      href={googleViewUrl}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{ flex: 1, minWidth: '80px', background: '#ecfdf5', color: '#065f46', border: '1.5px solid #6ee7b7', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                    >🗺️ {btnLabel}</a>
-                  );
-                })()}
               </div>
             </div>
           </div>

@@ -4681,7 +4681,7 @@
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                       <div style={{ flex: 1, height: '4px', borderRadius: '2px', background: '#d1d5db', maxWidth: '36px', margin: '0 auto' }}></div>
                       <button onClick={() => setMapBottomSheet(null)}
-                        style={{ position: 'absolute', top: '12px', left: window.BKK.i18n.isRTL() ? 'auto' : '14px', right: window.BKK.i18n.isRTL() ? '14px' : 'auto', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>✕</button>
+                        style={{ position: 'absolute', top: '12px', left: '14px', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>✕</button>
                     </div>
                     {/* Header: image + name + FouFou icon */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
