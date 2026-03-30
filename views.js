@@ -2112,7 +2112,7 @@
                 <span className="text-xs text-gray-400 mr-auto">{groupedPlaces.draftsCount + groupedPlaces.readyCount} {t('nav.favorites')} {groupedPlaces.blacklistCount > 0 ? `· ${groupedPlaces.blacklistCount} 🚫` : ''}</span>
                 {['all', 'drafts', 'ready', 'skipped'].map(tab => (
                   <button key={tab}
-                    onClick={() => setPlacesTab(tab)}
+                    onClick={() => { setPlacesTab(tab); setFilterNoInterest(false); }}
                     className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                       placesTab === tab
                         ? tab === 'skipped' ? 'bg-red-100 text-red-700' : tab === 'ready' ? 'bg-green-100 text-green-700' : tab === 'drafts' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
@@ -2122,6 +2122,18 @@
                     {tab === 'all' ? t('general.all') || 'הכל' : tab === 'drafts' ? `✏️ ${groupedPlaces.draftsCount}` : tab === 'ready' ? `✅ ${groupedPlaces.readyCount}` : `🚫 ${groupedPlaces.blacklistCount}`}
                   </button>
                 ))}
+                {/* No-interest filter — admin/editor only */}
+                {(() => {
+                  const noInterestCount = cityCustomLocations.filter(l => l.status !== 'blacklist' && (!l.interests || l.interests.length === 0)).length;
+                  if (noInterestCount === 0) return null;
+                  return (
+                    <button
+                      onClick={() => setFilterNoInterest(prev => !prev)}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all ${filterNoInterest ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      title={window.BKK.i18n.currentLang === 'en' ? `No interest (${noInterestCount})` : `ללא תחום (${noInterestCount})`}
+                    >🏷️ {noInterestCount}</button>
+                  );
+                })()}
               </div>
               )}
               
@@ -2196,7 +2208,7 @@
                           <span className="text-gray-400 font-normal">({locs.length})</span>
                         </div>
                         <div className="p-1">
-                          {locs.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
+                          {locs.filter(loc => (!filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch) && (!filterNoInterest || !loc.interests || loc.interests.length === 0)).map(loc => {
                             const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                             const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                             return (
@@ -2260,7 +2272,7 @@
                         {t("places.noInterest")} ({groupedPlaces.ungrouped.length})
                       </div>
                       <div className="p-1">
-                        {groupedPlaces.ungrouped.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
+                        {groupedPlaces.ungrouped.filter(loc => (!filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch) && (!filterNoInterest || !loc.interests || loc.interests.length === 0)).map(loc => {
                           const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                           const canEdit = true; // permissions handled in edit dialog
                           const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;

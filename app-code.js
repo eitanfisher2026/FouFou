@@ -1169,6 +1169,7 @@ const FouFouApp = () => {
   const [placesTab, setPlacesTab] = useState('all'); // 'all' | 'drafts' | 'ready' | 'skipped'
   const [lastImportBatch, setLastImportBatch] = useState(null); // batch ID of last import
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
+  const [filterNoInterest, setFilterNoInterest] = useState(false); // admin/editor: show places with no interest
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
   const [placesSortBy, setPlacesSortBy] = useState(() => {
@@ -7111,96 +7112,122 @@ const FouFouApp = () => {
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = interestMap[interestId];
     const interestName = tLabel(interestToDelete) || interestId;
-
-    const affectedLocs = customLocations.filter(loc =>
-      loc.interests && loc.interests.includes(interestId)
-    );
-    const affectedCities = [...new Set(affectedLocs.map(l => l.cityId || selectedCityId))];
-    const totalCount = affectedLocs.length;
-
-    const cityBreakdown = affectedCities.map(cid => {
-      const count = affectedLocs.filter(l => (l.cityId || selectedCityId) === cid).length;
-      const cityObj = window.BKK.cities?.[cid];
-      const cityName = cityObj ? (tLabel(cityObj) || cityObj.nameEn || cid) : cid;
-      return `${cityName} — ${count}`;
-    }).join('\n');
-
     const cannotUndo = t('toast.actionCannotBeUndone') || 'פעולה זו אינה ניתנת לביטול.';
-    const warningMsg = totalCount > 0
-      ? `${t('toast.interestDeleteWarning') || 'מחיקת תחום'} "${interestName}":\n${cityBreakdown}\n\n${cannotUndo}`
-      : `${t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום'} "${interestName}"? ${cannotUndo}`;
 
-    showConfirm(warningMsg, () => {
-      setCustomInterests(prev => prev.filter(i => i.id !== interestId));
-      if (totalCount > 0) {
+    const proceedWithDelete = (allAffectedLocs) => {
+      const affectedCities = [...new Set(allAffectedLocs.map(l => l.cityId || l._cityId || selectedCityId))];
+      const totalCount = allAffectedLocs.length;
+
+      const cityBreakdown = affectedCities.map(cid => {
+        const count = allAffectedLocs.filter(l => (l.cityId || l._cityId || selectedCityId) === cid).length;
+        const cityObj = window.BKK.cities?.[cid];
+        const cityName = cityObj ? (tLabel(cityObj) || cityObj.nameEn || cid) : cid;
+        return `${cityName} — ${count}`;
+      }).join('\n');
+
+      const warningMsg = totalCount > 0
+        ? `${t('toast.interestDeleteWarning') || 'מחיקת תחום ממועדפים:'} "${interestName}":\n${cityBreakdown}\n\n${cannotUndo}`
+        : `${t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום'} "${interestName}"? ${cannotUndo}`;
+
+      showConfirm(warningMsg, () => {
+        setCustomInterests(prev => prev.filter(i => i.id !== interestId));
         setCustomLocations(prev => prev.map(loc => {
           if (!loc.interests || !loc.interests.includes(interestId)) return loc;
           return { ...loc, interests: loc.interests.filter(id => id !== interestId) };
         }));
-      }
 
-      if (isFirebaseAvailable && database) {
-        const doDelete = async () => {
-          try {
-            const fbId = interestToDelete?.firebaseId;
-            if (fbId) {
-              await database.ref(`customInterests/${fbId}`).remove();
-            } else {
-              const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
-              if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+        if (isFirebaseAvailable && database) {
+          const doDelete = async () => {
+            try {
+              const fbId = interestToDelete?.firebaseId;
+              if (fbId) {
+                await database.ref(`customInterests/${fbId}`).remove();
+              } else {
+                const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
+                if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+              }
+              await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+              await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
+              if (totalCount > 0) {
+                const writes = {};
+                allAffectedLocs.forEach(loc => {
+                  if (loc.firebaseId) {
+                    const cityId = loc.cityId || loc._cityId || selectedCityId;
+                    const newInterests = (loc.interests || []).filter(id => id !== interestId);
+                    writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+                  }
+                });
+                if (Object.keys(writes).length > 0) await database.ref().update(writes);
+              }
+              const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
+              if (hiddenSnap.val()) {
+                const hw = {};
+                Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
+                  if (Array.isArray(arr) && arr.includes(interestId)) {
+                    const cleaned = arr.filter(id => id !== interestId);
+                    hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
+                  }
+                });
+                if (Object.keys(hw).length > 0) await database.ref().update(hw);
+              }
+              const usersSnap = await database.ref('users').once('value');
+              if (usersSnap.val()) {
+                const uw = {};
+                Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
+                  if (udata?.interestStatus?.[interestId] !== undefined) {
+                    uw[`users/${uid}/interestStatus/${interestId}`] = null;
+                  }
+                });
+                if (Object.keys(uw).length > 0) await database.ref().update(uw);
+              }
+              const msg = totalCount > 0
+                ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
+                : t('interests.interestDeleted');
+              showToast(msg, 'success');
+              addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
+            } catch (error) {
+              console.error('[FIREBASE] Error deleting interest:', error);
+              setCustomInterests(prev => [...prev, interestToDelete]);
+              showToast(t('toast.deleteError'), 'error');
             }
-            await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-            await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
-            if (totalCount > 0) {
-              const writes = {};
-              affectedLocs.forEach(loc => {
-                if (loc.firebaseId) {
-                  const cityId = loc.cityId || selectedCityId;
-                  const newInterests = (loc.interests || []).filter(id => id !== interestId);
-                  writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+          };
+          doDelete();
+        } else {
+          showToast(totalCount > 0
+            ? (t('toast.interestDeletedFull') || '').replace('{count}', totalCount)
+            : t('interests.interestDeleted'), 'success');
+        }
+      }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+    };
+
+    if (isFirebaseAvailable && database) {
+      const cityIds = Object.keys(window.BKK.cities || {});
+      Promise.all(cityIds.map(cid =>
+        database.ref(`cities/${cid}/locations`)
+          .orderByChild('interests')
+          .once('value')
+          .then(snap => {
+            const locs = [];
+            if (snap.val()) {
+              Object.entries(snap.val()).forEach(([fbId, loc]) => {
+                if (loc.interests && Array.isArray(loc.interests) && loc.interests.includes(interestId)) {
+                  locs.push({ ...loc, firebaseId: fbId, _cityId: cid });
                 }
               });
-              if (Object.keys(writes).length > 0) await database.ref().update(writes);
             }
-            const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
-            if (hiddenSnap.val()) {
-              const hw = {};
-              Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
-                if (Array.isArray(arr) && arr.includes(interestId)) {
-                  const cleaned = arr.filter(id => id !== interestId);
-                  hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
-                }
-              });
-              if (Object.keys(hw).length > 0) await database.ref().update(hw);
-            }
-            const usersSnap = await database.ref('users').once('value');
-            if (usersSnap.val()) {
-              const uw = {};
-              Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
-                if (udata?.interestStatus?.[interestId] !== undefined) {
-                  uw[`users/${uid}/interestStatus/${interestId}`] = null;
-                }
-              });
-              if (Object.keys(uw).length > 0) await database.ref().update(uw);
-            }
-            const msg = totalCount > 0
-              ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
-              : t('interests.interestDeleted');
-            showToast(msg, 'success');
-            addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
-          } catch (error) {
-            console.error('[FIREBASE] Error deleting interest:', error);
-            setCustomInterests(prev => [...prev, interestToDelete]);
-            showToast(t('toast.deleteError'), 'error');
-          }
-        };
-        doDelete();
-      } else {
-        showToast(totalCount > 0
-          ? (t('toast.interestDeletedFull') || '').replace('{count}', totalCount)
-          : t('interests.interestDeleted'), 'success');
-      }
-    }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+            return locs;
+          })
+          .catch(() => [])
+      )).then(results => {
+        const allAffectedLocs = results.flat();
+        proceedWithDelete(allAffectedLocs);
+      });
+    } else {
+      const localAffected = customLocations.filter(loc =>
+        loc.interests && loc.interests.includes(interestId)
+      );
+      proceedWithDelete(localAffected);
+    }
   };
 
   const cycleAdminStatus = async (interestId) => {
@@ -10800,7 +10827,7 @@ const FouFouApp = () => {
                 <span className="text-xs text-gray-400 mr-auto">{groupedPlaces.draftsCount + groupedPlaces.readyCount} {t('nav.favorites')} {groupedPlaces.blacklistCount > 0 ? `· ${groupedPlaces.blacklistCount} 🚫` : ''}</span>
                 {['all', 'drafts', 'ready', 'skipped'].map(tab => (
                   <button key={tab}
-                    onClick={() => setPlacesTab(tab)}
+                    onClick={() => { setPlacesTab(tab); setFilterNoInterest(false); }}
                     className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                       placesTab === tab
                         ? tab === 'skipped' ? 'bg-red-100 text-red-700' : tab === 'ready' ? 'bg-green-100 text-green-700' : tab === 'drafts' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
@@ -10810,6 +10837,18 @@ const FouFouApp = () => {
                     {tab === 'all' ? t('general.all') || 'הכל' : tab === 'drafts' ? `✏️ ${groupedPlaces.draftsCount}` : tab === 'ready' ? `✅ ${groupedPlaces.readyCount}` : `🚫 ${groupedPlaces.blacklistCount}`}
                   </button>
                 ))}
+                {/* No-interest filter — admin/editor only */}
+                {(() => {
+                  const noInterestCount = cityCustomLocations.filter(l => l.status !== 'blacklist' && (!l.interests || l.interests.length === 0)).length;
+                  if (noInterestCount === 0) return null;
+                  return (
+                    <button
+                      onClick={() => setFilterNoInterest(prev => !prev)}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all ${filterNoInterest ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                      title={window.BKK.i18n.currentLang === 'en' ? `No interest (${noInterestCount})` : `ללא תחום (${noInterestCount})`}
+                    >🏷️ {noInterestCount}</button>
+                  );
+                })()}
               </div>
               )}
               
@@ -10884,7 +10923,7 @@ const FouFouApp = () => {
                           <span className="text-gray-400 font-normal">({locs.length})</span>
                         </div>
                         <div className="p-1">
-                          {locs.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
+                          {locs.filter(loc => (!filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch) && (!filterNoInterest || !loc.interests || loc.interests.length === 0)).map(loc => {
                             const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                             const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;
                             return (
@@ -10948,7 +10987,7 @@ const FouFouApp = () => {
                         {t("places.noInterest")} ({groupedPlaces.ungrouped.length})
                       </div>
                       <div className="p-1">
-                        {groupedPlaces.ungrouped.filter(loc => !filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch).map(loc => {
+                        {groupedPlaces.ungrouped.filter(loc => (!filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch) && (!filterNoInterest || !loc.interests || loc.interests.length === 0)).map(loc => {
                           const mapUrl = (() => { const u = window.BKK.getNavigateUrl(loc); return u === '#' ? null : u; })();
                           const canEdit = true; // permissions handled in edit dialog
                           const isNewImport = lastImportBatch && loc.importBatch === lastImportBatch;

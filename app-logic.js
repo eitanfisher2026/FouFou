@@ -596,6 +596,7 @@
   const [placesTab, setPlacesTab] = useState('all'); // 'all' | 'drafts' | 'ready' | 'skipped'
   const [lastImportBatch, setLastImportBatch] = useState(null); // batch ID of last import
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
+  const [filterNoInterest, setFilterNoInterest] = useState(false); // admin/editor: show places with no interest
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
   const [placesSortBy, setPlacesSortBy] = useState(() => {
@@ -7344,105 +7345,131 @@
   const deleteCustomInterest = (interestId) => {
     const interestToDelete = interestMap[interestId];
     const interestName = tLabel(interestToDelete) || interestId;
-
-    // Build impact summary — which locations in which cities use this interest
-    const affectedLocs = customLocations.filter(loc =>
-      loc.interests && loc.interests.includes(interestId)
-    );
-    const affectedCities = [...new Set(affectedLocs.map(l => l.cityId || selectedCityId))];
-    const totalCount = affectedLocs.length;
-
-    // Build per-city breakdown
-    const cityBreakdown = affectedCities.map(cid => {
-      const count = affectedLocs.filter(l => (l.cityId || selectedCityId) === cid).length;
-      const cityObj = window.BKK.cities?.[cid];
-      const cityName = cityObj ? (tLabel(cityObj) || cityObj.nameEn || cid) : cid;
-      return `${cityName} — ${count}`;
-    }).join('\n');
-
-    // Build warning message with per-city breakdown
     const cannotUndo = t('toast.actionCannotBeUndone') || 'פעולה זו אינה ניתנת לביטול.';
-    const warningMsg = totalCount > 0
-      ? `${t('toast.interestDeleteWarning') || 'מחיקת תחום'} "${interestName}":\n${cityBreakdown}\n\n${cannotUndo}`
-      : `${t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום'} "${interestName}"? ${cannotUndo}`;
 
-    showConfirm(warningMsg, () => {
-      // Optimistic local update
-      setCustomInterests(prev => prev.filter(i => i.id !== interestId));
-      if (totalCount > 0) {
+    const proceedWithDelete = (allAffectedLocs) => {
+      const affectedCities = [...new Set(allAffectedLocs.map(l => l.cityId || l._cityId || selectedCityId))];
+      const totalCount = allAffectedLocs.length;
+
+      // Build per-city breakdown
+      const cityBreakdown = affectedCities.map(cid => {
+        const count = allAffectedLocs.filter(l => (l.cityId || l._cityId || selectedCityId) === cid).length;
+        const cityObj = window.BKK.cities?.[cid];
+        const cityName = cityObj ? (tLabel(cityObj) || cityObj.nameEn || cid) : cid;
+        return `${cityName} — ${count}`;
+      }).join('\n');
+
+      const warningMsg = totalCount > 0
+        ? `${t('toast.interestDeleteWarning') || 'מחיקת תחום ממועדפים:'} "${interestName}":\n${cityBreakdown}\n\n${cannotUndo}`
+        : `${t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום'} "${interestName}"? ${cannotUndo}`;
+
+      showConfirm(warningMsg, () => {
+        // Optimistic local update
+        setCustomInterests(prev => prev.filter(i => i.id !== interestId));
         setCustomLocations(prev => prev.map(loc => {
           if (!loc.interests || !loc.interests.includes(interestId)) return loc;
           return { ...loc, interests: loc.interests.filter(id => id !== interestId) };
         }));
-      }
 
-      if (isFirebaseAvailable && database) {
-        const doDelete = async () => {
-          try {
-            // 1. Delete customInterest entry
-            const fbId = interestToDelete?.firebaseId;
-            if (fbId) {
-              await database.ref(`customInterests/${fbId}`).remove();
-            } else {
-              const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
-              if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+        if (isFirebaseAvailable && database) {
+          const doDelete = async () => {
+            try {
+              // 1. Delete customInterest entry
+              const fbId = interestToDelete?.firebaseId;
+              if (fbId) {
+                await database.ref(`customInterests/${fbId}`).remove();
+              } else {
+                const snap = await database.ref('customInterests').orderByChild('id').equalTo(interestId).once('value');
+                if (snap.val()) await Promise.all(Object.keys(snap.val()).map(k => database.ref(`customInterests/${k}`).remove()));
+              }
+              // 2. Delete interestConfig + interestStatus
+              await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
+              await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
+              // 3. Remove from all locations across all cities
+              if (totalCount > 0) {
+                const writes = {};
+                allAffectedLocs.forEach(loc => {
+                  if (loc.firebaseId) {
+                    const cityId = loc.cityId || loc._cityId || selectedCityId;
+                    const newInterests = (loc.interests || []).filter(id => id !== interestId);
+                    writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+                  }
+                });
+                if (Object.keys(writes).length > 0) await database.ref().update(writes);
+              }
+              // 4. Remove from cityHiddenInterests
+              const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
+              if (hiddenSnap.val()) {
+                const hw = {};
+                Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
+                  if (Array.isArray(arr) && arr.includes(interestId)) {
+                    const cleaned = arr.filter(id => id !== interestId);
+                    hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
+                  }
+                });
+                if (Object.keys(hw).length > 0) await database.ref().update(hw);
+              }
+              // 5. Remove from all users' interestStatus
+              const usersSnap = await database.ref('users').once('value');
+              if (usersSnap.val()) {
+                const uw = {};
+                Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
+                  if (udata?.interestStatus?.[interestId] !== undefined) {
+                    uw[`users/${uid}/interestStatus/${interestId}`] = null;
+                  }
+                });
+                if (Object.keys(uw).length > 0) await database.ref().update(uw);
+              }
+              const msg = totalCount > 0
+                ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
+                : t('interests.interestDeleted');
+              showToast(msg, 'success');
+              addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
+            } catch (error) {
+              console.error('[FIREBASE] Error deleting interest:', error);
+              setCustomInterests(prev => [...prev, interestToDelete]);
+              showToast(t('toast.deleteError'), 'error');
             }
-            // 2. Delete interestConfig + interestStatus
-            await database.ref(`settings/interestConfig/${interestId}`).remove().catch(() => {});
-            await database.ref(`settings/interestStatus/${interestId}`).remove().catch(() => {});
-            // 3. Remove from locations in all cities
-            if (totalCount > 0) {
-              const writes = {};
-              affectedLocs.forEach(loc => {
-                if (loc.firebaseId) {
-                  const cityId = loc.cityId || selectedCityId;
-                  const newInterests = (loc.interests || []).filter(id => id !== interestId);
-                  writes[`cities/${cityId}/locations/${loc.firebaseId}/interests`] = newInterests.length > 0 ? newInterests : null;
+          };
+          doDelete();
+        } else {
+          showToast(totalCount > 0
+            ? (t('toast.interestDeletedFull') || '').replace('{count}', totalCount)
+            : t('interests.interestDeleted'), 'success');
+        }
+      }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+    };
+
+    // Query ALL cities from Firebase to get accurate impact across all cities
+    if (isFirebaseAvailable && database) {
+      const cityIds = Object.keys(window.BKK.cities || {});
+      Promise.all(cityIds.map(cid =>
+        database.ref(`cities/${cid}/locations`)
+          .orderByChild('interests')
+          .once('value')
+          .then(snap => {
+            const locs = [];
+            if (snap.val()) {
+              Object.entries(snap.val()).forEach(([fbId, loc]) => {
+                if (loc.interests && Array.isArray(loc.interests) && loc.interests.includes(interestId)) {
+                  locs.push({ ...loc, firebaseId: fbId, _cityId: cid });
                 }
               });
-              if (Object.keys(writes).length > 0) await database.ref().update(writes);
             }
-            // 4. Remove from cityHiddenInterests
-            const hiddenSnap = await database.ref('settings/cityHiddenInterests').once('value');
-            if (hiddenSnap.val()) {
-              const hw = {};
-              Object.entries(hiddenSnap.val()).forEach(([cid, arr]) => {
-                if (Array.isArray(arr) && arr.includes(interestId)) {
-                  const cleaned = arr.filter(id => id !== interestId);
-                  hw[`settings/cityHiddenInterests/${cid}`] = cleaned.length > 0 ? cleaned : null;
-                }
-              });
-              if (Object.keys(hw).length > 0) await database.ref().update(hw);
-            }
-            // 5. Remove from all users' interestStatus
-            const usersSnap = await database.ref('users').once('value');
-            if (usersSnap.val()) {
-              const uw = {};
-              Object.entries(usersSnap.val()).forEach(([uid, udata]) => {
-                if (udata?.interestStatus?.[interestId] !== undefined) {
-                  uw[`users/${uid}/interestStatus/${interestId}`] = null;
-                }
-              });
-              if (Object.keys(uw).length > 0) await database.ref().update(uw);
-            }
-            const msg = totalCount > 0
-              ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
-              : t('interests.interestDeleted');
-            showToast(msg, 'success');
-            addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
-          } catch (error) {
-            console.error('[FIREBASE] Error deleting interest:', error);
-            setCustomInterests(prev => [...prev, interestToDelete]);
-            showToast(t('toast.deleteError'), 'error');
-          }
-        };
-        doDelete();
-      } else {
-        showToast(totalCount > 0
-          ? (t('toast.interestDeletedFull') || '').replace('{count}', totalCount)
-          : t('interests.interestDeleted'), 'success');
-      }
-    }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+            return locs;
+          })
+          .catch(() => [])
+      )).then(results => {
+        const allAffectedLocs = results.flat();
+        proceedWithDelete(allAffectedLocs);
+      });
+    } else {
+      // Fallback: use local customLocations
+      const localAffected = customLocations.filter(loc =>
+        loc.interests && loc.interests.includes(interestId)
+      );
+      proceedWithDelete(localAffected);
+    }
   };
 
   // Toggle interest active/inactive status (per-user)
