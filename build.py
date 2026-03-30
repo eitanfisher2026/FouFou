@@ -129,7 +129,19 @@ def build():
         f.write(app_code)
     code_lines = app_code.count('\n') + 1
     code_kb = len(app_code.encode('utf-8')) / 1024
-    print(f"📄 app-code.js ({code_lines} lines, {code_kb:.0f}KB)")
+    print(f"📄 app-code.js ({code_lines} lines, {code_kb:.0f}KB JSX source)")
+
+    # Pre-compile: JSX → plain JS → minified (removes browser Babel dependency)
+    import subprocess, shutil
+    if shutil.which('node') and os.path.exists('compile.js') and os.path.exists('node_modules'):
+        result = subprocess.run(['node', 'compile.js', 'app-code.js'], capture_output=True, text=True)
+        if result.returncode == 0:
+            print(result.stdout.strip())
+        else:
+            print(f"⚠️  compile.js failed — shipping JSX source (browser Babel fallback active)")
+            print(result.stderr[:200])
+    else:
+        print(f"⚠️  compile.js / node_modules not found — shipping JSX source (browser Babel fallback active)")
 
     # === BUILD FILE 3: index.html (tiny shell with splash) ===
     index_html = template.replace('__VERSION__', ver)

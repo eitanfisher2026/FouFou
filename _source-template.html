@@ -151,9 +151,6 @@
         tailwind.config = { theme: { extend: { borderWidth: { '3': '3px', '4': '4px' } } } };
       }
     </script>
-    <script>window.__sp(0, 'Compiling...');</script>
-    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-
     <!-- Firebase (non-blocking, parallel) -->
     <script>
     window.__firebaseReady = new Promise(function(resolve) {
@@ -172,17 +169,15 @@
     });
     </script>
 
-    <!-- Fetch + compile + run the JSX app code -->
+    <!-- Fetch + run the pre-compiled app code (no browser Babel needed) -->
     <script>
-    window.__sp(0, 'Starting...');
-    fetch('app-code.js?v=__VERSION__').then(function(r) { return r.text(); }).then(function(jsx) {
+    fetch('app-code.js?v=__VERSION__').then(function(r) { return r.text(); }).then(function(code) {
       try {
-        var compiled = Babel.transform(jsx, { presets: ['react'], filename: 'app.jsx' }).code;
         var s = document.createElement('script');
-        s.textContent = compiled;
+        s.textContent = code;
         document.body.appendChild(s);
       } catch(err) {
-        console.error('[BABEL]', err);
+        console.error('[APP]', err);
         document.getElementById('splash-status').textContent = 'Error: ' + err.message;
       }
     }).catch(function(err) {
