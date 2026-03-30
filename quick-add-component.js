@@ -502,3 +502,76 @@ const DebugTab = ({
     </div>
   );
 };
+
+// TranslateButton — inline translate button for description/notes/review fields
+// Shows only when detected language differs from UI language
+// Uses MyMemory API (free, no key needed)
+const TranslateButton = ({ text, onTranslated, translateText, detectNeedsTranslation }) => {
+  const [status, setStatus] = React.useState('idle'); // idle | translating | done | error
+  const targetLang = detectNeedsTranslation(text);
+  if (!targetLang) return null;
+
+  const uiLang = window.BKK.i18n.currentLang || 'he';
+  const label = status === 'idle' ? window.t('settings.translateBtn')
+    : status === 'translating' ? window.t('settings.translatingBtn')
+    : status === 'done' ? window.t('settings.translateDone')
+    : '⚠️';
+
+  const handleClick = async () => {
+    if (status === 'translating' || status === 'done') return;
+    setStatus('translating');
+    try {
+      const translated = await translateText(text, targetLang);
+      onTranslated(translated);
+      setStatus('done');
+      setTimeout(() => setStatus('idle'), 3000);
+    } catch (e) {
+      console.error('[TRANSLATE] Error:', e);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 2000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={status === 'translating'}
+      style={{
+        fontSize: '10px',
+        padding: '2px 7px',
+        borderRadius: '10px',
+        border: '1px solid #93c5fd',
+        background: status === 'done' ? '#dcfce7' : status === 'error' ? '#fee2e2' : '#eff6ff',
+        color: status === 'done' ? '#15803d' : status === 'error' ? '#dc2626' : '#2563eb',
+        cursor: status === 'translating' ? 'wait' : 'pointer',
+        fontWeight: 'bold',
+        whiteSpace: 'nowrap',
+        opacity: status === 'translating' ? 0.7 : 1,
+        transition: 'all 0.2s',
+      }}
+    >
+      {label}
+    </button>
+  );
+};
+
+// ReviewTextWithTranslate — read-only review text with optional inline translation
+// Keeps translated state locally so original is preserved in Firebase
+const ReviewTextWithTranslate = ({ text, translateText, detectNeedsTranslation }) => {
+  const [translated, setTranslated] = React.useState(null);
+  const lang = window.BKK.i18n.currentLang || 'he';
+  return (
+    <div>
+      <p style={{ fontSize: '12px', color: '#4b5563', margin: '2px 0' }}>
+        {translated || text}
+      </p>
+      {!translated
+        ? <TranslateButton text={text} onTranslated={(t) => setTranslated(t)} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+        : <button onClick={() => setTranslated(null)} style={{ fontSize: '9px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            ↩ {lang === 'he' ? 'הצג מקור' : 'Show original'}
+          </button>
+      }
+    </div>
+  );
+};

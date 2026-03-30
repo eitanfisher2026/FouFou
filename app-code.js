@@ -546,6 +546,79 @@ const DebugTab = ({
   );
 };
 
+// TranslateButton — inline translate button for description/notes/review fields
+// Shows only when detected language differs from UI language
+// Uses MyMemory API (free, no key needed)
+const TranslateButton = ({ text, onTranslated, translateText, detectNeedsTranslation }) => {
+  const [status, setStatus] = React.useState('idle'); // idle | translating | done | error
+  const targetLang = detectNeedsTranslation(text);
+  if (!targetLang) return null;
+
+  const uiLang = window.BKK.i18n.currentLang || 'he';
+  const label = status === 'idle' ? window.t('settings.translateBtn')
+    : status === 'translating' ? window.t('settings.translatingBtn')
+    : status === 'done' ? window.t('settings.translateDone')
+    : '⚠️';
+
+  const handleClick = async () => {
+    if (status === 'translating' || status === 'done') return;
+    setStatus('translating');
+    try {
+      const translated = await translateText(text, targetLang);
+      onTranslated(translated);
+      setStatus('done');
+      setTimeout(() => setStatus('idle'), 3000);
+    } catch (e) {
+      console.error('[TRANSLATE] Error:', e);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 2000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={status === 'translating'}
+      style={{
+        fontSize: '10px',
+        padding: '2px 7px',
+        borderRadius: '10px',
+        border: '1px solid #93c5fd',
+        background: status === 'done' ? '#dcfce7' : status === 'error' ? '#fee2e2' : '#eff6ff',
+        color: status === 'done' ? '#15803d' : status === 'error' ? '#dc2626' : '#2563eb',
+        cursor: status === 'translating' ? 'wait' : 'pointer',
+        fontWeight: 'bold',
+        whiteSpace: 'nowrap',
+        opacity: status === 'translating' ? 0.7 : 1,
+        transition: 'all 0.2s',
+      }}
+    >
+      {label}
+    </button>
+  );
+};
+
+// ReviewTextWithTranslate — read-only review text with optional inline translation
+// Keeps translated state locally so original is preserved in Firebase
+const ReviewTextWithTranslate = ({ text, translateText, detectNeedsTranslation }) => {
+  const [translated, setTranslated] = React.useState(null);
+  const lang = window.BKK.i18n.currentLang || 'he';
+  return (
+    <div>
+      <p style={{ fontSize: '12px', color: '#4b5563', margin: '2px 0' }}>
+        {translated || text}
+      </p>
+      {!translated
+        ? <TranslateButton text={text} onTranslated={(t) => setTranslated(t)} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+        : <button onClick={() => setTranslated(null)} style={{ fontSize: '9px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            ↩ {lang === 'he' ? 'הצג מקור' : 'Show original'}
+          </button>
+      }
+    </div>
+  );
+};
+
 
 const FouFouApp = () => {
 
@@ -2451,6 +2524,26 @@ const FouFouApp = () => {
         if (onError) onError(e);
       });
     return true;
+  };
+
+  const detectNeedsTranslation = (text) => {
+    if (!text || text.trim().length < 3) return null;
+    const isHebrew = /[\u0590-\u05FF]/.test(text);
+    const uiLang = window.BKK.i18n.currentLang || 'he';
+    if (uiLang === 'he' && !isHebrew) return 'he';   // UI=he, text not Hebrew → translate to he
+    if (uiLang === 'en' && isHebrew) return 'en';    // UI=en, text is Hebrew → translate to en
+    return null; // already matches
+  };
+
+  const translateText = async (text, targetLang) => {
+    const langPair = targetLang === 'he' ? 'en|he' : 'he|en';
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+    addDebugLog('api', `[TRANSLATE] ${langPair}: "${text.substring(0, 40)}..."`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Translation API error: ' + res.status);
+    const data = await res.json();
+    if (data.responseStatus !== 200) throw new Error('Translation failed: ' + data.responseMessage);
+    return data.responseData.translatedText;
   };
 
   const saveHelpContent = (sectionId, text) => {
@@ -14004,7 +14097,10 @@ const FouFouApp = () => {
                 {/* Description + Notes */}
                 <div className="space-y-1.5">
                   <div>
-                    <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <label className="block text-xs font-bold">{`📝 ${t("places.description")}`}</label>
+                      <TranslateButton text={newLocation.description || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, description: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                    </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -14115,7 +14211,10 @@ const FouFouApp = () => {
                     );
                   })()}
                   <div>
-                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <label className="block text-xs font-bold">{`💭 ${t("places.notes")}`}</label>
+                      <TranslateButton text={newLocation.notes || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, notes: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                    </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -16699,7 +16798,9 @@ const FouFouApp = () => {
                             )}
                           </div>
                         </div>
-                        {review.text && <p className="text-xs text-gray-600">{review.text}</p>}
+                        {review.text && (
+                          <ReviewTextWithTranslate text={review.text} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                        )}
                       </div>
                     );
                   })

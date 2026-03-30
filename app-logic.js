@@ -2122,6 +2122,33 @@
     return true;
   };
 
+  // ── Translation utility ────────────────────────────────────────────────────
+  // Detects if text is Hebrew (Unicode block \u0590-\u05FF).
+  // If UI lang = he and text is NOT Hebrew → translate TO Hebrew.
+  // If UI lang = en and text IS Hebrew (or not English) → translate TO English.
+  // Returns null if no translation needed (text already matches UI lang).
+  const detectNeedsTranslation = (text) => {
+    if (!text || text.trim().length < 3) return null;
+    const isHebrew = /[\u0590-\u05FF]/.test(text);
+    const uiLang = window.BKK.i18n.currentLang || 'he';
+    if (uiLang === 'he' && !isHebrew) return 'he';   // UI=he, text not Hebrew → translate to he
+    if (uiLang === 'en' && isHebrew) return 'en';    // UI=en, text is Hebrew → translate to en
+    return null; // already matches
+  };
+
+  // Translate text using MyMemory API (free, no key required, 1000 req/day)
+  const translateText = async (text, targetLang) => {
+    const langPair = targetLang === 'he' ? 'en|he' : 'he|en';
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}`;
+    addDebugLog('api', `[TRANSLATE] ${langPair}: "${text.substring(0, 40)}..."`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Translation API error: ' + res.status);
+    const data = await res.json();
+    if (data.responseStatus !== 200) throw new Error('Translation failed: ' + data.responseMessage);
+    return data.responseData.translatedText;
+  };
+  // ──────────────────────────────────────────────────────────────────────────
+
   const saveHelpContent = (sectionId, text) => {
     if (!isFirebaseAvailable || !database) return;
     const lang = window.BKK.i18n.currentLang || 'he';

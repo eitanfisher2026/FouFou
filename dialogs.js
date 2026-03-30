@@ -476,7 +476,10 @@
                 {/* Description + Notes */}
                 <div className="space-y-1.5">
                   <div>
-                    <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <label className="block text-xs font-bold">{`📝 ${t("places.description")}`}</label>
+                      <TranslateButton text={newLocation.description || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, description: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                    </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -590,7 +593,10 @@
                     );
                   })()}
                   <div>
-                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <label className="block text-xs font-bold">{`💭 ${t("places.notes")}`}</label>
+                      <TranslateButton text={newLocation.notes || ''} onTranslated={(t) => setNewLocation(prev => ({...prev, notes: t}))} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                    </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                       <textarea
@@ -3210,7 +3216,9 @@
                             )}
                           </div>
                         </div>
-                        {review.text && <p className="text-xs text-gray-600">{review.text}</p>}
+                        {review.text && (
+                          <ReviewTextWithTranslate text={review.text} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                        )}
                       </div>
                     );
                   })
