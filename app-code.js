@@ -13270,55 +13270,67 @@ const FouFouApp = () => {
                 const ra = reviewAverages[pk];
                 const addedByName = loc.addedBy ? (userNamesMap[loc.addedBy] || '') : '';
                 return (
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', maxHeight: '45%', overflowY: 'auto' }}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'white', borderTop: '3px solid #3b82f6', borderRadius: '16px 16px 0 0', boxShadow: '0 -4px 24px rgba(0,0,0,0.18)', padding: '14px 16px 12px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', maxHeight: '55%', overflowY: 'auto' }}
                     onClick={e => e.stopPropagation()}>
-                    {/* Close handle */}
-                    <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1d5db', margin: '0 auto 10px' }}></div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    {/* Close handle + X button */}
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ flex: 1, height: '4px', borderRadius: '2px', background: '#d1d5db', maxWidth: '36px', margin: '0 auto' }}></div>
+                      <button onClick={() => setMapBottomSheet(null)}
+                        style={{ position: 'absolute', top: '12px', left: window.BKK.i18n.isRTL() ? 'auto' : '14px', right: window.BKK.i18n.isRTL() ? '14px' : 'auto', background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>✕</button>
+                    </div>
+                    {/* Header: image + name + FouFou icon */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
                       {hasImg && (
                         <img src={imgSrc} alt=""
                           onClick={() => { setModalImage(imgSrc); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                           style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', flexShrink: 0, border: '2px solid #e5e7eb' }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          {loc.name}
+                        {/* Name + FouFou icon */}
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ flex: 1 }}>{loc.name}</span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalImage(loc.uploadedImage || '__placeholder__');
-                              setModalImageCtx({ description: loc.description, location: loc });
-                              setShowImageModal(true);
-                            }}
-                            style={{ background: 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', padding: '2px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, opacity: 0.75 }}
-                            title={t('general.placeInfo') || 'מידע על המקום'}
+                            onClick={(e) => { e.stopPropagation(); setModalImage(loc.uploadedImage || '__placeholder__'); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
+                            style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}
+                            title={t('general.placeInfo') || 'פרטים'}
                           ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>📍 {areaLabels}</div>
-                        {intLabels && <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '2px' }}>{intLabels}</div>}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                          {addedByName && <span style={{ fontSize: '9px', color: '#9ca3af' }}>👤 {addedByName}</span>}
+                        {/* Interest labels */}
+                        {intLabels && <div style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 600, marginBottom: '4px' }}>{intLabels}</div>}
+                        {/* Ratings row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           {loc.googleRating && (
-                            <span style={{ fontSize: '10px', color: '#b45309' }}>⭐ {loc.googleRating} ({loc.googleRatingCount || 0})</span>
+                            <span style={{ fontSize: '11px', color: '#b45309', fontWeight: 600 }}>⭐ {loc.googleRating.toFixed?.(1) || loc.googleRating}{loc.googleRatingCount ? <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({loc.googleRatingCount})</span> : null}</span>
                           )}
-                          {ra && (
+                          {ra ? (
                             <button onClick={() => openReviewDialog(loc)}
-                              style={{ fontSize: '10px', color: '#8b5cf6', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '4px', padding: '0 4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                              🌟 {ra.avg.toFixed(1)} ({ra.count})
+                              style={{ fontSize: '11px', color: '#7c3aed', background: '#f5f3ff', border: '1.5px solid #fcd34d', borderRadius: '6px', padding: '1px 6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              🌟 {ra.avg.toFixed(1)} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({ra.count})</span>
                             </button>
-                          )}
-                          {!ra && (
+                          ) : (
                             <button onClick={() => openReviewDialog(loc)}
-                              style={{ fontSize: '9px', color: '#9ca3af', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '0 4px', cursor: 'pointer' }}>
-                              ☆ {t('reviews.rate')}
+                              style={{ fontSize: '11px', color: '#7c3aed', background: '#f5f3ff', border: '1.5px solid #fcd34d', borderRadius: '6px', padding: '1px 6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                              🌟 {t('reviews.rate')}
                             </button>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    {/* Description + Notes — auto-translated */}
+                    {loc.description?.trim() && (
+                      <div style={{ fontSize: '12px', color: '#374151', lineHeight: 1.5, marginBottom: '4px', whiteSpace: 'pre-line' }}>
+                        <AutoTranslateText text={loc.description} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                      </div>
+                    )}
+                    {loc.notes?.trim() && (
+                      <div style={{ background: '#fffbeb', borderRadius: '8px', padding: '6px 10px', fontSize: '11px', color: '#92400e', lineHeight: 1.5, marginBottom: '6px' }}>
+                        <AutoTranslateText text={loc.notes} prefix="💭 " translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                      </div>
+                    )}
+                    {/* 2 action buttons */}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                       <button onClick={() => { const u = window.BKK.getNavigateUrl(loc); if (u && u !== '#') window.open(u, '_blank'); }}
-                        style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>🗺️ {t('route.navigate') || 'נווט'}</button>
+                        style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#2563eb', color: 'white', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>🧭 {t('route.navigate') || 'נווט'}</button>
                       {(() => {
                         const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
                         if (!googleViewUrl) return null;
@@ -13326,14 +13338,10 @@ const FouFouApp = () => {
                         const btnLabel = isCoordOnly ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : (t('general.openInGoogle') || 'פתח בגוגל');
                         return (
                           <a href={googleViewUrl} target="_blank" rel="noopener noreferrer"
-                            style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #6ee7b7', background: '#ecfdf5', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#065f46', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1.5px solid #6ee7b7', background: '#ecfdf5', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#065f46', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                           >🔍 {btnLabel}</a>
                         );
                       })()}
-                      <button onClick={() => { setMapReturnPlace(null); setShowMapModal(false); setMapBottomSheet(null); handleEditLocation(loc); }}
-                        style={{ flex: 1, padding: '9px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f9fafb', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>✏️ {t('places.detailsEdit') || 'ערוך'}</button>
-                      <button onClick={() => setMapBottomSheet(null)}
-                        style={{ padding: '9px 14px', borderRadius: '10px', border: '1px solid #d1d5db', background: '#f3f4f6', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>✕</button>
                     </div>
                   </div>
                 );
@@ -15938,7 +15946,7 @@ const FouFouApp = () => {
                     {ra && (
                       <button
                         onClick={() => { close(); openReviewDialog(loc); }}
-                        style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        style={{ background: '#f5f3ff', border: '1.5px solid #fcd34d', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >🌟 {ra.avg.toFixed(1)} · {window.BKK.i18n.currentLang === 'en' ? `Reviews (${ra.count})` : `ביקורות (${ra.count})`}</button>
                     )}
                   </span>
@@ -15968,12 +15976,17 @@ const FouFouApp = () => {
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
                   style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >🌟 {t('reviews.rate')}</button>
-                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) && (
+                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) ? (
                   <button
                     onClick={() => { close(); handleEditLocation(loc); }}
                     style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >✏️ {t('general.edit') || 'ערוך'}</button>
-                )}
+                ) : loc ? (
+                  <button
+                    onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >📋 {t('general.details') || 'פרטים'}</button>
+                ) : null}
                 {loc && (() => {
                   const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
                   if (!googleViewUrl) return null;

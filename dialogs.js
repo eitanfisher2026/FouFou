@@ -2355,7 +2355,7 @@
                     {ra && (
                       <button
                         onClick={() => { close(); openReviewDialog(loc); }}
-                        style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        style={{ background: '#f5f3ff', border: '1.5px solid #fcd34d', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >🌟 {ra.avg.toFixed(1)} · {window.BKK.i18n.currentLang === 'en' ? `Reviews (${ra.count})` : `ביקורות (${ra.count})`}</button>
                     )}
                   </span>
@@ -2385,12 +2385,17 @@
                   onClick={() => { close(); if (loc) openReviewDialog(loc); }}
                   style={{ flex: 1, minWidth: '80px', background: '#fef3c7', color: '#92400e', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >🌟 {t('reviews.rate')}</button>
-                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) && (
+                {loc && (isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked)) ? (
                   <button
                     onClick={() => { close(); handleEditLocation(loc); }}
                     style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
                   >✏️ {t('general.edit') || 'ערוך'}</button>
-                )}
+                ) : loc ? (
+                  <button
+                    onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ flex: 1, minWidth: '80px', background: '#f3f4f6', color: '#374151', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '9px 8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
+                  >📋 {t('general.details') || 'פרטים'}</button>
+                ) : null}
                 {loc && (() => {
                   const googleViewUrl = window.BKK.getGoogleViewUrl(loc);
                   if (!googleViewUrl) return null;
