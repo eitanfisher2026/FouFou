@@ -7118,11 +7118,17 @@ const FouFouApp = () => {
     const affectedCities = [...new Set(affectedLocs.map(l => l.cityId || selectedCityId))];
     const totalCount = affectedLocs.length;
 
+    const cityBreakdown = affectedCities.map(cid => {
+      const count = affectedLocs.filter(l => (l.cityId || selectedCityId) === cid).length;
+      const cityObj = window.BKK.cities?.[cid];
+      const cityName = cityObj ? (tLabel(cityObj) || cityObj.nameEn || cid) : cid;
+      return `${cityName} — ${count}`;
+    }).join('\n');
+
+    const cannotUndo = t('toast.actionCannotBeUndone') || 'פעולה זו אינה ניתנת לביטול.';
     const warningMsg = totalCount > 0
-      ? (t('toast.interestDeleteWarning') || 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות ב-{cities} ערים.')
-          .replace('{name}', interestName).replace('{count}', totalCount).replace('{cities}', affectedCities.length)
-      : (t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום "{name}"?')
-          .replace('{name}', interestName);
+      ? `${t('toast.interestDeleteWarning') || 'מחיקת תחום'} "${interestName}":\n${cityBreakdown}\n\n${cannotUndo}`
+      : `${t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום'} "${interestName}"? ${cannotUndo}`;
 
     showConfirm(warningMsg, () => {
       setCustomInterests(prev => prev.filter(i => i.id !== interestId));
