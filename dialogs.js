@@ -2301,8 +2301,9 @@
               }}
               className="sm:rounded-2xl sm:mb-0"
             >
-              {/* Header — name + interests */}
-              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+              {/* Header — X + name + interests + FouFou icon */}
+              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <button onClick={close} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>✕</button>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: '16px', color: '#111827', lineHeight: 1.3 }}>{loc?.name || ''}</div>
                   {interestLabels.length > 0 && (
@@ -2311,7 +2312,13 @@
                     </div>
                   )}
                 </div>
-                <button onClick={close} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                {loc && (
+                  <button
+                    onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginTop: '2px' }}
+                    title={isAdmin || isEditor || (authUser?.uid === loc?.addedBy && !loc?.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
+                  ><img src="icon-32x32.png" alt="FouFou" style={{ width: '20px', height: '20px' }} /></button>
+                )}
               </div>
 
               {/* Scrollable body */}
@@ -2401,17 +2408,7 @@
                     );
                   })()}
                 </div>
-                {/* FouFou icon button — opens full location dialog (edit or read-only) */}
-                {loc && (
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <button onClick={() => { close(); handleEditLocation(loc); }}
-                      style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      title={isAdmin || isEditor || (authUser?.uid === loc.addedBy && !loc.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
-                    >
-                      <img src="icon-32x32.png" alt="FouFou" style={{ width: '22px', height: '22px' }} />
-                    </button>
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
