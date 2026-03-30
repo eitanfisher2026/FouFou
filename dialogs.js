@@ -1583,21 +1583,23 @@
                         return canDelete ? (
                         <button
                           onClick={() => {
-                            const msg = newInterest.builtIn 
-                              ? `${t('interests.deleteBuiltIn')} "${newInterest.label}"?`
-                              : `${t('interests.deleteCustom')} "${newInterest.label}"?`;
-                            showConfirm(msg, () => {
-                              if (newInterest.builtIn) {
+                            if (newInterest.builtIn) {
+                              // Built-in interests: simple confirm + remove config only
+                              const msg = `${t('interests.deleteBuiltIn')} "${newInterest.label}"?`;
+                              showConfirm(msg, () => {
                                 if (isFirebaseAvailable && database) {
                                   removeInterestConfig(editingCustomInterest.id);
                                 }
                                 showToast(t('interests.builtInRemoved'), 'success');
-                              } else {
-                                deleteCustomInterest(editingCustomInterest.id);
-                              }
+                                setShowAddInterestDialog(false);
+                                setEditingCustomInterest(null);
+                              }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+                            } else {
+                              // Custom interests: deleteCustomInterest handles its own confirm + full cleanup
                               setShowAddInterestDialog(false);
                               setEditingCustomInterest(null);
-                            });
+                              deleteCustomInterest(editingCustomInterest.id);
+                            }
                           }}
                           className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
                         >

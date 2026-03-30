@@ -7354,9 +7354,9 @@
 
     // Build warning message
     const warningMsg = totalCount > 0
-      ? (t('interests.interestDeleteWarning') || 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות ב-{cities} ערים.')
+      ? (t('toast.interestDeleteWarning') || 'מחיקת תחום "{name}" תסיר אותו מ-{count} מקומות ב-{cities} ערים.')
           .replace('{name}', interestName).replace('{count}', totalCount).replace('{cities}', affectedCities.length)
-      : (t('interests.interestDeleteWarningNoPlaces') || 'למחוק את התחום "{name}"?')
+      : (t('toast.interestDeleteWarningNoPlaces') || 'למחוק את התחום "{name}"?')
           .replace('{name}', interestName);
 
     showConfirm(warningMsg, () => {
@@ -7419,7 +7419,7 @@
               if (Object.keys(uw).length > 0) await database.ref().update(uw);
             }
             const msg = totalCount > 0
-              ? (t('interests.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
+              ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
               : t('interests.interestDeleted');
             showToast(msg, 'success');
             addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
@@ -7432,7 +7432,7 @@
         doDelete();
       } else {
         showToast(totalCount > 0
-          ? (t('interests.interestDeletedFull') || '').replace('{count}', totalCount)
+          ? (t('toast.interestDeletedFull') || '').replace('{count}', totalCount)
           : t('interests.interestDeleted'), 'success');
       }
     }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
