@@ -13324,16 +13324,16 @@ const FouFouApp = () => {
                           style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', flexShrink: 0, border: '2px solid #e5e7eb' }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Name + FouFou icon — on same line, X at end */}
-                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button onClick={() => setMapBottomSheet(null)}
-                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
-                          <span style={{ flex: 1 }}>{loc.name}</span>
+                        {/* Name row: DOM [FouFou][name][X] + direction:rtl → RTL: X(left)|name|FouFou(right) ✅ */}
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalImage(loc.uploadedImage || '__placeholder__'); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                             style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                             title={t('general.placeInfo') || 'פרטים'}
                           ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
+                          <span style={{ flex: 1 }}>{loc.name}</span>
+                          <button onClick={() => setMapBottomSheet(null)}
+                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
                         </div>
                         {/* Interest labels */}
                         {intLabels && <div style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 600, marginBottom: '4px' }}>{intLabels}</div>}
@@ -15932,9 +15932,18 @@ const FouFouApp = () => {
               }}
               className="sm:rounded-2xl sm:mb-0"
             >
-              {/* Header — X + name + interests + FouFou icon */}
-              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <button onClick={close} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>✕</button>
+              {/* Header — FouFou icon + name + interests + X */}
+              {/* direction on container: first child = right in RTL, last child = left in RTL */}
+              {/* DOM: [FouFou] [name] [X] → RTL visual: X(left) | name | FouFou(right) */}
+              {/* DOM: [FouFou] [name] [X] → LTR visual: FouFou(left) | name | X(right) */}
+              <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'flex-start', gap: '8px', direction: isRTL ? 'rtl' : 'ltr' }}>
+                {loc && (
+                  <button
+                    onClick={() => { close(); handleEditLocation(loc); }}
+                    style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginTop: '2px' }}
+                    title={isAdmin || isEditor || (authUser?.uid === loc?.addedBy && !loc?.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
+                  ><img src="icon-32x32.png" alt="FouFou" style={{ width: '20px', height: '20px' }} /></button>
+                )}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 800, fontSize: '16px', color: '#111827', lineHeight: 1.3 }}>{loc?.name || ''}</div>
                   {interestLabels.length > 0 && (
@@ -15943,13 +15952,7 @@ const FouFouApp = () => {
                     </div>
                   )}
                 </div>
-                {loc && (
-                  <button
-                    onClick={() => { close(); handleEditLocation(loc); }}
-                    style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0, marginTop: '2px' }}
-                    title={isAdmin || isEditor || (authUser?.uid === loc?.addedBy && !loc?.locked) ? (t('general.edit') || 'ערוך') : (t('general.details') || 'פרטים')}
-                  ><img src="icon-32x32.png" alt="FouFou" style={{ width: '20px', height: '20px' }} /></button>
-                )}
+                <button onClick={close} style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>✕</button>
               </div>
 
               {/* Scrollable body */}

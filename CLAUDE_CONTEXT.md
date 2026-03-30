@@ -23,10 +23,55 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.13.9` (Mar 30, 2026)
+- **גרסה:** `3.13.10` (Mar 30, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## ✅ Major Changes — Session Mar 30, 2026 (v3.13.0 → v3.13.9)
+
+### 🌐 Translation (MyMemory API — free, no key, 1000 req/day)
+- `detectNeedsTranslation(text)` — regex: Hebrew = `\u0590-\u05FF`
+- `translateText(text, targetLang)` — MyMemory API call
+- **Components in quick-add-component.js (before 500KB):**
+  - `TranslateButton` — manual translate button (used in ReviewTextWithTranslate)
+  - `ReviewTextWithTranslate` — read-only review text with manual translate + "show original"
+  - `AutoTranslateText` — auto-translates on mount if lang mismatch, shows original while loading
+
+**Where translation appears:**
+- Stop detail popup (FouFou icon popup) — description + notes: auto on-the-fly
+- Favorites map bottom sheet — description + notes: auto on-the-fly
+- Other users' reviews — manual button only
+
+### 🗺️ Favorites Screen Changes
+- **Snap place button removed** from action row (floating camera button still works)
+- **Map button** moved to action row with text "🗺️ מפת מועדפים / Favorites Map" (i18n: `form.favoritesMap`)
+- Area not selected → separate toast `form.selectAreaFirst` (not combined with interests)
+
+### 📍 Favorites Map Bottom Sheet — Redesigned
+- Header row: DOM `[FouFou icon][name][✕]` + `direction:rtl/ltr` → X always correct side
+- FouFou icon opens full location dialog (edit or read-only)
+- Removed: area label, added-by name, edit/details button
+- Added: description + notes with AutoTranslateText, Google ⭐ + FouFou 🌟 ratings
+- Yellow border on FouFou rating button
+- 2 action buttons: 🧭 נווט + 🔍 פתח בגוגל/נקודה
+
+### 📋 Stop Detail Popup (from list) — Redesigned  
+- Header row: DOM `[FouFou icon][name][✕]` + `direction:rtl/ltr` → X always correct side
+- FouFou icon = edit (if can edit) or details (read-only) — opens location dialog
+- Ratings: ⭐ Google + 🌟 FouFou with yellow border (both in ratings row, not action bar)
+- Action bar: Row 1: 🧭 נווט + 🔍 פתח בגוגל. No edit/details button (FouFou icon in header)
+- Description + notes with AutoTranslateText
+
+### 🗑️ Interest Deletion — Full Cleanup
+- Shows warning with affected location count + city count before delete
+- After confirm: deletes from customInterests, interestConfig, interestStatus, ALL locations' interests[] array, cityHiddenInterests, users' interestStatus
+- Local React state updated optimistically
+
+### 📐 UX Consistency Rule — ✕ Button Position
+See Known Regressions #12. All dialogs updated to follow this rule.
 
 ---
 
@@ -416,6 +461,7 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 9. `noGoogleSearch` not saved to customInterests
 10. Hardcoded IDs patched to Firebase
 11. **Firebase write past 500KB** — extract to app-logic.js
+12. **כפתור סגירה ✕** — חייב תמיד להיות בפינה **שמאלית** עליונה בעברית RTL, ובפינה **ימנית** עליונה באנגלית LTR. חל על כל דיאלוג, פופאפ, bottom sheet, ו-modal. טכניקה: DOM order [FouFou/first-element][content][X] + `direction: isRTL ? 'rtl' : 'ltr'` על הcontainer → X תמיד בצד הנכון אוטומטית.
 12. **City general load after `return () => cleanup`** — must be BEFORE
 13. **`debugModeRef = useRef(debugMode)`** — must be `useRef(localStorage...)`
 

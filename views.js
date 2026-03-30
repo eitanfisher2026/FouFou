@@ -4687,16 +4687,16 @@
                           style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', flexShrink: 0, border: '2px solid #e5e7eb' }} />
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Name + FouFou icon — on same line, X at end */}
-                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button onClick={() => setMapBottomSheet(null)}
-                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
-                          <span style={{ flex: 1 }}>{loc.name}</span>
+                        {/* Name row: DOM [FouFou][name][X] + direction:rtl → RTL: X(left)|name|FouFou(right) ✅ */}
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalImage(loc.uploadedImage || '__placeholder__'); setModalImageCtx({ description: loc.description, location: loc }); setShowImageModal(true); }}
                             style={{ background: '#f5f3ff', border: '2px solid #c4b5fd', borderRadius: '8px', cursor: 'pointer', padding: '3px 6px', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
                             title={t('general.placeInfo') || 'פרטים'}
                           ><img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} /></button>
+                          <span style={{ flex: 1 }}>{loc.name}</span>
+                          <button onClick={() => setMapBottomSheet(null)}
+                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>✕</button>
                         </div>
                         {/* Interest labels */}
                         {intLabels && <div style={{ fontSize: '10px', color: '#8b5cf6', fontWeight: 600, marginBottom: '4px' }}>{intLabels}</div>}
