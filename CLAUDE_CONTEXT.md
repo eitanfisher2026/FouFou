@@ -23,10 +23,25 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.14.1` (Mar 31, 2026)
+- **גרסה:** `3.14.2` (Mar 31, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## ✅ Major Changes — Session Mar 31, 2026 (v3.14.1 → v3.14.2)
+
+### 📂 Interest Groups — Full Management
+- **Firebase path:** `settings/interestGroups/{groupId}: { labelHe, labelEn }`
+- **State:** `interestGroups` loaded via consolidated settings listener
+- **Functions in app-logic.js:** `saveInterestGroup(gId, labelHe, labelEn)`, `deleteInterestGroup(gId)`
+- **Settings tab:** full management UI — edit He/En labels inline, delete (blocked if has members), add new group (id + He + En)
+- **Interest dialog:** group field is now a dropdown from `interestGroups` (no free-text input)
+- **Wizard step 1:** group name shown on separator (He RTL right side, En LTR left side), interests sorted alphabetically within group by UI language
+
+### 🐛 Bug Fix
+- **`fetchMore` area filter** — was using `radius × 2` geo-proximity fallback, causing favorites from adjacent areas (e.g. Sukhumvit) to appear when searching On Nut. Now uses exact area match, same as Round 1 (`getStopsForInterests`).
 
 ---
 
@@ -401,6 +416,7 @@ customInterests/{fbKey}: id, label, labelEn, icon (max 2KB)
 settings/interestConfig/{id}: types, textSearch, blacklist, bestTime, routeSlot,
   weight, minStops, maxStops, minGap, dedupRelated, noGoogleSearch
 settings/interestStatus/{id}
+settings/interestGroups/{id}          <- { labelHe, labelEn } — group display names
 settings/cityHiddenInterests/{cityId}  <- array of hidden interest IDs
 settings/systemParams
 users/{uid}/interestStatus/{id}

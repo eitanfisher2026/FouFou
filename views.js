@@ -948,25 +948,34 @@
                       }
                       return true;
                     });
-                    // Sort by group, preserving order within groups
+                    // Sort by group, then alphabetically within group
                     const groupOrder = [];
                     filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });
                     groupOrder.push('_none'); // ungrouped at end
+                    const uiLang = window.BKK.i18n?.lang?.() || 'he';
+                    const sortLocale = uiLang === 'he' ? 'he' : 'en';
                     const sorted = [...filtered].sort((a, b) => {
                       const ga = groupOrder.indexOf(a.group || '_none');
                       const gb = groupOrder.indexOf(b.group || '_none');
-                      if (ga !== gb) return ga - gb; // keep group order
-                      // Within same group: sort alphabetically by display label
-                      return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he');
+                      if (ga !== gb) return ga - gb;
+                      // Within same group: alphabetical by UI language
+                      return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
-                    // Render with separator lines between groups
+                    // Render with group label on separator between groups
                     let lastGroup = null;
                     const elements = [];
                     sorted.forEach((option, idx) => {
                       const thisGroup = option.group || '_none';
                       if (lastGroup !== null && thisGroup !== lastGroup) {
+                        const gData = (thisGroup !== '_none') ? (interestGroups[thisGroup] || {}) : {};
+                        const gLabel = uiLang === 'he' ? (gData.labelHe || thisGroup) : (gData.labelEn || thisGroup);
+                        const showLabel = thisGroup !== '_none' && (gData.labelHe || gData.labelEn);
                         elements.push(
-                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', height: '1px', background: '#e5e7eb', margin: '2px 0' }} />
+                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 2px' }}>
+                            <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                            {showLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
+                            {showLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
+                          </div>
                         );
                       }
                       lastGroup = thisGroup;
@@ -3259,57 +3268,85 @@
 
 
 
-            {/* Interest Groups Overview */}
+            {/* Interest Groups Management */}
             {isUnlocked && (
             <div style={{ marginTop: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>📂 Interest Groups</div>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
+                📂 Interest Groups <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
+              </div>
               {(() => {
                 const allOpts = allInterestOptions || [];
-                const groups = {};
+                const membersByGroup = {};
                 const ungrouped = [];
                 allOpts.forEach(opt => {
                   const aStatus = opt.adminStatus || 'active';
                   if (aStatus === 'hidden') return;
                   if (opt.group) {
-                    if (!groups[opt.group]) groups[opt.group] = [];
-                    groups[opt.group].push(opt);
-                  } else {
-                    ungrouped.push(opt);
-                  }
+                    if (!membersByGroup[opt.group]) membersByGroup[opt.group] = [];
+                    membersByGroup[opt.group].push(opt);
+                  } else { ungrouped.push(opt); }
                 });
-                const groupNames = Object.keys(groups).sort();
-                if (groupNames.length === 0) return <div style={{ fontSize: '10px', color: '#9ca3af' }}>No groups defined. Edit interests to assign groups.</div>;
+                const groupIds = Object.keys(interestGroups).sort();
+                const AddGroupRow = () => {
+                  const [newGId, setNewGId] = React.useState('');
+                  const [newGHe, setNewGHe] = React.useState('');
+                  const [newGEn, setNewGEn] = React.useState('');
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed #e5e7eb', flexWrap: 'wrap' }}>
+                      <input value={newGId} onChange={(e) => setNewGId(e.target.value.toLowerCase().replace(/\s+/g, '_'))} placeholder="id" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '68px' }} />
+                      <input value={newGHe} onChange={(e) => setNewGHe(e.target.value)} placeholder="עברית" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px', textAlign: 'right', direction: 'rtl' }} />
+                      <input value={newGEn} onChange={(e) => setNewGEn(e.target.value)} placeholder="English" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px' }} />
+                      <button onClick={() => {
+                        if (!newGId.trim() || !newGHe.trim() || !newGEn.trim()) { showToast('⚠️ כל השדות חובה', 'warning'); return; }
+                        if (interestGroups[newGId.trim()]) { showToast('⚠️ ID קיים כבר', 'warning'); return; }
+                        saveInterestGroup(newGId.trim(), newGHe.trim(), newGEn.trim());
+                        setNewGId(''); setNewGHe(''); setNewGEn('');
+                      }} style={{ fontSize: '11px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}>+ הוסף</button>
+                    </div>
+                  );
+                };
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {groupNames.map(g => (
-                      <div key={g} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', minWidth: '60px' }}>{g}</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {groups[g].map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
-                          ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {groupIds.map(gId => {
+                      const gData = interestGroups[gId] || {};
+                      const members = membersByGroup[gId] || [];
+                      return (
+                        <div key={gId} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: members.length ? '5px' : '0' }}>
+                            <span style={{ fontSize: '10px', color: '#9ca3af', minWidth: '46px' }}>{gId}</span>
+                            <input value={gData.labelHe || ''} onChange={(e) => saveInterestGroup(gId, e.target.value, gData.labelEn || '')} placeholder="עברית" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', direction: 'rtl' }} />
+                            <input value={gData.labelEn || ''} onChange={(e) => saveInterestGroup(gId, gData.labelHe || '', e.target.value)} placeholder="English" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px' }} />
+                            <button onClick={() => {
+                              if (members.length > 0) { showToast('⚠️ יש ' + members.length + ' תחומים בקיבוץ — שנה אותם קודם', 'warning'); return; }
+                              deleteInterestGroup(gId);
+                            }} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 'auto' }}>🗑️</button>
+                          </div>
+                          {members.length > 0 && (
+                            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+                              {[...members].sort((a, b) => (tLabel(a) || '').localeCompare(tLabel(b) || '', 'he')).map(opt => (
+                                <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    <AddGroupRow />
                     {ungrouped.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>none</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa', marginTop: '2px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>ללא קיבוץ</span>
                         <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
                           {ungrouped.map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}
-                            >{renderIcon(opt.icon, '12px')} {tLabel(opt)}</span>
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
                           ))}
                         </div>
                       </div>
                     )}
-                    <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '2px' }}>To change groups: edit each interest in the Interests tab → Group field</div>
                   </div>
                 );
               })()}
             </div>
             )}
-
             </div>)}
 
             {/* ===== GENERAL SETTINGS TAB ===== */}

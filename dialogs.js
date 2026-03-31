@@ -1142,33 +1142,24 @@
                 </div>{/* close inner wrapper */}
 
 
-                {/* Group — for visual grouping in wizard */}
+                {/* Group — dropdown from interestGroups (managed in Settings > Interest Groups) */}
                 {isUnlocked && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-600">📂 Group:</span>
+                    <span className="text-xs font-bold text-gray-600">📂 קיבוץ:</span>
                     <select
                       value={newInterest.group || ''}
                       onChange={(e) => setNewInterest({...newInterest, group: e.target.value})}
                       className="p-1 text-xs border rounded flex-1"
-                      style={{ minWidth: 0 }}
                     >
-                      <option value="">— none —</option>
-                      {(() => {
-                        const groups = new Set();
-                        (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
-                        (allInterestOptions || []).forEach(i => { if (i.group) groups.add(i.group); });
-                        // uncoveredInterests removed — noGoogleSearch interests now in interestOptions
-                        return [...groups].sort().map(g => <option key={g} value={g}>{g}</option>);
-                      })()}
+                      <option value="">— ללא קיבוץ —</option>
+                      {Object.keys(interestGroups || {}).sort().map(gId => {
+                        const gData = interestGroups[gId] || {};
+                        const uiLang = window.BKK.i18n?.lang?.() || 'he';
+                        const label = uiLang === 'he' ? (gData.labelHe || gId) : (gData.labelEn || gId);
+                        return <option key={gId} value={gId}>{label}</option>;
+                      })}
                     </select>
-                    <input
-                      value={newInterest.group || ''}
-                      onChange={(e) => setNewInterest({...newInterest, group: e.target.value.trim().toLowerCase()})}
-                      placeholder="or type new..."
-                      className="p-1 text-xs border rounded"
-                      style={{ width: '90px' }}
-                    />
                   </div>
                 </div>
                 )}

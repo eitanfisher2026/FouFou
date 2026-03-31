@@ -650,6 +650,7 @@
 
   const [interestConfig, setInterestConfig] = useState({});
   const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
+  const [interestGroups, setInterestGroups] = useState({}); // { groupId: { labelHe, labelEn } }
 
   const toggleCityForInterest = (interestId, cityId) => {
     const cur = cityHiddenInterests[cityId] || new Set();
@@ -2051,6 +2052,19 @@
     if (!isFirebaseAvailable || !database) return;
     addDebugLog('firebase', `[DIALOG-SAVE] interestConfig/${interestId}`, { keys: Object.keys(configData) });
     database.ref(`settings/interestConfig/${interestId}`).set(configData);
+  };
+
+  const saveInterestGroup = (groupId, labelHe, labelEn) => {
+    if (!isFirebaseAvailable || !database) return;
+    const data = { labelHe: labelHe.trim(), labelEn: labelEn.trim() };
+    setInterestGroups(prev => ({ ...prev, [groupId]: data }));
+    database.ref(`settings/interestGroups/${groupId}`).set(data);
+  };
+
+  const deleteInterestGroup = (groupId) => {
+    if (!isFirebaseAvailable || !database) return;
+    setInterestGroups(prev => { const n = { ...prev }; delete n[groupId]; return n; });
+    database.ref(`settings/interestGroups/${groupId}`).remove();
   };
 
   // Save/update customInterest + config in one operation
@@ -3895,6 +3909,13 @@
       }
       
       console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
+      
+      // Interest groups (label names for wizard grouping)
+      if (s.interestGroups) {
+        setInterestGroups(s.interestGroups);
+      } else {
+        setInterestGroups({});
+      }
     });
     
     // Log access stats (aggregated weekly counters by country)
@@ -6787,21 +6808,9 @@
           // No coords on loc — include anyway (coord-less favorites still worth showing)
           return true;
         } else {
-          // Area mode: primary check is area match, but also accept:
-          // 1. Locations whose coords fall in the selected area (may have been mis-assigned)
-          // 2. Locations with coords close to the area center (within area radius × 2)
+          // Area mode: exact match only — same logic as getStopsForInterests (Round 1)
           const locAreas = loc.areas || (loc.area ? [loc.area] : []);
-          if (locAreas.includes(formData.area)) return true;
-          // Secondary: geo proximity to selected area center
-          if (loc.lat && loc.lng) {
-            const areaCoords = window.BKK.areaCoordinates?.[formData.area];
-            if (areaCoords?.lat && areaCoords?.lng) {
-              const dist = calcDistance(loc.lat, loc.lng, areaCoords.lat, areaCoords.lng);
-              const threshold = (areaCoords.radius || 2000) * 2;
-              if (dist <= threshold) return true;
-            }
-          }
-          return false;
+          return locAreas.includes(formData.area);
         }
         // Not already in route
       }).filter(loc => !existingNames.includes((loc.name || '').toLowerCase().trim()));
