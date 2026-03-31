@@ -717,6 +717,13 @@
       // googleLowRatingCount: places below this get a near-zero score — included only if no better option
       googleMinRatingCount: 20,
       googleLowRatingCount: 60,
+
+      // Google Places business status filter
+      // filteredBusinessStatuses: array of businessStatus values to exclude
+      // Possible values: CLOSED_PERMANENTLY, CLOSED_TEMPORARILY, BUSINESS_STATUS_UNSPECIFIED
+      filteredBusinessStatuses: ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'],
+      // filterClosedNow: if true, exclude places where openNow === false
+      filterClosedNow: false,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -3812,7 +3819,12 @@
           
           // System params
           if (s.systemParams) {
-            const merged = { ...window.BKK._defaultSystemParams, ...s.systemParams };
+            const sp = { ...s.systemParams };
+            // Firebase stores arrays as {0:..., 1:...} — convert back
+            if (sp.filteredBusinessStatuses && !Array.isArray(sp.filteredBusinessStatuses)) {
+              sp.filteredBusinessStatuses = Object.values(sp.filteredBusinessStatuses);
+            }
+            const merged = { ...window.BKK._defaultSystemParams, ...sp };
             window.BKK.systemParams = merged;
             setSystemParams(merged);
             // systemParams overrides (higher priority)
@@ -4625,11 +4637,20 @@
             googlePlaceId: place.id || null,
           };
           
-          // Filter 0: Business status — filter out permanently or temporarily closed places
-          const bStatus = place.businessStatus;
-          if (bStatus === 'CLOSED_PERMANENTLY' || bStatus === 'CLOSED_TEMPORARILY') {
+          // Filter 0: Business status — filter based on systemParams.filteredBusinessStatuses
+          const bStatus = place.businessStatus || 'OPERATIONAL';
+          const filteredStatuses = window.BKK.systemParams?.filteredBusinessStatuses || ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'];
+          if (filteredStatuses.includes(bStatus)) {
             debugEntry.status = '❌ CLOSED';
             debugEntry.reason = bStatus;
+            debugPlaceResults.push(debugEntry);
+            return false;
+          }
+
+          // Filter 0b: openNow — filter closed-now places if filterClosedNow is enabled
+          if (window.BKK.systemParams?.filterClosedNow && place.openNow === false) {
+            debugEntry.status = '❌ CLOSED';
+            debugEntry.reason = 'CLOSED_NOW';
             debugPlaceResults.push(debugEntry);
             return false;
           }
