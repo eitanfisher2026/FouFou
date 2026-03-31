@@ -6517,6 +6517,29 @@
           }
         }
       }
+
+      // ROUND 3: If still short of maxStops, fill from any interest with remaining places — no limit cap.
+      // Handles the case where one interest had fewer results than allocated (e.g. museums limit=8 but only 2 available)
+      // and another has plenty (e.g. restaurants limit=2 but 9 available). Fill the gap by best rating.
+      const stillMissing = maxStops - uniqueStops.length;
+      if (stillMissing > 0) {
+        console.log(`[ROUTE] Round 3: ${uniqueStops.length}/${maxStops} — trying to fill ${stillMissing} remaining slots`);
+        const usedNames3 = new Set(uniqueStops.map(s => s.name.toLowerCase().trim()));
+        const extraPlaces = [];
+        for (const interest of searchInterests) {
+          const result = interestResults[interest];
+          if (!result) continue;
+          const remaining = (result.allPlaces || []).filter(p => !usedNames3.has((p.name || '').toLowerCase().trim()));
+          extraPlaces.push(...remaining);
+        }
+        if (extraPlaces.length > 0) {
+          const ratingSort3 = (a, b) => (b.rating * Math.log10((b.ratingCount || 0) + 1)) - (a.rating * Math.log10((a.ratingCount || 0) + 1));
+          const distSort3 = (a, b) => calcDistance(formData.currentLat, formData.currentLng, a.lat, a.lng) - calcDistance(formData.currentLat, formData.currentLng, b.lat, b.lng);
+          const toAdd = extraPlaces.sort(isRadiusMode ? distSort3 : ratingSort3).slice(0, stillMissing);
+          uniqueStops = [...uniqueStops, ...toAdd];
+          console.log(`[ROUTE] Round 3 complete: added ${toAdd.length}, total now ${uniqueStops.length}/${maxStops}`);
+        }
+      }
       
       // Show errors if any occurred
       if (fetchErrors.length > 0) {
