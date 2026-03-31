@@ -23,10 +23,28 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.14.0` (Mar 30, 2026)
+- **גרסה:** `3.14.1` (Mar 31, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## ✅ Major Changes — Session Mar 31, 2026 (v3.14.0 → v3.14.1)
+
+### 🐛 Bug Fixes
+- **Startup offline toast** — if Firebase not connected after 5s, shows sticky `toast.offline`. Dismissed automatically when connection restores.
+- **`noGoogleSearch` not shown on reopen** — `openInterestDialog` was missing `noGoogleSearch` field in `setNewInterest`. Fixed in `views.js`.
+- **`textSearch` not cleared on save** — saving with empty textSearch kept old value. Now explicitly sets `null` to delete from Firebase. Also clears opposite field when switching modes (`text`↔`types`).
+- **maxStops backfill broken in Round 2** — Round 2 used raw `interestCfg.maxStops` instead of `interestLimits` (which includes backfill overflow). Fixed.
+
+### ♻️ Refactor — DRY: buildInterestLimits
+- Extracted shared function `buildInterestLimits(selectedInterests, maxTotal)` in `app-logic.js`.
+- Replaces ~60 lines of duplicated allocation logic in both `smartSelectStops` and route generation.
+- Single source of truth — future changes to allocation affect both callers automatically.
+
+### 📋 CLAUDE_CONTEXT updated
+- Added **DRY — No Duplicate Logic** rule to Critical Rules.
 
 ---
 
@@ -303,6 +321,11 @@ zip github-upload-vX_Y_Z.zip \
 - No multi-line `async` handlers in `views.js`/`dialogs.js`
 - All Firebase writes → named function in `app-logic.js`
 - `debugModeRef = useRef(localStorage.getItem('foufou_debug_mode') === 'true')`
+
+### DRY — No Duplicate Logic
+- **Never manage the same logic in two places.** If two code paths do the same calculation, extract a shared function and call it from both.
+- Example: `buildInterestLimits(interests, maxTotal)` — called from both `smartSelectStops` and route generation. A change in one must not require a change in the other.
+- When fixing a bug, always ask: "is this logic duplicated anywhere else?" If yes — refactor first.
 
 ### Syntax
 - Single quotes in JSX = Babel error → always double quotes

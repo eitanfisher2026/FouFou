@@ -1647,10 +1647,14 @@
                         } else {
                           // Google search interest — clear noGoogleSearch flag if previously set
                           searchConfig.noGoogleSearch = null;
-                          if (newInterest.searchMode === 'text' && newInterest.textSearch) {
-                            searchConfig.textSearch = newInterest.textSearch.trim();
-                          } else if (newInterest.types) {
-                            searchConfig.types = newInterest.types.split(',').map(t => t.trim()).filter(t => t);
+                          if (newInterest.searchMode === 'text') {
+                            searchConfig.textSearch = newInterest.textSearch?.trim() || null;
+                            searchConfig.types = null;
+                          } else {
+                            searchConfig.types = newInterest.types
+                              ? newInterest.types.split(',').map(t => t.trim()).filter(t => t)
+                              : null;
+                            searchConfig.textSearch = null;
                           }
                         }
                         if (newInterest.blacklist) {
@@ -1730,8 +1734,10 @@
                               if (Object.keys(searchConfig).length > 0) {
                                 const existingCfg = interestConfig[interestId] || {};
                                 const mergedConfig = { ...existingCfg, ...searchConfig };
+                                // Remove null keys from local state (Firebase handles null as delete)
+                                Object.keys(mergedConfig).forEach(k => { if (mergedConfig[k] === null) delete mergedConfig[k]; });
                                 setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
-                                saveInterestConfig(interestId, mergedConfig);
+                                saveInterestConfig(interestId, { ...existingCfg, ...searchConfig });
                               }
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);

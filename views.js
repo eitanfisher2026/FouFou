@@ -2378,6 +2378,7 @@
                   minRatingCount: config.minRatingCount != null ? config.minRatingCount : null,
                   lowRatingCount: config.lowRatingCount != null ? config.lowRatingCount : null,
                   privateOnly: interest.privateOnly || false,
+                  noGoogleSearch: config.noGoogleSearch || interest.noGoogleSearch || false,
                   locked: interest.locked || false,
                   builtIn: !isFromCustom,
                   category: config.category || interest.category || 'attraction',

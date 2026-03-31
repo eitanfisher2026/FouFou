@@ -2539,6 +2539,16 @@
     return () => window.removeEventListener('firebase-connection', handler);
   }, []);
 
+  // Startup offline detection — if still not connected after 5s, show toast
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!window.BKK.firebaseConnected) {
+        showToast(t('toast.offline'), 'warning', 'sticky');
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Push navigation state when view or wizard step changes
   useEffect(() => {
     if (window.BKK.pushNavState) {
@@ -2648,6 +2658,8 @@
   // Auto-sync when connection is restored
   useEffect(() => {
     if (firebaseConnected && isFirebaseAvailable && database) {
+      // Dismiss any sticky offline toast
+      setToastMessage(prev => (prev && prev.sticky) ? null : prev);
       if (pendingLocations.length > 0 || pendingInterests.length > 0) {
         const timer = setTimeout(() => {
           console.log('[SYNC] Connection restored, syncing', pendingLocations.length, 'locations +', pendingInterests.length, 'interests');
@@ -5586,24 +5598,26 @@
 
   // ========== SMART STOP SELECTION (for Yalla and "Help me plan") ==========
   // Returns { selected: [...], disabled: [...] } based on category/weight/minStops config
-  const smartSelectStops = (stops, selectedInterests, maxTotal) => {
-    maxTotal = maxTotal || formData.maxStops || 10;
-    
-    // Build per-interest config
+  // ── Shared: interest allocation ──────────────────────────────────────────
+  // Single source of truth for per-interest stop limits.
+  // Steps: 1) guarantee minimums, 2) distribute by weight up to maxStops cap,
+  //        3) backfill overflow when all caps are hit (maxStops is a soft cap).
+  // Returns: { [interestId]: { max, category } }
+  const buildInterestLimits = (selectedInterests, maxTotal) => {
     const cfg = {};
     let totalWeight = 0;
-    for (const interestId of selectedInterests) {
-      const interestObj = allInterestOptions.find(o => o.id === interestId);
-      cfg[interestId] = {
+    for (const id of selectedInterests) {
+      const interestObj = allInterestOptions.find(o => o.id === id);
+      cfg[id] = {
         weight: interestObj?.weight || sp.defaultInterestWeight,
         minStops: interestObj?.minStops != null ? interestObj.minStops : 1,
         maxStops: interestObj?.maxStops || 10,
         category: interestObj?.category || 'attraction'
       };
-      totalWeight += cfg[interestId].weight;
+      totalWeight += cfg[id].weight;
     }
-    
-    // Step 1: Guarantee minimums (capped by maxStops per interest)
+
+    // Step 1: Guarantee minimums
     const limits = {};
     let allocated = 0;
     for (const id of selectedInterests) {
@@ -5611,22 +5625,19 @@
       limits[id] = { max: min, category: cfg[id].category };
       allocated += min;
     }
-    
+
     // Step 2: Distribute remaining by weight, respecting maxStops cap
     let remaining = maxTotal - allocated;
     if (remaining > 0 && totalWeight > 0) {
-      // Multiple passes: allocate proportionally, redistribute overflow
       for (let pass = 0; pass < 3 && remaining > 0; pass++) {
-        // Recalculate weight of interests that haven't hit their cap
         let activeWeight = 0;
         for (const id of selectedInterests) {
           if (limits[id].max < cfg[id].maxStops) activeWeight += cfg[id].weight;
         }
         if (activeWeight <= 0) break;
-        
         for (const id of selectedInterests) {
           if (remaining <= 0) break;
-          if (limits[id].max >= cfg[id].maxStops) continue; // already at cap
+          if (limits[id].max >= cfg[id].maxStops) continue;
           const share = Math.floor((cfg[id].weight / activeWeight) * remaining);
           const canAdd = Math.min(share, cfg[id].maxStops - limits[id].max, remaining);
           limits[id].max += canAdd;
@@ -5634,8 +5645,7 @@
           remaining = maxTotal - allocated;
         }
       }
-      
-      // Final: distribute any leftover 1-by-1 to highest weight (not at cap)
+      // Distribute leftover 1-by-1 (still within soft cap)
       remaining = maxTotal - allocated;
       const sorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
       for (const id of sorted) {
@@ -5644,37 +5654,34 @@
         limits[id].max += 1;
         remaining -= 1;
       }
-      
-      // Backfill: if all interests hit their maxStops caps but total isn't filled,
-      // overflow beyond caps by weight. maxStops is a fair-share cap, not an absolute
-      // limit when there's room to fill. Distribute proportionally by weight.
+      // Backfill: overflow beyond soft caps when total still not filled
       remaining = maxTotal - Object.values(limits).reduce((s, l) => s + l.max, 0);
       if (remaining > 0) {
-        const bfWeight = selectedInterests.reduce((s, id) => s + cfg[id].weight, 0);
-        if (bfWeight > 0) {
-          // Proportional allocation by weight
-          const bfSorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
-          const bfShare = {};
-          let bfAllocated = 0;
-          for (const id of bfSorted) {
-            const share = Math.floor((cfg[id].weight / bfWeight) * remaining);
-            bfShare[id] = share;
-            bfAllocated += share;
-          }
-          // Distribute remainder 1-by-1 to highest weight
-          let bfLeftover = remaining - bfAllocated;
-          for (const id of bfSorted) {
-            if (bfLeftover <= 0) break;
-            bfShare[id] += 1;
-            bfLeftover -= 1;
-          }
-          for (const id of selectedInterests) {
-            limits[id].max += (bfShare[id] || 0);
-          }
+        const bfSorted = [...selectedInterests].sort((a, b) => cfg[b].weight - cfg[a].weight);
+        const bfShare = {};
+        let bfAllocated = 0;
+        for (const id of bfSorted) {
+          const share = Math.floor((cfg[id].weight / totalWeight) * remaining);
+          bfShare[id] = share;
+          bfAllocated += share;
+        }
+        let bfLeftover = remaining - bfAllocated;
+        for (const id of bfSorted) {
+          if (bfLeftover <= 0) break;
+          bfShare[id] += 1;
+          bfLeftover -= 1;
+        }
+        for (const id of selectedInterests) {
+          limits[id].max += (bfShare[id] || 0);
         }
       }
     }
-    
+    return { limits, cfg, totalWeight };
+  };
+
+  const smartSelectStops = (stops, selectedInterests, maxTotal) => {
+    maxTotal = maxTotal || formData.maxStops || 10;
+    const { limits, cfg } = buildInterestLimits(selectedInterests, maxTotal);
     console.log('[SMART] Interest limits:', JSON.stringify(limits));
     
     // Group stops by their primary matching interest
@@ -6232,91 +6239,12 @@
       addDebugLog('ROUTE', `Found ${customStops.length} custom stops`);
       console.log('[ROUTE] Custom stops:', customStops.length, customStops.map(s => `${s.name} [${(s.interests||[]).join(',')}]`));
       
-      // Calculate stops needed per interest using category-based maxStops
+      // Calculate stops needed per interest — single source of truth via buildInterestLimits
       const maxStops = formData.maxStops || 10;
-      
-      // Build per-interest stop limits using weight + min + max
+      const { limits: limitsObj, cfg: interestCfg, totalWeight } = buildInterestLimits(searchInterests, maxStops);
+      // Flatten to plain number map for backward compat with rest of route code
       const interestLimits = {};
-      let totalWeight = 0;
-      const interestCfg = {};
-      for (const interest of searchInterests) {
-        const interestObj = allInterestOptions.find(o => o.id === interest);
-        interestCfg[interest] = {
-          weight: interestObj?.weight || sp.defaultInterestWeight,
-          minStops: interestObj?.minStops != null ? interestObj.minStops : 1,
-          maxStops: interestObj?.maxStops || 10
-        };
-        totalWeight += interestCfg[interest].weight;
-      }
-      
-      // Step 1: Guarantee minimums
-      let allocated = 0;
-      for (const interest of searchInterests) {
-        const min = Math.min(interestCfg[interest].minStops, interestCfg[interest].maxStops, maxStops - allocated);
-        interestLimits[interest] = min;
-        allocated += min;
-      }
-      
-      // Step 2: Distribute remaining by weight, respecting maxStops cap (soft cap)
-      let remaining = maxStops - allocated;
-      if (remaining > 0 && totalWeight > 0) {
-        for (let pass = 0; pass < 3 && remaining > 0; pass++) {
-          let activeWeight = 0;
-          for (const interest of searchInterests) {
-            if (interestLimits[interest] < interestCfg[interest].maxStops) activeWeight += interestCfg[interest].weight;
-          }
-          if (activeWeight <= 0) break;
-          
-          for (const interest of searchInterests) {
-            if (remaining <= 0) break;
-            if (interestLimits[interest] >= interestCfg[interest].maxStops) continue;
-            const share = Math.floor((interestCfg[interest].weight / activeWeight) * remaining);
-            const canAdd = Math.min(share, interestCfg[interest].maxStops - interestLimits[interest], remaining);
-            interestLimits[interest] += canAdd;
-            allocated += canAdd;
-            remaining = maxStops - allocated;
-          }
-        }
-        
-        // Round-robin leftover (still within soft cap)
-        remaining = maxStops - allocated;
-        const sorted = [...searchInterests].sort((a, b) => interestCfg[b].weight - interestCfg[a].weight);
-        for (const interest of sorted) {
-          if (remaining <= 0) break;
-          if (interestLimits[interest] >= interestCfg[interest].maxStops) continue;
-          interestLimits[interest] += 1;
-          allocated += 1;
-          remaining -= 1;
-        }
-      }
-      
-      // Step 3: If still short of maxStops (all interests hit their soft cap),
-      // distribute the remainder by weight IGNORING maxStops — soft cap becomes irrelevant
-      // when there's no other way to reach the requested total.
-      remaining = maxStops - allocated;
-      if (remaining > 0 && totalWeight > 0) {
-        console.log(`[ROUTE] Soft caps exhausted with ${allocated}/${maxStops} allocated — distributing ${remaining} overflow slots by weight`);
-        // Multi-pass by weight, no upper limit
-        for (let pass = 0; pass < 3 && remaining > 0; pass++) {
-          for (const interest of searchInterests) {
-            if (remaining <= 0) break;
-            const share = Math.max(1, Math.round((interestCfg[interest].weight / totalWeight) * remaining));
-            const canAdd = Math.min(share, remaining);
-            interestLimits[interest] += canAdd;
-            allocated += canAdd;
-            remaining = maxStops - allocated;
-          }
-        }
-        // Final leftover round-robin by weight order
-        remaining = maxStops - allocated;
-        const sortedOverflow = [...searchInterests].sort((a, b) => interestCfg[b].weight - interestCfg[a].weight);
-        for (const interest of sortedOverflow) {
-          if (remaining <= 0) break;
-          interestLimits[interest] += 1;
-          remaining -= 1;
-        }
-      }
-      
+      for (const id of searchInterests) interestLimits[id] = limitsObj[id].max;
       console.log('[ROUTE] Interest limits:', JSON.stringify(interestLimits), '| total max:', maxStops);
       
       // Track results per interest for smart completion
@@ -6492,8 +6420,8 @@
           const available = result.allPlaces.length;
           const canAddMore = available - alreadyUsed;
           
-          // Respect per-interest maxStops cap
-          const interestMax = interestCfg[interest].maxStops;
+          // Use interestLimits (includes backfill overflow) not raw maxStops cap
+          const interestMax = interestLimits[interest];
           const currentCount = currentCountPerInterest[interest] || 0;
           const roomLeft = Math.max(0, interestMax - currentCount);
           
@@ -6503,9 +6431,9 @@
               .slice(alreadyUsed, alreadyUsed + Math.min(canAddMore, roomLeft));
             
             additionalPlaces.push(...morePlaces);
-            console.log(`[ROUTE R2] ${interest}: adding ${morePlaces.length} (current: ${currentCount}, max: ${interestMax})`);
+            console.log(`[ROUTE R2] ${interest}: adding ${morePlaces.length} (current: ${currentCount}, limit: ${interestMax})`);
           } else if (canAddMore > 0) {
-            console.log(`[ROUTE R2] ${interest}: skipped, already at max (${currentCount}/${interestMax})`);
+            console.log(`[ROUTE R2] ${interest}: skipped, already at limit (${currentCount}/${interestMax})`);
           }
         }
         
