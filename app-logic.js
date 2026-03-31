@@ -2054,11 +2054,12 @@
     database.ref(`settings/interestConfig/${interestId}`).set(configData);
   };
 
-  const saveInterestGroup = (groupId, labelHe, labelEn) => {
+  const saveInterestGroup = (groupId, labelHe, labelEn, order) => {
     if (!isFirebaseAvailable || !database) return;
     const data = { labelHe: labelHe.trim(), labelEn: labelEn.trim() };
-    setInterestGroups(prev => ({ ...prev, [groupId]: data }));
-    database.ref(`settings/interestGroups/${groupId}`).set(data);
+    if (order !== undefined) data.order = order;
+    setInterestGroups(prev => ({ ...prev, [groupId]: { ...(prev[groupId] || {}), ...data } }));
+    database.ref(`settings/interestGroups/${groupId}`).update(data);
   };
 
   const deleteInterestGroup = (groupId) => {

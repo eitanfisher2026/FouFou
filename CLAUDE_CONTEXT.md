@@ -23,10 +23,21 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.14.2` (Mar 31, 2026)
+- **גרסה:** `3.14.3` (Mar 31, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
+
+---
+
+## ✅ Major Changes — Session Mar 31, 2026 (v3.14.2 → v3.14.3)
+
+### 📂 Interest Groups — Order + Location moved to Interests tab
+- **Moved** from Cities tab → **Interests tab** (correct location — groups are interest management, not city management)
+- **`order` field** added to `settings/interestGroups/{id}`: `{ labelHe, labelEn, order }`
+- **Up/down arrows** (▲▼) in management UI to reorder groups
+- **Wizard step 1** sorts groups by `order` field (previously sorted by first-appearance order)
+- `saveInterestGroup(gId, labelHe, labelEn, order)` — added optional `order` parameter
 
 ---
 
