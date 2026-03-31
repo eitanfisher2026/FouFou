@@ -3968,6 +3968,85 @@
                 addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
                 customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
               }
+              const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
+                const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
+                const isDraft = getAStatus(i) === 'draft';
+                const isHidden = getAStatus(i) === 'hidden';
+                const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
+                const allVisible = visibleCities.length === allCities.length;
+                const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
+                return (
+                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
+                    <span style={{ flexShrink: 0 }}>{renderIcon(icon, '20px')}</span>
+                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
+                    {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
+                    {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
+                    {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
+                    {/* City visibility button — opens dialog */}
+                    <button onClick={() => setCityVisibilityInterest(i.id)}
+                      title="ניהול ניראות לפי עיר"
+                      style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
+                      {cityLabel}
+                    </button>
+                    <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
+                  </div>
+                );
+              };
+              const allCities = Object.values(window.BKK.cities || {});
+              // Collect interests from ALL cities + customInterests — no city filter
+              const seenIds = new Set();
+              const allCityInterestIds = allCities.flatMap(c => (c.interests || []).map(i => i.id));
+              const allIdsToShow = [...new Set([...allCityInterestIds, ...(customInterests || []).map(i => i.id)])];
+              const fullList = allIdsToShow.map(id => {
+                const fromCurrent = allInterestOptions.find(o => o.id === id);
+                if (fromCurrent) return fromCurrent;
+                for (const city of allCities) {
+                  const found = (city.interests || []).find(i => i.id === id);
+                  if (found) {
+                    const cfg = interestConfig[id] || {};
+                    return { ...found, label: cfg.labelOverride || cfg.label || found.label || id, labelEn: cfg.labelEnOverride || cfg.labelEn || found.labelEn || '', icon: cfg.iconOverride || cfg.icon || found.icon || '📍' };
+                  }
+                }
+                return customInterests.find(i => i.id === id) || { id };
+              }).filter(Boolean);
+              // Settings tab always shows ALL interests — admin needs to see hidden ones too
+              const allInterestsSorted = fullList
+                .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
+              const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
+              const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
+              const openInterestDialogFromSettings = (interest) => {
+                const cfg = interestConfig[interest.id] || {};
+                const isFromCustom = customInterests.some(ci => ci.id === interest.id);
+                const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
+                setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
+                setNewInterest({
+                  id: interest.id,
+                  label: cfg.labelOverride || cfg.label || interest.label || '',
+                  labelEn: cfg.labelEnOverride || cfg.labelOverrideEn || cfg.labelEn || interest.labelEn || '',
+                  icon: cfg.iconOverride || cfg.icon || interest.icon || '📍',
+                  searchMode: cfg.textSearch ? 'text' : 'types',
+                  types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
+                  blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
+                  minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
+                  lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
+                  privateOnly: interest.privateOnly || false, locked: interest.locked || false,
+                  builtIn: !isFromCustom, scope: 'global', cityId: '',
+                  category: cfg.category || interest.category || 'attraction',
+                  weight: cfg.weight || interest.weight || 3,
+                  minStops: cfg.minStops != null ? cfg.minStops : (interest.minStops != null ? interest.minStops : 1),
+                  maxStops: cfg.maxStops || interest.maxStops || 10,
+                  routeSlot: cfg.routeSlot || interest.routeSlot || 'any',
+                  minGap: cfg.minGap != null ? cfg.minGap : 1,
+                  bestTime: cfg.bestTime || interest.bestTime || 'anytime',
+                  group: cfg.group || interest.group || '',
+                  dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
+                  noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
+                  color: cfg.color || interest.color || '',
+                });
+                setShowAddInterestDialog(true);
+              };
+              return (
+                <div>
             {/* Interest Groups Management */}
             {isUnlocked && (
             <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
@@ -4064,85 +4143,7 @@
               })()}
             </div>
             )}
-                            const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
-                const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
-                const isDraft = getAStatus(i) === 'draft';
-                const isHidden = getAStatus(i) === 'hidden';
-                const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
-                const allVisible = visibleCities.length === allCities.length;
-                const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
-                return (
-                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
-                    <span style={{ flexShrink: 0 }}>{renderIcon(icon, '20px')}</span>
-                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
-                    {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
-                    {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
-                    {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
-                    {/* City visibility button — opens dialog */}
-                    <button onClick={() => setCityVisibilityInterest(i.id)}
-                      title="ניהול ניראות לפי עיר"
-                      style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
-                      {cityLabel}
-                    </button>
-                    <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
-                  </div>
-                );
-              };
-              const allCities = Object.values(window.BKK.cities || {});
-              // Collect interests from ALL cities + customInterests — no city filter
-              const seenIds = new Set();
-              const allCityInterestIds = allCities.flatMap(c => (c.interests || []).map(i => i.id));
-              const allIdsToShow = [...new Set([...allCityInterestIds, ...(customInterests || []).map(i => i.id)])];
-              const fullList = allIdsToShow.map(id => {
-                const fromCurrent = allInterestOptions.find(o => o.id === id);
-                if (fromCurrent) return fromCurrent;
-                for (const city of allCities) {
-                  const found = (city.interests || []).find(i => i.id === id);
-                  if (found) {
-                    const cfg = interestConfig[id] || {};
-                    return { ...found, label: cfg.labelOverride || cfg.label || found.label || id, labelEn: cfg.labelEnOverride || cfg.labelEn || found.labelEn || '', icon: cfg.iconOverride || cfg.icon || found.icon || '📍' };
-                  }
-                }
-                return customInterests.find(i => i.id === id) || { id };
-              }).filter(Boolean);
-              // Settings tab always shows ALL interests — admin needs to see hidden ones too
-              const allInterestsSorted = fullList
-                .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
-              const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
-              const openInterestDialogFromSettings = (interest) => {
-                const cfg = interestConfig[interest.id] || {};
-                const isFromCustom = customInterests.some(ci => ci.id === interest.id);
-                const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
-                setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
-                setNewInterest({
-                  id: interest.id,
-                  label: cfg.labelOverride || cfg.label || interest.label || '',
-                  labelEn: cfg.labelEnOverride || cfg.labelOverrideEn || cfg.labelEn || interest.labelEn || '',
-                  icon: cfg.iconOverride || cfg.icon || interest.icon || '📍',
-                  searchMode: cfg.textSearch ? 'text' : 'types',
-                  types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
-                  blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
-                  minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
-                  lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
-                  privateOnly: interest.privateOnly || false, locked: interest.locked || false,
-                  builtIn: !isFromCustom, scope: 'global', cityId: '',
-                  category: cfg.category || interest.category || 'attraction',
-                  weight: cfg.weight || interest.weight || 3,
-                  minStops: cfg.minStops != null ? cfg.minStops : (interest.minStops != null ? interest.minStops : 1),
-                  maxStops: cfg.maxStops || interest.maxStops || 10,
-                  routeSlot: cfg.routeSlot || interest.routeSlot || 'any',
-                  minGap: cfg.minGap != null ? cfg.minGap : 1,
-                  bestTime: cfg.bestTime || interest.bestTime || 'anytime',
-                  group: cfg.group || interest.group || '',
-                  dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
-                  noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
-                  color: cfg.color || interest.color || '',
-                });
-                setShowAddInterestDialog(true);
-              };
-              return (
-                <div>
+              
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
                       🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allInterestsSorted.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
