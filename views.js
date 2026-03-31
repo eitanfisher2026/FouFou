@@ -4981,15 +4981,15 @@
                       const lines = ['=== FouFou Filter Log ===', new Date().toLocaleString('he-IL'), ''];
                       filterLog.forEach(entry => {
                         lines.push(`--- ${entry.interestLabel} ---`);
-                        lines.push(`${entry.searchType === 'text' ? '\uD83D\uDD24' : '\uD83C\uDFF7\uFE0F'} ${entry.searchType === 'text' ? entry.query : (entry.placeTypes || []).join(', ')}`);
-                        lines.push(`${entry.allResults?.length || 0} from Google \u2192 ${entry.passed?.length || 0} passed \u00B7 ${entry.filtered?.length || 0} filtered`);
-                        if (entry.blacklist?.length) lines.push(`\uD83D\uDEAB blacklist: ${entry.blacklist.join(', ')}`);
+                        lines.push(`${entry.searchType === 'text' ? '🔤' : '🏷️'} ${entry.searchType === 'text' ? entry.query : (entry.placeTypes || []).join(', ')}`);
+                        lines.push(`${entry.allResults?.length || 0} from Google → ${entry.passed?.length || 0} passed · ${entry.filtered?.length || 0} filtered`);
+                        if (entry.blacklist?.length) lines.push(`🚫 blacklist: ${entry.blacklist.join(', ')}`);
                         lines.push('');
                         (entry.passed || []).forEach((p, i) => {
-                          lines.push(`\u2705 #${i+1} ${p.name} \u2B50${p.rating} (${p.reviews}) [${p.primaryType}]`);
+                          lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]`);
                         });
                         (entry.filtered || []).forEach(p => {
-                          lines.push(`\u274C ${p.layer || p.status} | ${p.name} \u2B50${p.rating} (${p.reviews}) | ${p.reason || ''}`);
+                          lines.push(`❌ ${p.layer || p.status} | ${p.name} ⭐${p.rating} (${p.reviews}) | ${p.reason || ''}`);
                         });
                         lines.push('');
                       });
@@ -4997,7 +4997,7 @@
                     };
                     const copyLog = () => {
                       navigator.clipboard?.writeText(buildText())
-                        .then(() => showToast('\uD83D\uDCCB Filter log copied!', 'success'))
+                        .then(() => showToast('📋 Filter log copied!', 'success'))
                         .catch(() => showToast('\u26A0\uFE0F Copy failed', 'warning'));
                     };
                     const exportLog = () => {
@@ -5008,14 +5008,14 @@
                       a.click(); URL.revokeObjectURL(url);
                     };
                     return (<>
-                      <button onClick={copyLog} title='\u05D4\u05E2\u05EA\u05E7 \u05DC\u05DC\u05D5\u05D7' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>\uD83D\uDCCB</button>
-                      <button onClick={exportLog} title='\u05D9\u05D9\u05E6\u05D5\u05D0 txt' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>\u2B07\uFE0F</button>
+                      <button onClick={copyLog} title='העתק ללוח' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>📋</button>
+                      <button onClick={exportLog} title='ייצוא txt' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>⬇️</button>
                     </>);
                   })()}
-                  <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('\uD83D\uDD2C Filter log cleared', 'info'); }}
-                    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>\uD83D\uDDD1\uFE0F</button>
+                  <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('🔬 Filter log cleared', 'info'); }}
+                    style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
                   <button onClick={() => setShowFilterPanel(false)}
-                    style={{ fontSize: '22px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', padding: '0 4px' }}>\u2715</button>
+                    style={{ fontSize: '22px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 'bold', padding: '0 4px' }}>✕</button>
                 </div>
               </div>
 
