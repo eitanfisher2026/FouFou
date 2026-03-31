@@ -971,11 +971,12 @@
                     const elements = [];
                     sorted.forEach((option, idx) => {
                       const thisGroup = option.group || '_none';
-                      if (lastGroup !== null && thisGroup !== lastGroup) {
+                      if (thisGroup !== lastGroup) {
                         const gData = (thisGroup !== '_none') ? (interestGroups[thisGroup] || {}) : {};
                         const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
+                        const isFirst = lastGroup === null;
                         elements.push(
-                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 2px' }}>
+                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: isFirst ? '0 0 2px' : '4px 0 2px' }}>
                             <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                             {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
                             {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}

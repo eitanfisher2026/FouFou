@@ -1722,14 +1722,12 @@
                               // Update local state immediately — Firebase listener may lag
                               setCustomInterests(prev => prev.map(ci => ci.id === interestId ? updatedInterest : ci));
                               saveCustomInterestAndConfig(editingCustomInterest.firebaseId, interestId, updatedInterest, null);
-                              if (Object.keys(searchConfig).length > 0) {
-                                const existingCfg = interestConfig[interestId] || {};
-                                const mergedConfig = { ...existingCfg, ...searchConfig };
-                                // Remove null keys from local state (Firebase handles null as delete)
-                                Object.keys(mergedConfig).forEach(k => { if (mergedConfig[k] === null) delete mergedConfig[k]; });
-                                setInterestConfig(prev => ({...prev, [interestId]: mergedConfig}));
-                                saveInterestConfig(interestId, { ...existingCfg, ...searchConfig });
-                              }
+                              // Always save group + searchConfig to interestConfig (group in interestConfig takes priority in allInterestOptions)
+                              const existingCfg = interestConfig[interestId] || {};
+                              const cfgToSave = { ...existingCfg, ...searchConfig, group: newInterest.group || '' };
+                              Object.keys(cfgToSave).forEach(k => { if (cfgToSave[k] === null) delete cfgToSave[k]; });
+                              setInterestConfig(prev => ({...prev, [interestId]: cfgToSave}));
+                              saveInterestConfig(interestId, { ...existingCfg, ...searchConfig, group: newInterest.group || '' });
                             } else {
                               const updated = customInterests.map(ci => ci.id === interestId ? updatedInterest : ci);
                               setCustomInterests(updated);
