@@ -4372,6 +4372,8 @@
       
       let response;
       let placeTypes = [];
+      let textSearchBodyStr = null;
+      let nearbySearchBodyStr = null;
       
       if (textSearchQuery) {
         // Use Text Search API — textQuery should be the search term only.
@@ -4413,7 +4415,7 @@
           ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
           ...textSearchLocationParam
         };
-        const textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);
+        textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
           method: 'POST',
           headers: {
@@ -4465,7 +4467,7 @@
           },
           rankPreference: radiusOverride ? 'DISTANCE' : 'POPULARITY'
         };
-        const nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);
+        nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_API_URL, {
           method: 'POST',
           headers: {
@@ -4627,7 +4629,7 @@
             rawFromGoogle: 0,
             errorStatus: response.status,
             errorText: errorText?.slice(0, 200) || '',
-            rawBody: isTextSearchApiErr ? (typeof textSearchBodyStr !== 'undefined' ? textSearchBodyStr : null) : (typeof nearbySearchBodyStr !== 'undefined' ? nearbySearchBodyStr : null),
+            rawBody: isTextSearchApiErr ? textSearchBodyStr : nearbySearchBodyStr,
             googleMapsUrl: isTextSearchApiErr
               ? `https://www.google.com/maps/search/${encodeURIComponent(textSearchQuery)}/@${center.lat},${center.lng},15z`
               : `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
@@ -4963,7 +4965,7 @@
           radius: searchRadius,
           locationMode: (window.BKK.systemParams?.googleLocationMode || 'restriction'),
           rawFromGoogle: debugPlaceResults.length,
-          rawBody: isTextSearch ? (typeof textSearchBodyStr !== 'undefined' ? textSearchBodyStr : null) : (typeof nearbySearchBodyStr !== 'undefined' ? nearbySearchBodyStr : null),
+          rawBody: isTextSearch ? textSearchBodyStr : nearbySearchBodyStr,
         },
       });
       
