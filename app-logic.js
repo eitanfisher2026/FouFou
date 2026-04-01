@@ -730,6 +730,8 @@
       // maxResultCount: -1 = don't send to Google (use their default/max)
       // positive number = send to Google as maxResultCount
       googleMaxResultCount: -1,
+      googleNearbyRankPreference: 'POPULARITY',
+      googleTextRankPreference: 'RELEVANCE',
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -4413,6 +4415,7 @@
         const textSearchBody = {
           textQuery: searchQuery,
           ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
+          rankPreference: window.BKK.systemParams?.googleTextRankPreference || 'RELEVANCE',
           ...textSearchLocationParam
         };
         textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);
@@ -4465,7 +4468,7 @@
               radius: searchRadius
             }
           },
-          rankPreference: radiusOverride ? 'DISTANCE' : 'POPULARITY'
+          rankPreference: radiusOverride ? 'DISTANCE' : (window.BKK.systemParams?.googleNearbyRankPreference || 'POPULARITY')
         };
         nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_API_URL, {

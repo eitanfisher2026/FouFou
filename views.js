@@ -4244,6 +4244,8 @@
                 ]},
                 { title: t('sysParams.sectionGoogleFilter') || '🔍 סינון גוגל', icon: '🔍', color: '#6366f1', params: [
                   { key: 'googleMaxResultCount', label: 'מקסימום תוצאות מגוגל', desc: '-1 = לא שולחים (גוגל מחליט), מספר חיובי = שולחים לגוגל', min: -1, max: 100, step: 1, type: 'int' },
+                  { key: 'googleNearbyRankPreference', label: 'דירוג Nearby Search', desc: 'POPULARITY = לפי פופולריות (ברירת מחדל) | DISTANCE = לפי מרחק', type: 'select', options: ['POPULARITY', 'DISTANCE'] },
+                  { key: 'googleTextRankPreference', label: 'דירוג Text Search', desc: 'RELEVANCE = לפי רלוונטיות (ברירת מחדל) | DISTANCE = לפי מרחק', type: 'select', options: ['RELEVANCE', 'DISTANCE'] },
                   { key: 'googleMinRatingCount', label: t('sysParams.googleMinRatingCount') || 'מינימום דירוגים (דלג לצמיתות)', desc: t('sysParams.googleMinRatingCountDesc') || 'מקומות גוגל עם פחות מכך דירוגים — לא יובאו לעולם', min: 0, max: 200, step: 5, type: 'int' },
                   { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
                 ]},
@@ -4318,7 +4320,18 @@
                     <div style={{ fontSize: '10px', color: '#9ca3af' }}>{p.desc}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {p.type === 'bool' ? (
+                    {p.type === 'select' ? (
+                      <select value={systemParams[p.key] || p.options[0]}
+                        onChange={e => {
+                          const updated = { ...systemParams, [p.key]: e.target.value };
+                          window.BKK.systemParams = updated;
+                          setSystemParams(updated);
+                          isFirebaseAvailable && database && saveSystemParam(p.key, e.target.value);
+                        }}
+                        style={{ padding: '4px 8px', fontSize: '12px', fontWeight: 'bold', borderRadius: '8px', border: '1px solid #d1d5db', cursor: 'pointer' }}>
+                        {p.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : p.type === 'bool' ? (
                       <button onClick={() => updateParam(p.key, !systemParams[p.key], 'bool')}
                         style={{ padding: '4px 12px', fontSize: '12px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer',
                           background: systemParams[p.key] ? '#22c55e' : '#ef4444', color: 'white' }}>
