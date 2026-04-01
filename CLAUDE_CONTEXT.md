@@ -23,205 +23,10 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.14.29` (Apr 01, 2026)
+- **גרסה:** `3.15.0` (Apr 01, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
-
----
-
-## ✅ Major Changes — Session Mar 31, 2026 (v3.14.2 → v3.14.3)
-
-### 📂 Interest Groups — Order + Location moved to Interests tab
-- **Moved** from Cities tab → **Interests tab** (correct location — groups are interest management, not city management)
-- **`order` field** added to `settings/interestGroups/{id}`: `{ labelHe, labelEn, order }`
-- **Up/down arrows** (▲▼) in management UI to reorder groups
-- **Wizard step 1** sorts groups by `order` field (previously sorted by first-appearance order)
-- `saveInterestGroup(gId, labelHe, labelEn, order)` — added optional `order` parameter
-
----
-
-## ✅ Major Changes — Session Mar 31, 2026 (v3.14.1 → v3.14.2)
-
-### 📂 Interest Groups — Full Management
-- **Firebase path:** `settings/interestGroups/{groupId}: { labelHe, labelEn }`
-- **State:** `interestGroups` loaded via consolidated settings listener
-- **Functions in app-logic.js:** `saveInterestGroup(gId, labelHe, labelEn)`, `deleteInterestGroup(gId)`
-- **Settings tab:** full management UI — edit He/En labels inline, delete (blocked if has members), add new group (id + He + En)
-- **Interest dialog:** group field is now a dropdown from `interestGroups` (no free-text input)
-- **Wizard step 1:** group name shown on separator (He RTL right side, En LTR left side), interests sorted alphabetically within group by UI language
-
-### 🐛 Bug Fix
-- **`fetchMore` area filter** — was using `radius × 2` geo-proximity fallback, causing favorites from adjacent areas (e.g. Sukhumvit) to appear when searching On Nut. Now uses exact area match, same as Round 1 (`getStopsForInterests`).
-
----
-
-## ✅ Major Changes — Session Mar 31, 2026 (v3.14.0 → v3.14.1)
-
-### 🐛 Bug Fixes
-- **Startup offline toast** — if Firebase not connected after 5s, shows sticky `toast.offline`. Dismissed automatically when connection restores.
-- **`noGoogleSearch` not shown on reopen** — `openInterestDialog` was missing `noGoogleSearch` field in `setNewInterest`. Fixed in `views.js`.
-- **`textSearch` not cleared on save** — saving with empty textSearch kept old value. Now explicitly sets `null` to delete from Firebase. Also clears opposite field when switching modes (`text`↔`types`).
-- **maxStops backfill broken in Round 2** — Round 2 used raw `interestCfg.maxStops` instead of `interestLimits` (which includes backfill overflow). Fixed.
-
-### ♻️ Refactor — DRY: buildInterestLimits
-- Extracted shared function `buildInterestLimits(selectedInterests, maxTotal)` in `app-logic.js`.
-- Replaces ~60 lines of duplicated allocation logic in both `smartSelectStops` and route generation.
-- Single source of truth — future changes to allocation affect both callers automatically.
-
-### 📋 CLAUDE_CONTEXT updated
-- Added **DRY — No Duplicate Logic** rule to Critical Rules.
-
----
-
-## ✅ Major Changes — Session Mar 30, 2026 (v3.13.15 → v3.14.0)
-
-### 🚀 Pre-compiled Build Pipeline — Browser Babel Removed
-- **Root cause solved permanently:** Babel standalone deoptimises files >500KB in the browser, silently breaking event handlers in `views.js`/`dialogs.js`.
-- **Fix:** JSX is now compiled at build time (developer machine / Claude), not in the browser.
-- `compile.js` added — runs after `build.py` concatenates sources. Pipeline: JSX ~950KB → Babel transform → Terser minify → **plain JS ~637KB** shipped to browser.
-- `Babel.transform()` removed from `index.html` loader. Browser just does `fetch → script inject`.
-- Babel CDN script (~350KB) removed from `index.html` — faster first load.
-- `mangle: false` in Terser — function names preserved (React hooks + `window.BKK.*`).
-- Balance check updated: now runs on **source files**, not compiled output.
-
-### 🧹 Dead Code Removed
-- `setIsUnlocked` and `setIsCurrentUserAdmin` — two noop functions in `app-logic.js`, never called.
-- Duplicate comment line in `app-logic.js` (line 7505).
-
----
-
-## ✅ Major Changes — Session Mar 30, 2026 (v3.13.0 → v3.13.9)
-
-### 🌐 Translation (MyMemory API — free, no key, 1000 req/day)
-- `detectNeedsTranslation(text)` — regex: Hebrew = `\u0590-\u05FF`
-- `translateText(text, targetLang)` — MyMemory API call
-- **Components in quick-add-component.js (before 500KB):**
-  - `TranslateButton` — manual translate button (used in ReviewTextWithTranslate)
-  - `ReviewTextWithTranslate` — read-only review text with manual translate + "show original"
-  - `AutoTranslateText` — auto-translates on mount if lang mismatch, shows original while loading
-
-**Where translation appears:**
-- Stop detail popup (FouFou icon popup) — description + notes: auto on-the-fly
-- Favorites map bottom sheet — description + notes: auto on-the-fly
-- Other users' reviews — manual button only
-
-### 🗺️ Favorites Screen Changes
-- **Snap place button removed** from action row (floating camera button still works)
-- **Map button** moved to action row with text "🗺️ מפת מועדפים / Favorites Map" (i18n: `form.favoritesMap`)
-- Area not selected → separate toast `form.selectAreaFirst` (not combined with interests)
-
-### 📍 Favorites Map Bottom Sheet — Redesigned
-- Header row: DOM `[FouFou icon][name][✕]` + `direction:rtl/ltr` → X always correct side
-- FouFou icon opens full location dialog (edit or read-only)
-- Removed: area label, added-by name, edit/details button
-- Added: description + notes with AutoTranslateText, Google ⭐ + FouFou 🌟 ratings
-- Yellow border on FouFou rating button
-- 2 action buttons: 🧭 נווט + 🔍 פתח בגוגל/נקודה
-
-### 📋 Stop Detail Popup (from list) — Redesigned  
-- Header row: DOM `[FouFou icon][name][✕]` + `direction:rtl/ltr` → X always correct side
-- FouFou icon = edit (if can edit) or details (read-only) — opens location dialog
-- Ratings: ⭐ Google + 🌟 FouFou with yellow border (both in ratings row, not action bar)
-- Action bar: Row 1: 🧭 נווט + 🔍 פתח בגוגל. No edit/details button (FouFou icon in header)
-- Description + notes with AutoTranslateText
-
-### 🗑️ Interest Deletion — Full Cleanup
-- Shows warning with affected location count + city count before delete
-- After confirm: deletes from customInterests, interestConfig, interestStatus, ALL locations' interests[] array, cityHiddenInterests, users' interestStatus
-- Local React state updated optimistically
-
-### 📐 UX Consistency Rule — ✕ Button Position
-See Known Regressions #12. All dialogs updated to follow this rule.
-
----
-
-## ✅ Major Changes — Session Mar 27, 2026 (v3.12.30 → v3.13.0)
-
-### 🔴 CRITICAL: Babel 500KB Deoptimisation — Root Cause & Full Fix
-
-`app-code.js` is ~946KB. Babel deoptimises JSX past 500KB — handlers silently fail, no error.
-
-**Bundle map:**
-```
-quick-add-component.js  →  2–30KB    ✅ fully safe
-app-logic.js            →  30–371KB  ✅ fully safe
-views.js starts         →  371KB     ✅ safe (first 129KB)
-500KB BABEL LIMIT       ←──────────────────────────────
-views.js middle/end     →  500–714KB ⚠️ broken zone
-dialogs.js              →  714–938KB 🔴 broken zone
-```
-
-**THE RULE — forever:**
-- Never `database.ref().set/update/remove()` directly in `views.js` or `dialogs.js`
-- Never `async (e) => { ... }` with >1 line past 500KB
-- All Firebase writes → named function in `app-logic.js` (~115KB)
-- Call sites in views/dialogs use simple one-liners: `onChange={(e) => myFunc(e.target.value)}`
-
-**All Firebase functions now in app-logic.js (~115KB):**
-```
-handleCityIconUpload        saveCityGeneralField      saveSpeechRate
-saveLocationLocked          saveInterestAdminStatus   saveInterestAdminStatusAsync
-saveSystemParam             resetSystemParams         saveBulkUpdate
-clearAccessLog              removeLocationGooglePlaceId  saveCityHiddenInterests
-saveInterestCounter         removeInterestConfig      saveInterestConfig
-saveCustomInterestAndConfig saveNewCustomInterest     saveNewInterestStatus
-clearFeedbackList           deleteUser
-```
-
-**Console testing:**
-```js
-window.BKK._handleCityIconUpload   // test icon upload
-window.BKK._saveCityGeneralField   // test Firebase write directly
-```
-
----
-
-### 🔬 Filter Log (v3.12.31-32)
-
-Floating badge 🔬 after route generation (debug mode only). Per-interest: passed ✅ / filtered ❌ with reason + Google Maps links. `addToFilterLog()` in app-logic.js. `clearDebugSessions()` clears it.
-
----
-
-### 🐛 Debug Tab (v3.12.34-39)
-
-Settings → 🐛 דיבאג (visible only when `debugMode === true`).
-`DebugTab` component in `quick-add-component.js` at ~21KB (safe zone).
-Category filter, sessions list, 🚩 flagging, Claude Bridge.
-`buildClaudeContext()` + `askClaude()` in app-logic.js at ~115KB.
-
-**CRITICAL — debugModeRef initialization:**
-```js
-// CORRECT — reads localStorage directly, true before any useEffect fires:
-const debugModeRef = useRef(localStorage.getItem('foufou_debug_mode') === 'true');
-// WRONG: const debugModeRef = useRef(debugMode);  ← ref not updated before early useEffects
-```
-
----
-
-### 🏙️ City Icons — Save & Load Fixed (v3.12.40-47)
-
-**Bug 1 — Save:** The `async` file handler calling `saveCityGeneralField` was itself at 533KB → broken.
-Fix: extracted full logic to `handleCityIconUpload` in app-logic.js. Call site is one-liner:
-```jsx
-onChange={(e) => handleCityIconUpload(e.target.files?.[0], city.id, 'icon', 80)}
-```
-
-**Bug 2 — Load:** City general load was AFTER `return () => locationsRef.off(...)` in the
-locations useEffect. `return` exits the function — load never ran when Firebase was available.
-Fix: moved BEFORE the return:
-```js
-// CORRECT order inside the locations useEffect:
-database.ref(`cities/${selectedCityId}/general`).once('value').then(s => { ... apply data ... });
-return () => locationsRef.off('value', onValue);  // cleanup must be LAST
-```
-
----
-
-### 🗑️ Dead Code Removed (v3.12.42)
-
-6 unused functions deleted: `auditAndFixUrls`, `getButtonStyle`, `handleImageUpload`,
-`isStopDisabledRef`, `toggleInterest`, `validateStartPoint`
 
 ---
 
@@ -238,7 +43,7 @@ i18n.js                 <- Translations he/en
 city-bangkok.js / city-telaviv.js / city-singapore.js / city-malaga.js
 
 Generated (DO NOT EDIT):
-  app-data.js  (~200KB)   app-code.js  (~946KB)   index.html  (~11KB)
+  app-data.js  (~200KB)   app-code.js  (~984KB)   index.html  (~11KB)
 ```
 
 ---
@@ -283,16 +88,8 @@ assert p==0 and b==-3 and k==-2, 'FAIL'
 print('OK')
 "
 # BASELINE (source): () +0  {} -3  [] -2
-# Per-file: app-logic.js () -3  {} +0  [] +0
-#           views.js     () +1  {} -3  [] -2
-#           dialogs.js   () +0  {} +0  [] +0
-#           quick-add    () +0  {} +0  [] +0
-# NOTE: compiled app-code.js shows () -1 — that's Babel/Terser transform artefact, normal.
 
-# 3. Parse check
-node -e "const window={BKK:{}}; const localStorage={getItem:()=>null}; eval(require('fs').readFileSync('app-data.js','utf8')); console.log('OK')" 2>&1 | grep -v CONFIG | grep -v I18N
-
-# 4. Babel safety — check SOURCE files (compiled output has no JSX anyway)
+# 3. Babel safety — check compiled output has no JSX
 python3 -c "
 import re
 with open('app-code.js') as f: c = f.read()
@@ -305,16 +102,6 @@ print('OK')
 
 ---
 
-## גרסאות — עקרון צבירת השינויים
-
-**כל גרסה מכילה את כל התיקונים של הגרסאות שקדמו לה.**
-
-- אין צורך להתקין גרסאות ביניים — תמיד מספיק להתקין את הגרסה האחרונה בלבד.
-- דילוג על גרסאות ביניים לא גורם לאובדן שינויים.
-- **חריג:** אם יש הכרח להתקין גרסה ספציפית (למשל firebase-rules.json בלבד), קלוד חייב לציין זאת במפורש ולהסביר למה.
-
----
-
 ## Version Bump + Package — MANDATORY FOR EVERY ZIP
 
 > **Z — Patch** (default): bug fix, small UI, refactor
@@ -322,7 +109,8 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.13.0'/VERSION = '3.14.0'/" config.js
+sed -i "s/VERSION = '3.15.0'/VERSION = '3.15.1'/" config.js
+sed -i 's/"version": "3.15.0"/"version": "3.15.1"/' version.json
 python3 build.py
 zip github-upload-vX_Y_Z.zip \
   index.html app-data.js app-code.js \
@@ -346,22 +134,29 @@ zip github-upload-vX_Y_Z.zip \
 
 ## CRITICAL RULES — Never Break
 
-### Build Pipeline (v3.14.0+)
+### Build Pipeline
 - `app-code.js` shipped to browser is **pre-compiled plain JS** — no JSX, no browser Babel
 - Browser Babel CDN is **removed**. Do NOT add it back.
 - Balance check runs on **source files**, not compiled `app-code.js`
 - If `node_modules/` is missing → run `npm install` in project dir before building
+- `compile.js`: `mangle: false` — NEVER change. Mangling breaks React hooks + `window.BKK.*`
 
-### Source Code Discipline (500KB rule still applies to source)
+### Source Code Discipline (500KB rule — source files)
 - No `database.ref().set/update/remove()` in `views.js`/`dialogs.js`
 - No multi-line `async` handlers in `views.js`/`dialogs.js`
 - All Firebase writes → named function in `app-logic.js`
-- `debugModeRef = useRef(localStorage.getItem('foufou_debug_mode') === 'true')`
+- `debugModeRef = useRef(localStorage.getItem('foufou_debug_mode') === 'true')` ← not `useRef(debugMode)`
 
 ### DRY — No Duplicate Logic
-- **Never manage the same logic in two places.** If two code paths do the same calculation, extract a shared function and call it from both.
-- Example: `buildInterestLimits(interests, maxTotal)` — called from both `smartSelectStops` and route generation. A change in one must not require a change in the other.
-- When fixing a bug, always ask: "is this logic duplicated anywhere else?" If yes — refactor first.
+- Never manage the same logic in two places. Extract shared functions.
+- Example: `buildInterestLimits(interests, maxTotal)` — called from both `smartSelectStops` and route generation.
+- When fixing a bug, always ask: "is this logic duplicated anywhere else?"
+
+### Scope — CRITICAL (learned the hard way)
+- **Variables declared with `const`/`let` inside `if/else` blocks are block-scoped** — not accessible outside.
+- In `fetchGooglePlaces`: `textSearchBodyStr`, `nearbySearchBodyStr`, `_maxRC` are declared **outside** the `if (textSearchQuery)` / `else` block so both paths and subsequent `addToFilterLog` can access them.
+- Pattern: declare `let x = null` before the if/else, assign inside.
+- `typeof x !== 'undefined'` does NOT work as a workaround for out-of-scope `const` — never use it.
 
 ### Syntax
 - Single quotes in JSX = Babel error → always double quotes
@@ -380,7 +175,6 @@ zip github-upload-vX_Y_Z.zip \
 - Interest icons: `compressIcon(file, 64, 2)` — 64px, max 2KB
 - City main icon: `compressIcon(file, 80, 15)` — 80px, max 15KB
 - City iconLeft/Right: `compressIcon(file, 64, 15)` — 64px, max 15KB
-- Never save data: URLs to city JS files
 - Render: `icon?.startsWith('data:') ? <img src={icon}> : icon`
 
 ---
@@ -394,26 +188,19 @@ Step 1 — python3 build.py (concatenate + strip console.logs):
     + app-logic.js            (state + logic + ALL Firebase writes)
     + views.js                (JSX renders)
     + dialogs.js              (JSX dialogs)
-    = app-code.js  [JSX source, ~950KB]
+    = app-code.js  [JSX source, ~984KB]
 
   _source-template.html + i18n.js + city-*.js + config.js + utils.js = app-data.js
 
 Step 2 — node compile.js (called automatically by build.py):
-  app-code.js [JSX ~950KB]
-    → Babel transform (JSX → plain JS, ~900KB)
+  app-code.js [JSX ~984KB]
+    → Babel transform (JSX → plain JS)
     → Terser minify (mangle:false)
-    = app-code.js [plain JS, ~637KB, shipped to browser]
+    = app-code.js [plain JS, ~657KB, shipped to browser]
 
 Browser loads:
   app-code.js  → plain JS, no Babel needed, direct script inject
-  NO browser-side Babel (removed in v3.14.0 — was causing 500KB deoptimisation)
 ```
-
-**compile.js rules:**
-- `mangle: false` — NEVER change. Mangling breaks React hooks + `window.BKK.*` references
-- `drop_console: false` — keep console.log for runtime debug
-- `unused: false` — don't remove functions terser thinks are unused (may be called from HTML/eval)
-- Requires: `node_modules/` present (run `npm install` if missing, package.json is in the zip)
 
 ---
 
@@ -436,8 +223,8 @@ cities/{cityId}/general/nightStartHour
 customInterests/{fbKey}: id, label, labelEn, icon (max 2KB)
 settings/interestConfig/{id}: types, textSearch, blacklist, bestTime, routeSlot,
   weight, minStops, maxStops, minGap, dedupRelated, noGoogleSearch
+settings/interestGroups/{id}: { labelHe, labelEn, order }
 settings/interestStatus/{id}
-settings/interestGroups/{id}          <- { labelHe, labelEn } — group display names
 settings/cityHiddenInterests/{cityId}  <- array of hidden interest IDs
 settings/systemParams
 users/{uid}/interestStatus/{id}
@@ -465,16 +252,15 @@ malaga:    { id: 'malaga',    file: 'city-malaga.js' }
 |-------|-------------|
 | `customInterests` | all interests — real-time listener only |
 | `interestConfig` | search settings per interest |
+| `interestGroups` | `{ groupId: { labelHe, labelEn, order } }` |
 | `cityHiddenInterests` | `{ cityId: Set<id> }` |
 | `route` | current route |
 | `formData` | wizard form state |
 | `activeTrail` | active trail during walk |
 | `customLocations` | favorites (cityId, firebaseId) |
-| `systemParams` | admin params |
-| `cityEditCounter` | force header re-render after city mutation |
+| `systemParams` | admin params (synced to `window.BKK.systemParams`) |
+| `filterLog` | filter log per interest (debug mode only) |
 | `debugMode` | debug on/off (localStorage: `foufou_debug_mode`) |
-| `debugSessions` | debug session log |
-| `filterLog` | filter log per interest |
 
 ### Loading Order
 1. Promise.all: `interestConfig + interestStatus` → app shows
@@ -484,38 +270,81 @@ malaga:    { id: 'malaga',    file: 'city-malaga.js' }
 
 ---
 
-## systemParams (defaults)
+## systemParams (defaults in app-logic.js)
 
 ```js
-maxStops:10, fetchMoreCount:3, googleMaxWaypoints:12, defaultRadius:500,
-toastDuration:4000, includeDrafts:true, dedupRadiusMeters:50,
-dedupGoogleEnabled:1, dedupCustomEnabled:1, trailTimeoutHours:8,
-defaultInterestWeight:3, maxContentPasses:3, contentReorderEnabled:true,
-twoOptMaxPasses:20, timeScoreMatch:2, timeScoreAnytime:1, timeScoreConflict:0,
-timeConflictPenalty:3, slotEarlyThreshold:0.4, slotLateThreshold:0.6,
-slotEndThreshold:0.7, slotPenaltyMultiplier:3, slotEndPenaltyMultiplier:4,
-gapPenaltyMultiplier:2, speechMaxSeconds:15, speechRate:1.0,
-favoriteBaseScore:20, favoriteBonusPerStar:5, favoriteLowRatingThreshold:2.5,
-favoriteLowRatingPenalty:60, googleMinRatingCount:20, googleLowRatingCount:60
+maxStops: 10, fetchMoreCount: 3, googleMaxWaypoints: 12, defaultRadius: 500,
+toastDuration: 4000, includeDrafts: true, dedupRadiusMeters: 50,
+dedupGoogleEnabled: 1, dedupCustomEnabled: 1, trailTimeoutHours: 8,
+defaultInterestWeight: 3, maxContentPasses: 3, contentReorderEnabled: true,
+twoOptMaxPasses: 20, timeScoreMatch: 2, timeScoreAnytime: 1, timeScoreConflict: 0,
+timeConflictPenalty: 3, slotEarlyThreshold: 0.4, slotLateThreshold: 0.6,
+slotEndThreshold: 0.7, slotPenaltyMultiplier: 3, slotEndPenaltyMultiplier: 4,
+gapPenaltyMultiplier: 2, speechMaxSeconds: 15, speechRate: 1.0,
+favoriteBaseScore: 20, favoriteBonusPerStar: 5, favoriteLowRatingThreshold: 2.5,
+favoriteLowRatingPenalty: 60, googleMinRatingCount: 20, googleLowRatingCount: 60,
+googleLocationMode: 'restriction',         // 'restriction' | 'bias'
+filteredBusinessStatuses: ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'],
+filterClosedNow: false,
+googleMaxResultCount: -1,                  // -1 = don't send (Google decides), positive = send
+googleNearbyRankPreference: 'POPULARITY',  // 'POPULARITY' | 'DISTANCE'
+googleTextRankPreference: 'RELEVANCE',     // 'RELEVANCE' | 'DISTANCE'
 ```
+
+---
+
+## Google Places API
+
+### Two search modes
+- **Nearby Search** (`places:searchNearby`): uses `includedTypes`, supports `locationRestriction.circle` ✅
+- **Text Search** (`places:searchText`): uses `textQuery`, supports:
+  - `locationRestriction.rectangle` ✅ (circle NOT supported → HTTP 400)
+  - `locationBias.circle` ✅
+  - Circle → rectangle conversion: `deltaLat = radius / 111320`, `deltaLng = radius / (111320 * cos(lat * π/180))`
+
+### rankPreference values (different per API!)
+- Nearby Search: `POPULARITY` | `DISTANCE`
+- Text Search: `RELEVANCE` | `DISTANCE`
+
+### Scope of body variables in fetchGooglePlaces
+```js
+// CORRECT — declared OUTSIDE if/else so addToFilterLog can access them:
+let textSearchBodyStr = null;
+let nearbySearchBodyStr = null;
+const _maxRC = window.BKK.systemParams?.googleMaxResultCount ?? -1;
+
+if (textSearchQuery) {
+  textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);  // assign, not declare
+  ...
+} else {
+  nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);  // assign, not declare
+  ...
+}
+// addToFilterLog can now use both vars ✅
+```
+
+### Filter Log (`addToFilterLog`)
+Called for every interest search — success, zero results, error, internal/skipped.
+`requestDetails` includes: `mode`, `query`, `types`, `center`, `radius`, `locationMode`, `rawBody` (JSON string of full request body), `googleMapsUrl`.
+Debug balloon (bottom-left) shows always when debugMode=true. Orange ⚠️ when any entry has 0 passed AND 0 filtered (Google returned nothing).
 
 ---
 
 ## Route Algorithm
 
+```
 Phase 0: smartSelectStops → buckets per interest → sort by score → top N
-Phase 1: Nearest Neighbor
-Phase 2: 2-opt improvement
+Phase 1: Nearest Neighbor (start from startPointCoords or area center)
+Phase 2: 2-opt improvement (max twoOptMaxPasses)
 Phase 3: Content-aware reorder (slot positioning)
-Phase 4: Auto-reoptimize debounce 600ms
+Phase 4: Auto-reoptimize debounce 600ms on disabledStops change
+```
 
-## Google Places API
+### buildInterestLimits(selectedInterests, maxTotal)
+Shared function in app-logic.js. Called from both `smartSelectStops` AND route generation. Returns `{ limits, cfg, totalWeight }`.
 
-Two modes: Nearby Search (`types:[...]`) / Text Search (`textSearch:"..."`)
-
-Filtering: Blacklist → Relevance → Type → Distance → UserBlacklist → Dedup
-
-**ABSOLUTE RULE:** `const url = window.BKK.getGoogleMapsUrl(place)` — never build manually.
+### Round 3 backfill
+After Round 1+2 fill per-interest limits, Round 3 fills remaining slots from ANY interest ignoring per-interest caps (uses full `result.allPlaces` pool).
 
 ---
 
@@ -531,6 +360,22 @@ Filtering: Blacklist → Relevance → Type → Distance → UserBlacklist → D
 | Sanitize URL | `sanitizeMapsUrl(loc)` (app-logic.js) |
 | Speech | `window.BKK.startSpeechToText(options)` |
 | Debug log | `addDebugLog(category, message, data)` (app-logic.js) |
+| Filter log | `addToFilterLog({interestId, interestLabel, searchType, ...})` (app-logic.js) |
+
+---
+
+## Firebase Write Functions (all in app-logic.js ~115KB)
+
+```
+handleCityIconUpload        saveCityGeneralField      saveSpeechRate
+saveLocationLocked          saveInterestAdminStatus   saveInterestAdminStatusAsync
+saveSystemParam             resetSystemParams         saveBulkUpdate
+clearAccessLog              removeLocationGooglePlaceId  saveCityHiddenInterests
+saveInterestCounter         removeInterestConfig      saveInterestConfig
+saveInterestGroup           deleteInterestGroup
+saveCustomInterestAndConfig saveNewCustomInterest     saveNewInterestStatus
+clearFeedbackList           deleteUser                saveNewInterest
+```
 
 ---
 
@@ -548,11 +393,13 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 
 `city_explorer_city`, `city_explorer_lang`, `city_active_states`,
 `foufou_active_trail`, `foufou_visitor_id`, `foufou_debug_mode`,
-`foufou_fab_pos`, `foufou_right_col_width`, + migration flags
+`foufou_fab_pos`, `foufou_right_col_width`,
+`foufou_preferences`, `foufou_route_type`, `foufou_time_filter`,
+`foufou_debug_sessions`, `foufou_debug_flagged` + migration flags
 
 ---
 
-## One-Time Migrations
+## One-Time Migrations (localStorage flags)
 
 | Key | What |
 |-----|------|
@@ -576,16 +423,15 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 2. `window.BKK.i18n.t()` — doesn't exist
 3. Hooks inside IIFE — React error #310
 4. Firebase key in googlePlaceId — validate `/^(ChIJ|EiI|GhIJ)/`
-5. Reviews not deleted with location
-6. `const` on reassigned variable
-7. Single quotes in JSX
-8. Icon rendered as raw text — always `startsWith('data:') ? <img> : icon`
-9. `noGoogleSearch` not saved to customInterests
-10. Hardcoded IDs patched to Firebase
-11. **Firebase write in views.js/dialogs.js** — always extract to app-logic.js (source discipline, browser Babel no longer the enforcer)
-12. **כפתור סגירה ✕** — חייב תמיד להיות בפינה **שמאלית** עליונה בעברית RTL, ובפינה **ימנית** עליונה באנגלית LTR. חל על כל דיאלוג, פופאפ, bottom sheet, ו-modal. טכניקה: DOM order [FouFou/first-element][content][X] + `direction: isRTL ? 'rtl' : 'ltr'` על הcontainer → X תמיד בצד הנכון אוטומטית.
-12. **City general load after `return () => cleanup`** — must be BEFORE
-13. **`debugModeRef = useRef(debugMode)`** — must be `useRef(localStorage...)`
+5. `const` on reassigned variable
+6. Single quotes in JSX
+7. Icon rendered as raw text — always `startsWith('data:') ? <img> : icon`
+8. **Firebase write in views.js/dialogs.js** — always extract to app-logic.js
+9. **City general load after `return () => cleanup`** — must be BEFORE
+10. **`debugModeRef = useRef(debugMode)`** — must be `useRef(localStorage...)`
+11. **✕ button position** — always top-left in RTL, top-right in LTR. DOM order `[icon][content][✕]` + `direction: isRTL ? 'rtl' : 'ltr'` on container.
+12. **Block-scoped vars used across if/else** — `textSearchBodyStr`, `nearbySearchBodyStr`, `_maxRC` must be declared with `let`/`const` OUTSIDE the `if (textSearchQuery)` block.
+13. **`locationRestriction.circle` in Text Search** — NOT supported by Google API → HTTP 400. Use `rectangle` for restriction mode, `locationBias.circle` for bias mode.
 
 ---
 
