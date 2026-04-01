@@ -4389,8 +4389,21 @@
           radius: searchRadius + 'm'
         });
         
+        // Text Search API: locationRestriction only supports rectangle (NOT circle).
+        // locationBias supports circle. So:
+        //   restriction mode → convert circle to bounding rectangle
+        //   bias mode        → use locationBias.circle
         const useRestriction = (window.BKK.systemParams?.googleLocationMode || 'restriction') === 'restriction';
-        const locationParam = useRestriction ? 'locationRestriction' : 'locationBias';
+        const metersPerDegreeLat = 111320;
+        const metersPerDegreeLng = 111320 * Math.cos(center.lat * Math.PI / 180);
+        const deltaLat = searchRadius / metersPerDegreeLat;
+        const deltaLng = searchRadius / metersPerDegreeLng;
+        const textSearchLocationParam = useRestriction
+          ? { locationRestriction: { rectangle: {
+              low:  { latitude: center.lat - deltaLat, longitude: center.lng - deltaLng },
+              high: { latitude: center.lat + deltaLat, longitude: center.lng + deltaLng }
+            }}}
+          : { locationBias: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: searchRadius }}};
         response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
           method: 'POST',
           headers: {
@@ -4401,15 +4414,7 @@
           body: JSON.stringify({
             textQuery: searchQuery,
             maxResultCount: 20,
-            [locationParam]: {
-              circle: {
-                center: {
-                  latitude: center.lat,
-                  longitude: center.lng
-                },
-                radius: searchRadius
-              }
-            }
+            ...textSearchLocationParam
           })
         });
       } else {
