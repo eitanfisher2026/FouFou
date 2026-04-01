@@ -4573,6 +4573,26 @@
             blacklist: blacklistWords,
             area: area || 'GPS',
           });
+          addToFilterLog({
+            interestId: validInterests[0],
+            interestLabel: tLabel(interestLabelRetry) || validInterests[0],
+            searchType: 'category',
+            query: null,
+            placeTypes: placeTypes,
+            blacklist: blacklistWords,
+            nameKeywords: [],
+            allResults: [],
+            requestDetails: {
+              mode: 'nearbySearch',
+              query: null,
+              types: placeTypes,
+              center: { lat: center.lat, lng: center.lng },
+              radius: searchRadius,
+              locationMode: window.BKK.systemParams?.googleLocationMode || 'restriction',
+              rawFromGoogle: 0,
+              googleMapsUrl: `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
+            },
+          });
           return []; // No results from any type
         }
         
@@ -6372,6 +6392,28 @@
         const interestObj = allInterestOptions.find(o => o.id === interest);
         if (interestObj?.privateOnly || interestConfig?.[interest]?.noGoogleSearch) {
           console.log(`[ROUTE] Skipping API for internal/private interest: ${interest}`);
+          // Log to filter log as internal interest (no Google search)
+          const interestLabelSkip = allInterestOptions.find(o => o.id === interest);
+          addToFilterLog({
+            interestId: interest,
+            interestLabel: tLabel(interestLabelSkip) || interest,
+            searchType: 'internal',
+            query: null,
+            placeTypes: null,
+            blacklist: [],
+            nameKeywords: [],
+            allResults: [],
+            requestDetails: {
+              mode: 'internal',
+              query: 'פנימי — ללא חיפוש גוגל',
+              types: null,
+              center: null,
+              radius: null,
+              locationMode: 'none',
+              rawFromGoogle: 0,
+              googleMapsUrl: null,
+            },
+          });
           return { interest, places: [] };
         }
         try {
@@ -6387,6 +6429,28 @@
         } catch (error) {
           fetchErrors.push({ interest, error: error.message || 'Unknown error', details: error.details || {} });
           console.error(`[ERROR] Failed to fetch for ${interest}:`, error);
+          // Log to filter log so user can see the failure
+          const interestLabelErr = allInterestOptions.find(o => o.id === interest);
+          addToFilterLog({
+            interestId: interest,
+            interestLabel: tLabel(interestLabelErr) || interest,
+            searchType: 'error',
+            query: null,
+            placeTypes: null,
+            blacklist: [],
+            nameKeywords: [],
+            allResults: [],
+            requestDetails: {
+              mode: 'error',
+              query: error.message || 'Unknown error',
+              types: null,
+              center: null,
+              radius: null,
+              locationMode: window.BKK.systemParams?.googleLocationMode || 'restriction',
+              rawFromGoogle: 0,
+              googleMapsUrl: null,
+            },
+          });
           return { interest, places: [] };
         }
       }));

@@ -4954,24 +4954,25 @@
         {/* ═══════════════════════════════════════════════════════ */}
         {/* FILTER LOG — Floating Badge (טלפון + מחשב)             */}
         {/* ═══════════════════════════════════════════════════════ */}
-        {debugMode && filterLog.length > 0 && !showFilterPanel && (() => {
-          const hasEmpty = filterLog.some(e => e.passed.length === 0 && e.filtered.length === 0);
-          const totalPassed = filterLog.reduce((s, e) => s + e.passed.length, 0);
-          const totalFiltered = filterLog.reduce((s, e) => s + e.filtered.length, 0);
-          return (
-            <button
-              onClick={() => setShowFilterPanel(true)}
-              style={{
-                position: 'fixed', bottom: '140px', left: '12px', zIndex: 40,
-                background: hasEmpty ? '#b45309' : '#7c3aed', color: 'white', border: 'none', borderRadius: '20px',
-                padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: '5px'
-              }}
-            >
-              {hasEmpty ? '⚠️' : '🔬'} {totalPassed}✅ {totalFiltered}❌ {hasEmpty && <span style={{fontSize:'9px'}}>גוגל 0</span>}
-            </button>
-          );
-        })()}
+        {debugMode && !showFilterPanel && (
+          <button
+            onClick={() => setShowFilterPanel(true)}
+            style={{
+              position: 'fixed', bottom: '140px', left: '12px', zIndex: 40,
+              background: filterLog.length === 0 ? '#374151' :
+                filterLog.some(e => e.passed.length === 0 && e.filtered.length === 0) ? '#b45309' : '#7c3aed',
+              color: 'white', border: 'none', borderRadius: '20px',
+              padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: '5px'
+            }}
+          >
+            {filterLog.length === 0 ? '🔬 0 entries' : (
+              filterLog.some(e => e.passed.length === 0 && e.filtered.length === 0)
+                ? <>⚠️ {filterLog.reduce((s,e)=>s+e.passed.length,0)}✅ {filterLog.reduce((s,e)=>s+e.filtered.length,0)}❌ <span style={{fontSize:'9px'}}>גוגל 0</span></>
+                : <>🔬 {filterLog.reduce((s,e)=>s+e.passed.length,0)}✅ {filterLog.reduce((s,e)=>s+e.filtered.length,0)}❌</>
+            )}
+          </button>
+        )}
 
         {/* ═══════════════════════════════════════════════════════ */}
         {/* FILTER LOG — Full Screen Panel                          */}
@@ -5038,14 +5039,25 @@
               {/* Scrollable content */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '8px', direction: 'ltr' }}>
                 {filterLog.map((entry, ei) => (
-                  <div key={ei} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: `1px solid ${entry.searchType === 'fetchMore' ? '#fde68a' : '#e9d5ff'}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                  <div key={ei} style={{ marginBottom: '12px', background: 'white', borderRadius: '10px', border: `1px solid ${
+                    entry.searchType === 'fetchMore' ? '#fde68a' :
+                    entry.searchType === 'error' ? '#fca5a5' :
+                    entry.searchType === 'internal' ? '#d1d5db' : '#e9d5ff'}`, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
 
                     {/* Interest header */}
-                    <div style={{ padding: '7px 12px', background: entry.searchType === 'fetchMore' ? '#78350f' : '#4c1d95', color: 'white', fontSize: '12px' }}>
+                    <div style={{ padding: '7px 12px', background:
+                      entry.searchType === 'fetchMore' ? '#78350f' :
+                      entry.searchType === 'error' ? '#991b1b' :
+                      entry.searchType === 'internal' ? '#374151' : '#4c1d95',
+                      color: 'white', fontSize: '12px' }}>
                       <div style={{ fontWeight: 'bold' }}>{entry.interestLabel}</div>
                       <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         {entry.searchType === 'fetchMore' ? (
                           <span>➕ {entry.passed.length} מקומות נוספו</span>
+                        ) : entry.searchType === 'error' ? (
+                          <span>❌ שגיאה: {entry.requestDetails?.query || 'Unknown error'}</span>
+                        ) : entry.searchType === 'internal' ? (
+                          <span>🏠 פנימי — ללא חיפוש גוגל</span>
                         ) : (
                           <>
                             <span>{entry.searchType === 'text' ? `🔤 "${entry.query}"` : `🏷️ category`}</span>
