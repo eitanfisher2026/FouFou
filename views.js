@@ -4243,6 +4243,7 @@
                   { key: 'favoriteLowRatingPenalty', label: t('sysParams.favoriteLowRatingPenalty'), desc: t('sysParams.favoriteLowRatingPenaltyDesc'), min: 0, max: 200, step: 10, type: 'int' },
                 ]},
                 { title: t('sysParams.sectionGoogleFilter') || '🔍 סינון גוגל', icon: '🔍', color: '#6366f1', params: [
+                  { key: 'googleMaxResultCount', label: 'מקסימום תוצאות מגוגל', desc: '-1 = לא שולחים (גוגל מחליט), מספר חיובי = שולחים לגוגל', min: -1, max: 100, step: 1, type: 'int' },
                   { key: 'googleMinRatingCount', label: t('sysParams.googleMinRatingCount') || 'מינימום דירוגים (דלג לצמיתות)', desc: t('sysParams.googleMinRatingCountDesc') || 'מקומות גוגל עם פחות מכך דירוגים — לא יובאו לעולם', min: 0, max: 200, step: 5, type: 'int' },
                   { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
                 ]},
@@ -5070,6 +5071,13 @@
                           </>
                         )}
                       </div>
+                      {entry.requestDetails?.rawBody && (
+                        <details style={{ marginTop: '4px' }}>
+                          <summary style={{ cursor: 'pointer', fontSize: '9px', fontWeight: 'bold', color: 'rgba(255,255,255,0.7)', userSelect: 'none' }}>📤 Raw Request Body</summary>
+                          <pre style={{ marginTop: '3px', fontSize: '8px', background: 'rgba(0,0,0,0.4)', color: '#a5b4fc', padding: '6px', borderRadius: '4px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', direction: 'ltr', textAlign: 'left', maxHeight: '200px' }}>{entry.requestDetails.rawBody}</pre>
+          <button onClick={() => navigator.clipboard?.writeText(entry.requestDetails.rawBody).then(() => showToast('📋 Body הועתק!', 'success'))} style={{ marginTop: '2px', fontSize: '9px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}>📋 העתק</button>
+                        </details>
+                      )}
                       {entry.blacklist?.length > 0 && (
                         <div style={{ fontSize: '10px', marginTop: '3px', opacity: 0.85 }}>
                           🚫 blacklist: <span style={{ fontFamily: 'monospace' }}>{entry.blacklist.join(', ')}</span>
@@ -5164,6 +5172,13 @@
                               </div>
                             )}
                             {entry.searchType !== 'error' && <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס.</div>}
+                            {entry.requestDetails?.rawBody && (
+                              <details style={{ marginTop: '6px' }}>
+                                <summary style={{ cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', color: '#4338ca', userSelect: 'none' }}>📤 Raw Request Body</summary>
+                                <pre style={{ marginTop: '4px', fontSize: '9px', background: '#1e1b4b', color: '#a5b4fc', padding: '8px', borderRadius: '6px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', direction: 'ltr', textAlign: 'left' }}>{entry.requestDetails.rawBody}</pre>
+                                <button onClick={() => navigator.clipboard?.writeText(entry.requestDetails.rawBody).then(() => showToast('📋 Body הועתק!', 'success'))} style={{ marginTop: '3px', fontSize: '9px', background: '#4338ca', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}>📋 העתק</button>
+                              </details>
+                            )}
                           </div>
                         )}
                       </div>

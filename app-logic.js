@@ -727,6 +727,9 @@
       filteredBusinessStatuses: ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'],
       // filterClosedNow: if true, exclude places where openNow === false
       filterClosedNow: false,
+      // maxResultCount: -1 = don't send to Google (use their default/max)
+      // positive number = send to Google as maxResultCount
+      googleMaxResultCount: -1,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -4404,6 +4407,13 @@
               high: { latitude: center.lat + deltaLat, longitude: center.lng + deltaLng }
             }}}
           : { locationBias: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: searchRadius }}};
+        const _maxRC = window.BKK.systemParams?.googleMaxResultCount ?? -1;
+        const textSearchBody = {
+          textQuery: searchQuery,
+          ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
+          ...textSearchLocationParam
+        };
+        const textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
           method: 'POST',
           headers: {
@@ -4411,11 +4421,7 @@
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
             'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours,places.businessStatus'
           },
-          body: JSON.stringify({
-            textQuery: searchQuery,
-            maxResultCount: 20,
-            ...textSearchLocationParam
-          })
+          body: textSearchBodyStr
         });
       } else {
         // Use Nearby Search API with types from interestConfig
@@ -4448,6 +4454,18 @@
 
         const useRestrictionTypes = (window.BKK.systemParams?.googleLocationMode || 'restriction') === 'restriction';
         const locationParamTypes = useRestrictionTypes ? 'locationRestriction' : 'locationBias';
+        const nearbySearchBody = {
+          includedTypes: placeTypes.slice(0, 10),
+          ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
+          [locationParamTypes]: {
+            circle: {
+              center: { latitude: center.lat, longitude: center.lng },
+              radius: searchRadius
+            }
+          },
+          rankPreference: radiusOverride ? 'DISTANCE' : 'POPULARITY'
+        };
+        const nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_API_URL, {
           method: 'POST',
           headers: {
@@ -4455,20 +4473,7 @@
             'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
             'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.primaryType,places.currentOpeningHours,places.businessStatus'
           },
-          body: JSON.stringify({
-            includedTypes: placeTypes.slice(0, 10),
-            maxResultCount: 20,
-            [locationParamTypes]: {
-              circle: {
-                center: {
-                  latitude: center.lat,
-                  longitude: center.lng
-                },
-                radius: searchRadius
-              }
-            },
-            rankPreference: radiusOverride ? 'DISTANCE' : 'POPULARITY'
-          })
+          body: nearbySearchBodyStr
         });
       }
 
@@ -4502,7 +4507,6 @@
                 },
                 body: JSON.stringify({
                   includedTypes: [singleType],
-                  maxResultCount: 20,
                   locationRestriction: {
                     circle: {
                       center: { latitude: center.lat, longitude: center.lng },
@@ -4623,6 +4627,7 @@
             rawFromGoogle: 0,
             errorStatus: response.status,
             errorText: errorText?.slice(0, 200) || '',
+            rawBody: isTextSearchApiErr ? (typeof textSearchBodyStr !== 'undefined' ? textSearchBodyStr : null) : (typeof nearbySearchBodyStr !== 'undefined' ? nearbySearchBodyStr : null),
             googleMapsUrl: isTextSearchApiErr
               ? `https://www.google.com/maps/search/${encodeURIComponent(textSearchQuery)}/@${center.lat},${center.lng},15z`
               : `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
@@ -4671,6 +4676,7 @@
             radius: searchRadius,
             locationMode: (window.BKK.systemParams?.googleLocationMode || 'restriction'),
             rawFromGoogle: 0,
+            rawBody: isTextSearchEmpty ? textSearchBodyStr : nearbySearchBodyStr,
             googleMapsUrl: isTextSearchEmpty
               ? `https://www.google.com/maps/search/${encodeURIComponent(textSearchQuery)}/@${center.lat},${center.lng},15z`
               : `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
@@ -4957,6 +4963,7 @@
           radius: searchRadius,
           locationMode: (window.BKK.systemParams?.googleLocationMode || 'restriction'),
           rawFromGoogle: debugPlaceResults.length,
+          rawBody: isTextSearch ? (typeof textSearchBodyStr !== 'undefined' ? textSearchBodyStr : null) : (typeof nearbySearchBodyStr !== 'undefined' ? nearbySearchBodyStr : null),
         },
       });
       
