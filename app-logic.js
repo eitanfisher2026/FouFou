@@ -7325,7 +7325,8 @@
     setStartPointCoords(coords);
     // Restore route type (circular/linear)
     setRouteType(savedRoute.circular ? 'circular' : 'linear');
-    setCurrentView('results');
+    setRouteChoiceMade('manual');
+    setCurrentView('form');
     setWizardStep(3);
     window.scrollTo(0, 0);
   };
