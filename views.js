@@ -870,13 +870,14 @@
                 const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? formData.currentLat : (formData.searchMode === 'area' ? formData.area : true));
                 return (
                 <div style={{
-                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-                  padding: '8px 16px 16px', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
+                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, pointerEvents: 'none',
+                  padding: '8px 16px calc(16px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
                 }}>
                   <button
                     onClick={() => { if (canSearch) { generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0); } }}
                     disabled={!canSearch}
                     style={{ width: '100%', padding: '14px', borderRadius: '12px',
+                      pointerEvents: 'auto',
                       cursor: canSearch ? 'pointer' : 'not-allowed',
                       border: canSearch ? '2px solid #22c55e' : '2px solid #d1d5db',
                       background: canSearch ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f3f4f6',
@@ -1020,7 +1021,7 @@
                 </div>
 
                 {/* Map + Next buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? '60px' : '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '8px' }}>
                   <button
                     onClick={() => {
                       setMapMode('favorites');
@@ -1043,13 +1044,14 @@
               {/* Fixed continue button — hidden when overlays are open */}
               {!showMapModal && formData.interests.length > 0 && (
                 <div style={{
-                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-                  padding: '8px 16px 16px', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
+                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, pointerEvents: 'none',
+                  padding: '8px 16px calc(16px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
                 }}>
                   <button
                     onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
                     style={{
                       width: '100%', padding: '14px', borderRadius: '12px',
+                      pointerEvents: 'auto',
                       cursor: 'pointer',
                       border: '2px solid #22c55e',
                       background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
