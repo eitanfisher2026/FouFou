@@ -756,6 +756,7 @@
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
+  const [interestDialogReadOnly, setInterestDialogReadOnly] = useState(false);
   const [cityVisibilityInterest, setCityVisibilityInterest] = useState(null); // interest object for city visibility dialog
   const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', nameKeywords: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, minRatingCount: null, lowRatingCount: null });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
@@ -6774,6 +6775,8 @@
         } else {
           const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
             ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || t('form.myPlace')
+            : formData.radiusSource === 'gps'
+            ? t('wizard.myLocation')
             : formData.radiusPlaceName || t('form.currentLocation');
           areaName = `${formData.radiusMeters}m - ${sourceName}`;
         }

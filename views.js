@@ -958,7 +958,7 @@
                     sortedGroupIds.forEach(g => groupOrder.push(g));
                     filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });
                     groupOrder.push('_none'); // ungrouped at end
-                    const uiLang = window.BKK.i18n?.lang?.() || 'he';
+                    const uiLang = window.BKK.i18n?.currentLang || 'he';
                     const sortLocale = uiLang === 'he' ? 'he' : 'en';
                     const sorted = [...filtered].sort((a, b) => {
                       const ga = groupOrder.indexOf(a.group || '_none');
@@ -1486,7 +1486,7 @@
                                     <div className="text-[10px]" style={{
                                       color: hasValidCoords ? '#6b7280' : '#991b1b'
                                     }}>
-                                      {hasValidCoords ? stop.description : t('places.noCoordinatesWarning')}
+                                      {hasValidCoords ? <AutoTranslateText text={stop.description} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} /> : t('places.noCoordinatesWarning')}
                                     </div>
                                     {stop.todayHours && (
                                       <div className="text-[9px]" style={{ color: stop.openNow ? '#059669' : '#dc2626' }}>
@@ -1995,7 +1995,7 @@
                               <span className="text-[10px] text-gray-400 flex-shrink-0">{savedRoute.stops?.length || 0} stops</span>
                             </div>
                             {savedRoute.notes && (
-                              <div className="text-[10px] text-gray-500 mt-0.5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>📝 {savedRoute.notes}</div>
+                              <div className="text-[10px] text-gray-500 mt-0.5" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>📝 <AutoTranslateText text={savedRoute.notes} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} /></div>
                             )}
                           </div>
                           <button
@@ -2471,10 +2471,17 @@
                       {/* Toggle button — removed: users see city interests as defined by admin */}
                       {isEditor && (
                       <button
-                        onClick={() => openInterestDialog(interest)}
+                        onClick={() => { setInterestDialogReadOnly(false); openInterestDialog(interest); }}
                         className="text-xs px-1 py-0.5 rounded flex-shrink-0"
                         title={t("places.detailsEdit")}
                       >{'✏️'}</button>
+                      )}
+                      {!isEditor && (
+                      <button
+                        onClick={() => { setInterestDialogReadOnly(true); openInterestDialog(interest); }}
+                        className="text-xs px-1 py-0.5 rounded flex-shrink-0"
+                        title={t("general.viewOnly")}
+                      >{'👁️'}</button>
                       )}
                     </div>
                   </div>

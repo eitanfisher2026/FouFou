@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.0` (Apr 01, 2026)
+- **גרסה:** `3.15.1` (Apr 01, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -109,8 +109,8 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.15.0'/VERSION = '3.15.1'/" config.js
-sed -i 's/"version": "3.15.0"/"version": "3.15.1"/' version.json
+sed -i "s/VERSION = '3.15.1'/VERSION = '3.15.2'/" config.js
+sed -i 's/"version": "3.15.1"/"version": "3.15.2"/' version.json
 python3 build.py
 zip github-upload-vX_Y_Z.zip \
   index.html app-data.js app-code.js \
@@ -250,6 +250,7 @@ malaga:    { id: 'malaga',    file: 'city-malaga.js' }
 
 | State | Description |
 |-------|-------------|
+| `interestDialogReadOnly` | true when interest dialog opened in view-only mode (regular user) |
 | `customInterests` | all interests — real-time listener only |
 | `interestConfig` | search settings per interest |
 | `interestGroups` | `{ groupId: { labelHe, labelEn, order } }` |
@@ -432,6 +433,8 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 11. **✕ button position** — always top-left in RTL, top-right in LTR. DOM order `[icon][content][✕]` + `direction: isRTL ? 'rtl' : 'ltr'` on container.
 12. **Block-scoped vars used across if/else** — `textSearchBodyStr`, `nearbySearchBodyStr`, `_maxRC` must be declared with `let`/`const` OUTSIDE the `if (textSearchQuery)` block.
 13. **`locationRestriction.circle` in Text Search** — NOT supported by Google API → HTTP 400. Use `rectangle` for restriction mode, `locationBias.circle` for bias mode.
+14. **`window.BKK.i18n?.lang?.()`** — `lang` is NOT a function. Always use `window.BKK.i18n?.currentLang` instead.
+15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 
 ---
 

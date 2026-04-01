@@ -1012,6 +1012,7 @@
                         t('places.unsavedChangesWarning') || 'יש שינויים שלא נשמרו. לצאת בלי לשמור?',
                         () => {
                           setShowAddInterestDialog(false);
+                          setInterestDialogReadOnly(false);
                           setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
                           setEditingCustomInterest(null);
                         },
@@ -1019,6 +1020,7 @@
                       );
                     } else {
                       setShowAddInterestDialog(false);
+                      setInterestDialogReadOnly(false);
                       setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
                       setEditingCustomInterest(null);
                     }
@@ -1028,7 +1030,12 @@
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={interestDialogReadOnly ? { pointerEvents: 'none', userSelect: 'text' } : {}}>
+                {interestDialogReadOnly && (
+                  <div style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', padding: '6px 10px', fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    👁️ {t('general.viewOnly')}
+                  </div>
+                )}
                 <div style={{ position: 'relative' }}>
                 {/* Name + Icon row */}
                 <div className="grid grid-cols-4 gap-2">
@@ -1609,7 +1616,7 @@
               
               {/* Footer */}
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                {(() => {
+                {interestDialogReadOnly ? null : (() => {
                   return (
                     <button
                       onClick={async () => {
@@ -1863,6 +1870,7 @@
                 <button
                   onClick={() => {
                     setShowAddInterestDialog(false);
+                    setInterestDialogReadOnly(false);
                     setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] });
                     setEditingCustomInterest(null);
                   }}
