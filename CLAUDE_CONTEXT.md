@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.1` (Apr 01, 2026)
+- **גרסה:** `3.15.2` (Apr 01, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -109,7 +109,7 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.15.1'/VERSION = '3.15.2'/" config.js
+sed -i "s/VERSION = '3.15.2'/VERSION = '3.15.3'/" config.js
 sed -i 's/"version": "3.15.1"/"version": "3.15.2"/' version.json
 python3 build.py
 zip github-upload-vX_Y_Z.zip \

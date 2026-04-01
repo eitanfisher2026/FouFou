@@ -217,7 +217,7 @@ const QuickAddPlaceDialog = ({
           <div>
             <label className={labelCls}>{captureMode ? t("trail.whatDidYouSee") : t("general.interests")}</label>
             {captureMode ? (
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-6 gap-1.5 p-1.5 bg-gray-50 rounded-lg max-h-36 overflow-y-auto border border-gray-200">
                 {activeInterests.map(option => {
                   const sel = qaInterests.includes(option.id);
                   return (

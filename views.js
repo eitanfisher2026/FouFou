@@ -2252,7 +2252,7 @@
                                       return obj2?.icon ? <span key={idx} title={obj2.label} style={{ fontSize: '13px' }}>{renderIcon(obj2.icon, '14px')}</span> : null;
                                     })}
                                     {placesGroupBy === 'interest' && (loc.areas || [loc.area]).filter(Boolean).map((aId, idx) => (
-                                      <span key={idx} className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded">{(areaMap[aId] || {}).label || aId}</span>
+                                      <span key={idx} className="text-[9px] bg-gray-200 text-gray-600 px-1 rounded">{tLabel(areaMap[aId]) || aId}</span>
                                     ))}
                                   </div>
                                 </div>
