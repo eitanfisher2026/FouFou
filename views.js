@@ -4247,6 +4247,38 @@
                   { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
                 ]},
               ];
+              // Google location mode toggle
+              const toggleLocationMode = () => {
+                const next = systemParams.googleLocationMode === 'bias' ? 'restriction' : 'bias';
+                const updated = { ...systemParams, googleLocationMode: next };
+                window.BKK.systemParams = updated;
+                setSystemParams(updated);
+                if (isFirebaseAvailable && database) saveSystemParam('googleLocationMode', next);
+              };
+              // Business status + openNow filter — custom UI (not a simple slider)
+              const ALL_BUSINESS_STATUSES = ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY', 'BUSINESS_STATUS_UNSPECIFIED'];
+              const STATUS_LABELS = {
+                CLOSED_PERMANENTLY: 'סגור לצמיתות',
+                CLOSED_TEMPORARILY: 'סגור זמנית',
+                BUSINESS_STATUS_UNSPECIFIED: 'סטטוס לא ידוע',
+              };
+              const currentFiltered = systemParams.filteredBusinessStatuses || ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'];
+              const toggleStatus = (status) => {
+                const next = currentFiltered.includes(status)
+                  ? currentFiltered.filter(s => s !== status)
+                  : [...currentFiltered, status];
+                const updated = { ...systemParams, filteredBusinessStatuses: next };
+                window.BKK.systemParams = updated;
+                setSystemParams(updated);
+                if (isFirebaseAvailable && database) saveSystemParam('filteredBusinessStatuses', next);
+              };
+              const toggleClosedNow = () => {
+                const next = !systemParams.filterClosedNow;
+                const updated = { ...systemParams, filterClosedNow: next };
+                window.BKK.systemParams = updated;
+                setSystemParams(updated);
+                if (isFirebaseAvailable && database) saveSystemParam('filterClosedNow', next);
+              };
               const updateParam = (key, val, type) => {
                 const parsed = type === 'bool' ? !!val : type === 'float' ? parseFloat(val) : parseInt(val);
                 if (type !== 'bool' && isNaN(parsed)) return;
@@ -4364,6 +4396,43 @@
                     </div>
                   </details>
                 ))}
+                {/* Google location mode */}
+                <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
+                  <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📍 מוד מיקום בחיפוש
+                  </summary>
+                  <div style={{ padding: '10px 12px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                      <input type="checkbox" checked={(systemParams.googleLocationMode || 'restriction') === 'restriction'} onChange={toggleLocationMode} style={{ width: '14px', height: '14px' }} />
+                      <span style={{ fontWeight: 'bold' }}>הגבלה קשה (restriction) — ברירת מחדל</span>
+                    </label>
+                    <div style={{ fontSize: '10px', color: '#6b7280' }}><strong>restriction</strong> — גוגל מחזיר רק מקומות בתוך הרדיוס</div>
+                    <div style={{ fontSize: '10px', color: '#6b7280' }}><strong>bias</strong> — גוגל מעדיף קרוב אבל עשוי להחזיר מרוחקים</div>
+                  </div>
+                </details>
+                {/* Business status + openNow filter */}
+                <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
+                  <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    🚫 סינון סטטוס עסקים
+                  </summary>
+                  <div style={{ padding: '10px 12px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>סמן מה לסנן מתוצאות גוגל:</div>
+                    {ALL_BUSINESS_STATUSES.map(status => (
+                      <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                        <input type="checkbox" checked={currentFiltered.includes(status)} onChange={() => toggleStatus(status)} style={{ width: '14px', height: '14px' }} />
+                        <span>{STATUS_LABELS[status]}</span>
+                        <span style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'monospace' }}>{status}</span>
+                      </label>
+                    ))}
+                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', marginTop: '2px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                        <input type="checkbox" checked={!!systemParams.filterClosedNow} onChange={toggleClosedNow} style={{ width: '14px', height: '14px' }} />
+                        <span>סנן מקומות סגורים עכשיו (openNow = false)</span>
+                      </label>
+                      <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '3px', marginRight: '22px' }}>מקומות פתוחים בדרך כלל אבל סגורים בשעה זו. לא מומלץ — מוריד כמות תוצאות.</div>
+                    </div>
+                  </div>
+                </details>
                 <button onClick={resetAll}
                   className="w-full py-1.5 bg-gray-500 text-white rounded-lg text-xs font-bold hover:bg-gray-600">
                   🔄 {t('sysParams.resetAll')}
@@ -4927,6 +4996,25 @@
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {(() => {
+                    const buildText = () => {
+                      const lines = ['=== FouFou Filter Log ===', new Date().toLocaleString('he-IL'), ''];
+                      filterLog.forEach(entry => {
+                        lines.push(`--- ${entry.interestLabel} ---`);
+                        lines.push(`${entry.searchType === 'text' ? '🔤' : '🏷️'} ${entry.searchType === 'text' ? entry.query : (entry.placeTypes || []).join(', ')}`);
+                        lines.push(`${entry.fromGoogle || 0} from Google → ${entry.passed?.length || 0} passed · ${entry.filtered?.length || 0} filtered`);
+                        if (entry.blacklist?.length) lines.push(`🚫 blacklist: ${entry.blacklist.join(', ')}`);
+                        lines.push('');
+                        (entry.passed || []).forEach((p, i) => { lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]`); });
+                        (entry.filtered || []).forEach(p => { lines.push(`❌ ${p.layer || p.status} | ${p.name} ⭐${p.rating} (${p.reviews}) | ${p.reason || ''}`); });
+                        lines.push('');
+                      });
+                      return lines.join('\n');
+                    };
+                    const copyLog = () => navigator.clipboard?.writeText(buildText()).then(() => showToast('📋 Filter log copied!', 'success')).catch(() => showToast('⚠️ Copy failed', 'warning'));
+                    const exportLog = () => { const blob = new Blob([buildText()], { type: 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `filter-log-${new Date().toISOString().slice(0,10)}.txt`; a.click(); URL.revokeObjectURL(url); };
+                    return (<><button onClick={copyLog} title='העתק ללוח' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>📋</button><button onClick={exportLog} title='ייצוא txt' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>⬇️</button></>);
+                  })()}
                   <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('🔬 Filter log cleared', 'info'); }}
                     style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
                   <button onClick={() => setShowFilterPanel(false)}
@@ -5032,7 +5120,19 @@
 
                     {/* Empty state */}
                     {entry.passed.length === 0 && entry.filtered.length === 0 && (
-                      <div style={{ padding: '12px', textAlign: 'center', color: '#9ca3af', fontSize: '12px' }}>אין נתונים</div>
+                      <div style={{ padding: '10px 12px', background: '#fef9c3', borderTop: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#92400e', marginBottom: '6px' }}>⚠️ גוגל החזיר 0 תוצאות</div>
+                        {entry.requestDetails && (
+                          <div style={{ fontSize: '10px', color: '#78350f', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div>🔍 סוג: <strong>{entry.requestDetails.mode}</strong> | מיקום: <strong>{entry.requestDetails.locationMode}</strong></div>
+                            {entry.requestDetails.query && <div>🔤 query: <strong>"{entry.requestDetails.query}"</strong></div>}
+                            {entry.requestDetails.types?.length > 0 && <div>🏷️ types: <strong>{entry.requestDetails.types.join(', ')}</strong></div>}
+                            <div>📍 מרכז: {entry.requestDetails.center?.lat?.toFixed(5)}, {entry.requestDetails.center?.lng?.toFixed(5)}</div>
+                            <div>👉 רדיוס: <strong>{entry.requestDetails.radius}m</strong></div>
+                            <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס. נסה להגדיל את הרדיוס או לשנות ל-bias.</div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}

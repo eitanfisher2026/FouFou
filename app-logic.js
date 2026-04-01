@@ -4374,8 +4374,8 @@
         // Use Text Search API — textQuery should be the search term only.
         // Location is handled by locationBias/Restriction — adding area name to query
         // would cause Google to match only places whose name contains the area name.
-        const cityName = window.BKK.cityNameForSearch || 'Bangkok';
-        const searchQuery = `${textSearchQuery} ${cityName}`.trim();
+        // textQuery = search term only — location handled by locationBias/Restriction
+        const searchQuery = textSearchQuery.trim();
         
         const interestLabel = allInterestOptions.find(o => o.id === validInterests[0]);
         addDebugLog('API', `🔍 TEXT SEARCH`, { 

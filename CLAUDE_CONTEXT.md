@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.14.16` (Apr 01, 2026)
+- **גרסה:** `3.14.18` (Apr 01, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -302,6 +302,16 @@ assert jsx == 0, 'FAIL — compile step did not run'
 print('OK')
 "
 ```
+
+---
+
+## גרסאות — עקרון צבירת השינויים
+
+**כל גרסה מכילה את כל התיקונים של הגרסאות שקדמו לה.**
+
+- אין צורך להתקין גרסאות ביניים — תמיד מספיק להתקין את הגרסה האחרונה בלבד.
+- דילוג על גרסאות ביניים לא גורם לאובדן שינויים.
+- **חריג:** אם יש הכרח להתקין גרסה ספציפית (למשל firebase-rules.json בלבד), קלוד חייב לציין זאת במפורש ולהסביר למה.
 
 ---
 
