@@ -4374,6 +4374,7 @@
       let placeTypes = [];
       let textSearchBodyStr = null;
       let nearbySearchBodyStr = null;
+      const _maxRC = window.BKK.systemParams?.googleMaxResultCount ?? -1;
       
       if (textSearchQuery) {
         // Use Text Search API — textQuery should be the search term only.
@@ -4409,7 +4410,6 @@
               high: { latitude: center.lat + deltaLat, longitude: center.lng + deltaLng }
             }}}
           : { locationBias: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: searchRadius }}};
-        const _maxRC = window.BKK.systemParams?.googleMaxResultCount ?? -1;
         const textSearchBody = {
           textQuery: searchQuery,
           ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
