@@ -4249,6 +4249,15 @@
                   { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
                 ]},
               ];
+              // Google location mode toggle
+              const toggleLocationMode = () => {
+                const next = systemParams.googleLocationMode === 'bias' ? 'restriction' : 'bias';
+                const updated = { ...systemParams, googleLocationMode: next };
+                window.BKK.systemParams = updated;
+                setSystemParams(updated);
+                if (isFirebaseAvailable && database) saveSystemParam('googleLocationMode', next);
+              };
+
               // Business status + openNow filter — custom UI (not a simple slider)
               const ALL_BUSINESS_STATUSES = ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY', 'BUSINESS_STATUS_UNSPECIFIED'];
               const STATUS_LABELS = {
@@ -4390,6 +4399,24 @@
                     </div>
                   </details>
                 ))}
+                {/* Google location mode */}
+                <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
+                  <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📍 מוד מיקום בחיפוש טקסט
+                  </summary>
+                  <div style={{ padding: '10px 12px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                      <input type="checkbox" checked={(systemParams.googleLocationMode || 'restriction') === 'restriction'} onChange={toggleLocationMode} style={{ width: '14px', height: '14px' }} />
+                      <span style={{ fontWeight: 'bold' }}>הגבלה קשה (restriction) — ברירת מחדל</span>
+                    </label>
+                    <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                      <strong>restriction</strong> — גוגל מחזיר רק מקומות בתוך הרדיוס — פחות תוצאות אבל כולן קרובות
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                      <strong>bias</strong> — גוגל מעדיף קרוב אבל עשוי להחזיר מקומות מרוחקים — התנהגות ישנה
+                    </div>
+                  </div>
+                </details>
                 {/* Business status + openNow filter */}
                 <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
                   <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>

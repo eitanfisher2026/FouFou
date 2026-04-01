@@ -718,7 +718,10 @@
       googleMinRatingCount: 20,
       googleLowRatingCount: 60,
 
-      // Google Places business status filter
+      // Google Places location mode for text search
+      // 'restriction' = hard limit to search radius (default, returns fewer but closer results)
+      // 'bias' = prefer search radius but may return results outside (old behavior)
+      googleLocationMode: 'restriction',
       // filteredBusinessStatuses: array of businessStatus values to exclude
       // Possible values: CLOSED_PERMANENTLY, CLOSED_TEMPORARILY, BUSINESS_STATUS_UNSPECIFIED
       filteredBusinessStatuses: ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'],
@@ -4384,6 +4387,8 @@
           radius: searchRadius + 'm'
         });
         
+        const useRestriction = (window.BKK.systemParams?.googleLocationMode || 'restriction') === 'restriction';
+        const locationParam = useRestriction ? 'locationRestriction' : 'locationBias';
         response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
           method: 'POST',
           headers: {
@@ -4394,7 +4399,7 @@
           body: JSON.stringify({
             textQuery: searchQuery,
             maxResultCount: 20,
-            locationBias: {
+            [locationParam]: {
               circle: {
                 center: {
                   latitude: center.lat,
@@ -4434,6 +4439,8 @@
           radius: searchRadius + 'm'
         });
 
+        const useRestrictionTypes = (window.BKK.systemParams?.googleLocationMode || 'restriction') === 'restriction';
+        const locationParamTypes = useRestrictionTypes ? 'locationRestriction' : 'locationBias';
         response = await fetch(GOOGLE_PLACES_API_URL, {
           method: 'POST',
           headers: {
@@ -4444,7 +4451,7 @@
           body: JSON.stringify({
             includedTypes: placeTypes.slice(0, 10),
             maxResultCount: 20,
-            locationRestriction: {
+            [locationParamTypes]: {
               circle: {
                 center: {
                   latitude: center.lat,
@@ -7312,11 +7319,14 @@
     const startPointText = validatedAddress || 
       (savedRoute.startPoint !== t('form.startPointFirst') ? savedRoute.startPoint : '') || 
       '';
-    setFormData({...savedRoute.preferences, startPoint: startPointText });
+    if (savedRoute.preferences) {
+      setFormData({...savedRoute.preferences, startPoint: startPointText });
+    }
     setStartPointCoords(coords);
     // Restore route type (circular/linear)
     setRouteType(savedRoute.circular ? 'circular' : 'linear');
-    setCurrentView('form');
+    setCurrentView('results');
+    setWizardStep(3);
     window.scrollTo(0, 0);
   };
 

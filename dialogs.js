@@ -807,7 +807,7 @@
                       <div>
                         <span className="font-bold text-indigo-700">Primary Type:</span>
                         <span className="ml-1 bg-indigo-200 px-2 py-0.5 rounded">
-                          {googlePlaceInfo.primaryTypeDisplayName || googlePlaceInfo.primaryType || 'N/A'}
+                          {googlePlaceInfo.primaryType || googlePlaceInfo.primaryTypeDisplayName || 'N/A'}
                         </span>
                       </div>
                       <div>

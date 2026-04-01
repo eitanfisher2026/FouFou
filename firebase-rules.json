@@ -19,8 +19,8 @@
           "$placeKey": {
             ".read": true,
             "$userId": {
-              ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && auth.uid === $userId",
-              ".validate": "newData.hasChildren(['rating', 'timestamp'])"
+              ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && (auth.uid === $userId || root.child('users').child(auth.uid).child('role').val() >= 2)",
+              ".validate": "newData.hasChildren(['rating', 'timestamp']) || !newData.exists()"
             }
           }
         }
