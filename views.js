@@ -5055,7 +5055,11 @@
                         {entry.searchType === 'fetchMore' ? (
                           <span>➕ {entry.passed.length} מקומות נוספו</span>
                         ) : entry.searchType === 'error' ? (
-                          <span>❌ שגיאה: {entry.requestDetails?.query || 'Unknown error'}</span>
+                          <>
+                            <span>❌ {entry.requestDetails?.errorStatus ? `HTTP ${entry.requestDetails.errorStatus}` : 'שגיאה'}</span>
+                            {entry.placeTypes?.length > 0 && <span>types: {entry.placeTypes.join(', ')}</span>}
+                            {entry.query && <span>query: "{entry.query}"</span>}
+                          </>
                         ) : entry.searchType === 'internal' ? (
                           <span>🏠 פנימי — ללא חיפוש גוגל</span>
                         ) : (
@@ -5137,22 +5141,29 @@
 
                     {/* Empty state */}
                     {entry.passed.length === 0 && entry.filtered.length === 0 && (
-                      <div style={{ padding: '10px 12px', background: '#fef9c3', borderTop: '1px solid #fde68a' }}>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#92400e', marginBottom: '6px' }}>⚠️ גוגל החזיר 0 תוצאות</div>
-                        {entry.requestDetails && (
-                          <div style={{ fontSize: '10px', color: '#78350f', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <div>🔍 סוג: <strong>{entry.requestDetails.mode}</strong> | מיקום: <strong>{entry.requestDetails.locationMode}</strong></div>
+                      <div style={{ padding: '10px 12px', background: entry.searchType === 'error' ? '#fef2f2' : entry.searchType === 'internal' ? '#f9fafb' : '#fef9c3', borderTop: `1px solid ${entry.searchType === 'error' ? '#fecaca' : entry.searchType === 'internal' ? '#e5e7eb' : '#fde68a'}` }}>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold', color: entry.searchType === 'error' ? '#991b1b' : entry.searchType === 'internal' ? '#6b7280' : '#92400e', marginBottom: '6px' }}>
+                          {entry.searchType === 'error' ? `❌ שגיאת API — HTTP ${entry.requestDetails?.errorStatus || '?'}` : entry.searchType === 'internal' ? '🏠 תחום פנימי — ללא חיפוש גוגל' : '⚠️ גוגל החזיר 0 תוצאות'}
+                        </div>
+                        {entry.requestDetails && entry.searchType !== 'internal' && (
+                          <div style={{ fontSize: '10px', color: entry.searchType === 'error' ? '#7f1d1d' : '#78350f', fontFamily: 'monospace', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div>🔍 סוג: <strong>{entry.requestDetails.mode || '?'}</strong> | מיקום: <strong>{entry.requestDetails.locationMode || '?'}</strong></div>
                             {entry.requestDetails.query && <div>🔤 query: <strong>"{entry.requestDetails.query}"</strong></div>}
                             {entry.requestDetails.types?.length > 0 && <div>🏷️ types: <strong>{entry.requestDetails.types.join(', ')}</strong></div>}
-                            <div>📍 מרכז: {entry.requestDetails.center?.lat?.toFixed(5)}, {entry.requestDetails.center?.lng?.toFixed(5)}</div>
-                            <div>👉 רדיוס: <strong>{entry.requestDetails.radius}m</strong> | mode: <strong>{entry.requestDetails.locationMode}</strong></div>
+                            {entry.requestDetails.center?.lat && <div>📍 מרכז: {entry.requestDetails.center.lat.toFixed(5)}, {entry.requestDetails.center.lng.toFixed(5)}</div>}
+                            {entry.requestDetails.radius && <div>👉 רדיוס: <strong>{entry.requestDetails.radius}m</strong></div>}
+                            {entry.searchType === 'error' && entry.requestDetails.errorText && (
+                              <div style={{ color: '#b91c1c', wordBreak: 'break-word', marginTop: '2px', background: '#fef2f2', padding: '3px 6px', borderRadius: '4px' }}>
+                                💬 {entry.requestDetails.errorText.slice(0, 200)}
+                              </div>
+                            )}
                             {entry.requestDetails.googleMapsUrl && (
                               <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 <button onClick={() => navigator.clipboard?.writeText(entry.requestDetails.googleMapsUrl).then(() => showToast('📋 URL הועתק!', 'success'))} style={{ fontSize: '10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer' }}>📋 העתק URL לגוגל</button>
                                 <a href={entry.requestDetails.googleMapsUrl} target='_blank' rel='noreferrer' style={{ fontSize: '10px', background: '#10b981', color: 'white', borderRadius: '4px', padding: '3px 8px', textDecoration: 'none' }}>🔗 פתח בגוגל</a>
                               </div>
                             )}
-                            <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס.</div>
+                            {entry.searchType !== 'error' && <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס.</div>}
                           </div>
                         )}
                       </div>

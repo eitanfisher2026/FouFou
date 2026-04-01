@@ -4596,6 +4596,37 @@
           return []; // No results from any type
         }
         
+        // Log to filter log with actual request details before handling error
+        const interestLabelApiErr = allInterestOptions.find(o => o.id === validInterests[0]);
+        const isTextSearchApiErr = !!textSearchQuery;
+        addToFilterLog({
+          interestId: validInterests[0],
+          interestLabel: tLabel(interestLabelApiErr) || validInterests[0],
+          searchType: 'error',
+          query: isTextSearchApiErr ? textSearchQuery : null,
+          placeTypes: isTextSearchApiErr ? null : placeTypes,
+          blacklist: blacklistWords,
+          nameKeywords: [],
+          allResults: [],
+          requestDetails: {
+            mode: isTextSearchApiErr ? 'textSearch' : 'nearbySearch',
+            query: isTextSearchApiErr ? textSearchQuery : null,
+            types: isTextSearchApiErr ? null : placeTypes,
+            center: { lat: center.lat, lng: center.lng },
+            radius: searchRadius,
+            locationMode: window.BKK.systemParams?.googleLocationMode || 'restriction',
+            rawFromGoogle: 0,
+            errorStatus: response.status,
+            errorText: errorText?.slice(0, 200) || '',
+            googleMapsUrl: isTextSearchApiErr
+              ? `https://www.google.com/maps/search/${encodeURIComponent(textSearchQuery)}/@${center.lat},${center.lng},15z`
+              : `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
+          },
+        });
+        // For 400 (bad types/config) — return [] without throwing so other interests continue
+        if (response.status === 400) {
+          return [];
+        }
         // For transient server errors (503, 500, 429), throw a user-friendly message
         if (response.status === 503 || response.status === 500) {
           throw new Error(t('toast.googleApiUnavailable') || 'Google API זמנית לא זמין — נסה שוב בעוד כמה שניות');
