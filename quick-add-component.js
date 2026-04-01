@@ -89,9 +89,11 @@ const QuickAddPlaceDialog = ({
     const aStatus = option.adminStatus || "active";
     if (aStatus === "hidden") return false;
     if (aStatus === "draft" && !isUnlocked) return false;
+    if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
+    // captureMode: show all non-hidden interests (same as Add manually)
+    if (captureMode) return true;
     const status = interestStatus[option.id];
     if (option.uncovered) return status === true;
-    if (option.scope === "local" && option.cityId && option.cityId !== selectedCityId) return false;
     if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
   }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
@@ -126,7 +128,7 @@ const QuickAddPlaceDialog = ({
           <button onClick={onCancel} style={{ background: "rgba(255,255,255,0.25)", border: "none", color: "white", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
 
-        <div className="overflow-y-auto p-3 space-y-3" style={{ direction: isRTL ? "rtl" : "ltr" }}>
+        <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ direction: isRTL ? "rtl" : "ltr" }}>
 
           {/* GPS indicator — captureMode only */}
           {captureMode && gpsStatus && (() => {
@@ -217,7 +219,7 @@ const QuickAddPlaceDialog = ({
           <div>
             <label className={labelCls}>{captureMode ? t("trail.whatDidYouSee") : t("general.interests")}</label>
             {captureMode ? (
-              <div className="grid grid-cols-6 gap-1.5 p-1.5 bg-gray-50 rounded-lg max-h-36 overflow-y-auto border border-gray-200">
+              <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-36 overflow-y-auto">
                 {activeInterests.map(option => {
                   const sel = qaInterests.includes(option.id);
                   return (
