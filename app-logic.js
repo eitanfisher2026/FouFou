@@ -4594,8 +4594,32 @@
         foundPlaces: data.places?.length || 0
       });
       
-      if (!data.places) {
-        console.warn('[DYNAMIC] No places found in response');
+      if (!data.places || data.places.length === 0) {
+        // Still log to filter log so user can see the request that returned empty
+        const interestLabelEmpty = allInterestOptions.find(o => o.id === validInterests[0]);
+        const isTextSearchEmpty = !!textSearchQuery;
+        addToFilterLog({
+          interestId: validInterests[0],
+          interestLabel: tLabel(interestLabelEmpty) || validInterests[0],
+          searchType: isTextSearchEmpty ? 'text' : 'category',
+          query: isTextSearchEmpty ? textSearchQuery : null,
+          placeTypes: isTextSearchEmpty ? null : placeTypes,
+          blacklist: blacklistWords,
+          nameKeywords: [],
+          allResults: [],
+          requestDetails: {
+            mode: isTextSearchEmpty ? 'textSearch' : 'nearbySearch',
+            query: isTextSearchEmpty ? textSearchQuery : null,
+            types: isTextSearchEmpty ? null : placeTypes,
+            center: { lat: center.lat, lng: center.lng },
+            radius: searchRadius,
+            locationMode: (window.BKK.systemParams?.googleLocationMode || 'restriction'),
+            rawFromGoogle: 0,
+            googleMapsUrl: isTextSearchEmpty
+              ? `https://www.google.com/maps/search/${encodeURIComponent(textSearchQuery)}/@${center.lat},${center.lng},15z`
+              : `https://www.google.com/maps/search/${encodeURIComponent((placeTypes||[]).join(' '))}/@${center.lat},${center.lng},15z`,
+          },
+        });
         return [];
       }
 

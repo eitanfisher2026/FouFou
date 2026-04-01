@@ -4954,19 +4954,24 @@
         {/* ═══════════════════════════════════════════════════════ */}
         {/* FILTER LOG — Floating Badge (טלפון + מחשב)             */}
         {/* ═══════════════════════════════════════════════════════ */}
-        {debugMode && filterLog.length > 0 && !showFilterPanel && (
-          <button
-            onClick={() => setShowFilterPanel(true)}
-            style={{
-              position: 'fixed', bottom: '140px', left: '12px', zIndex: 40,
-              background: '#7c3aed', color: 'white', border: 'none', borderRadius: '20px',
-              padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: '5px'
-            }}
-          >
-            🔬 {filterLog.reduce((s, e) => s + e.passed.length, 0)}✅ {filterLog.reduce((s, e) => s + e.filtered.length, 0)}❌
-          </button>
-        )}
+        {debugMode && filterLog.length > 0 && !showFilterPanel && (() => {
+          const hasEmpty = filterLog.some(e => e.passed.length === 0 && e.filtered.length === 0);
+          const totalPassed = filterLog.reduce((s, e) => s + e.passed.length, 0);
+          const totalFiltered = filterLog.reduce((s, e) => s + e.filtered.length, 0);
+          return (
+            <button
+              onClick={() => setShowFilterPanel(true)}
+              style={{
+                position: 'fixed', bottom: '140px', left: '12px', zIndex: 40,
+                background: hasEmpty ? '#b45309' : '#7c3aed', color: 'white', border: 'none', borderRadius: '20px',
+                padding: '5px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', gap: '5px'
+              }}
+            >
+              {hasEmpty ? '⚠️' : '🔬'} {totalPassed}✅ {totalFiltered}❌ {hasEmpty && <span style={{fontSize:'9px'}}>גוגל 0</span>}
+            </button>
+          );
+        })()}
 
         {/* ═══════════════════════════════════════════════════════ */}
         {/* FILTER LOG — Full Screen Panel                          */}
@@ -5128,8 +5133,14 @@
                             {entry.requestDetails.query && <div>🔤 query: <strong>"{entry.requestDetails.query}"</strong></div>}
                             {entry.requestDetails.types?.length > 0 && <div>🏷️ types: <strong>{entry.requestDetails.types.join(', ')}</strong></div>}
                             <div>📍 מרכז: {entry.requestDetails.center?.lat?.toFixed(5)}, {entry.requestDetails.center?.lng?.toFixed(5)}</div>
-                            <div>👉 רדיוס: <strong>{entry.requestDetails.radius}m</strong></div>
-                            <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס. נסה להגדיל את הרדיוס או לשנות ל-bias.</div>
+                            <div>👉 רדיוס: <strong>{entry.requestDetails.radius}m</strong> | mode: <strong>{entry.requestDetails.locationMode}</strong></div>
+                            {entry.requestDetails.googleMapsUrl && (
+                              <div style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                <button onClick={() => navigator.clipboard?.writeText(entry.requestDetails.googleMapsUrl).then(() => showToast('📋 URL הועתק!', 'success'))} style={{ fontSize: '10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '3px 8px', cursor: 'pointer' }}>📋 העתק URL לגוגל</button>
+                                <a href={entry.requestDetails.googleMapsUrl} target='_blank' rel='noreferrer' style={{ fontSize: '10px', background: '#10b981', color: 'white', borderRadius: '4px', padding: '3px 8px', textDecoration: 'none' }}>🔗 פתח בגוגל</a>
+                              </div>
+                            )}
+                            <div style={{ marginTop: '4px', color: '#b45309' }}>גוגל לא מצא מקום מסוג זה בתוך הרדיוס.</div>
                           </div>
                         )}
                       </div>
