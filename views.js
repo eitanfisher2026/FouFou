@@ -971,12 +971,11 @@
                     const elements = [];
                     sorted.forEach((option, idx) => {
                       const thisGroup = option.group || '_none';
-                      if (thisGroup !== lastGroup) {
+                      if (lastGroup !== null && thisGroup !== lastGroup) {
                         const gData = (thisGroup !== '_none') ? (interestGroups[thisGroup] || {}) : {};
                         const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
-                        const isFirst = lastGroup === null;
                         elements.push(
-                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: isFirst ? '0 0 2px' : '4px 0 2px' }}>
+                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 2px' }}>
                             <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
                             {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
                             {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
@@ -3969,145 +3968,9 @@
                 addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
                 customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
               }
-              const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
-                const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
-                const isDraft = getAStatus(i) === 'draft';
-                const isHidden = getAStatus(i) === 'hidden';
-                const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
-                const allVisible = visibleCities.length === allCities.length;
-                const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
-                return (
-                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
-                    <span style={{ flexShrink: 0 }}>{renderIcon(icon, '20px')}</span>
-                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
-                    {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
-                    {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
-                    {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
-                    {/* City visibility button — opens dialog */}
-                    <button onClick={() => setCityVisibilityInterest(i.id)}
-                      title="ניהול ניראות לפי עיר"
-                      style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
-                      {cityLabel}
-                    </button>
-                    <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
-                  </div>
-                );
-              };
-              const allCities = Object.values(window.BKK.cities || {});
-              // Collect interests from ALL cities + customInterests — no city filter
-              const seenIds = new Set();
-              const allCityInterestIds = allCities.flatMap(c => (c.interests || []).map(i => i.id));
-              const allIdsToShow = [...new Set([...allCityInterestIds, ...(customInterests || []).map(i => i.id)])];
-              const fullList = allIdsToShow.map(id => {
-                const fromCurrent = allInterestOptions.find(o => o.id === id);
-                if (fromCurrent) return fromCurrent;
-                for (const city of allCities) {
-                  const found = (city.interests || []).find(i => i.id === id);
-                  if (found) {
-                    const cfg = interestConfig[id] || {};
-                    return { ...found, label: cfg.labelOverride || cfg.label || found.label || id, labelEn: cfg.labelEnOverride || cfg.labelEn || found.labelEn || '', icon: cfg.iconOverride || cfg.icon || found.icon || '📍' };
-                  }
-                }
-                return customInterests.find(i => i.id === id) || { id };
-              }).filter(Boolean);
-              // Settings tab always shows ALL interests — admin needs to see hidden ones too
-              const allInterestsSorted = fullList
-                .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
-              const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
-              const openInterestDialogFromSettings = (interest) => {
-                const cfg = interestConfig[interest.id] || {};
-                const isFromCustom = customInterests.some(ci => ci.id === interest.id);
-                const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
-                setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
-                setNewInterest({
-                  id: interest.id,
-                  label: cfg.labelOverride || cfg.label || interest.label || '',
-                  labelEn: cfg.labelEnOverride || cfg.labelOverrideEn || cfg.labelEn || interest.labelEn || '',
-                  icon: cfg.iconOverride || cfg.icon || interest.icon || '📍',
-                  searchMode: cfg.textSearch ? 'text' : 'types',
-                  types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
-                  blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
-                  minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
-                  lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
-                  privateOnly: interest.privateOnly || false, locked: interest.locked || false,
-                  builtIn: !isFromCustom, scope: 'global', cityId: '',
-                  category: cfg.category || interest.category || 'attraction',
-                  weight: cfg.weight || interest.weight || 3,
-                  minStops: cfg.minStops != null ? cfg.minStops : (interest.minStops != null ? interest.minStops : 1),
-                  maxStops: cfg.maxStops || interest.maxStops || 10,
-                  routeSlot: cfg.routeSlot || interest.routeSlot || 'any',
-                  minGap: cfg.minGap != null ? cfg.minGap : 1,
-                  bestTime: cfg.bestTime || interest.bestTime || 'anytime',
-                  group: cfg.group || interest.group || '',
-                  dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
-                  noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
-                  color: cfg.color || interest.color || '',
-                });
-                setShowAddInterestDialog(true);
-              };
-              return (
-                <div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
-                      🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allInterestsSorted.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      {(() => {
-                        // Orphaned = any interest (built-in or custom) with no icon in interestConfig
-                        // These show as 📍 in the list and have no real configuration
-                        const orphaned = allInterestsSorted.filter(i => {
-                          const cfg = interestConfig[i.id] || {};
-                          const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
-                          const effectiveLabel = cfg.label || cfg.labelOverride || i.label || '';
-                          // Orphaned = default 📍 icon AND label is still the raw id (never configured)
-                          const hasDefaultIcon = !effectiveIcon || effectiveIcon === '📍';
-                          const hasRawLabel = effectiveLabel === i.id || effectiveLabel === '';
-                          return hasDefaultIcon && hasRawLabel;
-                        });
-                        if (orphaned.length === 0) return null;
-                        return (
-                          <button
-                            onClick={() => {
-                              const names = orphaned.map(i => cfg => (interestConfig[i.id]?.label || i.label || i.id)).join ? orphaned.map(i => interestConfig[i.id]?.label || i.label || i.id).join(', ') : '';
-                              if (!window.confirm(`הסתר ${orphaned.length} תחומים ללא אייקון?\n${names}`)) return;
-                              orphaned.forEach(i => {
-                                const isCustom = customInterests.some(ci => ci.id === i.id);
-                                if (isCustom) {
-                                  deleteCustomInterest(i.id);
-                                } else {
-                                  // Built-in: hide via adminStatus
-                                  const cfg = { ...(interestConfig[i.id] || {}), adminStatus: 'hidden' };
-                                  setInterestConfig(prev => ({ ...prev, [i.id]: cfg }));
-                                  if (isFirebaseAvailable && database) {
-                                    saveInterestAdminStatus(i.id, 'hidden');
-                                  }
-                                }
-                              });
-                            }}
-                            style={{ padding: '5px 10px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
-                          >🗑️ הסתר {orphaned.length} ריקים</button>
-                        );
-                      })()}
-                      <button
-                        onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] }); }}
-                        style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                      >+ הוסף תחום</button>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <span>🌍 = חשוף בכל הערים · אייקון עיר = לחץ לשינוי ניראות</span>
-                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל</span>
-                  </div>
-                  <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-                    <div className="space-y-1">
-                      {allInterestsSorted.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
-                    </div>
-                  </div>
             {/* Interest Groups Management */}
             {isUnlocked && (
-            <div style={{ marginTop: '16px', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
+            <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
                 📂 קיבוץ תחומים <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
               </div>
@@ -4201,10 +4064,145 @@
               })()}
             </div>
             )}
+                            const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
+                const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
+                const isDraft = getAStatus(i) === 'draft';
+                const isHidden = getAStatus(i) === 'hidden';
+                const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
+                const allVisible = visibleCities.length === allCities.length;
+                const cityLabel = allVisible ? '🌍' : `🏙️ ${visibleCities.length}/${allCities.length}`;
+                return (
+                  <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderRadius: '8px', border: '1px solid', borderColor: isHidden ? '#fca5a5' : isDraft ? '#fde68a' : '#e5e7eb', background: isHidden ? '#fef2f2' : isDraft ? '#fffbeb' : 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', marginBottom: '3px' }}>
+                    <span style={{ flexShrink: 0 }}>{renderIcon(icon, '20px')}</span>
+                    <span style={{ flex: 1, fontSize: '13px', fontWeight: '600', color: isHidden ? '#ef4444' : 'inherit' }}>{tLabel(i) || i.label}</span>
+                    {interestConfig[i.id]?.noGoogleSearch && <span style={{ fontSize: '9px', background: '#f3f4f6', color: '#6b7280', padding: '1px 4px', borderRadius: '3px', flexShrink: 0 }}>פנימי</span>}
+                    {isDraft && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 4px', borderRadius: '3px' }}>טיוטה</span>}
+                    {isHidden && <span style={{ fontSize: '9px', background: '#fee2e2', color: '#b91c1c', padding: '1px 4px', borderRadius: '3px' }}>מוסתר</span>}
+                    {/* City visibility button — opens dialog */}
+                    <button onClick={() => setCityVisibilityInterest(i.id)}
+                      title="ניהול ניראות לפי עיר"
+                      style={{ cursor: 'pointer', fontSize: '12px', padding: '2px 6px', borderRadius: '6px', border: '1px solid #e5e7eb', background: allVisible ? '#ecfdf5' : '#fef9c3', flexShrink: 0 }}>
+                      {cityLabel}
+                    </button>
+                    <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
+                  </div>
+                );
+              };
+              const allCities = Object.values(window.BKK.cities || {});
+              // Collect interests from ALL cities + customInterests — no city filter
+              const seenIds = new Set();
+              const allCityInterestIds = allCities.flatMap(c => (c.interests || []).map(i => i.id));
+              const allIdsToShow = [...new Set([...allCityInterestIds, ...(customInterests || []).map(i => i.id)])];
+              const fullList = allIdsToShow.map(id => {
+                const fromCurrent = allInterestOptions.find(o => o.id === id);
+                if (fromCurrent) return fromCurrent;
+                for (const city of allCities) {
+                  const found = (city.interests || []).find(i => i.id === id);
+                  if (found) {
+                    const cfg = interestConfig[id] || {};
+                    return { ...found, label: cfg.labelOverride || cfg.label || found.label || id, labelEn: cfg.labelEnOverride || cfg.labelEn || found.labelEn || '', icon: cfg.iconOverride || cfg.icon || found.icon || '📍' };
+                  }
+                }
+                return customInterests.find(i => i.id === id) || { id };
+              }).filter(Boolean);
+              // Settings tab always shows ALL interests — admin needs to see hidden ones too
+              const allInterestsSorted = fullList
+                .sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
+              const getAStatus = (i) => interestConfig[i.id]?.adminStatus || 'active';
+              const draftCount = allInterestsSorted.filter(i => getAStatus(i) === 'draft').length;
+              const openInterestDialogFromSettings = (interest) => {
+                const cfg = interestConfig[interest.id] || {};
+                const isFromCustom = customInterests.some(ci => ci.id === interest.id);
+                const toArr = (v) => !v ? [] : Array.isArray(v) ? v : typeof v === 'string' ? v.split(',').map(s=>s.trim()).filter(Boolean) : [];
+                setEditingCustomInterest(isFromCustom ? interest : { ...interest, builtIn: true });
+                setNewInterest({
+                  id: interest.id,
+                  label: cfg.labelOverride || cfg.label || interest.label || '',
+                  labelEn: cfg.labelEnOverride || cfg.labelOverrideEn || cfg.labelEn || interest.labelEn || '',
+                  icon: cfg.iconOverride || cfg.icon || interest.icon || '📍',
+                  searchMode: cfg.textSearch ? 'text' : 'types',
+                  types: toArr(cfg.types).join(', '), textSearch: cfg.textSearch || '',
+                  blacklist: toArr(cfg.blacklist).join(', '), nameKeywords: toArr(cfg.nameKeywords).join(', '),
+                  minRatingCount: cfg.minRatingCount != null ? cfg.minRatingCount : null,
+                  lowRatingCount: cfg.lowRatingCount != null ? cfg.lowRatingCount : null,
+                  privateOnly: interest.privateOnly || false, locked: interest.locked || false,
+                  builtIn: !isFromCustom, scope: 'global', cityId: '',
+                  category: cfg.category || interest.category || 'attraction',
+                  weight: cfg.weight || interest.weight || 3,
+                  minStops: cfg.minStops != null ? cfg.minStops : (interest.minStops != null ? interest.minStops : 1),
+                  maxStops: cfg.maxStops || interest.maxStops || 10,
+                  routeSlot: cfg.routeSlot || interest.routeSlot || 'any',
+                  minGap: cfg.minGap != null ? cfg.minGap : 1,
+                  bestTime: cfg.bestTime || interest.bestTime || 'anytime',
+                  group: cfg.group || interest.group || '',
+                  dedupRelated: toArr(cfg.dedupRelated || interest.dedupRelated),
+                  noGoogleSearch: cfg.noGoogleSearch || interest.noGoogleSearch || false,
+                  color: cfg.color || interest.color || '',
+                });
+                setShowAddInterestDialog(true);
+              };
+              return (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#374151' }}>
+                      🏷️ ניהול תחומים <span style={{ color: '#9ca3af', fontWeight: 'normal' }}>({allInterestsSorted.length}{draftCount > 0 ? ` · ${draftCount} טיוטות` : ''})</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      {(() => {
+                        // Orphaned = any interest (built-in or custom) with no icon in interestConfig
+                        // These show as 📍 in the list and have no real configuration
+                        const orphaned = allInterestsSorted.filter(i => {
+                          const cfg = interestConfig[i.id] || {};
+                          const effectiveIcon = cfg.icon || cfg.iconOverride || i.icon || '';
+                          const effectiveLabel = cfg.label || cfg.labelOverride || i.label || '';
+                          // Orphaned = default 📍 icon AND label is still the raw id (never configured)
+                          const hasDefaultIcon = !effectiveIcon || effectiveIcon === '📍';
+                          const hasRawLabel = effectiveLabel === i.id || effectiveLabel === '';
+                          return hasDefaultIcon && hasRawLabel;
+                        });
+                        if (orphaned.length === 0) return null;
+                        return (
+                          <button
+                            onClick={() => {
+                              const names = orphaned.map(i => cfg => (interestConfig[i.id]?.label || i.label || i.id)).join ? orphaned.map(i => interestConfig[i.id]?.label || i.label || i.id).join(', ') : '';
+                              if (!window.confirm(`הסתר ${orphaned.length} תחומים ללא אייקון?\n${names}`)) return;
+                              orphaned.forEach(i => {
+                                const isCustom = customInterests.some(ci => ci.id === i.id);
+                                if (isCustom) {
+                                  deleteCustomInterest(i.id);
+                                } else {
+                                  // Built-in: hide via adminStatus
+                                  const cfg = { ...(interestConfig[i.id] || {}), adminStatus: 'hidden' };
+                                  setInterestConfig(prev => ({ ...prev, [i.id]: cfg }));
+                                  if (isFirebaseAvailable && database) {
+                                    saveInterestAdminStatus(i.id, 'hidden');
+                                  }
+                                }
+                              });
+                            }}
+                            style={{ padding: '5px 10px', borderRadius: '8px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                          >🗑️ הסתר {orphaned.length} ריקים</button>
+                        );
+                      })()}
+                      <button
+                        onClick={() => { setShowAddInterestDialog(true); setEditingCustomInterest(null); setNewInterest({ label: '', labelEn: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', privateOnly: false, locked: false, category: 'attraction', weight: 3, minStops: 1, maxStops: 10, routeSlot: 'any', minGap: 1, bestTime: 'anytime', dedupRelated: [] }); }}
+                        style={{ padding: '5px 12px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                      >+ הוסף תחום</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <span>🌍 = חשוף בכל הערים · אייקון עיר = לחץ לשינוי ניראות</span>
+                    <span style={{ background: '#f3f4f6', padding: '1px 5px', borderRadius: '3px' }}>פנימי = ללא חיפוש גוגל</span>
+                  </div>
+                  <div style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+                    <div className="space-y-1">
+                      {allInterestsSorted.map(i => renderInterestSettingsRow(i, allCities, getAStatus, openInterestDialogFromSettings))}
+                    </div>
+                  </div>
                 </div>
-              
               );
             })()}
+
             {/* ===== SYSTEM PARAMS TAB ===== */}
             {settingsTab === 'sysparams' && isAdmin && (<div>
             {(() => {
@@ -4249,39 +4247,6 @@
                   { key: 'googleLowRatingCount', label: t('sysParams.googleLowRatingCount') || 'דירוגים לתיעדוף נמוך', desc: t('sysParams.googleLowRatingCountDesc') || 'מקומות גוגל מתחת לכך — ציון נמוך מאוד, יובאו רק אם אין אחרים בתחום', min: 0, max: 500, step: 10, type: 'int' },
                 ]},
               ];
-              // Google location mode toggle
-              const toggleLocationMode = () => {
-                const next = systemParams.googleLocationMode === 'bias' ? 'restriction' : 'bias';
-                const updated = { ...systemParams, googleLocationMode: next };
-                window.BKK.systemParams = updated;
-                setSystemParams(updated);
-                if (isFirebaseAvailable && database) saveSystemParam('googleLocationMode', next);
-              };
-
-              // Business status + openNow filter — custom UI (not a simple slider)
-              const ALL_BUSINESS_STATUSES = ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY', 'BUSINESS_STATUS_UNSPECIFIED'];
-              const STATUS_LABELS = {
-                CLOSED_PERMANENTLY: 'סגור לצמיתות',
-                CLOSED_TEMPORARILY: 'סגור זמנית',
-                BUSINESS_STATUS_UNSPECIFIED: 'סטטוס לא ידוע',
-              };
-              const currentFiltered = systemParams.filteredBusinessStatuses || ['CLOSED_PERMANENTLY', 'CLOSED_TEMPORARILY'];
-              const toggleStatus = (status) => {
-                const next = currentFiltered.includes(status)
-                  ? currentFiltered.filter(s => s !== status)
-                  : [...currentFiltered, status];
-                const updated = { ...systemParams, filteredBusinessStatuses: next };
-                window.BKK.systemParams = updated;
-                setSystemParams(updated);
-                if (isFirebaseAvailable && database) saveSystemParam('filteredBusinessStatuses', next);
-              };
-              const toggleClosedNow = () => {
-                const next = !systemParams.filterClosedNow;
-                const updated = { ...systemParams, filterClosedNow: next };
-                window.BKK.systemParams = updated;
-                setSystemParams(updated);
-                if (isFirebaseAvailable && database) saveSystemParam('filterClosedNow', next);
-              };
               const updateParam = (key, val, type) => {
                 const parsed = type === 'bool' ? !!val : type === 'float' ? parseFloat(val) : parseInt(val);
                 if (type !== 'bool' && isNaN(parsed)) return;
@@ -4399,47 +4364,6 @@
                     </div>
                   </details>
                 ))}
-                {/* Google location mode */}
-                <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
-                  <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    📍 מוד מיקום בחיפוש טקסט
-                  </summary>
-                  <div style={{ padding: '10px 12px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                      <input type="checkbox" checked={(systemParams.googleLocationMode || 'restriction') === 'restriction'} onChange={toggleLocationMode} style={{ width: '14px', height: '14px' }} />
-                      <span style={{ fontWeight: 'bold' }}>הגבלה קשה (restriction) — ברירת מחדל</span>
-                    </label>
-                    <div style={{ fontSize: '10px', color: '#6b7280' }}>
-                      <strong>restriction</strong> — גוגל מחזיר רק מקומות בתוך הרדיוס — פחות תוצאות אבל כולן קרובות
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#6b7280' }}>
-                      <strong>bias</strong> — גוגל מעדיף קרוב אבל עשוי להחזיר מקומות מרוחקים — התנהגות ישנה
-                    </div>
-                  </div>
-                </details>
-                {/* Business status + openNow filter */}
-                <details className="border border-indigo-200 rounded-lg overflow-hidden" style={{ marginBottom: '4px' }}>
-                  <summary style={{ padding: '8px 12px', background: '#eef2ff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    🚫 סינון סטטוס עסקים
-                  </summary>
-                  <div style={{ padding: '10px 12px', background: 'white', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>סמן מה לסנן מתוצאות גוגל:</div>
-                    {ALL_BUSINESS_STATUSES.map(status => (
-                      <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                        <input type="checkbox" checked={currentFiltered.includes(status)} onChange={() => toggleStatus(status)} style={{ width: '14px', height: '14px' }} />
-                        <span>{STATUS_LABELS[status]}</span>
-                        <span style={{ fontSize: '10px', color: '#9ca3af', fontFamily: 'monospace' }}>{status}</span>
-                      </label>
-                    ))}
-                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', marginTop: '2px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                        <input type="checkbox" checked={!!systemParams.filterClosedNow} onChange={toggleClosedNow} style={{ width: '14px', height: '14px' }} />
-                        <span>סנן מקומות סגורים עכשיו (openNow = false)</span>
-                      </label>
-                      <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '3px', marginRight: '22px' }}>מקומות פתוחים בדרך כלל אבל סגורים בשעה זו. לא מומלץ — מוריד את כמות התוצאות.</div>
-                    </div>
-                  </div>
-                </details>
                 <button onClick={resetAll}
                   className="w-full py-1.5 bg-gray-500 text-white rounded-lg text-xs font-bold hover:bg-gray-600">
                   🔄 {t('sysParams.resetAll')}
@@ -5003,42 +4927,6 @@
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  {(() => {
-                    const buildText = () => {
-                      const lines = ['=== FouFou Filter Log ===', new Date().toLocaleString('he-IL'), ''];
-                      filterLog.forEach(entry => {
-                        lines.push(`--- ${entry.interestLabel} ---`);
-                        lines.push(`${entry.searchType === 'text' ? '🔤' : '🏷️'} ${entry.searchType === 'text' ? entry.query : (entry.placeTypes || []).join(', ')}`);
-                        lines.push(`${entry.allResults?.length || 0} from Google → ${entry.passed?.length || 0} passed · ${entry.filtered?.length || 0} filtered`);
-                        if (entry.blacklist?.length) lines.push(`🚫 blacklist: ${entry.blacklist.join(', ')}`);
-                        lines.push('');
-                        (entry.passed || []).forEach((p, i) => {
-                          lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]`);
-                        });
-                        (entry.filtered || []).forEach(p => {
-                          lines.push(`❌ ${p.layer || p.status} | ${p.name} ⭐${p.rating} (${p.reviews}) | ${p.reason || ''}`);
-                        });
-                        lines.push('');
-                      });
-                      return lines.join('\n');
-                    };
-                    const copyLog = () => {
-                      navigator.clipboard?.writeText(buildText())
-                        .then(() => showToast('📋 Filter log copied!', 'success'))
-                        .catch(() => showToast('\u26A0\uFE0F Copy failed', 'warning'));
-                    };
-                    const exportLog = () => {
-                      const blob = new Blob([buildText()], { type: 'text/plain;charset=utf-8' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url; a.download = `filter-log-${new Date().toISOString().slice(0,10)}.txt`;
-                      a.click(); URL.revokeObjectURL(url);
-                    };
-                    return (<>
-                      <button onClick={copyLog} title='העתק ללוח' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>📋</button>
-                      <button onClick={exportLog} title='ייצוא txt' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>⬇️</button>
-                    </>);
-                  })()}
                   <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('🔬 Filter log cleared', 'info'); }}
                     style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
                   <button onClick={() => setShowFilterPanel(false)}

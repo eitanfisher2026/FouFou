@@ -1592,7 +1592,7 @@
 
   // Add a filter-log entry for one interest's search results
   // Called once per interest after all filtering layers complete
-  const addToFilterLog = ({ interestId, interestLabel, searchType, query, placeTypes, blacklist, nameKeywords, allResults }) => {
+  const addToFilterLog = ({ interestId, interestLabel, searchType, query, placeTypes, blacklist, nameKeywords, allResults, requestDetails }) => {
     if (!debugModeRef.current) return;
     // allResults = debugPlaceResults array — each item has { name, rating, reviews, primaryType, types, status, reason, nameKeywordMatch }
     const passed = allResults.filter(p => p.status === '✅ KEPT').map(p => ({
@@ -1631,6 +1631,7 @@
       passed,
       filtered,
       fromGoogle: allResults.length,
+      requestDetails: requestDetails || null,
     };
     filterLogRef.current = [entry, ...filterLogRef.current.slice(0, 99)];
     setFilterLog([...filterLogRef.current]);
@@ -4370,10 +4371,11 @@
       let placeTypes = [];
       
       if (textSearchQuery) {
-        // Use Text Search API for interests like "graffiti" -> "street art"
-        const areaName = area ? (areaOptions.find(a => a.id === area)?.labelEn || area) : '';
+        // Use Text Search API — textQuery should be the search term only.
+        // Location is handled by locationBias/Restriction — adding area name to query
+        // would cause Google to match only places whose name contains the area name.
         const cityName = window.BKK.cityNameForSearch || 'Bangkok';
-        const searchQuery = `${textSearchQuery} ${areaName} ${cityName}`.trim();
+        const searchQuery = `${textSearchQuery} ${cityName}`.trim();
         
         const interestLabel = allInterestOptions.find(o => o.id === validInterests[0]);
         addDebugLog('API', `🔍 TEXT SEARCH`, { 
@@ -4867,6 +4869,15 @@
         blacklist: blacklistWords,
         nameKeywords,
         allResults: debugPlaceResults,
+        requestDetails: {
+          mode: isTextSearch ? 'textSearch' : 'nearbySearch',
+          query: isTextSearch ? textSearchQuery : null,
+          types: isTextSearch ? null : placeTypes,
+          center: { lat: center.lat, lng: center.lng },
+          radius: searchRadius,
+          locationMode: (window.BKK.systemParams?.googleLocationMode || 'restriction'),
+          rawFromGoogle: debugPlaceResults.length,
+        },
       });
       
       return ratingFiltered;
