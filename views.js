@@ -978,11 +978,11 @@
                       const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
                       return (
                         <div key={groupId}>
-                          {gi > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 4px' }}>
+                          {gLabel && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 4px',
+                              flexDirection: uiLang === 'he' ? 'row' : 'row-reverse' }}>
+                              <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '600' }}>{gLabel}</span>
                               <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-                              {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
-                              {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
                             </div>
                           )}
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
