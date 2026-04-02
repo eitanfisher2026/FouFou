@@ -965,65 +965,50 @@
                       if (ga !== gb) return ga - gb;
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
-                    // Per-group grids with separator outside — group labels visible
-                    const groupedItems = [];
-                    const seenGroups = [];
-                    sorted.forEach(option => {
-                      const g = option.group || '_none';
-                      if (!seenGroups.includes(g)) { seenGroups.push(g); groupedItems.push({ groupId: g, items: [] }); }
-                      groupedItems[seenGroups.indexOf(g)].items.push(option);
-                    });
-                    return groupedItems.map(({ groupId, items }, gi) => {
-                      const gData = groupId !== '_none' ? (interestGroups[groupId] || {}) : {};
-                      const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
-                      return (
-                        <div key={groupId}>
-                          {groupId !== '_none' && gLabel && (
-                            <div style={{ textAlign: 'right', margin: '8px 0 2px', paddingRight: '2px' }}>
-                              <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '600' }}>{gLabel}</span>
-                            </div>
-                          )}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                            {items.map(option => {
-                              const isSelected = formData.interests.includes(option.id);
-                              const isDraft = (option.adminStatus || 'active') === 'draft';
-                              return (
-                                <button
-                                  key={option.id}
-                                  onClick={() => {
-                                    setFormData(prev => {
-                                      const alreadySelected = prev.interests.includes(option.id);
-                                      const newInterests = alreadySelected
-                                        ? prev.interests.filter(id => id !== option.id)
-                                        : [...prev.interests, option.id];
-                                      saveInterestsForMode(interestTimeFilter, newInterests);
-                                      if (!alreadySelected && option.privateOnly) {
-                                        const label = tLabel(option) || option.id;
-                                        showToast(
-                                          `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                          'info'
-                                        );
-                                      }
-                                      return {...prev, interests: newInterests};
-                                    });
-                                  }}
-                                  style={{
-                                    padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                                    border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                    background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                    position: 'relative'
-                                  }}
-                                >
-                                  {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                                  <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                                  <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    });
+                    // Flat alphabetical sort — no grouping
+                    const alphabetical = [...filtered].sort((a, b) =>
+                      (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale)
+                    );
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                        {alphabetical.map(option => {
+                          const isSelected = formData.interests.includes(option.id);
+                          const isDraft = (option.adminStatus || 'active') === 'draft';
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => {
+                                setFormData(prev => {
+                                  const alreadySelected = prev.interests.includes(option.id);
+                                  const newInterests = alreadySelected
+                                    ? prev.interests.filter(id => id !== option.id)
+                                    : [...prev.interests, option.id];
+                                  saveInterestsForMode(interestTimeFilter, newInterests);
+                                  if (!alreadySelected && option.privateOnly) {
+                                    const label = tLabel(option) || option.id;
+                                    showToast(
+                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                      'info'
+                                    );
+                                  }
+                                  return {...prev, interests: newInterests};
+                                });
+                              }}
+                              style={{
+                                padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                                border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
+                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
+                                position: 'relative'
+                              }}
+                            >
+                              {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
+                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                              <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
                   })()}
                 </div>
 
