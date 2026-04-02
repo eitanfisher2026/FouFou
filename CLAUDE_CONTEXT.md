@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.24` (Apr 02, 2026)
+- **גרסה:** `3.16.0` (Apr 02, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -463,3 +463,35 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', ...) // shows Thai
 
 `getTileUrl()` מוגדר ב-`config.js` → מחזיר Carto Voyager (English labels).
 7 מפות באפליקציה — כולן חייבות לקרוא `getTileUrl()`: areas/radius/stops/favorites/settings-fullscreen + 2 mini-maps ב-views.js.
+
+---
+
+## Stale Closure Bug — Critical Pattern
+
+**Discovered in v3.15.21** — caused interest grid to blink and not select on Samsung S25 Ultra and Google Pixel.
+
+**The bug:** Using `setFormData({...formData, interests: newInterests})` inside an `onClick` creates a stale closure. On high-performance Android devices, the browser fires the click event **twice** before React re-renders. Both firings read the same stale `formData` from the closure, causing the state to be set and then immediately overwritten.
+
+**The fix — always use functional updater when new state depends on previous state:**
+```js
+// ❌ WRONG — stale closure, breaks on Samsung/Pixel double-fire
+onClick={() => {
+  const newInterests = isSelected
+    ? formData.interests.filter(id => id !== option.id)
+    : [...formData.interests, option.id];
+  setFormData({...formData, interests: newInterests});
+}}
+
+// ✅ CORRECT — functional updater, always gets latest state
+onClick={() => {
+  setFormData(prev => {
+    const alreadySelected = prev.interests.includes(option.id);
+    const newInterests = alreadySelected
+      ? prev.interests.filter(id => id !== option.id)
+      : [...prev.interests, option.id];
+    return {...prev, interests: newInterests};
+  });
+}}
+```
+
+**Rule:** Any `setFormData` call whose new value depends on the current value MUST use the functional updater form `setFormData(prev => {...})`. This applies to ALL toggles, array push/filter, and counter increments anywhere in the app.

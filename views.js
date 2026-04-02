@@ -2601,12 +2601,14 @@
                 }`}
               >🔧 פרמטרים</button>
               )}
+              {debugMode && (
               <button
                 onClick={() => setSettingsTab('debug')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'debug' ? 'bg-gray-800 text-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🐛 {debugSessions.length > 0 ? `דיבאג (${debugSessions.length})` : 'דיבאג'}</button>
+              )}
             </div>
 
             {/* ===== CITIES & AREAS TAB ===== */}
@@ -4468,27 +4470,6 @@
 
 
             {/* ===== DEBUG TAB ===== */}
-            {/* Interest Tap Debug Log — always visible in debug tab */}
-            {settingsTab === 'debug' && (
-              <div style={{ margin: '8px 0', background: '#1e293b', borderRadius: '8px', padding: '10px', fontSize: '11px', fontFamily: 'monospace' }}>
-                <div style={{ color: '#fbbf24', fontWeight: 'bold', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>🧪 Interest Tap Log (last 30)</span>
-                  <button onClick={() => { window._interestTapLog = []; showToast('Log cleared', 'info'); }}
-                    style={{ fontSize: '10px', background: '#374151', border: 'none', borderRadius: '4px', color: '#9ca3af', padding: '2px 6px', cursor: 'pointer' }}>Clear</button>
-                </div>
-                {(!window._interestTapLog || window._interestTapLog.length === 0) ? (
-                  <div style={{ color: '#6b7280' }}>No taps yet — go to screen 1 and tap interests</div>
-                ) : (
-                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                    {[...(window._interestTapLog || [])].reverse().map((e, i) => (
-                      <div key={i} style={{ color: e.gap !== null && e.gap < 600 ? '#f87171' : '#86efac', marginBottom: '2px' }}>
-                        {e.gap !== null && e.gap < 600 ? '⚡ DOUBLE' : '👆 tap  '} {e.label} {e.gap !== null ? `(gap: ${e.gap}ms)` : '(first)'}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
             {settingsTab === 'debug' && debugMode && (
               <DebugTab
                 debugSessions={debugSessions}
