@@ -974,18 +974,34 @@
                             <button
                               key={option.id}
                               onClick={() => {
-                                const newInterests = isSelected
-                                  ? formData.interests.filter(id => id !== option.id)
-                                  : [...formData.interests, option.id];
-                                setFormData({...formData, interests: newInterests});
-                                saveInterestsForMode(interestTimeFilter, newInterests);
-                                if (!isSelected && option.privateOnly) {
-                                  const label = tLabel(option) || option.id;
-                                  showToast(
-                                    `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                    'info'
-                                  );
-                                }
+                                // TOUCH DEBUG — log every click with timestamp
+                                const now = Date.now();
+                                if (!window._interestTapLog) window._interestTapLog = [];
+                                const prev2 = window._interestTapLog[window._interestTapLog.length - 1];
+                                const gap = prev2 ? (now - prev2.ts) : null;
+                                const entry = { ts: now, id: option.id, label: tLabel(option), gap };
+                                window._interestTapLog.push(entry);
+                                if (window._interestTapLog.length > 30) window._interestTapLog.shift();
+                                const msg = gap !== null && gap < 600
+                                  ? `⚡ DOUBLE TAP! gap=${gap}ms — ${tLabel(option)}`
+                                  : `👆 tap — ${tLabel(option)} (gap=${gap}ms)`;
+                                showToast(msg, gap !== null && gap < 600 ? 'warning' : 'info', null, 2000);
+
+                                setFormData(prev => {
+                                  const alreadySelected = prev.interests.includes(option.id);
+                                  const newInterests = alreadySelected
+                                    ? prev.interests.filter(id => id !== option.id)
+                                    : [...prev.interests, option.id];
+                                  saveInterestsForMode(interestTimeFilter, newInterests);
+                                  if (!alreadySelected && option.privateOnly) {
+                                    const label = tLabel(option) || option.id;
+                                    showToast(
+                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                      'info'
+                                    );
+                                  }
+                                  return {...prev, interests: newInterests};
+                                });
                               }}
                               style={{
                                 padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
@@ -1006,7 +1022,7 @@
                 </div>
 
                 {/* Map + Next buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? '60px' : '8px' }}>
                   <button
                     onClick={() => {
                       setMapMode('favorites');
@@ -4449,6 +4465,27 @@
 
 
             {/* ===== DEBUG TAB ===== */}
+            {/* Interest Tap Debug Log — always visible in debug tab */}
+            {settingsTab === 'debug' && (
+              <div style={{ margin: '8px 0', background: '#1e293b', borderRadius: '8px', padding: '10px', fontSize: '11px', fontFamily: 'monospace' }}>
+                <div style={{ color: '#fbbf24', fontWeight: 'bold', marginBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>🧪 Interest Tap Log (last 30)</span>
+                  <button onClick={() => { window._interestTapLog = []; showToast('Log cleared', 'info'); }}
+                    style={{ fontSize: '10px', background: '#374151', border: 'none', borderRadius: '4px', color: '#9ca3af', padding: '2px 6px', cursor: 'pointer' }}>Clear</button>
+                </div>
+                {(!window._interestTapLog || window._interestTapLog.length === 0) ? (
+                  <div style={{ color: '#6b7280' }}>No taps yet — go to screen 1 and tap interests</div>
+                ) : (
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {[...(window._interestTapLog || [])].reverse().map((e, i) => (
+                      <div key={i} style={{ color: e.gap !== null && e.gap < 600 ? '#f87171' : '#86efac', marginBottom: '2px' }}>
+                        {e.gap !== null && e.gap < 600 ? '⚡ DOUBLE' : '👆 tap  '} {e.label} {e.gap !== null ? `(gap: ${e.gap}ms)` : '(first)'}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {settingsTab === 'debug' && debugMode && (
               <DebugTab
                 debugSessions={debugSessions}
