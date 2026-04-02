@@ -971,30 +971,15 @@
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                      <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', maxHeight: '55vh', borderRadius: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                         {sorted.map(option => {
                           const isSelected = formData.interests.includes(option.id);
                           const isDraft = (option.adminStatus || 'active') === 'draft';
                           return (
                             <button
                               key={option.id}
-                              onTouchEnd={(e) => {
-                                e.preventDefault();
-                                const newInterests = isSelected
-                                  ? formData.interests.filter(id => id !== option.id)
-                                  : [...formData.interests, option.id];
-                                setFormData({...formData, interests: newInterests});
-                                saveInterestsForMode(interestTimeFilter, newInterests);
-                                if (!isSelected && option.privateOnly) {
-                                  const label = tLabel(option) || option.id;
-                                  showToast(
-                                    `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                    'info'
-                                  );
-                                }
-                              }}
-                              onClick={(e) => {
-                                if (e.nativeEvent.pointerType === 'touch') return;
+                              onClick={() => {
                                 const newInterests = isSelected
                                   ? formData.interests.filter(id => id !== option.id)
                                   : [...formData.interests, option.id];
@@ -1013,7 +998,6 @@
                                 border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
                                 background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
                                 position: 'relative',
-                                touchAction: 'manipulation',
                               }}
                             >
                               {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
@@ -1022,6 +1006,7 @@
                             </button>
                           );
                         })}
+                        </div>
                       </div>
                     );
                   })()}
