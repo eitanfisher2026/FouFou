@@ -974,19 +974,6 @@
                             <button
                               key={option.id}
                               onClick={() => {
-                                // TOUCH DEBUG — log every click with timestamp
-                                const now = Date.now();
-                                if (!window._interestTapLog) window._interestTapLog = [];
-                                const prev2 = window._interestTapLog[window._interestTapLog.length - 1];
-                                const gap = prev2 ? (now - prev2.ts) : null;
-                                const entry = { ts: now, id: option.id, label: tLabel(option), gap };
-                                window._interestTapLog.push(entry);
-                                if (window._interestTapLog.length > 30) window._interestTapLog.shift();
-                                const msg = gap !== null && gap < 600
-                                  ? `⚡ DOUBLE TAP! gap=${gap}ms — ${tLabel(option)}`
-                                  : `👆 tap — ${tLabel(option)} (gap=${gap}ms)`;
-                                showToast(msg, gap !== null && gap < 600 ? 'warning' : 'info', null, 2000);
-
                                 setFormData(prev => {
                                   const alreadySelected = prev.interests.includes(option.id);
                                   const newInterests = alreadySelected
@@ -2596,14 +2583,12 @@
                 }`}
               >🔧 פרמטרים</button>
               )}
-              {debugMode && (
               <button
                 onClick={() => setSettingsTab('debug')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'debug' ? 'bg-gray-800 text-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🐛 {debugSessions.length > 0 ? `דיבאג (${debugSessions.length})` : 'דיבאג'}</button>
-              )}
             </div>
 
             {/* ===== CITIES & AREAS TAB ===== */}
