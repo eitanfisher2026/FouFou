@@ -978,7 +978,7 @@
                       groupedItems[seenGroups.indexOf(g)].items.push(option);
                     });
                     // Render: separator THEN flex row — separator is OUTSIDE the flex (iOS Safari fix)
-                    // Using flexbox instead of CSS Grid to avoid WebKit iOS touch hit-area bug
+                    // CSS Grid — separate grid per group, separators OUTSIDE grid (iOS Safari 3.15.7 fix)
                     return groupedItems.map(({ groupId, items }, gi) => {
                       const gData = groupId !== '_none' ? (interestGroups[groupId] || {}) : {};
                       const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
@@ -991,7 +991,7 @@
                               {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
                             </div>
                           )}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                             {items.map(option => {
                               const isSelected = formData.interests.includes(option.id);
                               const isDraft = (option.adminStatus || 'active') === 'draft';
@@ -1014,7 +1014,6 @@
                                     }
                                   }}
                                   style={{
-                                    flex: '0 0 calc(33.333% - 4px)',
                                     padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
                                     border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
                                     background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
@@ -1022,7 +1021,6 @@
                                     WebkitTapHighlightColor: 'transparent',
                                     touchAction: 'manipulation',
                                     userSelect: 'none',
-                                    boxSizing: 'border-box',
                                   }}
                                 >
                                   {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}

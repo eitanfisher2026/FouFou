@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.12` (Apr 02, 2026)
+- **גרסה:** `3.15.13` (Apr 02, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -436,7 +436,7 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 14. **`window.BKK.i18n?.lang?.()`** — `lang` is NOT a function. Always use `window.BKK.i18n?.currentLang` instead.
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
-17. **iOS Safari CSS Grid touch bug** — CSS Grid on iOS Safari has a WebKit bug where touch events fire at wrong coordinates. The wizard step 1 interest grid (and any interactive grid) MUST use **Flexbox** (`display: flex, flexWrap: wrap`) with `flex: "0 0 calc(33.333% - 4px)"` per item, NOT `display: grid`. Also add `onTouchStart={() => {}}`, `WebkitTapHighlightColor: "transparent"`, `touchAction: "manipulation"` to all tappable items in lists. — ALL maps (areas, radius, stops, favorites, settings) MUST use `window.BKK.getTileUrl()`. NEVER hardcode any tile URL directly in tileLayer() calls. `getTileUrl()` is defined in `config.js` and returns Carto Voyager (English labels). Using raw `https://tile.openstreetmap.org/...` causes local-language (Thai/Hebrew) labels instead of English.
+17. **Interest grid — CSS Grid with per-group separation (v3.15.7 fix):** Each group has its own `display:grid` container. Separators are divs OUTSIDE the grid. Do NOT put anything with `gridColumn:1/-1` inside the grid — this causes WebKit iOS hit-area bugs. Do NOT switch to flexbox — this breaks Android S-series ultra-wide screens. iOS touch fixes belong on the button itself: `onTouchStart={()=>{}}`, `WebkitTapHighlightColor:"transparent"`, `touchAction:"manipulation"`, `userSelect:"none"`, `cursor:"pointer"`.
 
 ## Debug Console Prefixes
 
