@@ -965,44 +965,62 @@
                       if (ga !== gb) return ga - gb;
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
+                    // Build elements: separators + buttons, all in one flat grid
+                    // Separators use gridColumn:'1/-1' — safe now that stale closure is fixed
+                    let lastGroup = null;
+                    const elements = [];
+                    sorted.forEach((option, idx) => {
+                      const thisGroup = option.group || '_none';
+                      if (lastGroup !== null && thisGroup !== lastGroup) {
+                        const gData = (thisGroup !== '_none') ? (interestGroups[thisGroup] || {}) : {};
+                        const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
+                        elements.push(
+                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 2px' }}>
+                            <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                            {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
+                            {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
+                          </div>
+                        );
+                      }
+                      lastGroup = thisGroup;
+                      const isSelected = formData.interests.includes(option.id);
+                      const isDraft = (option.adminStatus || 'active') === 'draft';
+                      elements.push(
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setFormData(prev => {
+                              const alreadySelected = prev.interests.includes(option.id);
+                              const newInterests = alreadySelected
+                                ? prev.interests.filter(id => id !== option.id)
+                                : [...prev.interests, option.id];
+                              saveInterestsForMode(interestTimeFilter, newInterests);
+                              if (!alreadySelected && option.privateOnly) {
+                                const label = tLabel(option) || option.id;
+                                showToast(
+                                  `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                  'info'
+                                );
+                              }
+                              return {...prev, interests: newInterests};
+                            });
+                          }}
+                          style={{
+                            padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                            border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
+                            background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
+                            position: 'relative'
+                          }}
+                        >
+                          {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
+                          <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                          <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
+                        </button>
+                      );
+                    });
                     return (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                        {sorted.map(option => {
-                          const isSelected = formData.interests.includes(option.id);
-                          const isDraft = (option.adminStatus || 'active') === 'draft';
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() => {
-                                setFormData(prev => {
-                                  const alreadySelected = prev.interests.includes(option.id);
-                                  const newInterests = alreadySelected
-                                    ? prev.interests.filter(id => id !== option.id)
-                                    : [...prev.interests, option.id];
-                                  saveInterestsForMode(interestTimeFilter, newInterests);
-                                  if (!alreadySelected && option.privateOnly) {
-                                    const label = tLabel(option) || option.id;
-                                    showToast(
-                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                      'info'
-                                    );
-                                  }
-                                  return {...prev, interests: newInterests};
-                                });
-                              }}
-                              style={{
-                                padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                                border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                position: 'relative'
-                              }}
-                            >
-                              {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                              <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
-                            </button>
-                          );
-                        })}
+                        {elements}
                       </div>
                     );
                   })()}
