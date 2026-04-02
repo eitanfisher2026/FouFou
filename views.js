@@ -951,8 +951,7 @@
                       }
                       return true;
                     });
-                    // ONE flat grid — identical structure to the edit dialog (works on all devices)
-                    // Sort by group order, then alphabetically within group
+                    // Original structure: one flat grid, separators inside with gridColumn:'1/-1'
                     const groupOrder = [];
                     const sortedGroupIds = Object.keys(interestGroups || {}).sort((a, b) => {
                       const oa = interestGroups[a]?.order ?? 99;
@@ -970,43 +969,57 @@
                       if (ga !== gb) return ga - gb;
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
+                    let lastGroup = null;
+                    const elements = [];
+                    sorted.forEach((option, idx) => {
+                      const thisGroup = option.group || '_none';
+                      if (lastGroup !== null && thisGroup !== lastGroup) {
+                        const gData = (thisGroup !== '_none') ? (interestGroups[thisGroup] || {}) : {};
+                        const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
+                        elements.push(
+                          <div key={`sep-${idx}`} style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '6px', margin: '4px 0 2px' }}>
+                            <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                            {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
+                            {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
+                          </div>
+                        );
+                      }
+                      lastGroup = thisGroup;
+                      const isSelected = formData.interests.includes(option.id);
+                      const isDraft = (option.adminStatus || 'active') === 'draft';
+                      elements.push(
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            const newInterests = isSelected
+                              ? formData.interests.filter(id => id !== option.id)
+                              : [...formData.interests, option.id];
+                            setFormData({...formData, interests: newInterests});
+                            saveInterestsForMode(interestTimeFilter, newInterests);
+                            if (!isSelected && option.privateOnly) {
+                              const label = tLabel(option) || option.id;
+                              showToast(
+                                `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                'info'
+                              );
+                            }
+                          }}
+                          style={{
+                            padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                            border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
+                            background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
+                            position: 'relative'
+                          }}
+                        >
+                          {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
+                          <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                          <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
+                        </button>
+                      );
+                    });
                     return (
-                      <div style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', maxHeight: '55vh', borderRadius: '8px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                        {sorted.map(option => {
-                          const isSelected = formData.interests.includes(option.id);
-                          const isDraft = (option.adminStatus || 'active') === 'draft';
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() => {
-                                const newInterests = isSelected
-                                  ? formData.interests.filter(id => id !== option.id)
-                                  : [...formData.interests, option.id];
-                                setFormData({...formData, interests: newInterests});
-                                saveInterestsForMode(interestTimeFilter, newInterests);
-                                if (!isSelected && option.privateOnly) {
-                                  const label = tLabel(option) || option.id;
-                                  showToast(
-                                    `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                    'info'
-                                  );
-                                }
-                              }}
-                              style={{
-                                padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
-                                border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                position: 'relative',
-                              }}
-                            >
-                              {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                              <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
-                            </button>
-                          );
-                        })}
-                        </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                        {elements}
                       </div>
                     );
                   })()}
