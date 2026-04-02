@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.6` (Apr 01, 2026)
+- **גרסה:** `3.15.10` (Apr 02, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -109,8 +109,8 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.15.6'/VERSION = '3.15.6'/" config.js
-sed -i 's/"version": "3.15.1"/"version": "3.15.6"/' version.json
+sed -i "s/VERSION = '3.15.7'/VERSION = '3.15.7'/" config.js
+sed -i 's/"version": "3.15.1"/"version": "3.15.7"/' version.json
 python3 build.py
 zip github-upload-vX_Y_Z.zip \
   index.html app-data.js app-code.js \
@@ -435,8 +435,7 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 13. **`locationRestriction.circle` in Text Search** — NOT supported by Google API → HTTP 400. Use `rectangle` for restriction mode, `locationBias.circle` for bias mode.
 14. **`window.BKK.i18n?.lang?.()`** — `lang` is NOT a function. Always use `window.BKK.i18n?.currentLang` instead.
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
-
----
+16. **Map tile URL consistency** — ALL maps (areas, radius, stops, favorites, settings) MUST use `window.BKK.getTileUrl()`. NEVER hardcode any tile URL directly in tileLayer() calls. `getTileUrl()` is defined in `config.js` and returns Carto Voyager (English labels). Using raw `https://tile.openstreetmap.org/...` causes local-language (Thai/Hebrew) labels instead of English.
 
 ## Debug Console Prefixes
 
@@ -446,3 +445,20 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 [SYNC] [MIGRATION] [MAP] [CLEANUP]
 [CITY-SAVE] [CITY-ICON] [CITY-LOAD] [SETTINGS-SAVE] [DIALOG-SAVE]
 ```
+
+---
+
+## Map Tile Architecture
+
+**כלל ברזל:** כל קריאה ל-`L.tileLayer()` חייבת להשתמש ב-`window.BKK.getTileUrl()`.
+
+```js
+// ✅ CORRECT — always this pattern:
+L.tileLayer(window.BKK.getTileUrl(), { attribution: '© OpenStreetMap contributors', maxZoom: 18 }).addTo(map);
+
+// ❌ WRONG — never hardcode:
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', ...) // shows Thai/Hebrew
+```
+
+`getTileUrl()` מוגדר ב-`config.js` → מחזיר Carto Voyager (English labels).
+7 מפות באפליקציה — כולן חייבות לקרוא `getTileUrl()`: areas/radius/stops/favorites/settings-fullscreen + 2 mini-maps ב-views.js.
