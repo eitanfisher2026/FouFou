@@ -976,24 +976,20 @@
                             <button
                               key={option.id}
                               onClick={() => {
-                                // flushSync forces React to update DOM synchronously before
-                                // Samsung/Pixel can fire their phantom second click event
-                                window.ReactDOM.flushSync(() => {
-                                  setFormData(prev => {
-                                    const alreadySelected = prev.interests.includes(option.id);
-                                    const newInterests = alreadySelected
-                                      ? prev.interests.filter(id => id !== option.id)
-                                      : [...prev.interests, option.id];
-                                    saveInterestsForMode(interestTimeFilter, newInterests);
-                                    if (!alreadySelected && option.privateOnly) {
-                                      const label = tLabel(option) || option.id;
-                                      showToast(
-                                        `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                        'info'
-                                      );
-                                    }
-                                    return {...prev, interests: newInterests};
-                                  });
+                                setFormData(prev => {
+                                  const alreadySelected = prev.interests.includes(option.id);
+                                  const newInterests = alreadySelected
+                                    ? prev.interests.filter(id => id !== option.id)
+                                    : [...prev.interests, option.id];
+                                  saveInterestsForMode(interestTimeFilter, newInterests);
+                                  if (!alreadySelected && option.privateOnly) {
+                                    const label = tLabel(option) || option.id;
+                                    showToast(
+                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                      'info'
+                                    );
+                                  }
+                                  return {...prev, interests: newInterests};
                                 });
                               }}
                               style={{

@@ -4126,6 +4126,8 @@
     setCustomLocations([]); // Clear immediately — Firebase listener for new city will repopulate
     
     // Reset form data for new city, but preserve user settings
+    // Clear saved interests for all time modes — they belong to the previous city
+    try { ['day','night','all'].forEach(m => localStorage.removeItem(`foufou_interests_${m}`)); } catch(e) {}
     const firstArea = window.BKK.areaOptions[0]?.id || '';
     setFormData(prev => ({
       hours: 3, area: firstArea, interests: [], circular: true, startPoint: '',
@@ -5662,30 +5664,8 @@
 
   // Auto-clean: remove selected interests that are no longer valid/visible
   // IMPORTANT: Only runs after initial data is loaded to prevent race condition
-  // where saved interests get cleared before Firebase data arrives
-  useEffect(() => {
-    if (!isDataLoaded) return;
-    if (formData.interests.length === 0) return;
-    // Build set of interests that are both valid AND enabled (visible to user)
-    const visibleIds = allInterestOptions
-      .filter(opt => {
-        if (!opt || !opt.id || !isInterestValid(opt.id)) return false;
-        // Admin status: hidden=never, draft=admin only
-        const aStatus = opt.adminStatus || 'active';
-        if (aStatus === 'hidden') return false;
-        if (aStatus === 'draft' && !isUnlocked) return false;
-        if (opt.scope === 'local' && opt.cityId && opt.cityId !== selectedCityId) return false;
-        return true;
-      })
-      .map(opt => opt.id);
-    const cleaned = formData.interests.filter(id => visibleIds.includes(id));
-    if (cleaned.length !== formData.interests.length) {
-      const removed = formData.interests.filter(id => !visibleIds.includes(id));
-      const removedNames = removed.map(id => allInterestOptions.find(o => o.id === id)).filter(Boolean).map(o => tLabel(o) || o?.id || id).join(', ');
-      console.log('[CLEANUP] Removed invalid/disabled interests from selection:', removedNames);
-      setFormData(prev => ({ ...prev, interests: cleaned }));
-    }
-  }, [interestConfig, cityCustomInterests, isDataLoaded, interestStatus, selectedCityId, isUnlocked]);
+  // Interest cleanup removed — city switch already clears interests (switchCity resets formData.interests=[])
+  // No need to validate interests against interestConfig on every Firebase update
 
   // Button styles - loaded from utils.js
 
