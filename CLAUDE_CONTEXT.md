@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.16.0` (Apr 02, 2026)
+- **גרסה:** `3.16.1` (Apr 02, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -436,7 +436,7 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 14. **`window.BKK.i18n?.lang?.()`** — `lang` is NOT a function. Always use `window.BKK.i18n?.currentLang` instead.
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
-17. **Interest grid — CSS Grid with per-group separation (v3.15.7 fix):** Each group has its own `display:grid` container. Separators are divs OUTSIDE the grid. Do NOT put anything with `gridColumn:1/-1` inside the grid — this causes WebKit iOS hit-area bugs. Do NOT switch to flexbox — this breaks Android S-series ultra-wide screens. iOS touch fixes belong on the button itself: `onTouchStart={()=>{}}`, `WebkitTapHighlightColor:"transparent"`, `touchAction:"manipulation"`, `userSelect:"none"`, `cursor:"pointer"`.
+17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
 
 ## Debug Console Prefixes
 
