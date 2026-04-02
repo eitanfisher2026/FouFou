@@ -951,7 +951,8 @@
                       }
                       return true;
                     });
-                    // Sort by group order field, then alphabetically within group
+                    // ONE flat grid — identical structure to the edit dialog (works on all devices)
+                    // Sort by group order, then alphabetically within group
                     const groupOrder = [];
                     const sortedGroupIds = Object.keys(interestGroups || {}).sort((a, b) => {
                       const oa = interestGroups[a]?.order ?? 99;
@@ -960,7 +961,7 @@
                     });
                     sortedGroupIds.forEach(g => groupOrder.push(g));
                     filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });
-                    groupOrder.push('_none'); // ungrouped at end
+                    groupOrder.push('_none');
                     const uiLang = window.BKK.i18n?.currentLang || 'he';
                     const sortLocale = uiLang === 'he' ? 'he' : 'en';
                     const sorted = [...filtered].sort((a, b) => {
@@ -969,70 +970,43 @@
                       if (ga !== gb) return ga - gb;
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
-                    // Group items — keep groups in order
-                    const groupedItems = [];
-                    const seenGroups = [];
-                    sorted.forEach(option => {
-                      const g = option.group || '_none';
-                      if (!seenGroups.includes(g)) { seenGroups.push(g); groupedItems.push({ groupId: g, items: [] }); }
-                      groupedItems[seenGroups.indexOf(g)].items.push(option);
-                    });
-                    // Render: separator THEN flex row — separator is OUTSIDE the flex (iOS Safari fix)
-                    // CSS Grid — separate grid per group, separators OUTSIDE grid (iOS Safari 3.15.7 fix)
-                    return groupedItems.map(({ groupId, items }, gi) => {
-                      const gData = groupId !== '_none' ? (interestGroups[groupId] || {}) : {};
-                      const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
-                      return (
-                        <div key={groupId}>
-                          {gi > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 4px' }}>
-                              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-                              {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
-                              {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
-                            </div>
-                          )}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                            {items.map(option => {
-                              const isSelected = formData.interests.includes(option.id);
-                              const isDraft = (option.adminStatus || 'active') === 'draft';
-                              return (
-                                <button
-                                  key={option.id}
-                                  onTouchStart={() => {}}
-                                  onClick={() => {
-                                    const newInterests = isSelected
-                                      ? formData.interests.filter(id => id !== option.id)
-                                      : [...formData.interests, option.id];
-                                    setFormData({...formData, interests: newInterests});
-                                    saveInterestsForMode(interestTimeFilter, newInterests);
-                                    if (!isSelected && option.privateOnly) {
-                                      const label = tLabel(option) || option.id;
-                                      showToast(
-                                        `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                        'info'
-                                      );
-                                    }
-                                  }}
-                                  style={{
-                                    padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
-                                    border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                    background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                    position: 'relative',
-                                    WebkitTapHighlightColor: 'transparent',
-                                    touchAction: 'manipulation',
-                                    userSelect: 'none',
-                                  }}
-                                >
-                                  {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                                  <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                                  <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    });
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                        {sorted.map(option => {
+                          const isSelected = formData.interests.includes(option.id);
+                          const isDraft = (option.adminStatus || 'active') === 'draft';
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => {
+                                const newInterests = isSelected
+                                  ? formData.interests.filter(id => id !== option.id)
+                                  : [...formData.interests, option.id];
+                                setFormData({...formData, interests: newInterests});
+                                saveInterestsForMode(interestTimeFilter, newInterests);
+                                if (!isSelected && option.privateOnly) {
+                                  const label = tLabel(option) || option.id;
+                                  showToast(
+                                    `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                    'info'
+                                  );
+                                }
+                              }}
+                              style={{
+                                padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
+                                border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
+                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
+                                position: 'relative',
+                              }}
+                            >
+                              {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
+                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                              <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
                   })()}
                 </div>
 
