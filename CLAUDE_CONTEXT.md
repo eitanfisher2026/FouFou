@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.15.10` (Apr 02, 2026)
+- **גרסה:** `3.15.12` (Apr 02, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -435,7 +435,8 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 13. **`locationRestriction.circle` in Text Search** — NOT supported by Google API → HTTP 400. Use `rectangle` for restriction mode, `locationBias.circle` for bias mode.
 14. **`window.BKK.i18n?.lang?.()`** — `lang` is NOT a function. Always use `window.BKK.i18n?.currentLang` instead.
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
-16. **Map tile URL consistency** — ALL maps (areas, radius, stops, favorites, settings) MUST use `window.BKK.getTileUrl()`. NEVER hardcode any tile URL directly in tileLayer() calls. `getTileUrl()` is defined in `config.js` and returns Carto Voyager (English labels). Using raw `https://tile.openstreetmap.org/...` causes local-language (Thai/Hebrew) labels instead of English.
+16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
+17. **iOS Safari CSS Grid touch bug** — CSS Grid on iOS Safari has a WebKit bug where touch events fire at wrong coordinates. The wizard step 1 interest grid (and any interactive grid) MUST use **Flexbox** (`display: flex, flexWrap: wrap`) with `flex: "0 0 calc(33.333% - 4px)"` per item, NOT `display: grid`. Also add `onTouchStart={() => {}}`, `WebkitTapHighlightColor: "transparent"`, `touchAction: "manipulation"` to all tappable items in lists. — ALL maps (areas, radius, stops, favorites, settings) MUST use `window.BKK.getTileUrl()`. NEVER hardcode any tile URL directly in tileLayer() calls. `getTileUrl()` is defined in `config.js` and returns Carto Voyager (English labels). Using raw `https://tile.openstreetmap.org/...` causes local-language (Thai/Hebrew) labels instead of English.
 
 ## Debug Console Prefixes
 

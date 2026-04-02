@@ -142,7 +142,7 @@ general: {
   open: 'פתוח',
   viewOnly: 'צפייה בלבד',
   locked: 'נעול',
-  filter: 'סינון',
+  filter: 'סינון/חיפוש',
   clearAll: 'נקה הכל',
   legend: 'מקרא צבעים',
   tip: 'טיפ',

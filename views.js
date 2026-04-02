@@ -977,7 +977,8 @@
                       if (!seenGroups.includes(g)) { seenGroups.push(g); groupedItems.push({ groupId: g, items: [] }); }
                       groupedItems[seenGroups.indexOf(g)].items.push(option);
                     });
-                    // Render: separator THEN grid — separator is OUTSIDE the grid (iOS Safari fix)
+                    // Render: separator THEN flex row — separator is OUTSIDE the flex (iOS Safari fix)
+                    // Using flexbox instead of CSS Grid to avoid WebKit iOS touch hit-area bug
                     return groupedItems.map(({ groupId, items }, gi) => {
                       const gData = groupId !== '_none' ? (interestGroups[groupId] || {}) : {};
                       const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
@@ -990,13 +991,14 @@
                               {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
                             </div>
                           )}
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {items.map(option => {
                               const isSelected = formData.interests.includes(option.id);
                               const isDraft = (option.adminStatus || 'active') === 'draft';
                               return (
                                 <button
                                   key={option.id}
+                                  onTouchStart={() => {}}
                                   onClick={() => {
                                     const newInterests = isSelected
                                       ? formData.interests.filter(id => id !== option.id)
@@ -1012,10 +1014,15 @@
                                     }
                                   }}
                                   style={{
-                                    padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                                    flex: '0 0 calc(33.333% - 4px)',
+                                    padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center',
                                     border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
                                     background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                    position: 'relative'
+                                    position: 'relative',
+                                    WebkitTapHighlightColor: 'transparent',
+                                    touchAction: 'manipulation',
+                                    userSelect: 'none',
+                                    boxSizing: 'border-box',
                                   }}
                                 >
                                   {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
@@ -4692,9 +4699,16 @@
                                       <button key={loc.id || loc.name} data-name={loc.name}
                                         onClick={() => {
                                           setMapFocusPlace({ id: loc.id, lat: loc.lat, lng: loc.lng, name: loc.name });
-                                          // If filter active and doesn't cover this place's interests → clear filter
+                                          // If interest filter active and doesn't cover this place → clear it
                                           if (mapFavFilter.size > 0 && !mapFavFilter.has('__areas_only__') && !(loc.interests || []).some(i => mapFavFilter.has(i))) {
                                             setMapFavFilter(new Set());
+                                          }
+                                          // If area filter active and place is not in that area → open to whole city
+                                          if (mapFavArea) {
+                                            const locAreas = loc.areas || (loc.area ? [loc.area] : []);
+                                            if (!locAreas.includes(mapFavArea)) {
+                                              setMapFavArea(null);
+                                            }
                                           }
                                           setShowFavMapFilter(false);
                                         }}
@@ -4746,8 +4760,8 @@
                             </button>
                             <button onClick={() => setMapFavFilter(new Set(['__areas_only__']))}
                               style={{ padding: '8px 4px', borderRadius: '10px', border: mapFavFilter.has('__areas_only__') ? '2px solid #10b981' : '1.5px solid #e5e7eb', background: mapFavFilter.has('__areas_only__') ? '#ecfdf5' : 'white', cursor: 'pointer', textAlign: 'center' }}>
-                              <div style={{ fontSize: '20px', marginBottom: '2px' }}>📍</div>
-                              <div style={{ fontWeight: '700', fontSize: '10px', color: mapFavFilter.has('__areas_only__') ? '#065f46' : '#374151' }}>{t('wizard.areasOnly') || 'אזורים'}</div>
+                              <div style={{ fontSize: '16px', marginBottom: '2px' }}>📍</div>
+                              <div style={{ fontWeight: '700', fontSize: '9px', color: mapFavFilter.has('__areas_only__') ? '#065f46' : '#374151' }}>{t('wizard.areasOnly') || 'אזורים'}</div>
                             </button>
                             {relevant.map(int => {
                               const color = window.BKK.getInterestColor(int.id, allInts);
@@ -4763,10 +4777,10 @@
                                     else { setMapFavFilter(new Set([...mapFavFilter, int.id])); }
                                   }}
                                   style={{ padding: '8px 4px', borderRadius: '10px', border: isOn ? `2px solid ${color}` : '1.5px solid #e5e7eb', background: isOn ? color + '18' : 'white', cursor: 'pointer', textAlign: 'center', opacity: isOn ? 1 : 0.45 }}>
-                                  <div style={{ fontSize: '22px', marginBottom: '2px', lineHeight: 1 }}>
-                                    {isImgIcon ? <img src={iconRaw} alt="" style={{ width: '22px', height: '22px', objectFit: 'contain', display: 'inline' }} /> : iconRaw}
+                                  <div style={{ fontSize: '16px', marginBottom: '2px', lineHeight: 1 }}>
+                                    {isImgIcon ? <img src={iconRaw} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : iconRaw}
                                   </div>
-                                  <div style={{ fontWeight: '700', fontSize: '10px', color: isOn ? color : '#374151', wordBreak: 'break-word', lineHeight: 1.2 }}>{tLabel(int)}</div>
+                                  <div style={{ fontWeight: '700', fontSize: '9px', color: isOn ? color : '#374151', wordBreak: 'break-word', lineHeight: 1.2 }}>{tLabel(int)}</div>
                                 </button>
                               );
                             })}
