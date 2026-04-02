@@ -869,15 +869,12 @@
               {!showMapModal && (() => {
                 const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? formData.currentLat : (formData.searchMode === 'area' ? formData.area : true));
                 return (
-                <div style={{
-                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, pointerEvents: 'none',
-                  padding: '8px 16px calc(16px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
-                }}>
-                  <button
+                <button
                     onClick={() => { if (canSearch) { generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0); } }}
                     disabled={!canSearch}
-                    style={{ width: '100%', padding: '14px', borderRadius: '12px',
-                      pointerEvents: 'auto',
+                    style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+                      margin: '0 16px calc(16px + env(safe-area-inset-bottom, 0px))', width: 'calc(100% - 32px)',
+                      padding: '14px', borderRadius: '12px',
                       cursor: canSearch ? 'pointer' : 'not-allowed',
                       border: canSearch ? '2px solid #22c55e' : '2px solid #d1d5db',
                       background: canSearch ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f3f4f6',
@@ -885,7 +882,6 @@
                       boxShadow: '0 -2px 16px rgba(0,0,0,0.12)'
                     }}
                   >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${formData.maxStops || 10})` : `⏳ ${t('general.loading')}...`}</button>
-                </div>
                 );
               })()}
             </>)}
@@ -1032,15 +1028,11 @@
               </div>
               {/* Fixed continue button — hidden when overlays are open */}
               {!showMapModal && formData.interests.length > 0 && (
-                <div style={{
-                  position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40, pointerEvents: 'none',
-                  padding: '8px 16px calc(16px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(to top, white 80%, rgba(255,255,255,0))',
-                }}>
-                  <button
+                <button
                     onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: '12px',
-                      pointerEvents: 'auto',
+                    style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+                      margin: '0 16px calc(16px + env(safe-area-inset-bottom, 0px))', width: 'calc(100% - 32px)',
+                      padding: '14px', borderRadius: '12px',
                       cursor: 'pointer',
                       border: '2px solid #22c55e',
                       background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
@@ -1048,7 +1040,6 @@
                       boxShadow: '0 -2px 16px rgba(0,0,0,0.12)'
                     }}
                   >{t("general.next")} ({formData.interests.length})</button>
-                </div>
               )}
             </>)}
           </div>
