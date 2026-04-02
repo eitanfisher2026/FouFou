@@ -965,47 +965,72 @@
                       if (ga !== gb) return ga - gb;
                       return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
                     });
-                    // Flat grid — NO gridColumn:'1/-1' separators (breaks Samsung touch)
-                    return (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                        {sorted.map(option => {
-                          const isSelected = formData.interests.includes(option.id);
-                          const isDraft = (option.adminStatus || 'active') === 'draft';
-                          return (
-                            <button
-                              key={option.id}
-                              onClick={() => {
-                                setFormData(prev => {
-                                  const alreadySelected = prev.interests.includes(option.id);
-                                  const newInterests = alreadySelected
-                                    ? prev.interests.filter(id => id !== option.id)
-                                    : [...prev.interests, option.id];
-                                  saveInterestsForMode(interestTimeFilter, newInterests);
-                                  if (!alreadySelected && option.privateOnly) {
-                                    const label = tLabel(option) || option.id;
-                                    showToast(
-                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                      'info'
-                                    );
-                                  }
-                                  return {...prev, interests: newInterests};
-                                });
-                              }}
-                              style={{
-                                padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                                border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                position: 'relative'
-                              }}
-                            >
-                              {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
-                              <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
+                    // Per-group grids with separator OUTSIDE each grid (no gridColumn:'1/-1' inside grid)
+                    // Debounce on each button prevents Samsung/Pixel double-fire
+                    const groupedItems = [];
+                    const seenGroups = [];
+                    sorted.forEach(option => {
+                      const g = option.group || '_none';
+                      if (!seenGroups.includes(g)) { seenGroups.push(g); groupedItems.push({ groupId: g, items: [] }); }
+                      groupedItems[seenGroups.indexOf(g)].items.push(option);
+                    });
+                    const renderButton = (option) => {
+                      const isSelected = formData.interests.includes(option.id);
+                      const isDraft = (option.adminStatus || 'active') === 'draft';
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            const now = Date.now();
+                            if (window._lastInterestTap && now - window._lastInterestTap < 300) return;
+                            window._lastInterestTap = now;
+                            setFormData(prev => {
+                              const alreadySelected = prev.interests.includes(option.id);
+                              const newInterests = alreadySelected
+                                ? prev.interests.filter(id => id !== option.id)
+                                : [...prev.interests, option.id];
+                              saveInterestsForMode(interestTimeFilter, newInterests);
+                              if (!alreadySelected && option.privateOnly) {
+                                const label = tLabel(option) || option.id;
+                                showToast(
+                                  `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
+                                  'info'
+                                );
+                              }
+                              return {...prev, interests: newInterests};
+                            });
+                          }}
+                          style={{
+                            padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                            border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
+                            background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
+                            position: 'relative'
+                          }}
+                        >
+                          {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
+                          <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                          <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
+                        </button>
+                      );
+                    };
+                    return groupedItems.map(({ groupId, items }, gi) => {
+                      const gData = groupId !== '_none' ? (interestGroups[groupId] || {}) : {};
+                      const gLabel = uiLang === 'he' ? (gData.labelHe || '') : (gData.labelEn || '');
+                      return (
+                        <div key={groupId}>
+                          {gi > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 4px' }}>
+                              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+                              {gLabel && <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', fontWeight: '500' }}>{gLabel}</span>}
+                              {gLabel && <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />}
+                            </div>
+                          )}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                            {items.map(renderButton)}
+                          </div>
+                        </div>
+                      );
+                    });
                   })()}
                 </div>
 
