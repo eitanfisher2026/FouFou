@@ -992,7 +992,7 @@
                 </div>
 
                 {/* Map + Next buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? '60px' : '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '8px' }}>
                   <button
                     onClick={() => {
                       setMapMode('favorites');
