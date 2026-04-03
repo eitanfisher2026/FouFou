@@ -3935,14 +3935,9 @@
             </div>)}
 
             {/* ===== INTERESTS TAB ===== */}
-            {settingsTab === 'interests' && (() => {
-              // Log to debug panel when tab opens
-              if (debugMode) {
-                addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
-                customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
-              }
+            {settingsTab === 'interests' && (() => { if(debugMode){addDebugLog('INTEREST',`Settings/Interests tab: customInterests.length=${customInterests.length}`);} return null; })()}
             {/* Interest Groups Management */}
-            {true && (
+            {settingsTab === 'interests' && (
             <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
                 📂 קיבוץ תחומים <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
@@ -4037,6 +4032,7 @@
               })()}
             </div>
             )}
+            {settingsTab === 'interests' && (() => {
                             const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
                 const isDraft = getAStatus(i) === 'draft';
