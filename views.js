@@ -2424,7 +2424,7 @@
                         >🗺️</button>
                       )}
                       {/* Admin status cycle — admin only, hide green (active is default) */}
-                      {isUnlocked && (isDraft || isHidden) && (
+                      {(isDraft || isHidden) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); cycleAdminStatus(interest.id); }}
                           style={{
@@ -2436,15 +2436,14 @@
                           title={`Status: ${aStatus} (click to cycle)`}
                         >{isHidden ? '🔴' : '🟡'}</button>
                       )}
-                      {/* Toggle button — removed: users see city interests as defined by admin */}
-                      {isEditor && (
+                      {/* Editor: edit button. Regular user: view-only button */}
+                      {isEditor ? (
                       <button
                         onClick={() => { setInterestDialogReadOnly(false); openInterestDialog(interest); }}
                         className="text-xs px-1 py-0.5 rounded flex-shrink-0"
                         title={t("places.detailsEdit")}
                       >{'✏️'}</button>
-                      )}
-                      {!isEditor && (
+                      ) : (
                       <button
                         onClick={() => { setInterestDialogReadOnly(true); openInterestDialog(interest); }}
                         className="text-xs px-1 py-0.5 rounded flex-shrink-0"
@@ -2498,7 +2497,7 @@
                   )}
                   
                   {/* Draft Interests — admin only */}
-                  {isUnlocked && draftInterests.length > 0 && (
+                  {draftInterests.length > 0 && (
                     <div className="mb-4">
                       <h3 className="text-sm font-bold text-amber-600 mb-2">
                         🟡 Draft ({draftInterests.length})
@@ -2510,7 +2509,7 @@
                   )}
                   
                   {/* Hidden Interests — admin only */}
-                  {isUnlocked && hiddenInterests.length > 0 && (
+                  {hiddenInterests.length > 0 && (
                     <div className="mb-2">
                       <h3 className="text-sm font-bold text-red-500 mb-2">
                         🔴 Hidden ({hiddenInterests.length})
@@ -2606,7 +2605,7 @@
                   const isActive = city.active !== false;
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: isActive ? '#ecfdf5' : '#fef2f2', borderRadius: '8px', border: `1px solid ${isActive ? '#a7f3d0' : '#fecaca'}`, flexWrap: 'wrap' }}>
-                      {isUnlocked ? (
+                      {true ? (
                         <React.Fragment>
                           {/* City icon — shows current, upload or emoji */}
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '52px' }}>
@@ -2670,7 +2669,7 @@
 
 
                                 {/* Theme Editor - Color + Icons */}
-                {isUnlocked && window.BKK.selectedCity && (() => {
+                {window.BKK.selectedCity && (() => {
                   const city = window.BKK.selectedCity;
                   if (!city.theme) city.theme = { color: '#e11d48', iconLeft: '🏙️', iconRight: '🗺️' };
                   const theme = city.theme;
@@ -2737,7 +2736,7 @@
                 )}
 
                 {/* City Day/Night Hours */}
-                {isUnlocked && window.BKK.selectedCity && (
+                {window.BKK.selectedCity && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', padding: '8px 10px', background: 'linear-gradient(to right, #faf5ff, #fdf2f8)', borderRadius: '8px', border: '2px solid #c084fc', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#7c3aed' }}>🌅 {t('settings.dayNightHours')}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3386,7 +3385,7 @@
 
             )}
             {/* Bulk Approve Drafts */}
-            {isUnlocked && (
+            {true && (
             <div className="mb-3">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">{`✅ ${t("settings.bulkApprove") || 'אשר טיוטות'}`}</h3>
@@ -3419,7 +3418,7 @@
                     >
                       {`👤 ${t('settings.myDraftsBtn') || 'שלי'} (${myDrafts.length})`}
                     </button>
-                    {isAdmin && (
+                    {true && (
                     <button
                       onClick={() => {
                         if (cityLocs.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
@@ -3742,7 +3741,7 @@
                   >📋 {t('settings.exportSchema') || 'Export Schema (for AI)'}</button>
                   
                   {/* Firebase Cleanup (Admin only) */}
-                  {isUnlocked && (
+                  {true && (
                     <div className="mt-3 border-t border-red-200 pt-3">
                       <p className="text-xs font-bold text-red-700 mb-2">🔧 Firebase Admin Tools</p>
                       <div className="space-y-2">
@@ -3936,14 +3935,14 @@
             </div>)}
 
             {/* ===== INTERESTS TAB ===== */}
-            {settingsTab === 'interests' && isAdmin && (() => {
+            {settingsTab === 'interests' && (() => {
               // Log to debug panel when tab opens
               if (debugMode) {
                 addDebugLog('INTEREST', `Settings/Interests tab: customInterests.length=${customInterests.length}`);
                 customInterests.forEach(i => addDebugLog('INTEREST', `  custom: id=${i.id} label="${i.label}" icon="${i.icon}" firebaseId=${i.firebaseId}`));
               }
             {/* Interest Groups Management */}
-            {isUnlocked && (
+            {true && (
             <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
                 📂 קיבוץ תחומים <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
@@ -4178,7 +4177,7 @@
             })()}
 
             {/* ===== SYSTEM PARAMS TAB ===== */}
-            {settingsTab === 'sysparams' && isAdmin && (<div>
+            {settingsTab === 'sysparams' && (<div>
             {(() => {
               const sections = [
                 { title: t('sysParams.sectionApp'), icon: '📱', color: '#3b82f6', params: [
