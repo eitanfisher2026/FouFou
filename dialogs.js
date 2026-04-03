@@ -341,11 +341,7 @@
                 <div>
                   <label className="block text-xs font-bold mb-1">{t("general.interestsHeader")}</label>
                   <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-36 overflow-y-auto">
-                    {allInterestOptions.filter(option => {
-                      // Already tagged — always show
-                      if ((newLocation.interests || []).includes(option.id)) return true;
-                      return true;
-                    }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he')).map(option => (
+                    {allInterestOptions.map(option => (
                       <button
                         key={option.id}
                         onClick={() => {

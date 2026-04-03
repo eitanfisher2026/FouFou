@@ -947,31 +947,10 @@
                       }
                       return true;
                     });
-                    // Original structure: one flat grid, separators inside with gridColumn:'1/-1'
-                    const groupOrder = [];
-                    const sortedGroupIds = Object.keys(interestGroups || {}).sort((a, b) => {
-                      const oa = interestGroups[a]?.order ?? 99;
-                      const ob = interestGroups[b]?.order ?? 99;
-                      return oa !== ob ? oa - ob : a.localeCompare(b);
-                    });
-                    sortedGroupIds.forEach(g => groupOrder.push(g));
-                    filtered.forEach(o => { if (o.group && !groupOrder.includes(o.group)) groupOrder.push(o.group); });
-                    groupOrder.push('_none');
-                    const uiLang = window.BKK.i18n?.currentLang || 'he';
-                    const sortLocale = uiLang === 'he' ? 'he' : 'en';
-                    const sorted = [...filtered].sort((a, b) => {
-                      const ga = groupOrder.indexOf(a.group || '_none');
-                      const gb = groupOrder.indexOf(b.group || '_none');
-                      if (ga !== gb) return ga - gb;
-                      return (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale);
-                    });
-                    // Flat alphabetical sort — no grouping
-                    const alphabetical = [...filtered].sort((a, b) =>
-                      (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', sortLocale)
-                    );
+                    // allInterestOptions already sorted (group order + alpha) — just use filtered order
                     return (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                        {alphabetical.map(option => {
+                        {filtered.map(option => {
                           const isSelected = formData.interests.includes(option.id);
                           const isDraft = (option.adminStatus || 'active') === 'draft';
                           return (
@@ -2479,13 +2458,12 @@
               
               // Use allInterestOptions — already has Firebase labels, icons, interestConfig overrides applied
               const allOpts = allInterestOptions;
-              const sortAlpha = (arr) => [...arr].sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
-              const activeBuiltIn = sortAlpha(allOpts.filter(i => {
+              const activeBuiltIn = allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active';
               }));
               const activeCustom = []; // merged into activeBuiltIn above
-              const inactiveBuiltIn = sortAlpha(allOpts.filter(i => {
+              const inactiveBuiltIn = allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return false; // user toggle removed
               }));
@@ -2502,7 +2480,7 @@
                       {t("interests.activeInterests")} ({activeBuiltIn.length + activeCustom.length})
                     </h3>
                     <div className="space-y-1">
-                      {sortAlpha([...activeBuiltIn, ...activeCustom]).map(i => renderInterestRow(i, true))}
+                      {[...activeBuiltIn, ...activeCustom].map(i => renderInterestRow(i, true))}
                     </div>
                   </div>
                   

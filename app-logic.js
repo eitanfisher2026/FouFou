@@ -5389,7 +5389,7 @@
   const cityCustomInterests = interestOptions;
 
   const allInterestOptions = useMemo(() => {
-    return interestOptions.map(opt => {
+    const mapped = interestOptions.map(opt => {
       const config = interestConfig[opt.id];
       if (!config) return opt;
       return {
@@ -5408,7 +5408,23 @@
         privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
-  }, [interestOptions, interestConfig]);
+    // Sort once here — group order then alphabetical within group
+    // All consumers (wizard, dialogs, filter panel, settings) get consistent order
+    const uiLang = window.BKK.i18n?.currentLang || 'he';
+    const sortLocale = uiLang === 'he' ? 'he' : 'en';
+    const groupOrderMap = {};
+    Object.keys(interestGroups || {}).forEach((gId, idx) => {
+      groupOrderMap[gId] = (interestGroups[gId]?.order ?? idx);
+    });
+    return mapped.sort((a, b) => {
+      const ga = groupOrderMap[a.group || ''] ?? 99;
+      const gb = groupOrderMap[b.group || ''] ?? 99;
+      if (ga !== gb) return ga - gb;
+      const la = (uiLang === 'he' ? a.label : a.labelEn) || a.label || '';
+      const lb = (uiLang === 'he' ? b.label : b.labelEn) || b.label || '';
+      return la.localeCompare(lb, sortLocale);
+    });
+  }, [interestOptions, interestConfig, interestGroups]);
 
   // Debug: log custom interests in allInterestOptions (only when debug mode is on)
   useEffect(() => {
