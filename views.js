@@ -2461,12 +2461,12 @@
               const activeBuiltIn = allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return as === 'active';
-              }));
+              });
               const activeCustom = []; // merged into activeBuiltIn above
               const inactiveBuiltIn = allOpts.filter(i => {
                 const as = (interestConfig[i.id]?.adminStatus) || 'active';
                 return false; // user toggle removed
-              }));
+              });
               const inactiveCustom = []; // user toggle removed
               const allForAdmin = allOpts;
               const draftInterests = allForAdmin.filter(i => (interestConfig[i.id]?.adminStatus) === 'draft');
