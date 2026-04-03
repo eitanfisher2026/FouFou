@@ -3936,102 +3936,6 @@
 
             {/* ===== INTERESTS TAB ===== */}
             {settingsTab === 'interests' && (() => { if(debugMode){addDebugLog('INTEREST',`Settings/Interests tab: customInterests.length=${customInterests.length}`);} return null; })()}
-            {/* Interest Groups Management */}
-            {settingsTab === 'interests' && (
-            <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
-                📂 קיבוץ תחומים <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
-              </div>
-              {(() => {
-                const allOpts = allInterestOptions || [];
-                const membersByGroup = {};
-                const ungrouped = [];
-                allOpts.forEach(opt => {
-                  const aStatus = opt.adminStatus || 'active';
-                  if (aStatus === 'hidden') return;
-                  if (opt.group) {
-                    if (!membersByGroup[opt.group]) membersByGroup[opt.group] = [];
-                    membersByGroup[opt.group].push(opt);
-                  } else { ungrouped.push(opt); }
-                });
-                const groupIds = Object.keys(interestGroups).sort((a, b) => {
-                  const oa = interestGroups[a]?.order ?? 99;
-                  const ob = interestGroups[b]?.order ?? 99;
-                  return oa !== ob ? oa - ob : a.localeCompare(b);
-                });
-                const moveGroup = (gId, dir) => {
-                  const ids = [...groupIds];
-                  const idx = ids.indexOf(gId);
-                  const swapIdx = idx + dir;
-                  if (swapIdx < 0 || swapIdx >= ids.length) return;
-                  const swapId = ids[swapIdx];
-                  saveInterestGroup(gId, interestGroups[gId]?.labelHe || '', interestGroups[gId]?.labelEn || '', interestGroups[swapId]?.order ?? swapIdx);
-                  saveInterestGroup(swapId, interestGroups[swapId]?.labelHe || '', interestGroups[swapId]?.labelEn || '', interestGroups[gId]?.order ?? idx);
-                };
-                const AddGroupRow = () => {
-                  const [newGId, setNewGId] = React.useState('');
-                  const [newGHe, setNewGHe] = React.useState('');
-                  const [newGEn, setNewGEn] = React.useState('');
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed #e5e7eb', flexWrap: 'wrap' }}>
-                      <input value={newGId} onChange={(e) => setNewGId(e.target.value.toLowerCase().replace(/\s+/g, '_'))} placeholder="id" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '68px' }} />
-                      <input value={newGHe} onChange={(e) => setNewGHe(e.target.value)} placeholder="עברית" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px', textAlign: 'right', direction: 'rtl' }} />
-                      <input value={newGEn} onChange={(e) => setNewGEn(e.target.value)} placeholder="English" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px' }} />
-                      <button onClick={() => {
-                        if (!newGId.trim() || !newGHe.trim() || !newGEn.trim()) { showToast('⚠️ כל השדות חובה', 'warning'); return; }
-                        if (interestGroups[newGId.trim()]) { showToast('⚠️ ID קיים כבר', 'warning'); return; }
-                        saveInterestGroup(newGId.trim(), newGHe.trim(), newGEn.trim(), groupIds.length);
-                        setNewGId(''); setNewGHe(''); setNewGEn('');
-                      }} style={{ fontSize: '11px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}>+ הוסף</button>
-                    </div>
-                  );
-                };
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {groupIds.map((gId, idx) => {
-                      const gData = interestGroups[gId] || {};
-                      const members = membersByGroup[gId] || [];
-                      return (
-                        <div key={gId} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: members.length ? '5px' : '0' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                              <button onClick={() => moveGroup(gId, -1)} disabled={idx === 0} style={{ fontSize: '9px', background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, padding: '0', lineHeight: 1 }}>▲</button>
-                              <button onClick={() => moveGroup(gId, 1)} disabled={idx === groupIds.length - 1} style={{ fontSize: '9px', background: 'none', border: 'none', cursor: idx === groupIds.length - 1 ? 'default' : 'pointer', opacity: idx === groupIds.length - 1 ? 0.3 : 1, padding: '0', lineHeight: 1 }}>▼</button>
-                            </div>
-                            <span style={{ fontSize: '10px', color: '#9ca3af', minWidth: '46px' }}>{gId}</span>
-                            <input value={gData.labelHe || ''} onChange={(e) => saveInterestGroup(gId, e.target.value, gData.labelEn || '', gData.order ?? idx)} placeholder="עברית" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', direction: 'rtl' }} />
-                            <input value={gData.labelEn || ''} onChange={(e) => saveInterestGroup(gId, gData.labelHe || '', e.target.value, gData.order ?? idx)} placeholder="English" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px' }} />
-                            <button onClick={() => {
-                              if (members.length > 0) { showToast('⚠️ יש ' + members.length + ' תחומים בקיבוץ — שנה אותם קודם', 'warning'); return; }
-                              deleteInterestGroup(gId);
-                            }} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 'auto' }}>🗑️</button>
-                          </div>
-                          {members.length > 0 && (
-                            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
-                              {[...members].sort((a, b) => (tLabel(a) || '').localeCompare(tLabel(b) || '', 'he')).map(opt => (
-                                <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <AddGroupRow />
-                    {ungrouped.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa', marginTop: '2px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>ללא קיבוץ</span>
-                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
-                          {ungrouped.map(opt => (
-                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-            )}
             {settingsTab === 'interests' && (() => {
                             const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
@@ -4171,6 +4075,102 @@
                 </div>
               );
             })()}
+            {/* Interest Groups Management */}
+            {settingsTab === 'interests' && (
+            <div style={{ marginTop: '0', marginBottom: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fafafa' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#374151' }}>
+                📂 קיבוץ תחומים <span style={{ fontSize: '10px', fontWeight: 'normal', color: '#9ca3af' }}>{Object.keys(interestGroups).length}</span>
+              </div>
+              {(() => {
+                const allOpts = allInterestOptions || [];
+                const membersByGroup = {};
+                const ungrouped = [];
+                allOpts.forEach(opt => {
+                  const aStatus = opt.adminStatus || 'active';
+                  if (aStatus === 'hidden') return;
+                  if (opt.group) {
+                    if (!membersByGroup[opt.group]) membersByGroup[opt.group] = [];
+                    membersByGroup[opt.group].push(opt);
+                  } else { ungrouped.push(opt); }
+                });
+                const groupIds = Object.keys(interestGroups).sort((a, b) => {
+                  const oa = interestGroups[a]?.order ?? 99;
+                  const ob = interestGroups[b]?.order ?? 99;
+                  return oa !== ob ? oa - ob : a.localeCompare(b);
+                });
+                const moveGroup = (gId, dir) => {
+                  const ids = [...groupIds];
+                  const idx = ids.indexOf(gId);
+                  const swapIdx = idx + dir;
+                  if (swapIdx < 0 || swapIdx >= ids.length) return;
+                  const swapId = ids[swapIdx];
+                  saveInterestGroup(gId, interestGroups[gId]?.labelHe || '', interestGroups[gId]?.labelEn || '', interestGroups[swapId]?.order ?? swapIdx);
+                  saveInterestGroup(swapId, interestGroups[swapId]?.labelHe || '', interestGroups[swapId]?.labelEn || '', interestGroups[gId]?.order ?? idx);
+                };
+                const AddGroupRow = () => {
+                  const [newGId, setNewGId] = React.useState('');
+                  const [newGHe, setNewGHe] = React.useState('');
+                  const [newGEn, setNewGEn] = React.useState('');
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', paddingTop: '6px', borderTop: '1px dashed #e5e7eb', flexWrap: 'wrap' }}>
+                      <input value={newGId} onChange={(e) => setNewGId(e.target.value.toLowerCase().replace(/\s+/g, '_'))} placeholder="id" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '68px' }} />
+                      <input value={newGHe} onChange={(e) => setNewGHe(e.target.value)} placeholder="עברית" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px', textAlign: 'right', direction: 'rtl' }} />
+                      <input value={newGEn} onChange={(e) => setNewGEn(e.target.value)} placeholder="English" style={{ fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px', padding: '3px 6px', width: '74px' }} />
+                      <button onClick={() => {
+                        if (!newGId.trim() || !newGHe.trim() || !newGEn.trim()) { showToast('⚠️ כל השדות חובה', 'warning'); return; }
+                        if (interestGroups[newGId.trim()]) { showToast('⚠️ ID קיים כבר', 'warning'); return; }
+                        saveInterestGroup(newGId.trim(), newGHe.trim(), newGEn.trim(), groupIds.length);
+                        setNewGId(''); setNewGHe(''); setNewGEn('');
+                      }} style={{ fontSize: '11px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer' }}>+ הוסף</button>
+                    </div>
+                  );
+                };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {groupIds.map((gId, idx) => {
+                      const gData = interestGroups[gId] || {};
+                      const members = membersByGroup[gId] || [];
+                      return (
+                        <div key={gId} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: members.length ? '5px' : '0' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                              <button onClick={() => moveGroup(gId, -1)} disabled={idx === 0} style={{ fontSize: '9px', background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.3 : 1, padding: '0', lineHeight: 1 }}>▲</button>
+                              <button onClick={() => moveGroup(gId, 1)} disabled={idx === groupIds.length - 1} style={{ fontSize: '9px', background: 'none', border: 'none', cursor: idx === groupIds.length - 1 ? 'default' : 'pointer', opacity: idx === groupIds.length - 1 ? 0.3 : 1, padding: '0', lineHeight: 1 }}>▼</button>
+                            </div>
+                            <span style={{ fontSize: '10px', color: '#9ca3af', minWidth: '46px' }}>{gId}</span>
+                            <input value={gData.labelHe || ''} onChange={(e) => saveInterestGroup(gId, e.target.value, gData.labelEn || '', gData.order ?? idx)} placeholder="עברית" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px', textAlign: 'right', direction: 'rtl' }} />
+                            <input value={gData.labelEn || ''} onChange={(e) => saveInterestGroup(gId, gData.labelHe || '', e.target.value, gData.order ?? idx)} placeholder="English" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px' }} />
+                            <button onClick={() => {
+                              if (members.length > 0) { showToast('⚠️ יש ' + members.length + ' תחומים בקיבוץ — שנה אותם קודם', 'warning'); return; }
+                              deleteInterestGroup(gId);
+                            }} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 'auto' }}>🗑️</button>
+                          </div>
+                          {members.length > 0 && (
+                            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
+                              {[...members].sort((a, b) => (tLabel(a) || '').localeCompare(tLabel(b) || '', 'he')).map(opt => (
+                                <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <AddGroupRow />
+                    {ungrouped.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', background: '#fff7ed', borderRadius: '6px', border: '1px solid #fed7aa', marginTop: '2px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#9a3412', minWidth: '60px' }}>ללא קיבוץ</span>
+                        <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', flex: 1 }}>
+                          {ungrouped.map(opt => (
+                            <span key={opt.id} style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fcd34d' }}>{renderIcon(opt.icon, '11px')} {tLabel(opt)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+            )}
 
             {/* ===== SYSTEM PARAMS TAB ===== */}
             {settingsTab === 'sysparams' && (<div>
