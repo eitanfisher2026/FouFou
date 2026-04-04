@@ -1,12 +1,16 @@
 {
   "name": "FouFou — City Trail Generator",
   "short_name": "FouFou",
-  "description": "Smart trip planning app for cities worldwide",
+  "description": "Smart city trails in Bangkok & Singapore — local picks + hidden gems",
+  "id": "com.foufou.citytrails",
+  "scope": "/FouFou/",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#f97316",
   "orientation": "portrait",
+  "lang": "en",
+  "categories": ["travel", "navigation"],
   "icons": [
     {
       "src": "icon-192x192.png?v=3",
@@ -20,5 +24,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": []
 }

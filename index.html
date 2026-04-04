@@ -22,7 +22,7 @@
     <meta name="theme-color" content="#be123c">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="BKK Explorer">
+    <meta name="apple-mobile-web-app-title" content="FouFou">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
@@ -183,6 +183,16 @@
     }).catch(function(err) {
       document.getElementById('splash-status').textContent = 'Network error. Refresh page.';
     });
+    </script>
+
+    <!-- Service Worker — required for Google Play TWA + offline fallback -->
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js?v=3.16.25')
+          .catch(function(err) { console.error('[SW] Registration failed:', err); });
+      });
+    }
     </script>
 </body>
 </html>
