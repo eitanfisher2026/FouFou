@@ -2254,7 +2254,7 @@
   const saveAboutContent = async (text) => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
-    database.ref(`aboutContent/${srcLang}`).set(text);
+    database.ref(`settings/aboutContent/${srcLang}`).set(text);
     setAboutContent(prev => ({ ...prev, [srcLang]: text }));
     if (srcLang !== 'he') {
       // English edit — save only, no translation
@@ -2267,7 +2267,7 @@
       const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(text));
       const data = await resp.json();
       const translated = data[0].map(function(s) { return s[0]; }).join('');
-      database.ref('aboutContent/en').set(translated);
+      database.ref('settings/aboutContent/en').set(translated);
       setAboutContent(prev => ({ ...prev, en: translated }));
       showToast('🌐 תורגם לאנגלית!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
@@ -2277,7 +2277,7 @@
   const saveAboutContentOnly = (text) => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
-    database.ref(`aboutContent/${srcLang}`).set(text);
+    database.ref(`settings/aboutContent/${srcLang}`).set(text);
     setAboutContent(prev => ({ ...prev, [srcLang]: text }));
     showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
@@ -4065,10 +4065,12 @@
     return () => settingsRef.off('value');
   }, []);
 
-  // Load aboutContent — public node, readable by all users
+  // Load aboutContent — public read via settings/aboutContent override rule
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
-    const aboutRef = database.ref('aboutContent');
+    // Read from settings/aboutContent (old path, data lives here)
+    // Firebase rule override: settings/aboutContent has .read: true
+    const aboutRef = database.ref('settings/aboutContent');
     aboutRef.on('value', (snap) => {
       const data = snap.val();
       if (data) setAboutContent(data);
