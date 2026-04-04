@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.17.0` (Apr 04, 2026)
+- **גרסה:** `3.17.2` (Apr 04, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -438,6 +438,47 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
 17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
+
+---
+
+## שינויים מרכזיים — סשן Apr 04, 2026 (v3.17.0→3.17.1) — הכנה לGoogle Play + About dialog
+
+### קבצים חדשים
+- **`sw.js`** — Service Worker עם network-first strategy. חובה ל-TWA (Google Play). build.py מעדכן `CACHE_NAME` אוטומטית בכל גרסה.
+- **`privacy.html`** — Privacy Policy מלא, נדרש לGoogle Play ולApple.
+
+### שינויים ב-index.html / _source-template.html
+- `apple-mobile-web-app-title`: "BKK Explorer" → **"FouFou"**
+- הוסף רישום Service Worker לפני `</body>`
+
+### manifest.json — שדות שנוספו לחנות
+`id`, `scope`, `lang`, `categories: ["travel","navigation"]`
+
+### About Dialog (app-logic.js + views.js + dialogs.js)
+- State חדש: `aboutContent {he,en}`, `showAbout`, `aboutEditing`, `aboutLocalText`
+- `aboutContent` נטען מ-`settings/aboutContent` בFirebase
+- `saveAboutContent(text)` — שומר + מתרגם אוטומטית לשפה השנייה
+- כפתור ℹ️ **אודות** בהמבורגר — גלוי לכולם
+- דיאלוג About: טקסט, עריכה לאדמין, תרגום אוטומטי, קישור לאתר, גרסה+refresh לאדמין בלבד
+- **חשוב:** useState אסור בתוך IIFE — כל state חייב להיות ב-app-logic.js
+
+### Footer — נוקה
+- גרסה + refresh → גלויים לאדמין בלבד
+- Share URL: `https://eitanfisher2026.github.io/FouFou/` (לא github.com, לא window.location)
+- `navigator.share` עובד גם על iPhone (iOS 12.1+)
+
+### i18n — נוספו מפתחות
+`about.title`, `about.edit`, `about.cancel`, `about.saveTranslate`, `about.placeholder`, `about.noContent` — בעברית ואנגלית
+
+### build.py — sw.js version update
+build.py מעדכן `CACHE_NAME = 'foufou-vX.Y.Z'` בכל build אוטומטית.
+
+### כלל חדש — גרסה!
+**חובה לבמוף גרסה לפני build + zip.** לא אחרי. לא לשכוח. הסדר:
+1. `sed -i "s/VERSION = 'OLD'/VERSION = 'NEW'/" config.js`
+2. `sed -i 's/"version": "OLD"/"version": "NEW"/' version.json`
+3. `python3 build.py`
+4. `zip ...`
 
 ---
 

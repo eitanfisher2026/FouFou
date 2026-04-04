@@ -90,6 +90,22 @@ def build():
     # Extract version
     m = re.search(r"VERSION\s*=\s*'([^']+)'", config)
     ver = m.group(1) if m else '0.0.0'
+
+    # ── VERSION BUMP GUARD ──────────────────────────────────────────────────
+    # Check if version was already used in a previous build
+    last_build_file = '.last_built_version'
+    if os.path.exists(last_build_file):
+        last_ver = open(last_build_file).read().strip()
+        if last_ver == ver:
+            print(f"\n⚠️  ════════════════════════════════════════════════")
+            print(f"⚠️  VERSION NOT BUMPED — still {ver} (same as last build)")
+            print(f"⚠️  Run: sed -i \"s/VERSION = '{ver}'/VERSION = 'X.Y.Z'/\" config.js")
+            print(f"⚠️  And: sed -i 's/\"version\": \"{ver}\"/\"version\": \"X.Y.Z\"/' version.json")
+            print(f"⚠️  ════════════════════════════════════════════════\n")
+    # Record this build's version
+    open(last_build_file, 'w').write(ver)
+    # ────────────────────────────────────────────────────────────────────────
+
     with open('version.json', 'w') as f:
         json.dump({"version": ver}, f)
     print(f"📋 Version: {ver}")

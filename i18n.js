@@ -1166,6 +1166,17 @@ help: {
     updatedWithGoogle: 'עודכן בנתוני גוגל',
     openExisting: 'פתח מועדף קיים',
   },
+
+// --- About ---
+about: {
+  title: 'אודות',
+  edit: 'עריכה',
+  cancel: 'ביטול',
+  saveTranslate: 'שמור + תרגם לאנגלית',
+  placeholder: 'כתוב כאן על FouFou...',
+  noContent: 'לחץ על עריכה כדי להוסיף תוכן',
+},
+
 }, // end Hebrew
 
 
@@ -2245,6 +2256,17 @@ help: {
     updatedWithGoogle: 'Updated with Google data',
     openExisting: 'Open existing favorite',
   },
+
+// --- About ---
+about: {
+  title: 'About',
+  edit: 'Edit',
+  cancel: 'Cancel',
+  saveTranslate: 'Save + Translate to Hebrew',
+  placeholder: 'Write about FouFou here...',
+  noContent: 'Click edit to add content',
+},
+
 } // end English
 
 }; // end strings
