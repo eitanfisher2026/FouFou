@@ -50,6 +50,8 @@
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [aboutEditing, setAboutEditing] = useState(false);
+  const [aboutLocalText, setAboutLocalText] = useState('');
   const [allUsers, setAllUsers] = useState([]); // admin only: list of users
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');

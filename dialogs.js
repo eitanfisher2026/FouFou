@@ -3728,10 +3728,6 @@
       {showAbout && (() => {
         const lang = currentLang || 'he';
         const text = aboutContent?.[lang] || aboutContent?.he || '';
-        const isEditMode = isAdmin;
-        const [localText, setLocalText] = React.useState(text);
-        const [editing, setEditing] = React.useState(false);
-        const isSaving = React.useRef(false);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px' }}>
             <div className="bg-white rounded-2xl shadow-2xl w-full" style={{ maxWidth: '440px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', direction: lang === 'he' ? 'rtl' : 'ltr' }}>
@@ -3745,41 +3741,38 @@
                     <div style={{ fontSize: '11px', color: '#9ca3af' }}>City Trail Generator</div>
                   </div>
                 </div>
-                <button onClick={() => setShowAbout(false)} style={{ fontSize: '18px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>✕</button>
+                <button onClick={() => { setShowAbout(false); setAboutEditing(false); }} style={{ fontSize: '18px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>✕</button>
               </div>
 
               {/* Body */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
 
                 {/* About text — view or edit */}
-                {editing ? (
+                {aboutEditing ? (
                   <div>
                     <textarea
-                      value={localText}
-                      onChange={e => setLocalText(e.target.value)}
+                      value={aboutLocalText}
+                      onChange={e => setAboutLocalText(e.target.value)}
                       rows={10}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', lineHeight: '1.6', resize: 'vertical', direction: lang === 'he' ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
-                      placeholder={lang === 'he' ? 'כתוב כאן על FouFou...' : 'Write about FouFou here...'}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', lineHeight: '1.6', resize: 'vertical', direction: lang === 'he' ? 'rtl' : 'ltr', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      placeholder={t('about.placeholder')}
                       autoFocus
                     />
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button
                         onClick={async () => {
-                          if (isSaving.current) return;
-                          isSaving.current = true;
-                          await saveAboutContent(localText);
-                          isSaving.current = false;
-                          setEditing(false);
+                          await saveAboutContent(aboutLocalText);
+                          setAboutEditing(false);
                         }}
                         style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f97316', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
                       >
-                        💾 {lang === 'he' ? 'שמור + תרגם לאנגלית' : 'Save + Translate to Hebrew'}
+                        💾 {t('about.saveTranslate')}
                       </button>
                       <button
-                        onClick={() => { setEditing(false); setLocalText(text); }}
+                        onClick={() => { setAboutEditing(false); setAboutLocalText(text); }}
                         style={{ padding: '8px 14px', borderRadius: '8px', background: '#f3f4f6', color: '#374151', border: 'none', fontSize: '13px', cursor: 'pointer' }}
                       >
-                        {lang === 'he' ? 'ביטול' : 'Cancel'}
+                        {t('about.cancel')}
                       </button>
                     </div>
                   </div>
@@ -3789,15 +3782,15 @@
                       <div style={{ fontSize: '14px', lineHeight: '1.8', color: '#374151', whiteSpace: 'pre-wrap' }}>{text}</div>
                     ) : (
                       <div style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
-                        {isAdmin ? (lang === 'he' ? 'לחץ על עריכה כדי להוסיף תוכן' : 'Click edit to add content') : ''}
+                        {isAdmin ? t('about.noContent') : ''}
                       </div>
                     )}
-                    {isEditMode && (
+                    {isAdmin && (
                       <button
-                        onClick={() => { setLocalText(text); setEditing(true); }}
+                        onClick={() => { setAboutLocalText(text); setAboutEditing(true); }}
                         style={{ marginTop: '14px', padding: '6px 14px', borderRadius: '8px', background: '#f3f4f6', border: '1px solid #d1d5db', fontSize: '12px', color: '#374151', cursor: 'pointer' }}
                       >
-                        ✏️ {lang === 'he' ? 'עריכה' : 'Edit'}
+                        ✏️ {t('about.edit')}
                       </button>
                     )}
                   </div>
@@ -3823,7 +3816,7 @@
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '11px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
                       <button
-                        onClick={() => { applyUpdate(); setShowAbout(false); }}
+                        onClick={() => { applyUpdate(); setShowAbout(false); setAboutEditing(false); }}
                         style={{ padding: '4px 10px', borderRadius: '6px', background: '#f3f4f6', border: '1px solid #d1d5db', fontSize: '11px', color: '#374151', cursor: 'pointer' }}
                       >
                         🔄 {t('general.refresh') || 'Refresh'}
@@ -3836,4 +3829,5 @@
           </div>
         );
       })()}
+
 
