@@ -2229,23 +2229,36 @@
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
 
-  // Save About text + auto-translate to English
+  // Save About text — translate to English only when source is Hebrew (same pattern as helpContent)
   const saveAboutContent = async (text) => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
-    const tgtLang = srcLang === 'he' ? 'en' : 'he';
-    const batch = { [`settings/aboutContent/${srcLang}`]: text };
-    database.ref().update(batch);
+    database.ref(`settings/aboutContent/${srcLang}`).set(text);
     setAboutContent(prev => ({ ...prev, [srcLang]: text }));
+    if (srcLang !== 'he') {
+      // English edit — save only, no translation
+      showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
+      return;
+    }
+    // Hebrew edit — translate to English
     showToast('💾 ' + (t('general.saved') || 'נשמר') + ', מתרגם...', 'info');
     try {
-      const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=' + srcLang + '&tl=' + tgtLang + '&dt=t&q=' + encodeURIComponent(text));
+      const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(text));
       const data = await resp.json();
       const translated = data[0].map(function(s) { return s[0]; }).join('');
-      database.ref(`settings/aboutContent/${tgtLang}`).set(translated);
-      setAboutContent(prev => ({ ...prev, [tgtLang]: translated }));
-      showToast('🌐 ' + (tgtLang === 'en' ? 'תורגם לאנגלית' : 'Translated to Hebrew') + '!', 'success');
+      database.ref('settings/aboutContent/en').set(translated);
+      setAboutContent(prev => ({ ...prev, en: translated }));
+      showToast('🌐 תורגם לאנגלית!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
+  };
+
+  // Save About text without translation
+  const saveAboutContentOnly = (text) => {
+    if (!isFirebaseAvailable || !database) return;
+    const srcLang = window.BKK.i18n.currentLang || 'he';
+    database.ref(`settings/aboutContent/${srcLang}`).set(text);
+    setAboutContent(prev => ({ ...prev, [srcLang]: text }));
+    showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
 
   // TTS
@@ -5380,10 +5393,8 @@
         privateOnly: config.privateOnly || opt.privateOnly || false,
       };
     });
-    // Sort once here — group order then alphabetical within group
-    // All consumers (wizard, dialogs, filter panel, settings) get consistent order
-    const uiLang = window.BKK.i18n?.currentLang || 'he';
-    const sortLocale = uiLang === 'he' ? 'he' : 'en';
+    // Sort: group order then alphabetical within group — re-sorts on language change
+    const sortLocale = currentLang === 'he' ? 'he' : 'en';
     const groupOrderMap = {};
     Object.keys(interestGroups || {}).forEach((gId, idx) => {
       groupOrderMap[gId] = (interestGroups[gId]?.order ?? idx);
@@ -5392,11 +5403,11 @@
       const ga = groupOrderMap[a.group || ''] ?? 99;
       const gb = groupOrderMap[b.group || ''] ?? 99;
       if (ga !== gb) return ga - gb;
-      const la = (uiLang === 'he' ? a.label : a.labelEn) || a.label || '';
-      const lb = (uiLang === 'he' ? b.label : b.labelEn) || b.label || '';
+      const la = (currentLang === 'he' ? a.label : a.labelEn) || a.label || '';
+      const lb = (currentLang === 'he' ? b.label : b.labelEn) || b.label || '';
       return la.localeCompare(lb, sortLocale);
     });
-  }, [interestOptions, interestConfig, interestGroups]);
+  }, [interestOptions, interestConfig, interestGroups, currentLang]);
 
   // Debug: log custom interests in allInterestOptions (only when debug mode is on)
   useEffect(() => {

@@ -3758,16 +3758,30 @@
                       placeholder={t('about.placeholder')}
                       autoFocus
                     />
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                      <button
-                        onClick={async () => {
-                          await saveAboutContent(aboutLocalText);
-                          setAboutEditing(false);
-                        }}
-                        style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f97316', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
-                      >
-                        💾 {t('about.saveTranslate')}
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                      {lang === 'he' ? (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => { saveAboutContentOnly(aboutLocalText); setAboutEditing(false); }}
+                            style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#6b7280', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                          >
+                            💾 {t('about.save')}
+                          </button>
+                          <button
+                            onClick={async () => { await saveAboutContent(aboutLocalText); setAboutEditing(false); }}
+                            style={{ flex: 2, padding: '8px', borderRadius: '8px', background: '#f97316', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                          >
+                            💾 {t('about.saveTranslate')}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { saveAboutContentOnly(aboutLocalText); setAboutEditing(false); }}
+                          style={{ padding: '8px', borderRadius: '8px', background: '#f97316', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          💾 {t('about.save')}
+                        </button>
+                      )}
                       <button
                         onClick={() => { setAboutEditing(false); setAboutLocalText(text); }}
                         style={{ padding: '8px 14px', borderRadius: '8px', background: '#f3f4f6', color: '#374151', border: 'none', fontSize: '13px', cursor: 'pointer' }}

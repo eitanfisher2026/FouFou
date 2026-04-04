@@ -2,7 +2,7 @@
 // Strategy: Network First — תמיד מנסה רשת, cache רק אם אין חיבור
 // זה בטוח: המשתמש תמיד מקבל את הגרסה העדכנית כשיש חיבור
 
-const CACHE_NAME = 'foufou-v3.17.2';
+const CACHE_NAME = 'foufou-v3.17.6';
 
 // קבצים לcache לoffline fallback בלבד
 const OFFLINE_ASSETS = [
