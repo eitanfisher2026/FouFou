@@ -622,8 +622,18 @@
     uploadedImage: null,  // Base64 image data
     imageUrls: [],  // Array of URL strings
   });
-  const [customInterests, setCustomInterests] = useState([]);
-  const [interestStatus, setInterestStatus] = useState({}); // { interestId: true/false }
+  const [customInterests, setCustomInterests] = useState(() => {
+    try {
+      const cached = localStorage.getItem('foufou_custom_interests');
+      return cached ? JSON.parse(cached) : [];
+    } catch(e) { return []; }
+  });
+  const [interestStatus, setInterestStatus] = useState(() => {
+    try {
+      const cached = localStorage.getItem('foufou_interest_status');
+      return cached ? JSON.parse(cached) : {};
+    } catch(e) { return {}; }
+  });
   
   // Interest search configuration (editable)
   // Default interest search configurations — used before Firebase loads and as fallback
@@ -651,9 +661,20 @@
     business: { blacklist: [] },
   }), []);
 
-  const [interestConfig, setInterestConfig] = useState({});
+  const [interestConfig, setInterestConfig] = useState(() => {
+    try {
+      const cached = localStorage.getItem('foufou_interest_config');
+      return cached ? JSON.parse(cached) : {};
+    } catch(e) { return {}; }
+  });
   const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
-  const [interestGroups, setInterestGroups] = useState({}); // { groupId: { labelHe, labelEn } }
+  const [interestGroups, setInterestGroups] = useState(() => {
+    // Load from localStorage cache so first render is already sorted
+    try {
+      const cached = localStorage.getItem('foufou_interest_groups');
+      return cached ? JSON.parse(cached) : {};
+    } catch(e) { return {}; }
+  });
   const [aboutContent, setAboutContent] = useState({ he: '', en: '' }); // admin-editable about text
 
   const toggleCityForInterest = (interestId, cityId) => {
@@ -3571,7 +3592,10 @@
             if (pendingLocal.length > 0) {
               console.log('[FIREBASE] Keeping', pendingLocal.length, 'pending local interests:', pendingLocal.map(i => i.label).join(', '));
             }
-            return [...interestsArray, ...pendingLocal];
+            const result = [...interestsArray, ...pendingLocal];
+            // Cache for instant next-load render
+            try { localStorage.setItem('foufou_custom_interests', JSON.stringify(result)); } catch(e) {}
+            return result;
           });
           console.log('[FIREBASE] Loaded', interestsArray.length, 'interests from Firebase');
         } else {
@@ -3621,6 +3645,7 @@
             }
           }
           setInterestConfig(merged);
+          try { localStorage.setItem('foufou_interest_config', JSON.stringify(merged)); } catch(e) {}
           console.log('[FIREBASE] Loaded interest config (deep merge)');
         } else {
           // Save defaults to Firebase
@@ -3718,9 +3743,12 @@
         
         const defaults = computeDefaults(icfg, legacyStatus);
         if (userData) {
-          setInterestStatus({ ...defaults, ...userData });
+          const merged = { ...defaults, ...userData };
+          setInterestStatus(merged);
+          try { localStorage.setItem('foufou_interest_status', JSON.stringify(merged)); } catch(e) {}
         } else {
           setInterestStatus(defaults);
+          try { localStorage.setItem('foufou_interest_status', JSON.stringify(defaults)); } catch(e) {}
         }
 
         setInterestConfig(prev => {
@@ -3994,6 +4022,7 @@
       // Interest groups (label names for wizard grouping)
       if (s.interestGroups) {
         setInterestGroups(s.interestGroups);
+        try { localStorage.setItem('foufou_interest_groups', JSON.stringify(s.interestGroups)); } catch(e) {}
       } else {
         setInterestGroups({});
       }
