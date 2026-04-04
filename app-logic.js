@@ -2254,7 +2254,7 @@
   const saveAboutContent = async (text) => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
-    database.ref(`settings/aboutContent/${srcLang}`).set(text);
+    database.ref(`aboutContent/${srcLang}`).set(text);
     setAboutContent(prev => ({ ...prev, [srcLang]: text }));
     if (srcLang !== 'he') {
       // English edit — save only, no translation
@@ -2267,7 +2267,7 @@
       const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=en&dt=t&q=' + encodeURIComponent(text));
       const data = await resp.json();
       const translated = data[0].map(function(s) { return s[0]; }).join('');
-      database.ref('settings/aboutContent/en').set(translated);
+      database.ref('aboutContent/en').set(translated);
       setAboutContent(prev => ({ ...prev, en: translated }));
       showToast('🌐 תורגם לאנגלית!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
@@ -2277,7 +2277,7 @@
   const saveAboutContentOnly = (text) => {
     if (!isFirebaseAvailable || !database) return;
     const srcLang = window.BKK.i18n.currentLang || 'he';
-    database.ref(`settings/aboutContent/${srcLang}`).set(text);
+    database.ref(`aboutContent/${srcLang}`).set(text);
     setAboutContent(prev => ({ ...prev, [srcLang]: text }));
     showToast('💾 ' + (t('general.saved') || 'נשמר'), 'success');
   };
@@ -4026,8 +4026,6 @@
       } else {
         setInterestGroups({});
       }
-      // About content (admin-editable, shown in About dialog)
-      if (s.aboutContent) setAboutContent(s.aboutContent);
     });
     
     // Log access stats (aggregated weekly counters by country)
@@ -4065,6 +4063,17 @@
       }
     }
     return () => settingsRef.off('value');
+  }, []);
+
+  // Load aboutContent — public node, readable by all users
+  useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    const aboutRef = database.ref('aboutContent');
+    aboutRef.on('value', (snap) => {
+      const data = snap.val();
+      if (data) setAboutContent(data);
+    });
+    return () => aboutRef.off('value');
   }, []);
 
   const submitFeedback = () => {
