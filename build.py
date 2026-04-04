@@ -143,6 +143,15 @@ def build():
     else:
         print(f"⚠️  compile.js / node_modules not found — shipping JSX source (browser Babel fallback active)")
 
+    # === BUILD FILE 2.5: sw.js — update CACHE_NAME version ===
+    if os.path.exists('sw.js'):
+        with open('sw.js', 'r', encoding='utf-8') as f:
+            sw = f.read()
+        sw = re.sub(r"const CACHE_NAME = 'foufou-v[\d.]+'", f"const CACHE_NAME = 'foufou-v{ver}'", sw)
+        with open('sw.js', 'w', encoding='utf-8') as f:
+            f.write(sw)
+        print(f"📄 sw.js cache updated → foufou-v{ver}")
+
     # === BUILD FILE 3: index.html (tiny shell with splash) ===
     index_html = template.replace('__VERSION__', ver)
 

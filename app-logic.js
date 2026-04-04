@@ -49,6 +49,7 @@
   const [userProfile, setUserProfile] = useState(null); // { name, email, photo, role, cities }
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [allUsers, setAllUsers] = useState([]); // admin only: list of users
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -651,6 +652,7 @@
   const [interestConfig, setInterestConfig] = useState({});
   const [cityHiddenInterests, setCityHiddenInterests] = useState({}); // { cityId: Set<interestId> }
   const [interestGroups, setInterestGroups] = useState({}); // { groupId: { labelHe, labelEn } }
+  const [aboutContent, setAboutContent] = useState({ he: '', en: '' }); // admin-editable about text
 
   const toggleCityForInterest = (interestId, cityId) => {
     const cur = cityHiddenInterests[cityId] || new Set();
@@ -2221,6 +2223,25 @@
       const translated = data[0].map(function(s) { return s[0]; }).join('');
       database.ref(`helpContent/${sectionId}/${tgtLang}`).set(translated);
       setHelpOverrides(prev => ({ ...prev, [sectionId]: { ...(prev[sectionId] || {}), [tgtLang]: translated } }));
+      showToast('🌐 ' + (tgtLang === 'en' ? 'תורגם לאנגלית' : 'Translated to Hebrew') + '!', 'success');
+    } catch (err) { showToast('Translation: ' + err.message, 'error'); }
+  };
+
+  // Save About text + auto-translate to English
+  const saveAboutContent = async (text) => {
+    if (!isFirebaseAvailable || !database) return;
+    const srcLang = window.BKK.i18n.currentLang || 'he';
+    const tgtLang = srcLang === 'he' ? 'en' : 'he';
+    const batch = { [`settings/aboutContent/${srcLang}`]: text };
+    database.ref().update(batch);
+    setAboutContent(prev => ({ ...prev, [srcLang]: text }));
+    showToast('💾 ' + (t('general.saved') || 'נשמר') + ', מתרגם...', 'info');
+    try {
+      const resp = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=' + srcLang + '&tl=' + tgtLang + '&dt=t&q=' + encodeURIComponent(text));
+      const data = await resp.json();
+      const translated = data[0].map(function(s) { return s[0]; }).join('');
+      database.ref(`settings/aboutContent/${tgtLang}`).set(translated);
+      setAboutContent(prev => ({ ...prev, [tgtLang]: translated }));
       showToast('🌐 ' + (tgtLang === 'en' ? 'תורגם לאנגלית' : 'Translated to Hebrew') + '!', 'success');
     } catch (err) { showToast('Translation: ' + err.message, 'error'); }
   };
@@ -3961,6 +3982,8 @@
       } else {
         setInterestGroups({});
       }
+      // About content (admin-editable, shown in About dialog)
+      if (s.aboutContent) setAboutContent(s.aboutContent);
     });
     
     // Log access stats (aggregated weekly counters by country)

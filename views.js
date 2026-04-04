@@ -311,6 +311,19 @@
                 <span>{item.label}{item.count > 0 ? ` (${item.count})` : ''}</span>
               </button>
             ))}
+            {/* About — visible to all users */}
+            <button
+              onClick={() => { setShowAbout(true); setShowHeaderMenu(false); }}
+              style={{
+                width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
+                background: 'transparent', border: 'none', borderRadius: '8px', padding: '8px 12px',
+                color: '#374151', fontSize: '13px', fontWeight: '500',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>ℹ️</span>
+              <span>{t('about.title') || (currentLang === 'he' ? 'אודות' : 'About')}</span>
+            </button>
             {/* Divider + Auth button */}
             <div style={{ height: '1px', background: '#e5e7eb', margin: '4px 8px' }}></div>
             <button
@@ -4439,7 +4452,7 @@
         {/* Footer — minimal during active trail */}
         {activeTrail ? (
           <div className="text-center py-2 mt-2">
-            <span style={{ fontSize: '11px', color: '#d1d5db' }}>🐾 FouFou v{window.BKK.VERSION}</span>
+            <span style={{ fontSize: '11px', color: '#d1d5db' }}>🐾 FouFou</span>
           </div>
         ) : (
         <div className="text-center py-3 mt-4 border-t border-gray-200">
@@ -4447,30 +4460,25 @@
             FouFou — City Trail Generator 🍜🏛️🎭
           </div>
           <div style={{ fontSize: '9px', color: '#9ca3af', marginBottom: '6px' }}>
-            Local picks + Google spots. Choose your vibe, follow the trail
+            © Eitan Fisher
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
-                const shareData = { title: 'FouFou', text: t('settings.appDescription'), url: window.location.href };
+                const appUrl = 'https://eitanfisher2026.github.io/FouFou/';
+                const shareData = { title: 'FouFou', text: t('settings.appDescription') || 'City trails in Bangkok & Singapore', url: appUrl };
                 if (navigator.share) { navigator.share(shareData).catch(() => {}); }
-                else { try { navigator.clipboard.writeText(window.location.href); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(window.location.href, 'info'); } }
+                else { try { navigator.clipboard.writeText(appUrl); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(appUrl, 'info'); } }
               }}
               style={{ background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', color: '#374151', padding: '4px 10px' }}
-            >{`📤 ${t("general.share")}`}</button>
-            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <span 
-              style={{ fontSize: '9px', color: '#9ca3af', cursor: 'default', userSelect: 'none' }}
-              onTouchStart={(e) => {}}
-              onTouchEnd={(e) => {}}
-              onMouseDown={(e) => {}}
-              onMouseUp={(e) => { clearTimeout(e.currentTarget._lp); }}
-              onMouseLeave={(e) => { clearTimeout(e.currentTarget._lp); }}
-            >v{window.BKK.VERSION}</span>
-            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <span style={{ fontSize: '9px', color: '#9ca3af' }}>© Eitan Fisher</span>
-            <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
-            <button onClick={() => applyUpdate()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t("general.refresh")}`}</button>
+            >{`📤 ${t('general.share')}`}</button>
+            {/* Admin only: version + refresh */}
+            {isAdmin && (<>
+              <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
+              <span style={{ fontSize: '9px', color: '#9ca3af' }}>v{window.BKK.VERSION}</span>
+              <span style={{ color: '#d1d5db', fontSize: '9px' }}>·</span>
+              <button onClick={() => applyUpdate()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#9ca3af' }}>{`🔄 ${t('general.refresh')}`}</button>
+            </>)}
           </div>
         </div>
         )}
