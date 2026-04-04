@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.16.23` (Apr 03, 2026)
+- **גרסה:** `3.16.25` (Apr 04, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -109,8 +109,9 @@ print('OK')
 > **X — Major**: Eitan decides only
 
 ```bash
-sed -i "s/VERSION = '3.15.7'/VERSION = '3.15.7'/" config.js
-sed -i 's/"version": "3.15.1"/"version": "3.15.7"/' version.json
+# Replace X.Y.Z with current version:
+sed -i "s/VERSION = 'OLD'/VERSION = 'NEW'/" config.js
+sed -i 's/"version": "OLD"/"version": "NEW"/' version.json
 python3 build.py
 zip github-upload-vX_Y_Z.zip \
   index.html app-data.js app-code.js \
@@ -437,6 +438,167 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
 17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
+
+---
+
+## שינויים מרכזיים — סשן Apr 04, 2026 (v3.16.25) — אופטימיזציה ותיקוני אבטחה
+
+### 1. loadReviewAverages — קריאה אחת במקום N (app-logic.js)
+**לפני:** לולאת `for` עם `await database.ref(...).once()` לכל מקום — N קריאות sequential.
+**אחרי:** קריאה אחת ל-`cities/${cityId}/reviews` וסינון בצד לקוח.
+```js
+// WRONG — N sequential Firebase reads
+for (const name of placeNames) {
+  const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
+}
+// CORRECT — single read, client-side filter
+const snap = await database.ref(`cities/${cityId}/reviews`).once('value');
+const allReviews = snap.val() || {};
+```
+
+### 2. settings listener cleanup (app-logic.js)
+הוספת `return () => settingsRef.off('value')` ל-useEffect. ה-listener נפתח עם `[]` ולכן רץ פעם אחת, אבל ללא cleanup עלול לדלוף אם בעתיד ה-component ימחזר.
+```js
+const settingsRef = database.ref('settings');
+settingsRef.on('value', handler);
+return () => settingsRef.off('value'); // ← הוספה
+```
+
+### 3. saveNewInterest — batch write (app-logic.js)
+**לפני:** 4+ כתיבות נפרדות לפיירבייס.
+**אחרי:** `database.ref().update(batch)` אחד.
+
+### 4. helpAudio — batch write (app-logic.js)
+`database.ref().update({ helpAudio/key, helpAudioDuration/key })` במקום 2 `.set()`.
+
+### 5. refreshAllGoogleRatings — chunks במקום sequential (app-logic.js)
+**לפני:** לולאת for עם 200ms delay — 200 מקומות = ~40 שניות.
+**אחרי:** `Promise.all` על chunks של 5, 300ms בין chunks — ~5× מהיר יותר.
+```js
+const CHUNK_SIZE = 5;
+for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
+  await Promise.all(chunk.map(async (loc) => { ... }));
+  await new Promise(r => setTimeout(r, 300)); // between chunks
+}
+```
+
+### 6. fetchAccessStats — הועבר מ-views.js ל-app-logic.js
+קריאה ישירה ל-`db.ref('accessStats')` ב-views.js הוחלפה בפונקציה `fetchAccessStats(onResult)` ב-app-logic.js.
+כלל: **כל קריאה לפיירבייס — רק ב-app-logic.js.**
+
+### 7. Single quotes ב-JSX תוקנו (views.js)
+`title='...'` → `title="..."` — מניעת פוטנציאל Babel error.
+
+### 8. radiusPlaceName — תצוגת GPS (views.js)
+כשה-radiusSource הוא `'gps'`, מוצג `t('wizard.myLocation')` במקום ה-string השמור (שעשוי להיות בשפה הישנה).
+
+### 9. setFormData — functional updater בכל מקום (views.js)
+4 מקומות שהשתמשו ב-`setFormData({...formData,...})` הוחלפו ב-`setFormData(prev => ({...prev,...}))`.
+**כלל:** כל `setFormData` שתלוי ב-state קודם חייב functional updater — מונע stale closure על Samsung/Pixel.
+
+### 10. console.warn/log inline — תוקנו (app-logic.js)
+3 `console.warn/log` ב-inline context שלא נתפסו ע"י ה-stripper הועברו לשורות נפרדות כדי שיסוננו ב-build.
+
+---
+
+## 🏗️ עקרונות פיתוח — חשובים לאיתן
+
+### אחידות (Consistency)
+- כל כתיבה ל-Firebase → app-logic.js בלבד. אין יוצאות דופן.
+- כל `setFormData` שמשתמש ב-state קודם → functional updater `prev => ({...prev,...})`.
+- כל `L.tileLayer()` → `window.BKK.getTileUrl()`.
+- כל `t('key')` → דרך i18n, לא hardcoded strings.
+
+### שימוש חוזר (DRY)
+- לפני שכותבים לוגיקה חדשה — בדוק אם קיימת פונקציה ב-app-logic.js.
+- `buildInterestLimits` — משותף ל-smartSelectStops ולגנרציית route.
+- `sanitizeMapsUrl` — לפני כל שמירת location.
+- `saveBulkUpdate(batch)` — לכל multi-path Firebase write.
+
+### זמן הכי קצר לעלייה (Fast Startup)
+- App מוצגת אחרי `interests + config + status` בלבד (לא מחכה ל-locations/routes).
+- Leaflet נטען lazy — רק כשפותחים מפה, עם 2s delay.
+- Firebase נטען non-blocking דרך `window.__firebaseReady`.
+- Splash SVG inline ב-HTML — מוצג תוך <100ms.
+- **אל תוסיף קריאות Firebase ל-startup flow** — הכל ב-background.
+
+### אופטימיזציה Firebase
+- **Batch ראשון:** כמה שיותר שינויים — batch אחד עם `database.ref().update({})`.
+- **Listener cleanup:** כל `ref.on('value', ...)` חייב `return () => ref.off()`.
+- **קריאות מינימליות:** אחת ל-parent node, סינון client-side — לא N קריאות ל-children.
+- **Optimistic updates:** עדכן state מיד, שלח Firebase ברקע.
+- **7-day cache:** googleRatingUpdated — לא מרענן אם עודכן לאחרונה.
+
+### אופטימיזציה Google Places API
+- **FieldMask מדויק:** רק שדות נחוצים — לא photos, website, וכו'.
+- **Place Details ($0.005) לפני Text Search ($0.032)** — כשיש googlePlaceId.
+- **Promise.all על כל הinterests** — parallel, לא sequential.
+- **googleCacheRef** — שמור תוצאות עודפות בין "הצג עוד" לגנרציה הבאה.
+- **Chunks×5** ב-refreshAllGoogleRatings — parallel עם 300ms בין chunks.
+- **לא לבקש photos** — עולה הרבה יותר ב-billing.
+
+### אבטחה
+- **Google Places API Key:** מוגבל ל-`https://eitanfisher2026.github.io/*` בלבד.
+- **Firebase Rules:** כל כתיבה דורשת `auth != null`. Settings/interestConfig דורשים role≥2.
+- **googlePlaceId validation:** `/^(ChIJ|EiI|GhIJ)/` לפני כל שמירה — מונע זיהום עם Firebase keys.
+- **`sanitizeMapsUrl()`** לפני כל שמירת location.
+- **אל תוסיף API keys ל-source** — הם בclient side ומוגנים ע"י domain restriction.
+
+---
+
+## שינויים מרכזיים — סשן Apr 03, 2026 (v3.10–v3.16.23)
+
+### 1. Interest grid — באג עיקרי שנפתר (v3.16.7)
+**Root cause:** `useEffect` של ניקוי interests רץ בכל פעם ש-`interestConfig` התעדכן מ-Firebase. כשמשתמש לחץ על תחום, `setFormData` נקרא, ואז Firebase החזיר snapshot → `setInterestConfig` → `useEffect` → `isInterestValid()` החזיר false (כי config לא מלא עדיין) → התחום נמחק. נראה כ-"blink".
+
+**למה לאדמין עבד:** ל-admin יש hint button נוסף בכותרת (`renderStepHeader`) — לחיצה שנייה של Samsung נחתה עליו במקום על התחום.
+
+**הפתרון:** הסרת `useEffect` הניקוי לחלוטין. אם משתמש החליף עיר → `switchCity` מנקה interests מ-formData ו-localStorage. אין צורך בניקוי ברקע.
+
+```js
+// app-logic.js — switchCity clears saved interests:
+try { ['day','night','all'].forEach(m => localStorage.removeItem(`foufou_interests_${m}`)); } catch(e) {}
+```
+
+### 2. allInterestOptions — מיון אחיד (v3.16.15)
+`allInterestOptions` ממוין פעם אחת ב-`useMemo` לפי group order ואז אלפביתי. כל הצרכנים (wizard, dialogs, settings, filter panel, quick-add) מקבלים סדר אחיד אוטומטית — אין לוגיקת מיון נפרדת בשום קובץ.
+
+```js
+// app-logic.js — sort in useMemo:
+return mapped.sort((a, b) => {
+  const ga = groupOrderMap[a.group || ''] ?? 99;
+  const gb = groupOrderMap[b.group || ''] ?? 99;
+  if (ga !== gb) return ga - gb;
+  return la.localeCompare(lb, sortLocale);
+});
+```
+
+### 3. הרשאות — כלל מרכזי
+**רק אדמין נכנס להגדרות** — הבדיקה נעשית בשער הכניסה. **אין** בדיקות `isAdmin`/`isUnlocked` בתוך מסכי ההגדרות עצמם.
+
+**יוצא דופן:** ברשימת תחומים תחת המבורגר (לא הגדרות):
+- משתמש רגיל: כפתור 👁️ לצפייה בלבד
+- Editor/Admin: כפתור ✏️ עריכה + כפתור "הוסף תחום"
+
+### 4. Settings interests tab — מבנה
+שני בלוקים נפרדים עם `{settingsTab === 'interests' && ...}`:
+1. **List** (`renderInterestSettingsRow`) — רשימת כל התחומים עם ניהול
+2. **Groups** (`📂 קיבוץ תחומים`) — אחרי הרשימה
+
+**חשוב:** אל תעטוף את שניהם ב-IIFE אחת. כל בלוק עצמאי.
+
+### 5. שינויים נוספים בסשן
+- **Filter button:** "סינון" → "סינון/חיפוש" (i18n.js)
+- **Filter panel icons:** קטנו מ-22px ל-16px
+- **Place search outside area:** בחירת מקום מחוץ לאזור פתוח → מנקה `mapFavArea` לכל העיר
+- **Bottom margin wizard step 1:** `calc(72px + env(safe-area-inset-bottom, 0px))` כשיש תחומים נבחרים
+
+### 6. Known Regression #17 — עדכון
+`gridColumn:'1/-1'` בתוך CSS Grid **אסור** בgrid התחומים של wizard step 1 — גורם לmisfire של touch events על Samsung/Android.
+
+גם: תמיד להשתמש ב-functional updater לכל `setFormData` שתלוי בstate קודם (ראה סעיף Stale Closure).
+
+---
 
 ## Debug Console Prefixes
 

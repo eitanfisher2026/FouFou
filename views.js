@@ -738,10 +738,10 @@
                 {/* Mode selector — radio pill toggle */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', padding: '4px', background: '#f1f5f9', borderRadius: '14px' }}>
                   {[
-                    { mode: 'area', icon: '🗺️', label: t('wizard.chooseArea'), onClick: () => setFormData({...formData, searchMode: formData.searchMode === 'radius' ? 'area' : formData.searchMode}) },
+                    { mode: 'area', icon: '🗺️', label: t('wizard.chooseArea'), onClick: () => setFormData(prev => ({...prev, searchMode: prev.searchMode === 'radius' ? 'area' : prev.searchMode})) },
                     { mode: 'radius', icon: '📍', label: t('general.nearMe'), onClick: () => {
                       if (formData.searchMode !== 'radius') {
-                        setFormData({...formData, searchMode: 'radius', radiusMeters: formData.radiusMeters || 500});
+                        setFormData(prev => ({...prev, searchMode: 'radius', radiusMeters: prev.radiusMeters || 500}));
                         if (navigator.geolocation) {
                           window.BKK.getValidatedGps(
                             (pos) => { setFormData(prev => ({...prev, currentLat: pos.coords.latitude, currentLng: pos.coords.longitude, radiusPlaceName: t('wizard.myLocation'), radiusSource: 'gps'})); showToast(t('wizard.locationFound'), 'success'); },
@@ -783,7 +783,7 @@
                         return (
                         <button
                           key={area.id}
-                          onClick={() => setFormData({...formData, area: area.id, searchMode: 'area'})}
+                          onClick={() => setFormData(prev => ({...prev, area: area.id, searchMode: 'area'}))}
                           style={{
                             padding: '6px 6px', borderRadius: '8px',
                             border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #22c55e' : '1.5px solid #e5e7eb',
@@ -818,7 +818,7 @@
                           {[100, 250, 500, 750, 1000].map(r => (
                             <button
                               key={r}
-                              onClick={() => setFormData({...formData, radiusMeters: r})}
+                              onClick={() => setFormData(prev => ({...prev, radiusMeters: r}))}
                               style={{
                                 padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
                                 border: formData.radiusMeters === r ? '2px solid #2563eb' : '1.5px solid #d1d5db',
@@ -2548,22 +2548,18 @@
                   settingsTab === 'cities' ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🌍 ערים</button>
-              {isAdmin && (
               <button
                 onClick={() => setSettingsTab('interests')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'interests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🏷️ תחומים</button>
-              )}
-              {isAdmin && (
               <button
                 onClick={() => setSettingsTab('sysparams')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🔧 פרמטרים</button>
-              )}
               {debugMode && (
               <button
                 onClick={() => setSettingsTab('debug')}
@@ -3491,16 +3487,7 @@
                 
                 {/* Access Stats Button */}
                 <button
-                  onClick={async () => {
-                    try {
-                      const db = (typeof window.firebase !== 'undefined' && window.firebase.apps?.length) ? window.firebase.database() : null;
-                      if (!db) { showToast('No database', 'error'); return; }
-                      const snap = await db.ref('accessStats').once('value');
-                      const data = snap.val();
-                      if (data) setAccessStats(data);
-                      else showToast('No access stats yet', 'info');
-                    } catch (e) { showToast('Error: ' + e.message, 'error'); }
-                  }}
+                  onClick={() => fetchAccessStats(data => setAccessStats(data))}
                   className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm hover:bg-blue-600 flex items-center justify-center gap-2"
                 >
                   📊 {t("settings.accessStats") || "Access Stats"}
@@ -4944,7 +4931,7 @@
               <p className="text-[9px] text-gray-400 p-2 text-center">
                 {mapMode === 'areas' 
                   ? `${(window.BKK.areaOptions || []).length} ${t('general.areas')}` 
-                  : `${formData.radiusMeters}m - ${formData.radiusPlaceName || t('form.currentLocation')}`
+                  : `${formData.radiusMeters}m - ${formData.radiusSource === 'gps' ? t('wizard.myLocation') : (formData.radiusPlaceName || t('form.currentLocation'))}`
                 }
               </p>
               )}
@@ -5022,7 +5009,7 @@
                     };
                     const copyLog = () => navigator.clipboard?.writeText(buildText()).then(() => showToast('📋 Filter log copied!', 'success')).catch(() => showToast('⚠️ Copy failed', 'warning'));
                     const exportLog = () => { const blob = new Blob([buildText()], { type: 'text/plain;charset=utf-8' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `filter-log-${new Date().toISOString().slice(0,10)}.txt`; a.click(); URL.revokeObjectURL(url); };
-                    return (<><button onClick={copyLog} title='העתק ללוח' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>📋</button><button onClick={exportLog} title='ייצוא txt' style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>⬇️</button></>);
+                    return (<><button onClick={copyLog} title="העתק ללוח" style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>📋</button><button onClick={exportLog} title="ייצוא txt" style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>⬇️</button></>);
                   })()}
                   <button onClick={() => { filterLogRef.current = []; setFilterLog([]); setShowFilterPanel(false); showToast('🔬 Filter log cleared', 'info'); }}
                     style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: '#7c3aed', border: 'none', color: 'white', cursor: 'pointer' }}>🗑️</button>
