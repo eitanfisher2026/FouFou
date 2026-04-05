@@ -4024,17 +4024,7 @@
       console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
       
       // City active states — admin-controlled, synced to all users via Firebase
-      if (s.cityStates && window.BKK?.cities) {
-        const states = s.cityStates;
-        // Update window.BKK.cities for compatibility with app-data.js code
-        Object.keys(states).forEach(cityId => {
-          if (window.BKK.cities[cityId]) window.BKK.cities[cityId].active = states[cityId];
-        });
-        // Update React state → triggers re-render of city list
-        setCityActiveStates(states);
-        // Sync to localStorage for fast next-load
-        try { localStorage.setItem('city_active_states', JSON.stringify(states)); } catch(e) {}
-      }
+      // NOTE: cityStates is read from a separate public node, not from settings
 
       // Interest groups (label names for wizard grouping)
       if (s.interestGroups) {
@@ -4093,6 +4083,23 @@
       if (data) setAboutContent(data);
     });
     return () => aboutRef.off('value');
+  }, []);
+
+  // Load cityStates — public node, controls which cities are visible to all users
+  useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    const cityStatesRef = database.ref('cityStates');
+    cityStatesRef.on('value', (snap) => {
+      const states = snap.val();
+      if (states && window.BKK?.cities) {
+        Object.keys(states).forEach(cityId => {
+          if (window.BKK.cities[cityId]) window.BKK.cities[cityId].active = states[cityId];
+        });
+        setCityActiveStates(states);
+        try { localStorage.setItem('city_active_states', JSON.stringify(states)); } catch(e) {}
+      }
+    });
+    return () => cityStatesRef.off('value');
   }, []);
 
   const submitFeedback = () => {

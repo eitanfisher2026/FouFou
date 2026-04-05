@@ -2655,7 +2655,7 @@
                             setCityActiveStates(newStates);
                             try { localStorage.setItem('city_active_states', JSON.stringify(newStates)); } catch(e) {}
                             // Sync to Firebase so all users get the same active cities
-                            if (database) database.ref(`settings/cityStates/${city.id}`).set(newActive);
+                            if (database) database.ref(`cityStates/${city.id}`).set(newActive);
                             showToast(tLabel(city) + (newActive ? ' ✓' : ' ✗'), 'info');
                           }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#ef4444', fontWeight: 'bold' }}
                           >{isActive ? `▶️ ${t('general.active')}` : `⏸️ ${t('general.inactive')}`}</button>
