@@ -50,24 +50,31 @@ const QuickAddPlaceDialog = ({
     }
   };
 
+  const [qaInterimText, setQaInterimText] = React.useState('');
+
   const startRec = (field) => {
     if (qaRecordingField) {
       if (qaStopRecRef.current) qaStopRecRef.current();
       qaStopRecRef.current = null;
       setQaRecordingField(null);
+      setQaInterimText('');
       return;
     }
     setQaRecordingField(field);
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
       onResult: (text, isFinal) => {
-        if (!isFinal) return; // ignore interim — only append confirmed final text
-        if (field === "description") setQaDescription(prev => (prev ? prev + " " : "") + text);
-        if (field === "notes") setQaNotes(prev => (prev ? prev + " " : "") + text);
-        if (field === "rating") setQaRatingText(prev => (prev ? prev + " " : "") + text);
+        if (isFinal) {
+          setQaInterimText('');
+          if (field === "description") setQaDescription(prev => (prev ? prev + " " : "") + text);
+          if (field === "notes") setQaNotes(prev => (prev ? prev + " " : "") + text);
+          if (field === "rating") setQaRatingText(prev => (prev ? prev + " " : "") + text);
+        } else {
+          setQaInterimText(text);
+        }
       },
-      onEnd: () => { setQaRecordingField(null); qaStopRecRef.current = null; },
-      onError: () => { setQaRecordingField(null); qaStopRecRef.current = null; }
+      onEnd: () => { setQaRecordingField(null); setQaInterimText(''); qaStopRecRef.current = null; },
+      onError: () => { setQaRecordingField(null); setQaInterimText(''); qaStopRecRef.current = null; }
     });
     qaStopRecRef.current = stop;
   };
@@ -270,19 +277,14 @@ const QuickAddPlaceDialog = ({
                 {t("trail.whatDidYouSee")} → {t("places.placeName")}
               </p>
             )}
-            {/* Search Google + Auto-name buttons — captureMode only */}
+            {/* Search Google button — captureMode only */}
             {captureMode && (
               <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>
                 <button type="button"
                   onClick={() => onSearchGoogle && onSearchGoogle(qaName)}
                   disabled={!qaName.trim()}
-                  style={{ flex: 2, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaName.trim() ? "pointer" : "not-allowed", background: qaName.trim() ? "#8b5cf6" : "#e5e7eb", color: qaName.trim() ? "white" : "#9ca3af" }}
+                  style={{ flex: 1, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaName.trim() ? "pointer" : "not-allowed", background: qaName.trim() ? "#8b5cf6" : "#e5e7eb", color: qaName.trim() ? "white" : "#9ca3af" }}
                 >🔍 {t("form.searchPlaceGoogle")}</button>
-                <button type="button"
-                  onClick={() => { if (onAutoName && qaInterests.length > 0) { const name = onAutoName(qaInterests[0], qaInterests); if (name) setQaName(name); } }}
-                  disabled={!qaInterests.length}
-                  style={{ flex: 2, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaInterests.length ? "pointer" : "not-allowed", background: qaInterests.length ? "#f59e0b" : "#e5e7eb", color: qaInterests.length ? "white" : "#9ca3af" }}
-                >🏷️ {t("places.autoName")}</button>
               </div>
             )}
             {/* Search results dropdown */}
@@ -309,12 +311,19 @@ const QuickAddPlaceDialog = ({
           <div>
             <label className={labelCls}>{`📝 ${t("places.description")}`}</label>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-              <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
-                placeholder={t("places.descriptionPlaceholder") || "הקלד או הקלט תאור קצר של המקום"}
-                className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                style={textareaStyle} rows={2} />
+              <div style={{ flex: 1, position: "relative" }}>
+                <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
+                  placeholder={qaRecordingField === "description" ? "" : (t("places.descriptionPlaceholder") || "הקלד או הקלט תאור קצר של המקום")}
+                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                  style={{ ...textareaStyle, borderColor: qaRecordingField === "description" ? "#ef4444" : undefined, width: "100%", boxSizing: "border-box", paddingBottom: qaInterimText && qaRecordingField === "description" ? "22px" : undefined }} rows={2} />
+                {qaInterimText && qaRecordingField === "description" && (
+                  <div style={{ position: "absolute", bottom: "4px", left: "6px", right: "6px", fontSize: "12px", color: "#9ca3af", fontStyle: "italic", pointerEvents: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {qaInterimText}
+                  </div>
+                )}
+              </div>
               {qaDescription.trim() && (
-                <button type="button" onClick={() => setQaDescription('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                <button type="button" onClick={() => setQaDescription('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>✕</button>
               )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("description")} style={micStyle(qaRecordingField === "description")}
@@ -329,12 +338,19 @@ const QuickAddPlaceDialog = ({
           <div>
             <label className={labelCls}>{`💭 ${t("places.notes")}`}</label>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-              <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
-                placeholder={t("places.notes")}
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                style={textareaStyle} rows={2} />
+              <div style={{ flex: 1, position: "relative" }}>
+                <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
+                  placeholder={qaRecordingField === "notes" ? "" : t("places.notes")}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
+                  style={{ ...textareaStyle, borderColor: qaRecordingField === "notes" ? "#ef4444" : undefined, width: "100%", boxSizing: "border-box", paddingBottom: qaInterimText && qaRecordingField === "notes" ? "22px" : undefined }} rows={2} />
+                {qaInterimText && qaRecordingField === "notes" && (
+                  <div style={{ position: "absolute", bottom: "4px", left: "6px", right: "6px", fontSize: "12px", color: "#9ca3af", fontStyle: "italic", pointerEvents: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {qaInterimText}
+                  </div>
+                )}
+              </div>
               {qaNotes.trim() && (
-                <button type="button" onClick={() => setQaNotes('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
+                <button type="button" onClick={() => setQaNotes('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>✕</button>
               )}
               {window.BKK.speechSupported && (
                 <button type="button" onClick={() => startRec("notes")} style={micStyle(qaRecordingField === "notes")}

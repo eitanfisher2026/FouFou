@@ -3195,33 +3195,29 @@
                 <div style={{ position: 'relative' }}>
                   <textarea
                     value={reviewDialog.myText}
-                    readOnly={reviewRecording}
-                    onChange={(e) => { if (!reviewRecording) { setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true})); reviewTextRef.current = e.target.value; } }}
-                    placeholder={t('reviews.writeReview')}
-                    rows={2}
-                    style={{ width: '100%', padding: '8px 64px 8px 8px', borderRadius: '8px', border: reviewRecording ? '1.5px solid #ef4444' : '1px solid #d1d5db', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
-                  ></textarea>
-                  {/* Interim text overlay while recording */}
-                  {reviewInterimText && (
-                    <div style={{ position: 'absolute', bottom: '6px', right: '8px', left: '8px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', pointerEvents: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    onChange={(e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true}))}
+                    placeholder={reviewRecording ? '' : t('reviews.writeReview')}
+                    rows={3}
+                    style={{ width: '100%', padding: '8px 8px 28px 8px', borderRadius: '8px', border: reviewRecording ? '1.5px solid #ef4444' : '1px solid #d1d5db', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                  {/* Interim overlay */}
+                  {reviewInterimText ? (
+                    <div style={{ position: 'absolute', bottom: '28px', left: '8px', right: '8px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', pointerEvents: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {reviewInterimText}
                     </div>
-                  )}
-                  <div style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', gap: '4px' }}>
-                    {/* Mic button */}
-                    <button
-                      onClick={() => reviewRecording ? stopReviewDictation() : startReviewDictation()}
-                      style={{ padding: '3px 7px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '13px', background: reviewRecording ? '#fee2e2' : '#f3f4f6', animation: reviewRecording ? 'pulse 1s infinite' : 'none' }}
-                      title={reviewRecording ? 'עצור הקלטה' : 'הכתב קולי'}
-                    >{reviewRecording ? '⏹️' : '🎤'}</button>
-                    {/* Clear button */}
-                    {reviewDialog.myText && (
-                      <button
-                        onClick={() => { stopReviewDictation(); setReviewDialog(prev => ({...prev, myText: '', hasChanges: true})); reviewTextRef.current = ''; }}
-                        style={{ padding: '3px 7px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', background: '#f3f4f6', color: '#9ca3af', fontWeight: 'bold' }}
-                        title={t('general.clear') || 'נקה'}
-                      >✕</button>
+                  ) : null}
+                  {/* Buttons row at bottom of textarea */}
+                  <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', gap: '4px' }}>
+                    {window.BKK.speechSupported && (
+                      <button onClick={startReviewDictation}
+                        style={{ padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '13px', background: reviewRecording ? '#fee2e2' : '#f3f4f6', animation: reviewRecording ? 'pulse 1s infinite' : 'none' }}
+                      >{reviewRecording ? '⏹️' : '🎤'}</button>
                     )}
+                    {reviewDialog.myText ? (
+                      <button onClick={() => { stopReviewDictation(); setReviewDialog(prev => ({...prev, myText: '', hasChanges: true})); }}
+                        style={{ padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', background: '#f3f4f6', color: '#9ca3af', fontWeight: 'bold' }}
+                      >✕</button>
+                    ) : null}
                   </div>
                 </div>
               </div>

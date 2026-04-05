@@ -795,7 +795,37 @@
   const [reviewDialog, setReviewDialog] = useState(null); // { place, reviews: [], myRating, myText }
   const [reviewRecording, setReviewRecording] = useState(false);
   const [reviewInterimText, setReviewInterimText] = useState('');
-  const reviewTextRef = React.useRef('');
+  const reviewStopRecRef = React.useRef(null);
+
+  const startReviewDictation = () => {
+    if (reviewRecording) {
+      if (reviewStopRecRef.current) { reviewStopRecRef.current(); reviewStopRecRef.current = null; }
+      setReviewRecording(false);
+      setReviewInterimText('');
+      return;
+    }
+    setReviewRecording(true);
+    const stop = window.BKK.startSpeechToText({
+      maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+      onResult: (text, isFinal) => {
+        if (isFinal) {
+          setReviewDialog(prev => ({ ...prev, myText: (prev.myText ? prev.myText + ' ' : '') + text, hasChanges: true }));
+          setReviewInterimText('');
+        } else {
+          setReviewInterimText(text);
+        }
+      },
+      onEnd: () => { setReviewRecording(false); setReviewInterimText(''); reviewStopRecRef.current = null; },
+      onError: () => { setReviewRecording(false); setReviewInterimText(''); reviewStopRecRef.current = null; }
+    });
+    reviewStopRecRef.current = stop;
+  };
+
+  const stopReviewDictation = () => {
+    if (reviewStopRecRef.current) { reviewStopRecRef.current(); reviewStopRecRef.current = null; }
+    setReviewRecording(false);
+    setReviewInterimText('');
+  };
   const [reviewAverages, setReviewAverages] = useState({}); // { placeKey: { avg: 4.2, count: 3 } }
   const [userNamesMap, setUserNamesMap] = useState({}); // { uid: displayName }
   const [showImageModal, setShowImageModal] = useState(false);
@@ -2379,51 +2409,6 @@
     if (rec) { try { rec.stop(); } catch(e) {} }
     setHintRecording(false);
     setHintInterimText('');
-  };
-
-  // Speech-to-text for review dialog
-  const startReviewDictation = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showToast('Speech recognition not supported', 'error'); return; }
-    const recognition = new SR();
-    recognition.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    reviewTextRef.current = reviewDialog?.myText || '';
-    recognition.onresult = (event) => {
-      let interim = '';
-      for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          const transcript = event.results[i][0].transcript;
-          reviewTextRef.current = (reviewTextRef.current ? reviewTextRef.current + ' ' : '') + transcript;
-          setReviewDialog(prev => ({ ...prev, myText: reviewTextRef.current, hasChanges: true }));
-          setReviewInterimText('');
-        } else {
-          interim += event.results[i][0].transcript;
-        }
-      }
-      if (interim) setReviewInterimText(interim);
-    };
-    recognition.onend = () => {
-      setReviewInterimText('');
-      if (window._reviewRecognition) {
-        try { recognition.start(); } catch(e) { setReviewRecording(false); window._reviewRecognition = null; }
-      }
-    };
-    recognition.onerror = (e) => {
-      if (e.error !== 'no-speech') { setReviewRecording(false); window._reviewRecognition = null; }
-    };
-    window._reviewRecognition = recognition;
-    recognition.start();
-    setReviewRecording(true);
-    showToast('🎤 ' + (t('toast.hintRecording') || 'מדבר...'), 'info');
-  };
-  const stopReviewDictation = () => {
-    const rec = window._reviewRecognition;
-    window._reviewRecognition = null;
-    if (rec) { try { rec.stop(); } catch(e) {} }
-    setReviewRecording(false);
-    setReviewInterimText('');
   };
 
   // Audio recording for hints (saves to Firebase Storage)
