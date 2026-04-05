@@ -3190,14 +3190,33 @@
                     >★</button>
                   ))}
                 </div>
-                {/* Text */}
-                <textarea
-                  value={reviewDialog.myText}
-                  onChange={(e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true}))}
-                  placeholder={t('reviews.writeReview')}
-                  rows={2}
-                  style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', resize: 'vertical' }}
-                ></textarea>
+                {/* Text + dictation */}
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    value={reviewDialog.myText + (reviewInterimText ? ' ' + reviewInterimText : '')}
+                    readOnly={reviewRecording && !!reviewInterimText}
+                    onChange={(e) => { if (!reviewInterimText) { setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true})); reviewTextRef.current = e.target.value; } }}
+                    placeholder={t('reviews.writeReview')}
+                    rows={2}
+                    style={{ width: '100%', padding: '8px 64px 8px 8px', borderRadius: '8px', border: reviewRecording ? '1.5px solid #ef4444' : '1px solid #d1d5db', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
+                  ></textarea>
+                  <div style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', gap: '4px' }}>
+                    {/* Mic button */}
+                    <button
+                      onClick={() => reviewRecording ? stopReviewDictation() : startReviewDictation()}
+                      style={{ padding: '3px 7px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '13px', background: reviewRecording ? '#fee2e2' : '#f3f4f6', animation: reviewRecording ? 'pulse 1s infinite' : 'none' }}
+                      title={reviewRecording ? 'עצור הקלטה' : 'הכתב קולי'}
+                    >{reviewRecording ? '⏹️' : '🎤'}</button>
+                    {/* Clear button */}
+                    {reviewDialog.myText && (
+                      <button
+                        onClick={() => { stopReviewDictation(); setReviewDialog(prev => ({...prev, myText: '', hasChanges: true})); reviewTextRef.current = ''; }}
+                        style={{ padding: '3px 7px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', background: '#f3f4f6', color: '#9ca3af', fontWeight: 'bold' }}
+                        title={t('general.clear') || 'נקה'}
+                      >✕</button>
+                    )}
+                  </div>
+                </div>
               </div>
               
               {/* All Reviews */}
