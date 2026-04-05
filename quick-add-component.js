@@ -20,6 +20,7 @@ const QuickAddPlaceDialog = ({
   onSave, onCancel
 }) => {
   const [qaName, setQaName] = React.useState(place.name || "");
+  const [qaNameIsAuto, setQaNameIsAuto] = React.useState(false);
   const [qaDescription, setQaDescription] = React.useState("");
   const [qaNotes, setQaNotes] = React.useState("");
   const [qaInterests, setQaInterests] = React.useState(place.interests || []);
@@ -35,7 +36,7 @@ const QuickAddPlaceDialog = ({
   React.useEffect(() => {
     if (captureMode && onAutoName && qaInterests.length > 0 && !qaName) {
       const generated = onAutoName(qaInterests[0], qaInterests);
-      if (generated) setQaName(generated);
+      if (generated) { setQaName(generated); setQaNameIsAuto(true); }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -46,7 +47,7 @@ const QuickAddPlaceDialog = ({
     setQaInterests(newInterests);
     if (captureMode && onAutoName && newInterests.length > 0) {
       const generated = onAutoName(newInterests[0], newInterests);
-      if (generated) setQaName(generated);
+      if (generated) { setQaName(generated); setQaNameIsAuto(true); }
     }
   };
 
@@ -264,26 +265,33 @@ const QuickAddPlaceDialog = ({
           {/* Name field — both modes. captureMode: auto-generated but editable. QuickAdd: from Google but editable */}
           <div>
             <label className={labelCls}>{t("places.placeName")}</label>
-            <input value={qaName} onChange={e => setQaName(e.target.value)}
-              placeholder={captureMode ? (t("places.placeName") + "...") : ""}
-              className="w-full p-2 border border-gray-300 rounded-lg"
-              style={{
-                direction: isRTL ? "rtl" : "ltr", fontSize: "16px",
-                borderColor: captureMode ? "#22c55e" : "#d1d5db",
-                outline: "none"
-              }} />
+            <div style={{ position: "relative" }}>
+              <input value={qaName} onChange={e => { setQaName(e.target.value); setQaNameIsAuto(false); }}
+                placeholder={captureMode ? (t("places.placeName") + "...") : ""}
+                className="w-full p-2 border border-gray-300 rounded-lg"
+                style={{
+                  direction: isRTL ? "rtl" : "ltr", fontSize: "16px",
+                  borderColor: captureMode ? "#22c55e" : "#d1d5db",
+                  outline: "none", paddingRight: isRTL ? "28px" : "8px", paddingLeft: isRTL ? "8px" : "28px",
+                  width: "100%", boxSizing: "border-box"
+                }} />
+              {qaName && (
+                <button type="button" onClick={() => { setQaName(""); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); }}
+                  style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "14px", lineHeight: 1, padding: "2px" }}
+                >✕</button>
+              )}
+            </div>
             {captureMode && !qaName && (
               <p style={{ fontSize: "10px", color: "#9ca3af", margin: "3px 0 0 4px" }}>
                 {t("trail.whatDidYouSee")} → {t("places.placeName")}
               </p>
             )}
-            {/* Search Google button — captureMode only */}
-            {captureMode && (
+            {/* Search Google — only when user typed manually, not auto-generated */}
+            {captureMode && qaName.trim() && !qaNameIsAuto && (
               <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>
                 <button type="button"
                   onClick={() => onSearchGoogle && onSearchGoogle(qaName)}
-                  disabled={!qaName.trim()}
-                  style={{ flex: 1, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaName.trim() ? "pointer" : "not-allowed", background: qaName.trim() ? "#8b5cf6" : "#e5e7eb", color: qaName.trim() ? "white" : "#9ca3af" }}
+                  style={{ flex: 1, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: "pointer", background: "#8b5cf6", color: "white" }}
                 >🔍 {t("form.searchPlaceGoogle")}</button>
               </div>
             )}
@@ -294,7 +302,7 @@ const QuickAddPlaceDialog = ({
                   <p style={{ textAlign: "center", padding: "8px", color: "#9ca3af", fontSize: "11px" }}>{t("general.searching")}...</p>
                 ) : searchResults.map((result, idx) => (
                   <button key={idx} type="button"
-                    onClick={() => onSelectSearchResult && onSelectSearchResult(result)}
+                    onClick={() => { onSelectSearchResult && onSelectSearchResult(result); setQaName(result.name); setQaNameIsAuto(false); }}
                     style={{ width: "100%", textAlign: isRTL ? "right" : "left", padding: "6px 10px", borderBottom: "1px solid #f3f4f6", cursor: "pointer", background: "none", border: "none", direction: isRTL ? "rtl" : "ltr" }}
                     onMouseEnter={(e) => e.currentTarget.style.background = "#f3f4f6"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "none"}
