@@ -14,7 +14,8 @@
 
 const QuickAddPlaceDialog = ({
   place, captureMode, gpsStatus,
-  onAutoName, allInterestOptions, interestStatus,
+  onAutoName, onSearchGoogle, searchResults, onSelectSearchResult, onClearSearch,
+  allInterestOptions, interestStatus,
   selectedCityId, isUnlocked, tLabel, t,
   onSave, onCancel
 }) => {
@@ -269,6 +270,39 @@ const QuickAddPlaceDialog = ({
                 {t("trail.whatDidYouSee")} → {t("places.placeName")}
               </p>
             )}
+            {/* Search Google + Auto-name buttons — captureMode only */}
+            {captureMode && (
+              <div style={{ display: "flex", gap: "4px", marginTop: "4px" }}>
+                <button type="button"
+                  onClick={() => onSearchGoogle && onSearchGoogle(qaName)}
+                  disabled={!qaName.trim()}
+                  style={{ flex: 2, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaName.trim() ? "pointer" : "not-allowed", background: qaName.trim() ? "#8b5cf6" : "#e5e7eb", color: qaName.trim() ? "white" : "#9ca3af" }}
+                >🔍 {t("form.searchPlaceGoogle")}</button>
+                <button type="button"
+                  onClick={() => { if (onAutoName && qaInterests.length > 0) { const name = onAutoName(qaInterests[0], qaInterests); if (name) setQaName(name); } }}
+                  disabled={!qaInterests.length}
+                  style={{ flex: 2, padding: "5px 8px", borderRadius: "8px", fontSize: "12px", fontWeight: "bold", border: "none", cursor: qaInterests.length ? "pointer" : "not-allowed", background: qaInterests.length ? "#f59e0b" : "#e5e7eb", color: qaInterests.length ? "white" : "#9ca3af" }}
+                >🏷️ {t("places.autoName")}</button>
+              </div>
+            )}
+            {/* Search results dropdown */}
+            {captureMode && searchResults !== null && (
+              <div style={{ marginTop: "4px", border: "1px solid #e5e7eb", borderRadius: "8px", maxHeight: "140px", overflowY: "auto", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+                {searchResults.length === 0 ? (
+                  <p style={{ textAlign: "center", padding: "8px", color: "#9ca3af", fontSize: "11px" }}>{t("general.searching")}...</p>
+                ) : searchResults.map((result, idx) => (
+                  <button key={idx} type="button"
+                    onClick={() => onSelectSearchResult && onSelectSearchResult(result)}
+                    style={{ width: "100%", textAlign: isRTL ? "right" : "left", padding: "6px 10px", borderBottom: "1px solid #f3f4f6", cursor: "pointer", background: "none", border: "none", direction: isRTL ? "rtl" : "ltr" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f3f4f6"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "#1f2937" }}>{result.name}</div>
+                    <div style={{ fontSize: "10px", color: "#6b7280" }}>{result.address}{result.rating ? ` ⭐ ${result.rating}` : ""}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Description + mic */}
@@ -276,7 +310,7 @@ const QuickAddPlaceDialog = ({
             <label className={labelCls}>{`📝 ${t("places.description")}`}</label>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
               <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
-                placeholder={t("places.description")}
+                placeholder={t("places.descriptionPlaceholder") || "הקלד או הקלט תאור קצר של המקום"}
                 className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
                 style={textareaStyle} rows={2} />
               {qaDescription.trim() && (

@@ -3339,6 +3339,19 @@
               }
               return result?.name || "";
             }}
+            onSearchGoogle={(name) => searchPlacesByName(name)}
+            searchResults={locationSearchResults}
+            onSelectSearchResult={(result) => {
+              const detected = window.BKK.getAreasForCoordinates(result.lat, result.lng);
+              const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
+              setNewLocation(prev => ({
+                ...prev, name: result.name, lat: result.lat, lng: result.lng,
+                address: result.address, googlePlaceId: result.googlePlaceId, googlePlace: true, ...areaUpdates
+              }));
+              setLocationSearchResults(null);
+              showToast(`✅ ${result.name}`, 'success');
+            }}
+            onClearSearch={() => setLocationSearchResults(null)}
             allInterestOptions={allInterestOptions}
             interestStatus={interestStatus}
             selectedCityId={selectedCityId}
