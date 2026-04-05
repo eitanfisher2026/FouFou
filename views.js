@@ -2651,6 +2651,8 @@
                           <button onClick={() => {
                             city.active = !isActive;
                             try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); s[city.id] = city.active; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
+                            // Sync to Firebase so all users get the same active cities
+                            if (database) database.ref(`settings/cityStates/${city.id}`).set(city.active);
                             showToast(tLabel(city) + (city.active ? ' ✓' : ' ✗'), 'info');
                             setFormData(prev => ({...prev}));
                           }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#ef4444', fontWeight: 'bold' }}

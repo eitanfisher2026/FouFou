@@ -4019,6 +4019,18 @@
       
       console.log('[FIREBASE] Settings loaded (single listener):', Object.keys(s).filter(k => s[k] != null).join(', '));
       
+      // City active states — admin-controlled, synced to all users via Firebase
+      if (s.cityStates && window.BKK?.cities) {
+        const states = s.cityStates;
+        Object.keys(states).forEach(cityId => {
+          if (window.BKK.cities[cityId]) window.BKK.cities[cityId].active = states[cityId];
+        });
+        // Sync to localStorage so next load is instant
+        try { localStorage.setItem('city_active_states', JSON.stringify(states)); } catch(e) {}
+        // Force re-render to show correct city list
+        setFormData(prev => ({...prev}));
+      }
+
       // Interest groups (label names for wizard grouping)
       if (s.interestGroups) {
         setInterestGroups(s.interestGroups);
