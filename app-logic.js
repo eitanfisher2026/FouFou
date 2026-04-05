@@ -285,6 +285,7 @@
   // City active/inactive states — React state so UI re-renders when admin changes cities
   // Do NOT initialize from localStorage — always wait for Firebase to avoid stale cache
   const [cityActiveStates, setCityActiveStates] = useState({});
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);

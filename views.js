@@ -902,20 +902,38 @@
             {/* Step 1: Choose Interests (was step 2) */}
             {wizardStep === 1 && (<>
               <div className="bg-white rounded-xl shadow-lg p-3">
-                {/* City Selector */}
-                {Object.values(window.BKK.cities || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); }).length > 1 && (
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-                    <select
-                      value={selectedCityId}
-                      onChange={(e) => switchCity(e.target.value)}
-                      style={{ padding: '4px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
-                    >
-                      {Object.values(window.BKK.cities || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); }).map(city => (
-                        <option key={city.id} value={city.id}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* City Selector — custom dropdown, consistent across all Android devices */}
+                {(() => {
+                  const activeCities = Object.values(window.BKK.cities || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); });
+                  if (activeCities.length <= 1) return null;
+                  const selectedCity = window.BKK.cities?.[selectedCityId];
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px', position: 'relative' }}>
+                      <button
+                        onClick={() => setShowCityDropdown(prev => !prev)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
+                      >
+                        <span>{selectedCity?.icon?.startsWith?.('data:') ? '🏙️' : (selectedCity?.icon || '🏙️')} {tLabel(selectedCity)}</span>
+                        <span style={{ fontSize: '10px', color: '#9ca3af' }}>▾</span>
+                      </button>
+                      {showCityDropdown && (<>
+                        <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowCityDropdown(false)} />
+                        <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: '4px', background: '#1f2937', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.4)', zIndex: 50, minWidth: '160px', overflow: 'hidden' }}>
+                          {activeCities.map(city => (
+                            <button key={city.id}
+                              onClick={() => { switchCity(city.id); setShowCityDropdown(false); }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', width: '100%', padding: '12px 16px', background: city.id === selectedCityId ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: 'white', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', direction: 'rtl' }}
+                            >
+                              <span>{tLabel(city)}</span>
+                              <span>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')}</span>
+                              {city.id === selectedCityId && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', display: 'inline-block', flexShrink: 0 }} />}
+                            </button>
+                          ))}
+                        </div>
+                      </>)}
+                    </div>
+                  );
+                })()}
                 {renderStepHeader('⭐', t('wizard.step2Title'), t('wizard.step2Subtitle'), 'hint_interests')}
                 {renderContextHint('hint_interests')}
 
