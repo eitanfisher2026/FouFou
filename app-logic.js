@@ -282,6 +282,10 @@
   const [selectedCityId, setSelectedCityId] = useState(() => {
     try { return localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) { return 'bangkok'; }
   });
+  // City active/inactive states — React state so UI re-renders when admin changes cities
+  const [cityActiveStates, setCityActiveStates] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('city_active_states') || '{}'); } catch(e) { return {}; }
+  });
   const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
@@ -4022,13 +4026,14 @@
       // City active states — admin-controlled, synced to all users via Firebase
       if (s.cityStates && window.BKK?.cities) {
         const states = s.cityStates;
+        // Update window.BKK.cities for compatibility with app-data.js code
         Object.keys(states).forEach(cityId => {
           if (window.BKK.cities[cityId]) window.BKK.cities[cityId].active = states[cityId];
         });
-        // Sync to localStorage so next load is instant
+        // Update React state → triggers re-render of city list
+        setCityActiveStates(states);
+        // Sync to localStorage for fast next-load
         try { localStorage.setItem('city_active_states', JSON.stringify(states)); } catch(e) {}
-        // Force re-render to show correct city list
-        setFormData(prev => ({...prev}));
       }
 
       // Interest groups (label names for wizard grouping)

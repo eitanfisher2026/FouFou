@@ -903,14 +903,14 @@
             {wizardStep === 1 && (<>
               <div className="bg-white rounded-xl shadow-lg p-3">
                 {/* City Selector */}
-                {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).length > 1 && (
+                {Object.values(window.BKK.cities || {}).filter(c => cityActiveStates[c.id] !== false && c.active !== false).length > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
                     <select
                       value={selectedCityId}
                       onChange={(e) => switchCity(e.target.value)}
                       style={{ padding: '4px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
                     >
-                      {Object.values(window.BKK.cities || {}).filter(c => c.active !== false).map(city => (
+                      {Object.values(window.BKK.cities || {}).filter(c => cityActiveStates[c.id] !== false && c.active !== false).map(city => (
                         <option key={city.id} value={city.id}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</option>
                       ))}
                     </select>
@@ -2611,7 +2611,7 @@
                 {(() => {
                   const city = window.BKK.selectedCity;
                   if (!city) return null;
-                  const isActive = city.active !== false;
+                  const isActive = cityActiveStates[city.id] !== false && city.active !== false;
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', padding: '6px 10px', background: isActive ? '#ecfdf5' : '#fef2f2', borderRadius: '8px', border: `1px solid ${isActive ? '#a7f3d0' : '#fecaca'}`, flexWrap: 'wrap' }}>
                       {true ? (
@@ -2649,12 +2649,14 @@
                       )}
                       <span style={{ fontSize: '10px', color: '#6b7280' }}>{city.areas?.length || 0} {t('general.areas')} · {city.interests?.length || 0} {t('nav.myInterests')}</span>
                           <button onClick={() => {
-                            city.active = !isActive;
-                            try { const s = JSON.parse(localStorage.getItem('city_active_states') || '{}'); s[city.id] = city.active; localStorage.setItem('city_active_states', JSON.stringify(s)); } catch(e) {}
+                            const newActive = !isActive;
+                            city.active = newActive;
+                            const newStates = { ...cityActiveStates, [city.id]: newActive };
+                            setCityActiveStates(newStates);
+                            try { localStorage.setItem('city_active_states', JSON.stringify(newStates)); } catch(e) {}
                             // Sync to Firebase so all users get the same active cities
-                            if (database) database.ref(`settings/cityStates/${city.id}`).set(city.active);
-                            showToast(tLabel(city) + (city.active ? ' ✓' : ' ✗'), 'info');
-                            setFormData(prev => ({...prev}));
+                            if (database) database.ref(`settings/cityStates/${city.id}`).set(newActive);
+                            showToast(tLabel(city) + (newActive ? ' ✓' : ' ✗'), 'info');
                           }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#ef4444', fontWeight: 'bold' }}
                           >{isActive ? `▶️ ${t('general.active')}` : `⏸️ ${t('general.inactive')}`}</button>
                           <button onClick={() => { window.BKK.exportCityFile(city); showToast(`📥 city-${city.id}.js`, 'success'); setCityModified(false); }}
