@@ -108,13 +108,15 @@
                 <div className="flex items-center gap-2">
                   {showEditLocationDialog && editNavList && editNavList.length > 1 && (() => {
                     const idx = editNavList.findIndex(l => l.name === (editingLocation && editingLocation.name));
+                    // Always get fresh data from customLocations to reflect recent updates
+                    const getFresh = (navItem) => customLocations.find(l => l.id === navItem.id || l.name === navItem.name) || navItem;
                     return idx >= 0 ? (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleEditLocation(editNavList[(idx - 1 + editNavList.length) % editNavList.length], editNavList)}
+                        <button onClick={() => handleEditLocation(getFresh(editNavList[(idx - 1 + editNavList.length) % editNavList.length]), editNavList)}
                           style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >◀</button>
                         <span style={{ fontSize: '9px', opacity: 0.7 }}>{idx + 1}/{editNavList.length}</span>
-                        <button onClick={() => handleEditLocation(editNavList[(idx + 1) % editNavList.length], editNavList)}
+                        <button onClick={() => handleEditLocation(getFresh(editNavList[(idx + 1) % editNavList.length]), editNavList)}
                           style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >▶</button>
                       </div>

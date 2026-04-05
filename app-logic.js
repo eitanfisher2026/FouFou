@@ -9135,7 +9135,18 @@
               showToast(`💾 ${updatedLocation.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
             }
             if (!closeAfter) {
-              setEditingLocation({ ...updatedLocation, firebaseId });
+              const fresh = { ...updatedLocation, firebaseId };
+              setEditingLocation(fresh);
+              // Refresh form so it reflects saved state (prevents false "no changes" on next save)
+              setNewLocation({
+                name: fresh.name || '', description: fresh.description || '', notes: fresh.notes || '',
+                area: fresh.area || '', areas: fresh.areas || [], interests: fresh.interests || [],
+                lat: fresh.lat || null, lng: fresh.lng || null, mapsUrl: fresh.mapsUrl || '',
+                address: fresh.address || '', uploadedImage: fresh.uploadedImage || null,
+                imageUrls: fresh.imageUrls || [], locked: !!fresh.locked, dedupOk: !!fresh.dedupOk,
+                googlePlaceId: fresh.googlePlaceId || '', googleRating: fresh.googleRating || null,
+                googleRatingCount: fresh.googleRatingCount || 0
+              });
             }
           })
           .catch((error) => {
