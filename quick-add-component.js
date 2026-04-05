@@ -311,54 +311,54 @@ const QuickAddPlaceDialog = ({
           <div>
             <label className={labelCls}>{`📝 ${t("places.description")}`}</label>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-              <div style={{ flex: 1, position: "relative" }}>
+              <div style={{ position: "relative", flex: 1 }}>
                 <textarea value={qaDescription} onChange={e => setQaDescription(e.target.value)}
                   placeholder={qaRecordingField === "description" ? "" : (t("places.descriptionPlaceholder") || "הקלד או הקלט תאור קצר של המקום")}
                   className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                  style={{ ...textareaStyle, borderColor: qaRecordingField === "description" ? "#ef4444" : undefined, width: "100%", boxSizing: "border-box", paddingBottom: qaInterimText && qaRecordingField === "description" ? "22px" : undefined }} rows={2} />
-                {qaInterimText && qaRecordingField === "description" && (
-                  <div style={{ position: "absolute", bottom: "4px", left: "6px", right: "6px", fontSize: "12px", color: "#9ca3af", fontStyle: "italic", pointerEvents: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {qaInterimText}
-                  </div>
+                  style={{ ...textareaStyle, width: "100%", boxSizing: "border-box", borderColor: qaRecordingField === "description" ? "#ef4444" : undefined, paddingRight: isRTL ? "24px" : "8px", paddingLeft: isRTL ? "8px" : "24px" }} rows={2} />
+                {qaDescription.trim() && (
+                  <button type="button" onClick={() => { if (qaRecordingField === "description") startRec("description"); setQaDescription(''); }}
+                    style={{ position: "absolute", top: "6px", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "13px", lineHeight: 1, padding: "2px" }}>✕</button>
                 )}
               </div>
-              {qaDescription.trim() && (
-                <button type="button" onClick={() => setQaDescription('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>✕</button>
-              )}
               {window.BKK.speechSupported && (
-                <button type="button" onClick={() => startRec("description")} style={micStyle(qaRecordingField === "description")}
+                <button type="button" onClick={() => startRec("description")}
+                  style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: qaRecordingField === "description" ? "#ef4444" : "#f3f4f6", color: qaRecordingField === "description" ? "white" : "#6b7280", animation: qaRecordingField === "description" ? "pulse 1s ease-in-out infinite" : "none", boxShadow: qaRecordingField === "description" ? "0 0 0 3px rgba(239,68,68,0.3)" : "none" }}
                   title={qaRecordingField === "description" ? t("speech.stopRecording") : t("speech.startRecording")}>
                   {qaRecordingField === "description" ? "⏹️" : "🎤"}
                 </button>
               )}
             </div>
+            {qaInterimText && qaRecordingField === "description" && (
+              <div style={{ marginTop: "4px", padding: "4px 8px", background: "#fef3c7", borderRadius: "6px", fontSize: "12px", color: "#92400e", fontStyle: "italic", direction: isRTL ? "rtl" : "ltr" }}>🎤 {qaInterimText}</div>
+            )}
           </div>
 
           {/* Notes + mic */}
           <div>
             <label className={labelCls}>{`💭 ${t("places.notes")}`}</label>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-              <div style={{ flex: 1, position: "relative" }}>
+              <div style={{ position: "relative", flex: 1 }}>
                 <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
                   placeholder={qaRecordingField === "notes" ? "" : t("places.notes")}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                  style={{ ...textareaStyle, borderColor: qaRecordingField === "notes" ? "#ef4444" : undefined, width: "100%", boxSizing: "border-box", paddingBottom: qaInterimText && qaRecordingField === "notes" ? "22px" : undefined }} rows={2} />
-                {qaInterimText && qaRecordingField === "notes" && (
-                  <div style={{ position: "absolute", bottom: "4px", left: "6px", right: "6px", fontSize: "12px", color: "#9ca3af", fontStyle: "italic", pointerEvents: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {qaInterimText}
-                  </div>
+                  style={{ ...textareaStyle, width: "100%", boxSizing: "border-box", borderColor: qaRecordingField === "notes" ? "#ef4444" : undefined, paddingRight: isRTL ? "24px" : "8px", paddingLeft: isRTL ? "8px" : "24px" }} rows={2} />
+                {qaNotes.trim() && (
+                  <button type="button" onClick={() => setQaNotes('')}
+                    style={{ position: "absolute", top: "6px", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "13px", lineHeight: 1, padding: "2px" }}>✕</button>
                 )}
               </div>
-              {qaNotes.trim() && (
-                <button type="button" onClick={() => setQaNotes('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>✕</button>
-              )}
               {window.BKK.speechSupported && (
-                <button type="button" onClick={() => startRec("notes")} style={micStyle(qaRecordingField === "notes")}
+                <button type="button" onClick={() => startRec("notes")}
+                  style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: qaRecordingField === "notes" ? "#ef4444" : "#f3f4f6", color: qaRecordingField === "notes" ? "white" : "#6b7280", animation: qaRecordingField === "notes" ? "pulse 1s ease-in-out infinite" : "none", boxShadow: qaRecordingField === "notes" ? "0 0 0 3px rgba(239,68,68,0.3)" : "none" }}
                   title={qaRecordingField === "notes" ? t("speech.stopRecording") : t("speech.startRecording")}>
                   {qaRecordingField === "notes" ? "⏹️" : "🎤"}
                 </button>
               )}
             </div>
+            {qaInterimText && qaRecordingField === "notes" && (
+              <div style={{ marginTop: "4px", padding: "4px 8px", background: "#fef3c7", borderRadius: "6px", fontSize: "12px", color: "#92400e", fontStyle: "italic", direction: isRTL ? "rtl" : "ltr" }}>🎤 {qaInterimText}</div>
+            )}
           </div>
 
           {/* Rating */}

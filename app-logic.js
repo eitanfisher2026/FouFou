@@ -486,6 +486,75 @@
   const [interimText, setInterimText] = useState(''); // live speech preview
   const stopRecordingRef = React.useRef(null);
 
+  // Unified stop — safe to call anytime
+  const stopAllRecording = () => {
+    if (stopRecordingRef.current) { stopRecordingRef.current(); stopRecordingRef.current = null; }
+    setIsRecording(false); setRecordingField(null); setInterimText('');
+  };
+
+  // Unified recording toggle for a field
+  const toggleRecording = (fieldId, onFinalText) => {
+    if (isRecording && recordingField === fieldId) { stopAllRecording(); return; }
+    if (isRecording) stopAllRecording();
+    setIsRecording(true); setRecordingField(fieldId); setInterimText('');
+    const stop = window.BKK.startSpeechToText({
+      maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+      onResult: (text, isFinal) => {
+        if (isFinal) { setInterimText(''); onFinalText(text); }
+        else { setInterimText(text); }
+      },
+      onEnd: () => { setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null; },
+      onError: (error) => {
+        setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null;
+        if (error === 'not-allowed') showToast('🎤 ' + (t('speech.micPermissionDenied') || 'אין הרשאת מיקרופון'), 'error');
+      }
+    });
+    stopRecordingRef.current = stop;
+  };
+
+  // RecordingTextarea — unified component used everywhere
+  // fieldId: unique string per field. value/onChange: controlled. onClear: optional.
+  const RecordingTextarea = ({ fieldId, value, onChange, onClear, placeholder, rows = 2, className = '', style = {} }) => {
+    const active = isRecording && recordingField === fieldId;
+    const isRTL = window.BKK.i18n.isRTL();
+    return (
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <textarea
+            value={value}
+            onChange={onChange}
+            placeholder={active ? '' : placeholder}
+            className={className || 'w-full p-2 border-2 border-gray-300 rounded-lg'}
+            style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', minHeight: '56px', resize: 'vertical', lineHeight: '1.4', width: '100%', boxSizing: 'border-box', borderColor: active ? '#ef4444' : undefined, paddingRight: isRTL ? '24px' : '8px', paddingLeft: isRTL ? '8px' : '24px', ...style }}
+            rows={rows}
+          />
+          {value?.trim() && (
+            <button type="button"
+              onClick={() => { stopAllRecording(); onClear ? onClear() : onChange({ target: { value: '' } }); }}
+              style={{ position: 'absolute', top: '6px', [isRTL ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+            >✕</button>
+          )}
+        </div>
+        {window.BKK?.speechSupported && (
+          <button type="button"
+            onClick={() => toggleRecording(fieldId, (text) => onChange({ target: { value: (value ? value + ' ' : '') + text } }))}
+            style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', background: active ? '#ef4444' : '#f3f4f6', color: active ? 'white' : '#6b7280', animation: active ? 'pulse 1s ease-in-out infinite' : 'none', boxShadow: active ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none' }}
+          >{active ? '⏹️' : '🎤'}</button>
+        )}
+      </div>
+    );
+  };
+
+  // Interim bar — show below any RecordingTextarea when active for that field
+  const RecordingInterim = ({ fieldId }) => {
+    if (!isRecording || recordingField !== fieldId || !interimText) return null;
+    return (
+      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+        🎤 {interimText}
+      </div>
+    );
+  };
+
   // Detect return from Google Maps — check localStorage for activeTrail
   // Also check for app updates when returning to tab
   React.useEffect(() => {

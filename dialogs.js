@@ -475,72 +475,16 @@
                 <div className="space-y-1.5">
                   <div>
                     <label className="block text-xs font-bold mb-1">{`📝 ${t("places.description")}`}</label>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
-                      <div style={{ position: 'relative', flex: 1 }}>
-                      <textarea
-                        value={newLocation.description || ''}
-                        onChange={(e) => setNewLocation({...newLocation, description: e.target.value})}
-                        placeholder={t("places.description")}
-                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', minHeight: '60px', resize: 'vertical', lineHeight: '1.4', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
-                        rows="2"
-                      />
-                      {newLocation.description?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, description: ''}))}
-                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
-                        >✕</button>
-                      )}
-                      </div>
-                      {window.BKK.speechSupported && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isRecording && recordingField === 'description') {
-                              if (stopRecordingRef.current) stopRecordingRef.current();
-                              stopRecordingRef.current = null;
-                              setIsRecording(false); setRecordingField(null); setInterimText('');
-                            } else {
-                              if (stopRecordingRef.current) stopRecordingRef.current();
-                              setIsRecording(true); setRecordingField('description'); setInterimText('');
-                              const stop = window.BKK.startSpeechToText({
-                                maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                                onResult: (text, isFinal) => {
-                                  if (isFinal) {
-                                    setInterimText('');
-                                    setNewLocation(prev => ({...prev, description: (prev.description ? prev.description + ' ' : '') + text}));
-                                  } else {
-                                    setInterimText(text);
-                                  }
-                                },
-                                onEnd: () => { setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null; },
-                                onError: (error) => {
-                                  setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null;
-                                  if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
-                                }
-                              });
-                              stopRecordingRef.current = stop;
-                            }
-                          }}
-                          style={{
-                            width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: (isRecording && recordingField === 'description') ? '#ef4444' : '#f3f4f6',
-                            color: (isRecording && recordingField === 'description') ? 'white' : '#6b7280',
-                            fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            animation: (isRecording && recordingField === 'description') ? 'pulse 1s ease-in-out infinite' : 'none',
-                            boxShadow: (isRecording && recordingField === 'description') ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
-                          }}
-                          title={(isRecording && recordingField === 'description') ? t('speech.stopRecording') : t('speech.startRecording')}
-                        >
-                          {(isRecording && recordingField === 'description') ? '⏹️' : '🎤'}
-                        </button>
-                      )}
-                    </div>
-                    {/* Live interim text while recording description */}
-                    {isRecording && recordingField === 'description' && interimText && (
-                      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                        🎤 {interimText}
-                      </div>
-                    )}
+                    {RecordingTextarea({
+                      fieldId: 'loc_description',
+                      value: newLocation.description || '',
+                      onChange: (e) => setNewLocation(prev => ({...prev, description: e.target.value})),
+                      onClear: () => setNewLocation(prev => ({...prev, description: ''})),
+                      placeholder: t('places.description'),
+                      rows: 2,
+                      className: 'w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500'
+                    })}
+                    {RecordingInterim({ fieldId: 'loc_description' })}
                   </div>
                   {/* Ratings row — Google + FouFou */}
                   {(() => {
@@ -589,72 +533,16 @@
                   })()}
                   <div>
                     <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
-                      <div style={{ position: 'relative', flex: 1 }}>
-                      <textarea
-                        value={newLocation.notes || ''}
-                        onChange={(e) => setNewLocation({...newLocation, notes: e.target.value})}
-                        placeholder={t("places.notes")}
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', minHeight: '50px', fontSize: '16px', paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
-                        rows="2"
-                      />
-                      {newLocation.notes?.trim() && (
-                        <button type="button" onClick={() => setNewLocation(prev => ({...prev, notes: ''}))}
-                          style={{ position: 'absolute', top: '6px', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
-                        >✕</button>
-                      )}
-                      </div>
-                      {window.BKK.speechSupported && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isRecording && recordingField === 'notes') {
-                              if (stopRecordingRef.current) stopRecordingRef.current();
-                              stopRecordingRef.current = null;
-                              setIsRecording(false); setRecordingField(null); setInterimText('');
-                            } else {
-                              if (stopRecordingRef.current) stopRecordingRef.current();
-                              setIsRecording(true); setRecordingField('notes'); setInterimText('');
-                              const stop = window.BKK.startSpeechToText({
-                                maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
-                                onResult: (text, isFinal) => {
-                                  if (isFinal) {
-                                    setInterimText('');
-                                    setNewLocation(prev => ({...prev, notes: (prev.notes ? prev.notes + ' ' : '') + text}));
-                                  } else {
-                                    setInterimText(text);
-                                  }
-                                },
-                                onEnd: () => { setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null; },
-                                onError: (error) => {
-                                  setIsRecording(false); setRecordingField(null); setInterimText(''); stopRecordingRef.current = null;
-                                  if (error === 'not-allowed') showToast('🎤 ' + t('speech.micPermissionDenied'), 'error');
-                                }
-                              });
-                              stopRecordingRef.current = stop;
-                            }
-                          }}
-                          style={{
-                            width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: (isRecording && recordingField === 'notes') ? '#ef4444' : '#f3f4f6',
-                            color: (isRecording && recordingField === 'notes') ? 'white' : '#6b7280',
-                            fontSize: '16px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            animation: (isRecording && recordingField === 'notes') ? 'pulse 1s ease-in-out infinite' : 'none',
-                            boxShadow: (isRecording && recordingField === 'notes') ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none'
-                          }}
-                          title={(isRecording && recordingField === 'notes') ? t('speech.stopRecording') : t('speech.startRecording')}
-                        >
-                          {(isRecording && recordingField === 'notes') ? '⏹️' : '🎤'}
-                        </button>
-                      )}
-                    </div>
-                    {/* Live interim text while recording notes */}
-                    {isRecording && recordingField === 'notes' && interimText && (
-                      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
-                        🎤 {interimText}
-                      </div>
-                    )}
+                    {RecordingTextarea({
+                      fieldId: 'loc_notes',
+                      value: newLocation.notes || '',
+                      onChange: (e) => setNewLocation(prev => ({...prev, notes: e.target.value})),
+                      onClear: () => setNewLocation(prev => ({...prev, notes: ''})),
+                      placeholder: t('places.notes'),
+                      rows: 2,
+                      className: 'w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500'
+                    })}
+                    {RecordingInterim({ fieldId: 'loc_notes' })}
                   </div>
                 </div>
 
@@ -3143,16 +3031,18 @@
         const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
         
         const handleClose = () => {
-          stopReviewDictation(); // always stop recording before closing
-          if (reviewDialog.hasChanges) {
-            showConfirm(
-              t('reviews.unsavedChanges') || 'יש שינויים שלא נשמרו. לשמור?',
-              () => saveReview(),
-              { onCancel: () => { setReviewDialog(null); }, confirmLabel: t('general.save') || 'שמור', confirmColor: '#f59e0b' }
-            );
-          } else {
-            setReviewDialog(null);
-          }
+          stopAllRecording(); // stop recording synchronously before any dialog logic
+          setTimeout(() => { // wait one tick so onEnd fires before we check state
+            if (reviewDialog?.hasChanges) {
+              showConfirm(
+                t('reviews.unsavedChanges') || 'יש שינויים שלא נשמרו. לשמור?',
+                () => saveReview(),
+                { onCancel: () => setReviewDialog(null), confirmLabel: t('general.save') || 'שמור', confirmColor: '#f59e0b' }
+              );
+            } else {
+              setReviewDialog(null);
+            }
+          }, 50);
         };
         
         return (
@@ -3191,35 +3081,16 @@
                     >★</button>
                   ))}
                 </div>
-                {/* Text + dictation */}
-                <div style={{ position: 'relative' }}>
-                  <textarea
-                    value={reviewDialog.myText}
-                    onChange={(e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true}))}
-                    placeholder={reviewRecording ? '' : t('reviews.writeReview')}
-                    rows={3}
-                    style={{ width: '100%', padding: '8px 8px 28px 8px', borderRadius: '8px', border: reviewRecording ? '1.5px solid #ef4444' : '1px solid #d1d5db', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
-                  />
-                  {/* Interim overlay */}
-                  {reviewInterimText ? (
-                    <div style={{ position: 'absolute', bottom: '28px', left: '8px', right: '8px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', pointerEvents: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {reviewInterimText}
-                    </div>
-                  ) : null}
-                  {/* Buttons row at bottom of textarea */}
-                  <div style={{ position: 'absolute', bottom: '6px', left: '6px', display: 'flex', gap: '4px' }}>
-                    {window.BKK.speechSupported && (
-                      <button onClick={startReviewDictation}
-                        style={{ padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '13px', background: reviewRecording ? '#fee2e2' : '#f3f4f6', animation: reviewRecording ? 'pulse 1s infinite' : 'none' }}
-                      >{reviewRecording ? '⏹️' : '🎤'}</button>
-                    )}
-                    {reviewDialog.myText ? (
-                      <button onClick={() => { stopReviewDictation(); setReviewDialog(prev => ({...prev, myText: '', hasChanges: true})); }}
-                        style={{ padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', background: '#f3f4f6', color: '#9ca3af', fontWeight: 'bold' }}
-                      >✕</button>
-                    ) : null}
-                  </div>
-                </div>
+                {/* Text + dictation — unified RecordingTextarea */}
+                {RecordingTextarea({
+                  fieldId: 'review_text',
+                  value: reviewDialog.myText,
+                  onChange: (e) => setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true})),
+                  onClear: () => setReviewDialog(prev => ({...prev, myText: '', hasChanges: true})),
+                  placeholder: t('reviews.writeReview'),
+                  rows: 3
+                })}
+                {RecordingInterim({ fieldId: 'review_text' })}
               </div>
               
               {/* All Reviews */}
