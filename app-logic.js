@@ -2614,7 +2614,7 @@
               onTouchStart={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              style={{ padding: '12px 16px', lineHeight: '1.7', maxHeight: '50vh', overflowY: 'auto', userSelect: 'text', cursor: 'text', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+              style={{ padding: '12px 16px', lineHeight: '1.7', maxHeight: '50vh', overflowY: 'auto', userSelect: 'text', cursor: 'text', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
             >
               {txt}
             </div>
