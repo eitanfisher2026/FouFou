@@ -1641,8 +1641,8 @@
   }, [isDataLoaded]);
 
   // Cache version check — on startup, read settings/cacheVersion once.
-  // If different from local cache → clear interest caches so Firebase data replaces stale cache.
-  // If corrupted/missing → auto-repair + send system alert (rate-limited).
+  // Stale-While-Revalidate: always render from cache immediately, Firebase updates silently.
+  // cacheVersion only used to detect corruption and send alert.
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     database.ref('settings/cacheVersion').once('value').then(snap => {
@@ -1651,20 +1651,11 @@
       if (!serverVersion || typeof serverVersion !== 'number') {
         sendSystemAlert('settings/cacheVersion is missing or corrupted. Value: ' + JSON.stringify(serverVersion) + '. Auto-repairing.');
         database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
-        return; // trust local cache — don't clear anything
+        return;
       }
-      const localVersion = parseInt(localStorage.getItem('foufou_cache_version') || '0');
-      if (serverVersion !== localVersion) {
-        // Server has newer data — clear interest caches so Firebase loads fresh
-        try {
-          localStorage.removeItem('foufou_custom_interests');
-          localStorage.removeItem('foufou_interest_config');
-          localStorage.removeItem('foufou_interest_groups');
-          // Note: foufou_interest_status is user preference — never cleared by cache version
-        } catch(e) {}
-        // Save new version — will be written after Firebase listeners populate fresh data
-        try { localStorage.setItem('foufou_cache_version', String(serverVersion)); } catch(e) {}
-      }
+      // Just update local version — don't delete caches.
+      // Firebase listeners always load fresh data in background anyway.
+      try { localStorage.setItem('foufou_cache_version', String(serverVersion)); } catch(e) {}
     }).catch(() => {
       // Network error on version check — safe to ignore, use local cache as-is
     });
