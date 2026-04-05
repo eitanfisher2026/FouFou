@@ -2609,8 +2609,13 @@
                   style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '26px', height: '26px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 'bold' }}>✕</button>
               </div>
             </div>
-            {/* Content */}
-            <div style={{ padding: '12px 16px', lineHeight: '1.7', maxHeight: '50vh', overflowY: 'auto', userSelect: 'text', cursor: 'text' }}>
+            {/* Content — touchAction auto so scroll works, stops drag propagation */}
+            <div
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              style={{ padding: '12px 16px', lineHeight: '1.7', maxHeight: '50vh', overflowY: 'auto', userSelect: 'text', cursor: 'text', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+            >
               {txt}
             </div>
           </div>
