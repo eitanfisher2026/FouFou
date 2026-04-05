@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.17.15` (Apr 05, 2026)
+- **גרסה:** `3.17.16` (Apr 05, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -438,6 +438,42 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
 17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
+
+---
+
+## שינויים מרכזיים — סשן Apr 05, 2026 (v3.17.2→3.17.15) — חנויות + תיקונים
+
+### About Dialog
+- State: aboutContent, showAbout, aboutEditing, aboutLocalText
+- נטען מ-settings/aboutContent (Firebase rule override: .read: true לכולם)
+- שמירה עברית: שני כפתורים — שמור / שמור+תרגם. אנגלית: שמור בלבד.
+- i18n: about.title/edit/cancel/save/saveTranslate/placeholder/noContent ב-i18n.js בלבד!
+
+### כלל קריטי — i18n
+תרגומים רק ב-i18n.js. app-data.js נבנה מחדש בכל build ומחק שינויים ישירים.
+
+### כלל גרסה
+bump תמיד ראשון לפני כל שינוי. build.py מאזהיר אם שוכחים.
+
+### localStorage cache לטעינה מהירה
+customInterests, interestConfig, interestGroups, interestStatus — נשמרים ב-localStorage.
+cityActiveStates — לא בlocalStorage! תמיד מFirebase בלבד.
+
+### allInterestOptions מיון
+currentLang נוסף ל-dependency array — מיון מחדש בכל החלפת שפה.
+
+### ערים פעילות
+- שדה active ב-cities/{cityId}/general/active (קריא לכולם)
+- cityActiveStates — React state (לא localStorage)
+- Dropdown מותאם אישית — custom React, לא HTML select native
+
+### Firebase Rules
+settings/aboutContent: .read: true (override)
+cities/*/general: .read: true (כבר היה)
+cityStates: .read: true (נוסף, לא בשימוש פעיל)
+
+### sw.js + manifest.json + privacy.html + index.html
+ראה סשן Apr 04 — כל הקבצים קיימים ונכונים.
 
 ---
 
