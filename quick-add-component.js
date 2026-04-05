@@ -373,18 +373,27 @@ const QuickAddPlaceDialog = ({
               ))}
             </div>
             {qaRatingScore > 0 && (
-              <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-                <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
-                  placeholder={t("reviews.writeReview")}
-                  className="flex-1 p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
-                  style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical" }} />
-                {qaRatingText.trim() && (
-                  <button type="button" onClick={() => setQaRatingText('')} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: '#fee2e2', color: '#dc2626', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={t('general.clear') || 'מחק'}>🗑️</button>
-                )}
-                {window.BKK.speechSupported && (
-                  <button type="button" onClick={() => startRec("rating")} style={micStyle(qaRecordingField === "rating")}>
-                    {qaRecordingField === "rating" ? "⏹️" : "🎤"}
-                  </button>
+              <div>
+                <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <textarea value={qaRatingText} onChange={e => setQaRatingText(e.target.value)} rows={2}
+                      placeholder={qaRecordingField === "rating" ? "" : t("reviews.writeReview")}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
+                      style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "14px", resize: "vertical", width: "100%", boxSizing: "border-box", borderColor: qaRecordingField === "rating" ? "#ef4444" : undefined, paddingRight: isRTL ? "24px" : "8px", paddingLeft: isRTL ? "8px" : "24px" }} />
+                    {qaRatingText.trim() && (
+                      <button type="button" onClick={() => setQaRatingText('')}
+                        style={{ position: "absolute", top: "6px", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "13px", lineHeight: 1, padding: "2px" }}>✕</button>
+                    )}
+                  </div>
+                  {window.BKK.speechSupported && (
+                    <button type="button" onClick={() => startRec("rating")}
+                      style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: qaRecordingField === "rating" ? "#ef4444" : "#f3f4f6", color: qaRecordingField === "rating" ? "white" : "#6b7280", animation: qaRecordingField === "rating" ? "pulse 1s ease-in-out infinite" : "none", boxShadow: qaRecordingField === "rating" ? "0 0 0 3px rgba(239,68,68,0.3)" : "none" }}>
+                      {qaRecordingField === "rating" ? "⏹️" : "🎤"}
+                    </button>
+                  )}
+                </div>
+                {qaInterimText && qaRecordingField === "rating" && (
+                  <div style={{ marginTop: "4px", padding: "4px 8px", background: "#fef3c7", borderRadius: "6px", fontSize: "12px", color: "#92400e", fontStyle: "italic", direction: isRTL ? "rtl" : "ltr" }}>🎤 {qaInterimText}</div>
                 )}
               </div>
             )}

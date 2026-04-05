@@ -3046,7 +3046,7 @@
         };
         
         return (
-          <div className="fixed inset-0 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10200 }} onClick={handleClose}>
+          <div className="fixed inset-0 flex items-center justify-center p-3" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10100 }} onClick={handleClose}>
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="p-3 border-b bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-xl">
