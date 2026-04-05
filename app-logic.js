@@ -792,7 +792,7 @@
       googleMaxWaypoints: 12,
       defaultRadius: 500,
       // Dedup
-      dedupRadiusMeters: 50,
+      dedupRadiusMeters: 100,
       dedupGoogleEnabled: 1,
       dedupCustomEnabled: 1,
       // Trail
@@ -4519,78 +4519,84 @@
       }
     }
     
-    // 2. Google Places Nearby Search (only if expanded interests have Google types)
+    // 2. Google Places Search — two strategies: Nearby (types) + Text Search (textSearch)
     if (sp.dedupGoogleEnabled && GOOGLE_PLACES_API_KEY) {
       try {
         const interestToGP = window.BKK.interestToGooglePlaces || {};
         const googleTypes = [];
+        const textQueries = [];
         const blacklistWords = [];
         for (const interest of expandedInterests) {
           const types = interestToGP[interest];
           if (types) googleTypes.push(...types);
-          // Collect blacklist from config (Firebase overrides + defaults)
           const cfg = interestConfig[interest];
+          if (cfg?.textSearch) textQueries.push(cfg.textSearch);
           if (cfg?.blacklist) {
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
           }
-          // Also check custom interest's base category
           const ci = interestMap[interest];
           if (ci?.baseCategory && interestConfig[ci.baseCategory]?.blacklist) {
             blacklistWords.push(...interestConfig[ci.baseCategory].blacklist.map(w => w.toLowerCase()));
           }
         }
         const uniqueTypes = [...new Set(googleTypes)].slice(0, 5);
+        const uniqueTextQueries = [...new Set(textQueries)];
         const uniqueBlacklist = [...new Set(blacklistWords)];
-        
-        // Skip Google search if none of the expanded interests have Place Types
-        // (private-only interests → check only custom locations above)
+        const searchRadius = Math.max(radius, 50);
+        const fieldMask = 'places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.id,places.types,places.googleMapsUri';
+
+        const mapPlace = (p) => ({
+          name: p.displayName?.text || '',
+          lat: p.location?.latitude,
+          lng: p.location?.longitude,
+          address: p.formattedAddress || '',
+          rating: p.rating || 0,
+          ratingCount: p.userRatingCount || 0,
+          googlePlaceId: p.id,
+          mapsUrl: p.googleMapsUri || '',
+          types: p.types || [],
+          _distance: Math.round(calcDistance(lat, lng, p.location?.latitude || 0, p.location?.longitude || 0))
+        });
+        const applyBlacklist = (places) => uniqueBlacklist.length === 0 ? places :
+          places.filter(p => !uniqueBlacklist.some(w => (p.displayName?.text || '').toLowerCase().includes(w)));
+
+        // 2a. Nearby Search for type-based interests
         if (uniqueTypes.length > 0) {
-          const body = {
-            locationRestriction: {
-              circle: {
-                center: { latitude: lat, longitude: lng },
-                radius: Math.max(radius, 50)
-              }
-            },
-            includedTypes: uniqueTypes,
-            maxResultCount: 5
-          };
-          
           const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
-              'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.id,places.types,places.googleMapsUri'
-            },
-            body: JSON.stringify(body)
+            headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
+            body: JSON.stringify({ locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, includedTypes: uniqueTypes, maxResultCount: 5 })
           });
-          
           if (response.ok) {
             const data = await response.json();
-            results.google = (data.places || [])
-              .filter(p => {
-                // Apply blacklist: skip places whose name contains blacklisted words
-                if (uniqueBlacklist.length === 0) return true;
-                const name = (p.displayName?.text || '').toLowerCase();
-                return !uniqueBlacklist.some(word => name.includes(word));
-              })
-              .map(p => ({
-                name: p.displayName?.text || '',
-                lat: p.location?.latitude,
-                lng: p.location?.longitude,
-                address: p.formattedAddress || '',
-                rating: p.rating || 0,
-                ratingCount: p.userRatingCount || 0,
-                googlePlaceId: p.id,
-                mapsUrl: p.googleMapsUri || '',
-                types: p.types || [],
-                _distance: Math.round(calcDistance(lat, lng, p.location?.latitude || 0, p.location?.longitude || 0))
-              }));
+            results.google.push(...applyBlacklist(data.places || []).map(mapPlace));
           }
         }
+
+        // 2b. Text Search for text-based interests (parallel)
+        if (uniqueTextQueries.length > 0) {
+          await Promise.all(uniqueTextQueries.map(async (query) => {
+            const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
+              body: JSON.stringify({ textQuery: query, locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, maxResultCount: 5 })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              const nearby = applyBlacklist(data.places || []).map(mapPlace).filter(p => p._distance <= radius);
+              results.google.push(...nearby);
+            }
+          }));
+          // Deduplicate by googlePlaceId
+          const seen = new Set();
+          results.google = results.google.filter(p => {
+            if (!p.googlePlaceId || seen.has(p.googlePlaceId)) return false;
+            seen.add(p.googlePlaceId); return true;
+          });
+        }
+
       } catch (e) {
-        console.warn('[DEDUP] Google nearby search failed:', e.message);
+        console.warn('[DEDUP] Google search failed:', e.message);
       }
     }
     

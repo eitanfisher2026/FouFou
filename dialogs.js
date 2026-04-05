@@ -3242,6 +3242,11 @@
               const finalLocation = {
                 ...newLocation,
                 ...enriched,
+                // GPS must come from newLocation (updated live) — never from enriched (stale place snapshot)
+                lat: newLocation.lat,
+                lng: newLocation.lng,
+                areas: newLocation.areas,
+                area: newLocation.area,
                 name: finalName,
                 interests: finalInterests,
                 uploadedImage: enriched.uploadedImage || null,
