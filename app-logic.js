@@ -9065,11 +9065,12 @@
     const hasChanges = locationHasChanges();
     
     if (!hasChanges) {
+      showToast(`💡 ${t('places.noChanges') || 'אין שינויים לשמור'}`, 'info');
       if (closeAfter) {
         setShowEditLocationDialog(false);
         setEditingLocation(null);
       }
-      return; // No toast, no save
+      return;
     }
     
     // Use provided coordinates (can be null)

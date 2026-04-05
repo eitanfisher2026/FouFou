@@ -928,25 +928,13 @@
                   </>
                 ) : (
                 <>
-                {/* Save only (stays open) */}
+                {/* Save only — stays open */}
                 <button
                   onClick={() => {
-                    if (!newLocation.name || !newLocation.name.trim()) { showToast(t('places.enterPlaceName'), 'warning'); return; }
-                    if (!newLocation.interests || newLocation.interests.length === 0) { showToast(t('form.selectAtLeastOneInterest'), 'warning'); return; }
-                    const exists = customLocations.find(loc =>
-                      loc.name.toLowerCase() === newLocation.name.trim().toLowerCase() &&
-                      (!editingLocation || loc.id !== editingLocation.id)
-                    );
-                    if (exists) { showToast(`⚠️ ${t('places.placeExists')}`, 'warning'); }
                     if (showEditLocationDialog) {
-                      updateCustomLocation(false); // stay open
+                      updateCustomLocation(false);
                     } else {
-                      saveWithDedupCheck(false); // stay open, convert to edit mode
-                      // Switch to edit mode after save so next action is "update"
-                      setTimeout(() => {
-                        const saved = customLocations.find(l => l.name === newLocation.name.trim());
-                        if (saved) { setEditingLocation(saved); setShowEditLocationDialog(true); setShowAddLocationDialog(false); }
-                      }, 500);
+                      saveWithDedupCheck(false, false, null);
                     }
                   }}
                   disabled={!newLocation.name?.trim()}
@@ -958,20 +946,13 @@
                 >
                   {showEditLocationDialog ? t('general.update') : t('general.add')}
                 </button>
-                {/* Save and quit */}
+                {/* Save and close */}
                 <button
                   onClick={() => {
-                    if (!newLocation.name || !newLocation.name.trim()) { showToast(t('places.enterPlaceName'), 'warning'); return; }
-                    if (!newLocation.interests || newLocation.interests.length === 0) { showToast(t('form.selectAtLeastOneInterest'), 'warning'); return; }
-                    const exists = customLocations.find(loc =>
-                      loc.name.toLowerCase() === newLocation.name.trim().toLowerCase() &&
-                      (!editingLocation || loc.id !== editingLocation.id)
-                    );
-                    if (exists) { showToast(`⚠️ ${t('places.placeExists')}`, 'warning'); }
                     if (showEditLocationDialog) {
-                      updateCustomLocation(true); // close
+                      updateCustomLocation(true);
                     } else {
-                      saveWithDedupCheck(true); // close
+                      saveWithDedupCheck(true);
                     }
                   }}
                   disabled={!newLocation.name?.trim()}
