@@ -23,7 +23,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.17.28` (Apr 05, 2026)
+- **גרסה:** `3.17.30` (Apr 05, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -438,6 +438,50 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
 17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
+
+---
+
+## שינויים מרכזיים — סשן Apr 05, 2026 (v3.17.29→v3.17.30) — Cache Version System
+
+### בעיה שנפתרה
+תחומי עניין מוצגים בסדר שונה בין משתמשים — interestGroups נטעין אחרי render ראשון.
+
+### הפתרון: Stale-While-Revalidate + cacheVersion
+
+#### Firebase: settings/cacheVersion
+- timestamp מספרי (Date.now())
+- נכתב אוטומטית בכל שינוי תחומים: saveInterestConfig, saveInterestGroup, deleteInterestGroup, saveCustomInterestAndConfig, saveNewInterest, deleteCustomInterest, saveInterestAdminStatus
+
+#### Startup flow (כל כניסה):
+1. Render מיידי מlocalStorage cache
+2. קריאה מהירה ל-settings/cacheVersion
+3. אם שונה מlocal → נקה foufou_custom_interests, foufou_interest_config, foufou_interest_groups
+4. Firebase listeners מחזירים נתונים טריים → state מתעדכן בשקט
+5. foufou_interest_status לא נמחק לעולם (preference אישי)
+
+#### Guard מפני corruption:
+- cacheVersion null/missing → auto-repair (כותב timestamp חדש) + system alert
+- network error → נשאר עם cache, ללא crash
+
+#### System Alert:
+- sendSystemAlert(message) → כותב ל-database.ref('feedback') עם type: 'system_alert'
+- Rate-limited: max פעם אחת לN שעות לפי systemAlertIntervalHours
+- מוצג ב-feedback panel לאדמין
+
+#### systemAlertIntervalHours (ב-systemParams):
+- Default: 1 שעה
+- נשמר ב-settings/systemParams (כמו כל params אחרים)
+- ניתן לשינוי מ-admin panel תחת App section
+
+### localStorage keys
+| Key | תוכן | נמחק על mismatch? |
+|---|---|---|
+| foufou_custom_interests | תחומים | ✅ כן |
+| foufou_interest_config | הגדרות חיפוש | ✅ כן |
+| foufou_interest_groups | קבוצות ומיון | ✅ כן |
+| foufou_interest_status | בחירות משתמש | ❌ לא |
+| foufou_cache_version | timestamp מ-Firebase | מתעדכן |
+| foufou_last_system_alert | timestamp הaltert האחרון | לעולם לא |
 
 ---
 

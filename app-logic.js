@@ -492,6 +492,26 @@
     setIsRecording(false); setRecordingField(null); setInterimText('');
   };
 
+  // Send automated system feedback — rate-limited per device by systemAlertIntervalHours
+  const sendSystemAlert = (message) => {
+    if (!isFirebaseAvailable || !database) return;
+    const intervalMs = (window.BKK.systemParams?.systemAlertIntervalHours ?? 1) * 3600000;
+    try {
+      const last = parseInt(localStorage.getItem('foufou_last_system_alert') || '0');
+      if (Date.now() - last < intervalMs) return; // rate limit
+      localStorage.setItem('foufou_last_system_alert', String(Date.now()));
+    } catch(e) {}
+    database.ref('feedback').push({
+      text: '[SYSTEM ALERT] ' + message,
+      userId: 'system',
+      userName: 'FouFou System 🤖',
+      timestamp: Date.now(),
+      type: 'system_alert',
+      version: window.BKK.VERSION,
+      userAgent: navigator.userAgent.slice(0, 120)
+    }).catch(() => {});
+  };
+
   // Unified recording toggle for a field
   const toggleRecording = (fieldId, onFinalText) => {
     if (isRecording && recordingField === fieldId) { stopAllRecording(); return; }
@@ -830,6 +850,8 @@
       googleMaxResultCount: -1,
       googleNearbyRankPreference: 'POPULARITY',
       googleTextRankPreference: 'RELEVANCE',
+      // System alerts — how often to send automated system feedback (hours)
+      systemAlertIntervalHours: 1,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -1617,6 +1639,36 @@
     }, 5000);
     return () => clearTimeout(timer);
   }, [isDataLoaded]);
+
+  // Cache version check — on startup, read settings/cacheVersion once.
+  // If different from local cache → clear interest caches so Firebase data replaces stale cache.
+  // If corrupted/missing → auto-repair + send system alert (rate-limited).
+  useEffect(() => {
+    if (!isFirebaseAvailable || !database) return;
+    database.ref('settings/cacheVersion').once('value').then(snap => {
+      const serverVersion = snap.val();
+      // Guard: corrupted or missing
+      if (!serverVersion || typeof serverVersion !== 'number') {
+        sendSystemAlert('settings/cacheVersion is missing or corrupted. Value: ' + JSON.stringify(serverVersion) + '. Auto-repairing.');
+        database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
+        return; // trust local cache — don't clear anything
+      }
+      const localVersion = parseInt(localStorage.getItem('foufou_cache_version') || '0');
+      if (serverVersion !== localVersion) {
+        // Server has newer data — clear interest caches so Firebase loads fresh
+        try {
+          localStorage.removeItem('foufou_custom_interests');
+          localStorage.removeItem('foufou_interest_config');
+          localStorage.removeItem('foufou_interest_groups');
+          // Note: foufou_interest_status is user preference — never cleared by cache version
+        } catch(e) {}
+        // Save new version — will be written after Firebase listeners populate fresh data
+        try { localStorage.setItem('foufou_cache_version', String(serverVersion)); } catch(e) {}
+      }
+    }).catch(() => {
+      // Network error on version check — safe to ignore, use local cache as-is
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [isLocating, setIsLocating] = useState(false);
   const [rightColWidth, setRightColWidth] = useState(() => {
     try {
@@ -2130,6 +2182,7 @@
     if (!isFirebaseAvailable || !database) return;
     addDebugLog('firebase', `[SETTINGS-SAVE] interestConfig/${interestId}/adminStatus → ${status}`);
     database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(status).catch(() => {});
+    database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
   };
 
   // Save a single system param
@@ -2213,6 +2266,7 @@
     if (!isFirebaseAvailable || !database) return;
     addDebugLog('firebase', `[DIALOG-SAVE] interestConfig/${interestId}`, { keys: Object.keys(configData) });
     database.ref(`settings/interestConfig/${interestId}`).set(configData);
+    database.ref('settings/cacheVersion').set(Date.now());
   };
 
   const saveInterestGroup = (groupId, labelHe, labelEn, order) => {
@@ -2221,20 +2275,25 @@
     if (order !== undefined) data.order = order;
     setInterestGroups(prev => ({ ...prev, [groupId]: { ...(prev[groupId] || {}), ...data } }));
     database.ref(`settings/interestGroups/${groupId}`).update(data);
+    database.ref('settings/cacheVersion').set(Date.now());
   };
 
   const deleteInterestGroup = (groupId) => {
     if (!isFirebaseAvailable || !database) return;
     setInterestGroups(prev => { const n = { ...prev }; delete n[groupId]; return n; });
     database.ref(`settings/interestGroups/${groupId}`).remove();
+    database.ref('settings/cacheVersion').set(Date.now());
   };
 
   // Save/update customInterest + config in one operation
   const saveCustomInterestAndConfig = (firebaseId, interestId, updatedInterest, mergedConfig) => {
     if (!isFirebaseAvailable || !database) return;
     addDebugLog('firebase', `[DIALOG-SAVE] customInterest+config`, { firebaseId, interestId });
-    database.ref(`customInterests/${firebaseId || interestId}`).update(updatedInterest);
-    if (mergedConfig) database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
+    const batch = {};
+    batch[`customInterests/${firebaseId || interestId}`] = updatedInterest;
+    if (mergedConfig) batch[`settings/interestConfig/${interestId}`] = mergedConfig;
+    batch['settings/cacheVersion'] = Date.now();
+    database.ref().update(batch).catch(e => addDebugLog('firebase', '[DIALOG-SAVE] saveCustomInterestAndConfig failed', { error: e.message }));
   };
 
   // Create new interest (customInterests + cityHiddenInterests + interestStatus + interestConfig)
@@ -2251,6 +2310,7 @@
       cur.add(interestId);
       batch[`settings/cityHiddenInterests/${cid}`] = [...cur];
     });
+    batch['settings/cacheVersion'] = Date.now();
     database.ref().update(batch).catch(e => addDebugLog('firebase', `[DIALOG-SAVE] saveNewInterest failed`, { error: e.message }));
     if (userId) database.ref(`users/${userId}/interestStatus/${interestId}`).set(true).catch(() => {});
   };
@@ -3739,7 +3799,17 @@
     if (isFirebaseAvailable && database) {
       const configRef = database.ref('settings/interestConfig');
       
-      configRef.once('value').then((snapshot) => {
+      // Load interestGroups in parallel so markLoaded fires with groups already set
+      Promise.all([
+        configRef.once('value'),
+        database.ref('settings/interestGroups').once('value')
+      ]).then(([snapshot, groupsSnap]) => {
+        // Apply interestGroups immediately — before markLoaded
+        const groups = groupsSnap.val();
+        if (groups) {
+          setInterestGroups(groups);
+          try { localStorage.setItem('foufou_interest_groups', JSON.stringify(groups)); } catch(e) {}
+        }
         const data = snapshot.val();
         if (data) {
           // Deep merge: for each interest, use Firebase config but fall back to default blacklist if empty
@@ -7723,6 +7793,8 @@
                 ? (t('toast.interestDeletedFull') || 'תחום נמחק ונוקה מ-{count} מקומות').replace('{count}', totalCount)
                 : t('interests.interestDeleted');
               showToast(msg, 'success');
+              // Bump cacheVersion so all users get fresh data on next session
+              database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
               addDebugLog('firebase', `[DELETE-INTEREST] ${interestId} — cleaned ${totalCount} locs in ${affectedCities.length} cities`);
             } catch (error) {
               console.error('[FIREBASE] Error deleting interest:', error);
