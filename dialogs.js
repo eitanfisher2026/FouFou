@@ -3143,11 +3143,12 @@
         const visitorId = authUser?.uid || window.BKK.visitorId || 'anonymous';
         
         const handleClose = () => {
+          stopReviewDictation(); // always stop recording before closing
           if (reviewDialog.hasChanges) {
             showConfirm(
               t('reviews.unsavedChanges') || 'יש שינויים שלא נשמרו. לשמור?',
               () => saveReview(),
-              { onCancel: () => setReviewDialog(null), confirmLabel: t('general.save') || 'שמור', confirmColor: '#f59e0b' }
+              { onCancel: () => { setReviewDialog(null); }, confirmLabel: t('general.save') || 'שמור', confirmColor: '#f59e0b' }
             );
           } else {
             setReviewDialog(null);
@@ -3193,13 +3194,19 @@
                 {/* Text + dictation */}
                 <div style={{ position: 'relative' }}>
                   <textarea
-                    value={reviewDialog.myText + (reviewInterimText ? ' ' + reviewInterimText : '')}
-                    readOnly={reviewRecording && !!reviewInterimText}
-                    onChange={(e) => { if (!reviewInterimText) { setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true})); reviewTextRef.current = e.target.value; } }}
+                    value={reviewDialog.myText}
+                    readOnly={reviewRecording}
+                    onChange={(e) => { if (!reviewRecording) { setReviewDialog(prev => ({...prev, myText: e.target.value, hasChanges: true})); reviewTextRef.current = e.target.value; } }}
                     placeholder={t('reviews.writeReview')}
                     rows={2}
                     style={{ width: '100%', padding: '8px 64px 8px 8px', borderRadius: '8px', border: reviewRecording ? '1.5px solid #ef4444' : '1px solid #d1d5db', fontSize: '13px', resize: 'vertical', boxSizing: 'border-box' }}
                   ></textarea>
+                  {/* Interim text overlay while recording */}
+                  {reviewInterimText && (
+                    <div style={{ position: 'absolute', bottom: '6px', right: '8px', left: '8px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic', pointerEvents: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {reviewInterimText}
+                    </div>
+                  )}
                   <div style={{ position: 'absolute', top: '6px', left: '6px', display: 'flex', gap: '4px' }}>
                     {/* Mic button */}
                     <button
