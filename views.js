@@ -903,14 +903,14 @@
             {wizardStep === 1 && (<>
               <div className="bg-white rounded-xl shadow-lg p-3">
                 {/* City Selector */}
-                {Object.values(window.BKK.cities || {}).filter(c => cityActiveStates[c.id] !== false && c.active !== false).length > 1 && (
+                {Object.values(window.BKK.cities || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); }).length > 1 && (
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
                     <select
                       value={selectedCityId}
                       onChange={(e) => switchCity(e.target.value)}
                       style={{ padding: '4px 8px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '12px', fontWeight: 'bold', color: '#374151', background: 'white', cursor: 'pointer' }}
                     >
-                      {Object.values(window.BKK.cities || {}).filter(c => cityActiveStates[c.id] !== false && c.active !== false).map(city => (
+                      {Object.values(window.BKK.cities || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); }).map(city => (
                         <option key={city.id} value={city.id}>{city.icon?.startsWith?.('data:') ? '🏙️' : (city.icon || '🏙️')} {tLabel(city)}</option>
                       ))}
                     </select>
@@ -2655,7 +2655,7 @@
                             setCityActiveStates(newStates);
                             try { localStorage.setItem('city_active_states', JSON.stringify(newStates)); } catch(e) {}
                             // Sync to Firebase so all users get the same active cities
-                            if (database) database.ref(`cityStates/${city.id}`).set(newActive);
+                            if (database) database.ref(`cities/${city.id}/general/active`).set(newActive);
                             showToast(tLabel(city) + (newActive ? ' ✓' : ' ✗'), 'info');
                           }} style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: isActive ? '#dcfce7' : '#fee2e2', color: isActive ? '#16a34a' : '#ef4444', fontWeight: 'bold' }}
                           >{isActive ? `▶️ ${t('general.active')}` : `⏸️ ${t('general.inactive')}`}</button>

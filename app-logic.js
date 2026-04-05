@@ -283,9 +283,8 @@
     try { return localStorage.getItem('city_explorer_city') || 'bangkok'; } catch(e) { return 'bangkok'; }
   });
   // City active/inactive states — React state so UI re-renders when admin changes cities
-  const [cityActiveStates, setCityActiveStates] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('city_active_states') || '{}'); } catch(e) { return {}; }
-  });
+  // Do NOT initialize from localStorage — always wait for Firebase to avoid stale cache
+  const [cityActiveStates, setCityActiveStates] = useState({});
   const [wizardStep, setWizardStep] = useState(1);
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
@@ -4085,21 +4084,28 @@
     return () => aboutRef.off('value');
   }, []);
 
-  // Load cityStates — public node, controls which cities are visible to all users
+  // Load city active states from cities/{cityId}/general/active — public readable
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
-    const cityStatesRef = database.ref('cityStates');
-    cityStatesRef.on('value', (snap) => {
-      const states = snap.val();
-      if (states && window.BKK?.cities) {
-        Object.keys(states).forEach(cityId => {
-          if (window.BKK.cities[cityId]) window.BKK.cities[cityId].active = states[cityId];
+    const cityIds = Object.keys(window.BKK?.cities || {});
+    if (!cityIds.length) return;
+    const listeners = [];
+    cityIds.forEach(cityId => {
+      const ref = database.ref(`cities/${cityId}/general/active`);
+      const handler = ref.on('value', (snap) => {
+        const active = snap.val();
+        // null = not set = active by default
+        const isActive = active !== false;
+        if (window.BKK?.cities?.[cityId]) window.BKK.cities[cityId].active = isActive;
+        setCityActiveStates(prev => {
+          const next = { ...prev, [cityId]: isActive };
+          try { localStorage.setItem('city_active_states', JSON.stringify(next)); } catch(e) {}
+          return next;
         });
-        setCityActiveStates(states);
-        try { localStorage.setItem('city_active_states', JSON.stringify(states)); } catch(e) {}
-      }
+      });
+      listeners.push({ ref, handler });
     });
-    return () => cityStatesRef.off('value');
+    return () => listeners.forEach(({ ref, handler }) => ref.off('value', handler));
   }, []);
 
   const submitFeedback = () => {
