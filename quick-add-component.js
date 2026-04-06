@@ -67,6 +67,7 @@ const QuickAddPlaceDialog = ({
       onResult: (text, isFinal) => {
         if (isFinal) {
           setQaInterimText('');
+          if (field === "name") { setQaName(prev => (prev ? prev + " " : "") + text); setQaNameIsAuto(false); }
           if (field === "description") setQaDescription(prev => (prev ? prev + " " : "") + text);
           if (field === "notes") setQaNotes(prev => (prev ? prev + " " : "") + text);
           if (field === "rating") setQaRatingText(prev => (prev ? prev + " " : "") + text);
@@ -284,7 +285,12 @@ const QuickAddPlaceDialog = ({
                 )}
               </div>
               <button type="button"
-                onClick={() => toggleRecording("name", (text) => { setQaName(prev => (prev ? prev + " " : "") + text); setQaNameIsAuto(false); }, () => { setQaName(""); })}
+                onClick={() => {
+                  if (qaRecordingField === "name") { startRec("name"); return; }
+                  // Clear name before starting
+                  setQaName(""); setQaNameIsAuto(false);
+                  startRec("name");
+                }}
                 style={{ ...micStyle(qaRecordingField === "name"), flexShrink: 0 }}>🎤</button>
             </div>
             {captureMode && !qaName && (

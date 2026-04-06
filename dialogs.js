@@ -253,7 +253,7 @@
                         title="Duplicate OK"
                       >{newLocation.dedupOk ? '✓✓' : '✓'}</button>
                     )}
-                    </div>
+                    </div>{/* end flex row: input + mic + dedupOk */}
                     <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                       <button
                         onClick={() => searchPlacesByName(newLocation.name)}

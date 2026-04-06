@@ -513,9 +513,11 @@
   };
 
   // Unified recording toggle for a field
-  const toggleRecording = (fieldId, onFinalText) => {
+  const toggleRecording = (fieldId, onFinalText, onClearBefore) => {
     if (isRecording && recordingField === fieldId) { stopAllRecording(); return; }
     if (isRecording) stopAllRecording();
+    // Clear field before starting if callback provided
+    if (onClearBefore) onClearBefore();
     setIsRecording(true); setRecordingField(fieldId); setInterimText('');
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
