@@ -538,7 +538,7 @@
                       value: newLocation.notes || '',
                       onChange: (e) => setNewLocation(prev => ({...prev, notes: e.target.value})),
                       onClear: () => setNewLocation(prev => ({...prev, notes: ''})),
-                      placeholder: t('places.notes'),
+                      placeholder: t('places.notesPlaceholder') || t('places.notes'),
                       rows: 2,
                       className: 'w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500'
                     })}

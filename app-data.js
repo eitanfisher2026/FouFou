@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.17.34
+// FouFou app-data.js v3.17.36
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -541,6 +541,7 @@ places: {
   notes: 'הערות...',
   description: 'תיאור קצר של המקום',
   descriptionPlaceholder: 'הקלד/הקלט תאור קצר',
+  notesPlaceholder: 'הקלד/הקלט הערות...',
   findLocation: '📍 מצא מיקום',
   updateLocation: '✅ עדכן מיקום',
   googleInfo: '🔎 מידע מגוגל',
@@ -1048,7 +1049,7 @@ help: {
     title: 'ביקורות',
     myReview: 'הביקורת שלי',
     notYetRated: 'עדיין לא דורג, מחכים לך במסלול!',
-    writeReview: 'כתוב ביקורת...',
+    writeReview: 'הקלד/הקלט ביקורת...',
     rating: 'דירוג',
     saved: 'הביקורת נשמרה',
     saveError: 'שגיאה בשמירת הביקורת',
@@ -1630,6 +1631,7 @@ places: {
   notes: 'Notes...',
   description: 'Short description of the place',
   descriptionPlaceholder: 'Type/dictate a short description',
+  notesPlaceholder: 'Type/dictate notes...',
   findLocation: '📍 Find location',
   updateLocation: '✅ Update location',
   googleInfo: '🔎 Google info',
@@ -2132,7 +2134,7 @@ help: {
     title: 'Reviews',
     myReview: 'My Review',
     notYetRated: 'Not yet rated, waiting for you on the trail!',
-    writeReview: 'Write a review...',
+    writeReview: 'Type/dictate review...' ,
     rating: 'Rating',
     saved: 'Review saved',
     saveError: 'Error saving review',
@@ -3304,7 +3306,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.17.34';
+window.BKK.VERSION = '3.17.36';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));

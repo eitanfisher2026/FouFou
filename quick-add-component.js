@@ -348,7 +348,7 @@ const QuickAddPlaceDialog = ({
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
               <div style={{ position: "relative", flex: 1 }}>
                 <textarea value={qaNotes} onChange={e => setQaNotes(e.target.value)}
-                  placeholder={qaRecordingField === "notes" ? "" : t("places.notes")}
+                  placeholder={qaRecordingField === "notes" ? "" : (t("places.notesPlaceholder") || t("places.notes"))}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500"
                   style={{ ...textareaStyle, width: "100%", boxSizing: "border-box", borderColor: qaRecordingField === "notes" ? "#ef4444" : undefined, paddingRight: isRTL ? "24px" : "8px", paddingLeft: isRTL ? "8px" : "24px" }} rows={2} />
                 {qaNotes.trim() && (

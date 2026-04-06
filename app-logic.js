@@ -4198,9 +4198,8 @@
       if (s.interestGroups) {
         setInterestGroups(s.interestGroups);
         try { localStorage.setItem('foufou_interest_groups', JSON.stringify(s.interestGroups)); } catch(e) {}
-      } else {
-        setInterestGroups({});
       }
+      // Note: if s.interestGroups is absent from settings, keep existing value (loaded from Promise.all or localStorage)
     });
     
     // Log access stats (aggregated weekly counters by country)
