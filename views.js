@@ -407,11 +407,14 @@
             <button
               onClick={() => {
                 // Interest priority: user's manual selection this session > trail interests > wizard selection
-                const defaultInterestsTrail = lastCaptureInterestsRef.current.length > 0
-                  ? lastCaptureInterestsRef.current
-                  : activeTrail.interests?.length > 0
-                    ? activeTrail.interests.slice(0, 2)
-                    : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
+                // Filter to valid IDs only (prevents stale i_nature etc from old sessions)
+                const validIds = new Set(allInterestOptions.map(o => o.id));
+                const lastValid = lastCaptureInterestsRef.current.filter(id => validIds.has(id));
+                const defaultInterestsTrail = lastValid.length > 0
+                  ? lastValid
+                  : activeTrail.interests?.filter(id => validIds.has(id)).slice(0, 2).length > 0
+                    ? activeTrail.interests.filter(id => validIds.has(id)).slice(0, 2)
+                    : formData.interests?.filter(id => validIds.has(id)).slice(0, 1) || [];
                 const initLocation = {
                   name: '', description: '', notes: '',
                   area: activeTrail.area || formData.area,
@@ -1097,11 +1100,14 @@
           const openCapture = () => {
             if (fabDragRef.current.moved) return;
             // Interest priority: user's manual selection this session > trail interests > wizard selection
-            const defaultInterests = lastCaptureInterestsRef.current.length > 0
-              ? lastCaptureInterestsRef.current
-              : activeTrail?.interests?.length > 0
-                ? activeTrail.interests.slice(0, 2)
-                : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
+            // Filter to valid IDs only (prevents stale IDs from old sessions)
+            const validIds = new Set(allInterestOptions.map(o => o.id));
+            const lastValid = lastCaptureInterestsRef.current.filter(id => validIds.has(id));
+            const defaultInterests = lastValid.length > 0
+              ? lastValid
+              : activeTrail?.interests?.filter(id => validIds.has(id)).slice(0, 2).length > 0
+                ? activeTrail.interests.filter(id => validIds.has(id)).slice(0, 2)
+                : formData.interests?.filter(id => validIds.has(id)).slice(0, 1) || [];
             const initLocation = {
               name: '', description: '', notes: '',
               area: formData.area || 'chinatown',

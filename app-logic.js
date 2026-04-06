@@ -4480,6 +4480,7 @@
     if (!lat || !lng || !interests?.length) return null;
     const radius = sp.dedupRadiusMeters || 50;
     const results = { google: [], custom: [], lat, lng, interests };
+    addDebugLog('DEDUP', `[DEDUP] Start — lat:${lat?.toFixed(5)} lng:${lng?.toFixed(5)} radius:${radius}m interests:[${interests.join(', ')}]`);
     
     // Expand interests with dedupRelated (ONE level only, bidirectional)
     const expandedInterests = new Set(interests);
@@ -4560,28 +4561,47 @@
 
         // 2a. Nearby Search for type-based interests
         if (uniqueTypes.length > 0) {
+          const nearbyBody = { locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, includedTypes: uniqueTypes, maxResultCount: 5 };
+          addDebugLog('DEDUP', `[DEDUP] Nearby Search → types: [${uniqueTypes.join(', ')}] radius: ${searchRadius}m`, { body: nearbyBody });
           const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
-            body: JSON.stringify({ locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, includedTypes: uniqueTypes, maxResultCount: 5 })
+            body: JSON.stringify(nearbyBody)
           });
           if (response.ok) {
             const data = await response.json();
-            results.google.push(...applyBlacklist(data.places || []).map(mapPlace));
+            const all = data.places || [];
+            const afterBlacklist = applyBlacklist(all);
+            const kept = afterBlacklist.map(mapPlace);
+            const filtered = all.filter(p => !afterBlacklist.includes(p));
+            addDebugLog('DEDUP', `[DEDUP] Nearby → ${all.length} from Google, ${filtered.length} blacklisted, ${kept.length} kept`, {
+              kept: kept.map(p => `✅ ${p.name} ${p._distance}m ⭐${p.rating}`),
+              blacklisted: filtered.map(p => `❌ ${p.displayName?.text}`)
+            });
+            results.google.push(...kept);
           }
         }
 
         // 2b. Text Search for text-based interests (parallel)
         if (uniqueTextQueries.length > 0) {
           await Promise.all(uniqueTextQueries.map(async (query) => {
+            const textBody = { textQuery: query, locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, maxResultCount: 5 };
+            addDebugLog('DEDUP', `[DEDUP] Text Search → query: "${query}" radius: ${searchRadius}m`, { body: textBody });
             const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
-              body: JSON.stringify({ textQuery: query, locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, maxResultCount: 5 })
+              body: JSON.stringify(textBody)
             });
             if (response.ok) {
               const data = await response.json();
-              const nearby = applyBlacklist(data.places || []).map(mapPlace).filter(p => p._distance <= radius);
+              const all = data.places || [];
+              const afterBlacklist = applyBlacklist(all).map(mapPlace);
+              const nearby = afterBlacklist.filter(p => p._distance <= radius);
+              const tooFar = afterBlacklist.filter(p => p._distance > radius);
+              addDebugLog('DEDUP', `[DEDUP] Text "${query}" → ${all.length} from Google, ${nearby.length} within ${radius}m, ${tooFar.length} too far`, {
+                kept: nearby.map(p => `✅ ${p.name} ${p._distance}m ⭐${p.rating}`),
+                tooFar: tooFar.map(p => `📏 ${p.name} ${p._distance}m`)
+              });
               results.google.push(...nearby);
             }
           }));
@@ -4600,9 +4620,13 @@
     
     const total = results.google.length + results.custom.length;
     if (total > 0) {
-      console.log(`[DEDUP] Found ${results.google.length} Google + ${results.custom.length} custom within ${radius}m`);
+      addDebugLog('DEDUP', `[DEDUP] ✅ Found ${results.google.length} Google + ${results.custom.length} custom within ${radius}m`, {
+        google: results.google.map(p => `${p.name} ${p._distance}m`),
+        custom: results.custom.map(p => `${p.name}`)
+      });
       return results;
     }
+    addDebugLog('DEDUP', `[DEDUP] ❌ No matches found within ${radius}m`, { lat, lng, interests: [...expandedInterests] });
     return null;
   };
 

@@ -240,6 +240,12 @@
                       >✕</button>
                     )}
                     </div>
+                    <button type="button"
+                      onClick={() => toggleRecording("location_name", (text) => {
+                        setNewLocation(prev => ({...prev, name: (prev.name ? prev.name + " " : "") + text}));
+                      }, () => { setNewLocation(prev => ({...prev, name: ''})); setLocationSearchResults(null); })}
+                      style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: isRecording && recordingField === 'location_name' ? '#ef4444' : '#f3f4f6', color: isRecording && recordingField === 'location_name' ? 'white' : '#6b7280', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >🎤</button>
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
