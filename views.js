@@ -5026,13 +5026,41 @@
                   {(() => {
                     const buildText = () => {
                       const lines = ['=== FouFou Filter Log ===', new Date().toLocaleString('he-IL'), ''];
+                      const calcScore = (p) => {
+                        const googleScore = (p.rating || 0) * Math.log10((p.reviews || 0) + 1);
+                        const base = window.BKK.systemParams?.favoriteBaseScore ?? 20;
+                        const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
+                        const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
+                        const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
+                        const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom';
+                        const fouFouRating = p.fouFouRating || null;
+                        let score, formula;
+                        if (!isFav) {
+                          score = googleScore;
+                          formula = `${p.rating}×log10(${p.reviews}+1)=${score.toFixed(1)}`;
+                        } else if (!fouFouRating) {
+                          score = googleScore + base;
+                          formula = `${googleScore.toFixed(1)}+${base}(base)=${score.toFixed(1)}`;
+                        } else if (fouFouRating < threshold) {
+                          score = googleScore + base - penalty;
+                          formula = `${googleScore.toFixed(1)}+${base}-${penalty}(penalty)=${score.toFixed(1)}`;
+                        } else {
+                          score = googleScore + base + fouFouRating * bonusPerStar;
+                          formula = `${googleScore.toFixed(1)}+${base}+${fouFouRating}×${bonusPerStar}=${score.toFixed(1)}`;
+                        }
+                        return { score: score.toFixed(1), formula, isFav };
+                      };
                       filterLog.forEach(entry => {
                         lines.push(`--- ${entry.interestLabel} ---`);
                         lines.push(`${entry.searchType === 'text' ? '🔤' : '🏷️'} ${entry.searchType === 'text' ? entry.query : (entry.placeTypes || []).join(', ')}`);
                         lines.push(`${entry.fromGoogle || 0} from Google → ${entry.passed?.length || 0} passed · ${entry.filtered?.length || 0} filtered`);
                         if (entry.blacklist?.length) lines.push(`🚫 blacklist: ${entry.blacklist.join(', ')}`);
                         lines.push('');
-                        (entry.passed || []).forEach((p, i) => { lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]`); });
+                        (entry.passed || []).forEach((p, i) => {
+                          const s = calcScore(p);
+                          const favTag = s.isFav ? ' 📌' : '';
+                          lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]${favTag} | score=${s.score} (${s.formula})`);
+                        });
                         (entry.filtered || []).forEach(p => { lines.push(`❌ ${p.layer || p.status} | ${p.name} ⭐${p.rating} (${p.reviews}) | ${p.reason || ''}`); });
                         lines.push('');
                       });
@@ -5111,11 +5139,29 @@
                         <div style={{ padding: '4px 12px', background: entry.searchType === 'fetchMore' ? '#fef9c3' : '#dcfce7', fontSize: '10px', fontWeight: 'bold', color: entry.searchType === 'fetchMore' ? '#92400e' : '#166534', borderBottom: `1px solid ${entry.searchType === 'fetchMore' ? '#fde68a' : '#bbf7d0'}` }}>
                           {entry.searchType === 'fetchMore' ? `➕ נוספו (${entry.passed.length})` : `✅ עברו סינון (${entry.passed.length})`}
                         </div>
-                        {entry.passed.map((p, pi) => (
+                        {entry.passed.map((p, pi) => {
+                          const googleScore = (p.rating || 0) * Math.log10((p.reviews || 0) + 1);
+                          const base = window.BKK.systemParams?.favoriteBaseScore ?? 20;
+                          const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
+                          const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
+                          const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
+                          const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom';
+                          const fr = p.fouFouRating || null;
+                          let score, formula;
+                          if (!isFav) { score = googleScore; formula = `${googleScore.toFixed(1)}`; }
+                          else if (!fr) { score = googleScore + base; formula = `${googleScore.toFixed(1)}+${base}`; }
+                          else if (fr < threshold) { score = googleScore + base - penalty; formula = `${googleScore.toFixed(1)}+${base}-${penalty}`; }
+                          else { score = googleScore + base + fr * bonusPerStar; formula = `${googleScore.toFixed(1)}+${base}+${fr}×${bonusPerStar}`; }
+                          return (
                           <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #f0fdf4', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                             {p.rank != null && <span style={{ color: '#6b7280', minWidth: '16px', fontSize: '10px' }}>#{p.rank}</span>}
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 'bold' }}><a href={mapsLink(p)} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'none' }}>{p.name} 🔗</a></div>
+                              <div style={{ fontWeight: 'bold', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <a href={mapsLink(p)} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4ed8', textDecoration: 'none' }}>{p.name} 🔗</a>
+                                <span style={{ fontSize: '10px', background: isFav ? '#dbeafe' : '#f3f4f6', color: isFav ? '#1d4ed8' : '#6b7280', padding: '0 5px', borderRadius: '6px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                  {isFav ? '📌' : '🌐'} {score.toFixed(1)} <span style={{ fontWeight: 'normal', opacity: 0.7 }}>({formula})</span>
+                                </span>
+                              </div>
                               <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <span>⭐{p.rating} ({p.reviews})</span>
                                 <span style={{ color: '#374151' }}>{p.primaryType}</span>
@@ -5136,7 +5182,8 @@
                               {p.address && <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '1px' }}>{p.address}</div>}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
