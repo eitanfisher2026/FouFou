@@ -1374,7 +1374,11 @@
                             return (
                               <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '4px 8px', cursor: 'pointer', background: isSel ? '#faf5ff' : 'white', borderBottom: '1px solid #f3e8ff' }}>
                                 <input type="checkbox" checked={isSel} onChange={() => toggleDedup(o.id)} style={{ cursor: 'pointer', width: '13px', height: '13px', flexShrink: 0 }} />
-                                <span style={{ fontSize: '13px', flexShrink: 0 }}>{o.icon?.startsWith?.('data:') ? '📍' : (o.icon || '📍')}</span>
+                                <span style={{ fontSize: '13px', flexShrink: 0, width: '18px', textAlign: 'center' }}>
+                                  {o.icon?.startsWith?.('data:')
+                                    ? <img src={o.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle' }} />
+                                    : (o.icon || '📍')}
+                                </span>
                                 <span style={{ fontSize: '11px', fontWeight: isSel ? 'bold' : 'normal', color: isSel ? '#6d28d9' : '#374151' }}>{tLabel(o) || o.label}</span>
                               </label>
                             );
