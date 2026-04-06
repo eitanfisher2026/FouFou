@@ -3237,6 +3237,9 @@
               blocked: newLocation.gpsBlocked
             }}
             onAutoName={(interestId, allSelectedInterests) => {
+              // Guard: if interest not found in allInterestOptions, skip name generation
+              const interestObj = allInterestOptions.find(o => o.id === interestId);
+              if (!interestObj) return "";
               const result = window.BKK.generateLocationName(
                 interestId, newLocation.lat, newLocation.lng,
                 interestCounters, allInterestOptions, areaOptions

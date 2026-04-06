@@ -105,7 +105,8 @@ const QuickAddPlaceDialog = ({
     if (option.uncovered) return status === true;
     if (status === undefined && (option.custom || option.id?.startsWith("custom_"))) return false;
     return status !== false;
-  }).sort((a, b) => (tLabel(a) || a.label || '').localeCompare(tLabel(b) || b.label || '', 'he'));
+  });
+  // Already sorted by group+label in allInterestOptions useMemo — preserve that order
 
   const isRTL = window.BKK.i18n.isRTL();
   const labelCls = "block text-xs font-bold mb-1";
