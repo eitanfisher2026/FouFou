@@ -1,6 +1,46 @@
         {/* Dedup Confirmation Dialog */}
         {dedupConfirm && (() => {
           const { type, loc, match, pendingGooglePlace } = dedupConfirm;
+
+          // ── Multi Google picker ──
+          if (type === 'googleMulti') {
+            const { matches: multiMatches } = dedupConfirm;
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4" style={{ zIndex: 10400 }}>
+                <div style={{ background: 'white', borderRadius: '16px', maxWidth: '400px', width: '100%', padding: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '4px' }}>🌐</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{t('dedup.googleMatchMulti') || 'מקומות קרובים בגוגל'}</div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{t('dedup.selectOrSkip') || 'בחר את המקום שצילמת, או דלג'}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    {multiMatches.map((m, idx) => (
+                      <button key={idx} onClick={() => {
+                        setDedupConfirm(prev => ({ ...prev, pickedMatch: m }));
+                        handleDedupConfirm('acceptGooglePick');
+                      }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: '2px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', width: '100%' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
+                        <span style={{ fontSize: '20px', flexShrink: 0 }}>📍</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1f2937' }}>{m.name}</div>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', display: 'flex', gap: '8px' }}>
+                            <span>📏 {m._distance}m</span>
+                            {m.rating > 0 && <span>⭐{m.rating.toFixed(1)} ({m.ratingCount})</span>}
+                          </div>
+                          {m.address && <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.address}</div>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => { handleDedupConfirm('reject'); }} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    {t('dedup.noneOfThese') || 'אף אחד מאלה — שמור כמקום חדש'}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           const interest = allInterestOptions.find(o => match.interests?.includes(o.id) || loc?.interests?.includes(o.id) || pendingGooglePlace?.interests?.includes(o.id));
           const icon = interest?.icon?.startsWith?.('data:') ? '📍' : (interest?.icon || '📍');
           const isFromGoogle = !!pendingGooglePlace; // came from addGooglePlaceToCustom
@@ -756,8 +796,11 @@
                     </div>
                   )}
 
-                  {/* Row 2: Skip + Delete (edit mode only) — editor/admin only */}
-                  {showEditLocationDialog && editingLocation && (isAdmin || isEditor) && (
+                  {/* Row 2: Skip + Delete (edit mode only) — editor/admin, or own non-locked location */}
+                  {showEditLocationDialog && editingLocation && (
+                    (isAdmin || isEditor) ||
+                    (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
+                  ) && (
                     <div className="flex gap-1.5 pt-1 border-t border-gray-200">
                       {editingLocation.status === 'blacklist' ? (
                         <button

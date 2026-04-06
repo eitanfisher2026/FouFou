@@ -4517,9 +4517,17 @@
         const textQueries = [];
         const blacklistWords = [];
         for (const interest of expandedInterests) {
-          const types = interestToGP[interest];
-          if (types) googleTypes.push(...types);
+          // Read types: first from interestConfig (custom interests), then from interestToGooglePlaces (builtin)
           const cfg = interestConfig[interest];
+          const cfgTypes = cfg?.types;
+          if (Array.isArray(cfgTypes) && cfgTypes.length > 0) {
+            googleTypes.push(...cfgTypes);
+          } else if (typeof cfgTypes === 'string' && cfgTypes.trim()) {
+            googleTypes.push(...cfgTypes.split(',').map(t => t.trim()).filter(t => t));
+          } else {
+            const builtinTypes = interestToGP[interest];
+            if (builtinTypes) googleTypes.push(...builtinTypes);
+          }
           if (cfg?.textSearch) textQueries.push(cfg.textSearch);
           if (cfg?.blacklist) {
             blacklistWords.push(...cfg.blacklist.map(w => w.toLowerCase()));
@@ -8842,8 +8850,16 @@
       }
       
       if (matches && matches.google.length > 0) {
-        const best = matches.google.sort((a, b) => a._distance - b._distance || (b.rating - a.rating))[0];
-        setDedupConfirm({ type: 'google', loc, match: best, closeAfter, closeQuickCapture, overrideData });
+        // Sort by distance only (user is physically at the location)
+        const sorted = matches.google.sort((a, b) => a._distance - b._distance);
+        const top3 = sorted.slice(0, 3);
+        if (top3.length === 1) {
+          // Single match — show as before
+          setDedupConfirm({ type: 'google', loc, match: top3[0], closeAfter, closeQuickCapture, overrideData });
+        } else {
+          // Multiple matches — show picker
+          setDedupConfirm({ type: 'googleMulti', loc, matches: top3, closeAfter, closeQuickCapture, overrideData });
+        }
         return;
       }
     } catch (e) {
@@ -8892,6 +8908,34 @@
           database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}`).update(updates);
         }
         showToast(`🔄 "${match.name}" — ${t('dedup.updatedWithGoogle')}`, 'success');
+      }
+      setDedupConfirm(null);
+      return;
+    }
+
+    if (action === 'acceptGooglePick') {
+      // User picked a specific Google place from the multi-picker
+      const picked = dedupConfirm.pickedMatch;
+      if (picked) {
+        const userDescription = overrideData?.description || loc.description || '';
+        const userRating = overrideData?.userRating ?? loc.userRating ?? null;
+        const googleData = {
+          ...loc, ...(overrideData || {}),
+          name: picked.name,
+          lat: picked.lat || loc.lat,
+          lng: picked.lng || loc.lng,
+          address: picked.address || '',
+          mapsUrl: picked.mapsUrl || '',
+          description: userDescription,
+          userRating: userRating,
+          googleRating: picked.rating || null,
+          googleRatingCount: picked.ratingCount || 0,
+          googlePlace: true,
+          googlePlaceId: picked.googlePlaceId || ''
+        };
+        addCustomLocation(closeAfter, googleData);
+        if (closeQuickCapture) setShowQuickCapture(false);
+        showToast(`📍 ${t('dedup.googleMatch')}: ${picked.name}`, 'success');
       }
       setDedupConfirm(null);
       return;
