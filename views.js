@@ -1268,6 +1268,20 @@
                       });
                       stopCounter++;
                     });
+
+                    // Score helper — same formula as generateRoute stopScore
+                    const calcStopScore = (stop) => {
+                      const googleScore = (stop.rating || stop.googleRating || 0) * Math.log10((stop.ratingCount || stop.googleRatingCount || 0) + 1);
+                      const isCustom = stop.source === 'custom' || stop.custom || !!customLocations.find(loc => loc.name === stop.name);
+                      if (!isCustom) return googleScore;
+                      const base = sp.favoriteBaseScore ?? 20;
+                      const pk = (stop.name || '').replace(/[.#$/\\[\\]]/g, '_');
+                      const ra = reviewAverages[pk];
+                      if (!ra || ra.count === 0) return googleScore + base;
+                      const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
+                      if (ra.avg < threshold) return googleScore + base - (sp.favoriteLowRatingPenalty ?? 60);
+                      return googleScore + base + ra.avg * (sp.favoriteBonusPerStar ?? 5);
+                    };
                     
                     return Object.entries(groupedStops)
                       .filter(([interest]) => {
@@ -1305,10 +1319,13 @@
                       const interestObj = isManualGroup ? { id: '_manual', label: t('general.addedManually'), icon: '📍' } : interestMap[interest];
                       if (!interestObj) return null;
                       
+                      // Sort stops by weighted score (highest first) — letter stays with the stop
+                      const sortedStops = isManualGroup ? stops : [...stops].sort((a, b) => calcStopScore(b) - calcStopScore(a));
+
                       // For manual group, filter out stops that now have real interests
                       const filteredStops = isManualGroup 
                         ? stops.filter(s => !s.interests || s.interests.length === 0 || (s.interests.length === 1 && s.interests[0] === '_manual'))
-                        : stops;
+                        : sortedStops;
                       if (filteredStops.length === 0) return null;
                       
                       return (
@@ -5032,23 +5049,26 @@
                         const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
                         const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
                         const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
-                        const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom';
-                        const fouFouRating = p.fouFouRating || null;
+                        const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom'
+                          || !!(customLocations||[]).find(cl => cl.name === p.name);
+                        const pk = (p.name||'').replace(/[.#$/\\[\\]]/g,'_');
+                        const ra = reviewAverages?.[pk];
+                        const fouFouRating = ra?.count > 0 ? ra.avg : null;
                         let score, formula;
                         if (!isFav) {
                           score = googleScore;
-                          formula = `${p.rating}×log10(${p.reviews}+1)=${score.toFixed(1)}`;
+                          formula = `G:${p.rating}×log(${p.reviews}+1)=${googleScore.toFixed(1)}`;
                         } else if (!fouFouRating) {
                           score = googleScore + base;
-                          formula = `${googleScore.toFixed(1)}+${base}(base)=${score.toFixed(1)}`;
+                          formula = `G:${googleScore.toFixed(1)} + base:${base} = ${score.toFixed(1)}`;
                         } else if (fouFouRating < threshold) {
                           score = googleScore + base - penalty;
-                          formula = `${googleScore.toFixed(1)}+${base}-${penalty}(penalty)=${score.toFixed(1)}`;
+                          formula = `G:${googleScore.toFixed(1)} + base:${base} - penalty:${penalty} = ${score.toFixed(1)}`;
                         } else {
                           score = googleScore + base + fouFouRating * bonusPerStar;
-                          formula = `${googleScore.toFixed(1)}+${base}+${fouFouRating}×${bonusPerStar}=${score.toFixed(1)}`;
+                          formula = `G:${googleScore.toFixed(1)} + base:${base} + FF:${fouFouRating.toFixed(1)}×${bonusPerStar} = ${score.toFixed(1)}`;
                         }
-                        return { score: score.toFixed(1), formula, isFav };
+                        return { score, formula, isFav, fouFouRating };
                       };
                       filterLog.forEach(entry => {
                         lines.push(`--- ${entry.interestLabel} ---`);
@@ -5059,7 +5079,8 @@
                         (entry.passed || []).forEach((p, i) => {
                           const s = calcScore(p);
                           const favTag = s.isFav ? ' 📌' : '';
-                          lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]${favTag} | score=${s.score} (${s.formula})`);
+                          const ffTag = s.fouFouRating ? ` FF:${s.fouFouRating.toFixed(1)}` : '';
+                          lines.push(`✅ #${i+1} ${p.name} ⭐${p.rating} (${p.reviews}) [${p.primaryType}]${favTag}${ffTag} | ${s.formula}`);
                         });
                         (entry.filtered || []).forEach(p => { lines.push(`❌ ${p.layer || p.status} | ${p.name} ⭐${p.rating} (${p.reviews}) | ${p.reason || ''}`); });
                         lines.push('');
@@ -5145,13 +5166,16 @@
                           const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
                           const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
                           const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
-                          const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom';
-                          const fr = p.fouFouRating || null;
+                          const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom'
+                            || !!(customLocations||[]).find(cl => cl.name === p.name);
+                          const pk = (p.name||'').replace(/[.#$/\\[\\]]/g,'_');
+                          const ra = reviewAverages?.[pk];
+                          const fr = ra?.count > 0 ? ra.avg : null;
                           let score, formula;
-                          if (!isFav) { score = googleScore; formula = `${googleScore.toFixed(1)}`; }
-                          else if (!fr) { score = googleScore + base; formula = `${googleScore.toFixed(1)}+${base}`; }
-                          else if (fr < threshold) { score = googleScore + base - penalty; formula = `${googleScore.toFixed(1)}+${base}-${penalty}`; }
-                          else { score = googleScore + base + fr * bonusPerStar; formula = `${googleScore.toFixed(1)}+${base}+${fr}×${bonusPerStar}`; }
+                          if (!isFav) { score = googleScore; formula = `G:${googleScore.toFixed(1)}`; }
+                          else if (!fr) { score = googleScore + base; formula = `G:${googleScore.toFixed(1)}+base:${base}`; }
+                          else if (fr < threshold) { score = googleScore + base - penalty; formula = `G:${googleScore.toFixed(1)}+${base}-pen:${penalty}`; }
+                          else { score = googleScore + base + fr * bonusPerStar; formula = `G:${googleScore.toFixed(1)}+${base}+FF:${fr.toFixed(1)}×${bonusPerStar}`; }
                           return (
                           <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #f0fdf4', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                             {p.rank != null && <span style={{ color: '#6b7280', minWidth: '16px', fontSize: '10px' }}>#{p.rank}</span>}
