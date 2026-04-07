@@ -65,6 +65,7 @@ const QuickAddPlaceDialog = ({
     setQaRecordingField(field);
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+      ...(field === 'name' ? { lang: 'en-US' } : {}),
       onResult: (text, isFinal) => {
         if (isFinal) {
           setQaInterimText('');
@@ -268,18 +269,31 @@ const QuickAddPlaceDialog = ({
           {/* Name field — both modes. captureMode: auto-generated but editable. QuickAdd: from Google but editable */}
           <div>
             <label className={labelCls}>{t("places.placeName")}</label>
-            {RecordingTextarea ? RecordingTextarea({
-              fieldId: 'qa_name',
-              value: qaName,
-              onChange: (e) => { setQaName(e.target.value); setQaNameIsAuto(false); },
-              onClear: () => { setQaName(''); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); },
-              placeholder: 'Type/dictate place name in English...',
-              asInput: true,
-              clearOnStart: true,
-              lang: 'en-US',
-              style: { borderColor: captureMode ? '#22c55e' : '#d1d5db', outline: 'none' },
-              className: 'w-full p-2 border border-gray-300 rounded-lg'
-            }) : null}
+            <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <input type="text" value={qaName}
+                  onChange={e => { setQaName(e.target.value); setQaNameIsAuto(false); }}
+                  placeholder={qaRecordingField === "name" ? "" : (t("places.namePlaceholderEn") || "הקלד/הקלט שם מקום באנגלית...")}
+                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500"
+                  style={{ direction: isRTL ? "rtl" : "ltr", fontSize: "16px", width: "100%", boxSizing: "border-box", borderColor: qaRecordingField === "name" ? "#ef4444" : captureMode ? "#22c55e" : "#d1d5db", paddingRight: isRTL ? "24px" : "8px", paddingLeft: isRTL ? "8px" : "24px" }} />
+                {qaName && (
+                  <button type="button"
+                    onClick={() => { setQaName(""); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); }}
+                    style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "13px", lineHeight: 1, padding: "2px" }}>✕</button>
+                )}
+              </div>
+              {window.BKK.speechSupported && (
+                <button type="button"
+                  onClick={() => { if (qaRecordingField !== "name") { setQaName(""); setQaNameIsAuto(false); } startRec("name"); }}
+                  style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", background: qaRecordingField === "name" ? "#ef4444" : "#f3f4f6", color: qaRecordingField === "name" ? "white" : "#6b7280", animation: qaRecordingField === "name" ? "pulse 1s ease-in-out infinite" : "none", boxShadow: qaRecordingField === "name" ? "0 0 0 3px rgba(239,68,68,0.3)" : "none" }}
+                  title={qaRecordingField === "name" ? t("speech.stopRecording") : t("speech.startRecording")}>
+                  {qaRecordingField === "name" ? "⏹️" : "🎤"}
+                </button>
+              )}
+            </div>
+            {qaInterimText && qaRecordingField === "name" && (
+              <div style={{ marginTop: "4px", padding: "4px 8px", background: "#fef3c7", borderRadius: "6px", fontSize: "12px", color: "#92400e", fontStyle: "italic", direction: isRTL ? "rtl" : "ltr" }}>🎤 {qaInterimText}</div>
+            )}
             {captureMode && !qaName && (
               <p style={{ fontSize: "10px", color: "#9ca3af", margin: "3px 0 0 4px" }}>
                 {t("trail.whatDidYouSee")} → {t("places.placeName")}

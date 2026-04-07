@@ -212,28 +212,47 @@
                     <label className="block text-xs font-bold mb-1">
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
-                    {RecordingTextarea({
-                      fieldId: 'location_name',
-                      value: newLocation.name || '',
-                      onChange: (e) => {
-                        setNewLocation({...newLocation, name: e.target.value});
-                        setLocationSearchResults(null);
-                        if (e.target.value.trim()) {
-                          const exists = customLocations.find(loc =>
-                            loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
-                            (!editingLocation || loc.id !== editingLocation.id)
-                          );
-                          if (exists) showToast(t('places.nameExists'), 'warning');
-                        }
-                      },
-                      onClear: () => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); },
-                      placeholder: 'Type/dictate place name in English...',
-                      asInput: true,
-                      clearOnStart: true,
-                      lang: 'en-US',
-                      className: 'w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500'
-                    })}
-                    {RecordingInterim({ fieldId: 'location_name' })}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input type="text"
+                          value={newLocation.name || ''}
+                          onChange={(e) => {
+                            setNewLocation({...newLocation, name: e.target.value});
+                            setLocationSearchResults(null);
+                            if (e.target.value.trim()) {
+                              const exists = customLocations.find(loc =>
+                                loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
+                                (!editingLocation || loc.id !== editingLocation.id)
+                              );
+                              if (exists) showToast(t('places.nameExists'), 'warning');
+                            }
+                          }}
+                          placeholder={isRecording && recordingField === 'location_name' ? '' : (t('places.namePlaceholderEn') || 'הקלד/הקלט שם מקום באנגלית...')}
+                          className="w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500"
+                          style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', width: '100%', boxSizing: 'border-box', borderColor: isRecording && recordingField === 'location_name' ? '#ef4444' : undefined, paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
+                          autoFocus={!showEditLocationDialog}
+                        />
+                        {newLocation.name && (
+                          <button type="button" onClick={() => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); }}
+                            style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}>✕</button>
+                        )}
+                      </div>
+                      {window.BKK?.speechSupported && (
+                        <button type="button"
+                          onClick={() => toggleRecording('location_name',
+                            (text) => setNewLocation(prev => ({...prev, name: (prev.name ? prev.name + ' ' : '') + text})),
+                            () => { setNewLocation(prev => ({...prev, name: ''})); setLocationSearchResults(null); },
+                            'en-US'
+                          )}
+                          style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', background: isRecording && recordingField === 'location_name' ? '#ef4444' : '#f3f4f6', color: isRecording && recordingField === 'location_name' ? 'white' : '#6b7280', animation: isRecording && recordingField === 'location_name' ? 'pulse 1s ease-in-out infinite' : 'none', boxShadow: isRecording && recordingField === 'location_name' ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none' }}
+                          title={isRecording && recordingField === 'location_name' ? t('speech.stopRecording') : t('speech.startRecording')}>
+                          {isRecording && recordingField === 'location_name' ? '⏹️' : '🎤'}
+                        </button>
+                      )}
+                    </div>
+                    {isRecording && recordingField === 'location_name' && interimText && (
+                      <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>🎤 {interimText}</div>
+                    )}
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
