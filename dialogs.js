@@ -213,39 +213,27 @@
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', flex: 1 }}>
-                    <input
-                      type="text"
-                      value={newLocation.name}
-                      onChange={(e) => {
+                    {RecordingTextarea({
+                      fieldId: 'location_name',
+                      value: newLocation.name || '',
+                      onChange: (e) => {
                         setNewLocation({...newLocation, name: e.target.value});
                         setLocationSearchResults(null);
                         if (e.target.value.trim()) {
-                          const exists = customLocations.find(loc => 
+                          const exists = customLocations.find(loc =>
                             loc.name.toLowerCase() === e.target.value.trim().toLowerCase() &&
                             (!editingLocation || loc.id !== editingLocation.id)
                           );
                           if (exists) showToast(t('places.nameExists'), 'warning');
                         }
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && newLocation.name?.trim()) { e.preventDefault(); searchPlacesByName(newLocation.name); } }}
-                      placeholder={t("places.placeName")}
-                      className="w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500"
-                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '28px', paddingRight: window.BKK.i18n.isRTL() ? '28px' : '8px' }}
-                      autoFocus={!showEditLocationDialog}
-                    />
-                    {newLocation.name && (
-                      <button type="button" onClick={() => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); }}
-                        style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [window.BKK.i18n.isRTL() ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '14px', lineHeight: 1, padding: '2px' }}
-                      >✕</button>
-                    )}
-                    </div>
-                    <button type="button"
-                      onClick={() => toggleRecording("location_name", (text) => {
-                        setNewLocation(prev => ({...prev, name: (prev.name ? prev.name + " " : "") + text}));
-                      }, () => { setNewLocation(prev => ({...prev, name: ''})); setLocationSearchResults(null); })}
-                      style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: isRecording && recordingField === 'location_name' ? '#ef4444' : '#f3f4f6', color: isRecording && recordingField === 'location_name' ? 'white' : '#6b7280', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >🎤</button>
+                      },
+                      onClear: () => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); },
+                      placeholder: t('places.placeName'),
+                      asInput: true,
+                      clearOnStart: true,
+                      lang: 'en-US',
+                      className: 'w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500'
+                    })}
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
@@ -253,7 +241,7 @@
                         title="Duplicate OK"
                       >{newLocation.dedupOk ? '✓✓' : '✓'}</button>
                     )}
-                    </div>{/* end flex row: input + mic + dedupOk */}
+                    </div>{/* end flex row: RecordingTextarea + dedupOk */}
                     <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                       <button
                         onClick={() => searchPlacesByName(newLocation.name)}
@@ -3210,6 +3198,8 @@
             isUnlocked={isUnlocked}
             tLabel={tLabel}
             t={t}
+            RecordingTextarea={RecordingTextarea}
+            RecordingInterim={RecordingInterim}
             onSave={saveQuickAddPlace}
             onCancel={() => { setShowQuickAddDialog(false); setQuickAddPlace(null); }}
             showToast={showToast}
@@ -3281,6 +3271,8 @@
             isUnlocked={isUnlocked}
             tLabel={tLabel}
             t={t}
+            RecordingTextarea={RecordingTextarea}
+            RecordingInterim={RecordingInterim}
             onSave={(enriched, rating) => {
               // Build the final location object directly — do NOT use setNewLocation + saveWithDedupCheck
               // because setNewLocation is async and saveWithDedupCheck would read stale state

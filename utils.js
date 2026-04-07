@@ -1192,7 +1192,7 @@ window.BKK.startSpeechToText = (options = {}) => {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) return null;
   
-  const lang = (localStorage.getItem('city_explorer_lang') || 'he') === 'he' ? 'he-IL' : 'en-US';
+  const lang = options.lang || ((localStorage.getItem('city_explorer_lang') || 'he') === 'he' ? 'he-IL' : 'en-US');
   const maxDuration = options.maxDuration || 10000; // 10 seconds default
   const onResult = options.onResult || function() {};
   const onEnd = options.onEnd || function() {};

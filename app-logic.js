@@ -513,14 +513,14 @@
   };
 
   // Unified recording toggle for a field
-  const toggleRecording = (fieldId, onFinalText, onClearBefore) => {
+  const toggleRecording = (fieldId, onFinalText, onClearBefore, lang = null) => {
     if (isRecording && recordingField === fieldId) { stopAllRecording(); return; }
     if (isRecording) stopAllRecording();
-    // Clear field before starting if callback provided
     if (onClearBefore) onClearBefore();
     setIsRecording(true); setRecordingField(fieldId); setInterimText('');
     const stop = window.BKK.startSpeechToText({
       maxDuration: (window.BKK.systemParams?.speechMaxSeconds || 15) * 1000,
+      ...(lang ? { lang } : {}),
       onResult: (text, isFinal) => {
         if (isFinal) { setInterimText(''); onFinalText(text); }
         else { setInterimText(text); }
@@ -536,32 +536,47 @@
 
   // RecordingTextarea — unified component used everywhere
   // fieldId: unique string per field. value/onChange: controlled. onClear: optional.
-  const RecordingTextarea = ({ fieldId, value, onChange, onClear, placeholder, rows = 2, className = '', style = {} }) => {
+  // clearOnStart: clears field before recording. lang: override speech language (e.g. 'en-US').
+  // asInput: renders <input> instead of <textarea> (for name fields).
+  const RecordingTextarea = ({ fieldId, value, onChange, onClear, placeholder, rows = 2, className = '', style = {}, clearOnStart = false, lang = null, asInput = false }) => {
     const active = isRecording && recordingField === fieldId;
     const isRTL = window.BKK.i18n.isRTL();
+    const handleMic = () => {
+      const onFinal = (text) => onChange({ target: { value: (clearOnStart ? '' : (value ? value + ' ' : '')) + text } });
+      const onClearBefore = clearOnStart ? () => { onClear ? onClear() : onChange({ target: { value: '' } }); } : null;
+      toggleRecording(fieldId, onFinal, onClearBefore, lang);
+    };
+    const baseStyle = { direction: isRTL ? 'rtl' : 'ltr', width: '100%', boxSizing: 'border-box', borderColor: active ? '#ef4444' : undefined, paddingRight: isRTL ? '24px' : '8px', paddingLeft: isRTL ? '8px' : '24px' };
     return (
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: '4px', alignItems: asInput ? 'center' : 'flex-start' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <textarea
-            value={value}
-            onChange={onChange}
-            placeholder={active ? '' : placeholder}
-            className={className || 'w-full p-2 border-2 border-gray-300 rounded-lg'}
-            style={{ direction: isRTL ? 'rtl' : 'ltr', fontSize: '14px', minHeight: '56px', resize: 'vertical', lineHeight: '1.4', width: '100%', boxSizing: 'border-box', borderColor: active ? '#ef4444' : undefined, paddingRight: isRTL ? '24px' : '8px', paddingLeft: isRTL ? '8px' : '24px', ...style }}
-            rows={rows}
-          />
+          {asInput ? (
+            <input type="text"
+              value={value} onChange={onChange}
+              placeholder={active ? '' : placeholder}
+              className={className || 'w-full p-2 border-2 border-gray-300 rounded-lg'}
+              style={{ ...baseStyle, fontSize: '16px', ...style }}
+            />
+          ) : (
+            <textarea
+              value={value} onChange={onChange}
+              placeholder={active ? '' : placeholder}
+              className={className || 'w-full p-2 border-2 border-gray-300 rounded-lg'}
+              style={{ ...baseStyle, fontSize: '14px', minHeight: '56px', resize: 'vertical', lineHeight: '1.4', ...style }}
+              rows={rows}
+            />
+          )}
           {value?.trim() && (
             <button type="button"
               onClick={() => { stopAllRecording(); onClear ? onClear() : onChange({ target: { value: '' } }); }}
-              style={{ position: 'absolute', top: '6px', [isRTL ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
+              style={{ position: 'absolute', top: asInput ? '50%' : '6px', transform: asInput ? 'translateY(-50%)' : 'none', [isRTL ? 'right' : 'left']: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', lineHeight: 1, padding: '2px' }}
             >✕</button>
           )}
         </div>
         {window.BKK?.speechSupported && (
-          <button type="button"
-            onClick={() => toggleRecording(fieldId, (text) => onChange({ target: { value: (value ? value + ' ' : '') + text } }))}
+          <button type="button" onClick={handleMic}
             style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', background: active ? '#ef4444' : '#f3f4f6', color: active ? 'white' : '#6b7280', animation: active ? 'pulse 1s ease-in-out infinite' : 'none', boxShadow: active ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none' }}
-          >{active ? '⏹️' : '🎤'}</button>
+          >🎤</button>
         )}
       </div>
     );

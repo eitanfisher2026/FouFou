@@ -17,6 +17,7 @@ const QuickAddPlaceDialog = ({
   onAutoName, onSearchGoogle, searchResults, onSelectSearchResult, onClearSearch,
   allInterestOptions, interestStatus,
   selectedCityId, isUnlocked, tLabel, t,
+  RecordingTextarea, RecordingInterim,
   onSave, onCancel
 }) => {
   const [qaName, setQaName] = React.useState(place.name || "");
@@ -267,32 +268,18 @@ const QuickAddPlaceDialog = ({
           {/* Name field — both modes. captureMode: auto-generated but editable. QuickAdd: from Google but editable */}
           <div>
             <label className={labelCls}>{t("places.placeName")}</label>
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-              <div style={{ position: "relative", flex: 1 }}>
-                <input value={qaName} onChange={e => { setQaName(e.target.value); setQaNameIsAuto(false); }}
-                  placeholder={qaRecordingField === "name" ? "" : (captureMode ? (t("places.placeName") + "...") : "")}
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  style={{
-                    direction: isRTL ? "rtl" : "ltr", fontSize: "16px",
-                    borderColor: qaRecordingField === "name" ? "#ef4444" : captureMode ? "#22c55e" : "#d1d5db",
-                    outline: "none", paddingRight: isRTL ? "28px" : "8px", paddingLeft: isRTL ? "8px" : "28px",
-                    width: "100%", boxSizing: "border-box"
-                  }} />
-                {qaName && (
-                  <button type="button" onClick={() => { setQaName(""); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); }}
-                    style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", [isRTL ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "14px", lineHeight: 1, padding: "2px" }}
-                  >✕</button>
-                )}
-              </div>
-              <button type="button"
-                onClick={() => {
-                  if (qaRecordingField === "name") { startRec("name"); return; }
-                  // Clear name before starting
-                  setQaName(""); setQaNameIsAuto(false);
-                  startRec("name");
-                }}
-                style={{ ...micStyle(qaRecordingField === "name"), flexShrink: 0 }}>🎤</button>
-            </div>
+            {RecordingTextarea ? RecordingTextarea({
+              fieldId: 'qa_name',
+              value: qaName,
+              onChange: (e) => { setQaName(e.target.value); setQaNameIsAuto(false); },
+              onClear: () => { setQaName(''); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); },
+              placeholder: captureMode ? (t('places.placeName') + '...') : '',
+              asInput: true,
+              clearOnStart: true,
+              lang: 'en-US',
+              style: { borderColor: captureMode ? '#22c55e' : '#d1d5db', outline: 'none' },
+              className: 'w-full p-2 border border-gray-300 rounded-lg'
+            }) : null}
             {captureMode && !qaName && (
               <p style={{ fontSize: "10px", color: "#9ca3af", margin: "3px 0 0 4px" }}>
                 {t("trail.whatDidYouSee")} → {t("places.placeName")}
