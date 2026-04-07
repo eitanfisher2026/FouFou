@@ -8956,7 +8956,8 @@
 
     if (action === 'acceptGooglePick') {
       // User picked a specific Google place from the multi-picker
-      const picked = dedupConfirm.pickedMatch;
+      // picked is passed directly to avoid async setState issue
+      const picked = dedupConfirm._pickedMatch || dedupConfirm.pickedMatch;
       if (picked) {
         const userDescription = overrideData?.description || loc.description || '';
         const userRating = overrideData?.userRating ?? loc.userRating ?? null;

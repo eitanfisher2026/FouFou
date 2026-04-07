@@ -16,7 +16,7 @@
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                     {multiMatches.map((m, idx) => (
                       <button key={idx} onClick={() => {
-                        setDedupConfirm(prev => ({ ...prev, pickedMatch: m }));
+                        dedupConfirm._pickedMatch = m;
                         handleDedupConfirm('acceptGooglePick');
                       }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', border: '2px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', width: '100%' }}
                         onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
