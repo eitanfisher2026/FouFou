@@ -84,8 +84,7 @@ const QuickAddPlaceDialog = ({
   };
 
   const handleSave = () => {
-    if (isSaving) return; // guard against double-click
-    setIsSaving(true);
+    if (isSaving) return;
     const enriched = {
       ...place,
       name: qaName.trim() || place.name,
@@ -94,6 +93,29 @@ const QuickAddPlaceDialog = ({
       interests: qaInterests.length > 0 ? qaInterests : place.interests,
       uploadedImage: qaImage || null
     };
+    // In captureMode: if no GPS yet, try once more before saving
+    if (captureMode && !gpsStatus?.lat && !enriched.lat) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            enriched.lat = pos.coords.latitude;
+            enriched.lng = pos.coords.longitude;
+            const detected = window.BKK.getAreasForCoordinates(enriched.lat, enriched.lng);
+            if (detected.length > 0) { enriched.areas = detected; enriched.area = detected[0]; }
+            setIsSaving(true);
+            onSave(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
+          },
+          () => {
+            // GPS failed — save without coordinates (will be flagged as no-coords)
+            setIsSaving(true);
+            onSave(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
+          },
+          { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+        );
+        return; // wait for GPS callback
+      }
+    }
+    setIsSaving(true);
     onSave(enriched, qaRatingScore > 0 ? { score: qaRatingScore, text: qaRatingText } : null);
   };
 
@@ -128,7 +150,9 @@ const QuickAddPlaceDialog = ({
   const headerTitle = captureMode
     ? `📸 ${t("trail.capturePlace")}`
     : `⭐ ${t("trail.addToFavorites")}`;
-  const saveDisabled = isSaving || (captureMode && !qaImage);
+  // In captureMode: require photo OR explicit name selection (from Google or typed manually)
+  const hasGooglePlace = qaName.trim() && !qaNameIsAuto;
+  const saveDisabled = isSaving || (captureMode && !qaImage && !hasGooglePlace);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2" style={{ zIndex: 10300 }}>

@@ -3308,11 +3308,11 @@
               const finalLocation = {
                 ...newLocation,
                 ...enriched,
-                // GPS must come from newLocation (updated live) — never from enriched (stale place snapshot)
-                lat: newLocation.lat,
-                lng: newLocation.lng,
-                areas: newLocation.areas,
-                area: newLocation.area,
+                // Use Google place coords if available (user selected from search), else GPS from newLocation
+                lat: enriched.lat || newLocation.lat,
+                lng: enriched.lng || newLocation.lng,
+                areas: enriched.areas?.length > 0 ? enriched.areas : newLocation.areas,
+                area: enriched.area || newLocation.area,
                 name: finalName,
                 interests: finalInterests,
                 uploadedImage: enriched.uploadedImage || null,
