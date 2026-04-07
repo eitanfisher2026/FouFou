@@ -273,7 +273,7 @@ const QuickAddPlaceDialog = ({
               value: qaName,
               onChange: (e) => { setQaName(e.target.value); setQaNameIsAuto(false); },
               onClear: () => { setQaName(''); setQaNameIsAuto(false); if (onClearSearch) onClearSearch(); },
-              placeholder: captureMode ? (t('places.placeName') + '...') : '',
+              placeholder: 'Type/dictate place name in English...',
               asInput: true,
               clearOnStart: true,
               lang: 'en-US',

@@ -212,7 +212,6 @@
                     <label className="block text-xs font-bold mb-1">
                       {t("places.placeName")} <span className="text-red-500">*</span>
                     </label>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {RecordingTextarea({
                       fieldId: 'location_name',
                       value: newLocation.name || '',
@@ -228,20 +227,20 @@
                         }
                       },
                       onClear: () => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); },
-                      placeholder: t('places.placeName'),
+                      placeholder: 'Type/dictate place name in English...',
                       asInput: true,
                       clearOnStart: true,
                       lang: 'en-US',
                       className: 'w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500'
                     })}
+                    {RecordingInterim({ fieldId: 'location_name' })}
                     {isUnlocked && showEditLocationDialog && (
                       <button type="button"
                         onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.dedupOk ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white text-gray-400'}`}
+                        className={`mt-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.dedupOk ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white text-gray-400'}`}
                         title="Duplicate OK"
                       >{newLocation.dedupOk ? '✓✓' : '✓'}</button>
                     )}
-                    </div>{/* end flex row: RecordingTextarea + dedupOk */}
                     <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
                       <button
                         onClick={() => searchPlacesByName(newLocation.name)}
