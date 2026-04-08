@@ -130,6 +130,7 @@
           // Run one-time migrations for admin
           if ((profile.role || 0) >= 2) {
             migrateAddedBy(user.uid);
+            migrateReviewRatings();
           }
         } catch (err) {
           console.error('[AUTH] Error loading profile:', err);
@@ -281,7 +282,38 @@
     } catch (err) {
       console.error('[MIGRATION] addedBy failed:', err);
     }
-  };
+  }
+
+  // One-time migration: populate reviewRatings/ from existing reviews/
+  const migrateReviewRatings = async () => {
+    if (!isFirebaseAvailable || !database) return;
+    const migKey = 'foufou_migration_reviewRatings_done';
+    if (localStorage.getItem(migKey)) return;
+    try {
+      const cities = Object.keys(window.BKK.cities || { bangkok: 1 });
+      for (const cityId of cities) {
+        const snap = await database.ref(`cities/${cityId}/reviews`).once('value');
+        const data = snap.val();
+        if (!data) continue;
+        const updates = {};
+        for (const [placeKey, userReviews] of Object.entries(data)) {
+          for (const [uid, r] of Object.entries(userReviews)) {
+            if (r.rating > 0) {
+              updates[`cities/${cityId}/reviewRatings/${placeKey}/${uid}`] = r.rating;
+            }
+          }
+        }
+        if (Object.keys(updates).length > 0) {
+          await database.ref().update(updates);
+          console.log(`[MIGRATE] reviewRatings: wrote ${Object.keys(updates).length} ratings for ${cityId}`);
+        }
+      }
+      localStorage.setItem(migKey, '1');
+      console.log('[MIGRATE] reviewRatings migration complete');
+    } catch (e) {
+      console.error('[MIGRATE] reviewRatings error:', e);
+    }
+  };;
 
   const [currentView, setCurrentView] = useState('form');
   const [currentLang, setCurrentLang] = useState(() => {
@@ -3724,7 +3756,7 @@
           if (nameless.length > 0) {
             console.warn('[DATA] Locations with missing name:', nameless.map(l => l.firebaseId));
           }
-          if (allNames.length > 0) loadReviewAverages(allNames);
+          if (allNames.length > 0) loadReviewRatings(selectedCityId);
         } else {
           setCustomLocations([]);
         }
@@ -4467,6 +4499,7 @@
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
     setCustomLocations([]); // Clear immediately — Firebase listener for new city will repopulate
+    setReviewAverages({}); // Clear ratings — will reload via loadReviewRatings when locations arrive
     
     // Reset form data for new city, but preserve user settings
     // Clear saved interests for all time modes — they belong to the previous city
@@ -8150,44 +8183,49 @@
   // Handle edit location - populate form with existing data
   // === PLACE REVIEWS ===
   
-  const loadReviewAverages = async (placeNames) => {
-    // OPTIMIZED: single read of cities/{cityId}/reviews then filter client-side
-    // Previously: N sequential .once('value') calls — one per place name
+  // Load all review ratings for a city from reviewRatings/ (ratings only, no text)
+  // Called at startup and on city switch.
+  const loadReviewRatings = async (cityId) => {
     try {
-      if (!database || !placeNames.length) return;
-      const cityId = window.BKK.selectedCityId || 'bangkok';
-      const placeKeys = placeNames.map(n => (n || '').replace(/[.#$/\[\]]/g, '_'));
-      const snap = await database.ref(`cities/${cityId}/reviews`).once('value');
-      const allReviews = snap.val() || {};
+      if (!database || !cityId) return;
+      const snap = await database.ref(`cities/${cityId}/reviewRatings`).once('value');
+      const data = snap.val() || {};
+      // data shape: { PlaceKey: { uid1: 4, uid2: 5, ... }, ... }
       const avgs = {};
-      const toDelete = [];
-      for (const placeKey of placeKeys) {
-        const data = allReviews[placeKey];
-        if (data) {
-          const ratings = Object.values(data).map(r => r.rating).filter(r => r > 0);
-          if (ratings.length > 0) {
-            avgs[placeKey] = { avg: ratings.reduce((a, b) => a + b, 0) / ratings.length, count: ratings.length };
-          } else {
-            toDelete.push(placeKey);
-          }
-        } else {
-          toDelete.push(placeKey);
+      for (const [placeKey, ratings] of Object.entries(data)) {
+        const vals = Object.values(ratings).filter(r => typeof r === 'number' && r > 0);
+        if (vals.length > 0) {
+          avgs[placeKey] = { avg: vals.reduce((a, b) => a + b, 0) / vals.length, count: vals.length };
         }
       }
-      if (toDelete.length > 0) {
-        setReviewAverages(prev => {
-          const next = { ...prev };
-          toDelete.forEach(k => delete next[k]);
-          return next;
-        });
-      }
-      if (Object.keys(avgs).length > 0) {
-        setReviewAverages(prev => ({ ...prev, ...avgs }));
-      }
+      setReviewAverages(avgs); // replace entirely — city-scoped
     } catch (e) {
-      console.error('[REVIEWS] Load averages error:', e);
+      console.error('[REVIEWS] Load ratings error:', e);
     }
   };
+
+  // Recalculate average for a single place after save/delete
+  const refreshReviewRating = async (cityId, placeKey) => {
+    try {
+      if (!database) return;
+      const snap = await database.ref(`cities/${cityId}/reviewRatings/${placeKey}`).once('value');
+      const data = snap.val();
+      if (data) {
+        const vals = Object.values(data).filter(r => typeof r === 'number' && r > 0);
+        if (vals.length > 0) {
+          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+          setReviewAverages(prev => ({ ...prev, [placeKey]: { avg, count: vals.length } }));
+          return;
+        }
+      }
+      setReviewAverages(prev => { const next = { ...prev }; delete next[placeKey]; return next; });
+    } catch (e) {
+      console.error('[REVIEWS] Refresh rating error:', e);
+    }
+  };
+
+  // Legacy stub — ratings now loaded city-wide via loadReviewRatings
+  const loadReviewAverages = (_placeNames) => {};;
 
   const openReviewDialog = async (place) => {
     const cityId = window.BKK.selectedCityId || 'bangkok';
@@ -8268,9 +8306,11 @@
           userName: userName,
           timestamp: Date.now()
         });
+        // Write rating to reviewRatings/ (ratings-only node)
+        await database.ref(`cities/${cityId}/reviewRatings/${placeKey}/${uid}`).set(optimisticRating);
         showToast(t('reviews.saved'), 'success');
-        // Refresh with real data from Firebase
-        loadReviewAverages([reviewDialog.place?.name || '']);
+        // Refresh average from reviewRatings/
+        refreshReviewRating(cityId, placeKey);
       } else {
         showToast('No database connection', 'error');
       }
@@ -8291,6 +8331,7 @@
     try {
       if (database) {
         await database.ref(`cities/${cityId}/reviews/${placeKey}/${uid}`).remove();
+        await database.ref(`cities/${cityId}/reviewRatings/${placeKey}/${uid}`).remove();
         // Refresh reviews inside dialog
         const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
@@ -8299,8 +8340,7 @@
           userName: r.userName || ruid.slice(0, 8), timestamp: r.timestamp || 0
         })).sort((a, b) => b.timestamp - a.timestamp) : [];
         setReviewDialog(prev => prev ? { ...prev, reviews: updated, myRating: 0, myText: '', hasChanges: false } : null);
-        // Refresh average in list (place name captured before dialog closes)
-        loadReviewAverages([placeName]);
+        refreshReviewRating(cityId, placeKey);
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
@@ -8317,6 +8357,7 @@
     try {
       if (database) {
         await database.ref(`cities/${cityId}/reviews/${placeKey}/${targetUid}`).remove();
+        await database.ref(`cities/${cityId}/reviewRatings/${placeKey}/${targetUid}`).remove();
         const snap = await database.ref(`cities/${cityId}/reviews/${placeKey}`).once('value');
         const data = snap.val();
         const updated = data ? Object.entries(data).map(([uid, r]) => ({
@@ -8324,7 +8365,7 @@
           userName: r.userName || uid.slice(0, 8), timestamp: r.timestamp || 0
         })).sort((a, b) => b.timestamp - a.timestamp) : [];
         setReviewDialog(prev => prev ? { ...prev, reviews: updated } : null);
-        loadReviewAverages([placeName]);
+        refreshReviewRating(cityId, placeKey);
         showToast(t('reviews.deleted'), 'success');
       }
     } catch (e) {
@@ -8491,12 +8532,15 @@
         const pk = (enriched.name || '').replace(/[.#$/\[\]]/g, '_');
         const uid = authUser?.uid || window.BKK.visitorId;
         await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
-          rating: rating.score,  // field name 'rating' — consistent with loadReviewAverages and reviewDialog
+          rating: rating.score,
           text: rating.text || '',
           timestamp: Date.now(),
           uid,
           userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
         });
+        // Write to reviewRatings/ (ratings-only node)
+        await database.ref(`cities/${selectedCityId}/reviewRatings/${pk}/${uid}`).set(rating.score);
+        refreshReviewRating(selectedCityId, pk);
       } catch(e) { /* rating save failure is non-critical */ }
     }
     setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
