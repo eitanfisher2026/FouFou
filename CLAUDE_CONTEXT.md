@@ -1,3 +1,17 @@
+## ⏳ PENDING — עבודה בתהליך / נושאים פתוחים
+
+### Google Play Store
+- PWABuilder → AAB עדיין לא נעשה
+- `firebase-rules.json` — יש לעדכן ב-Firebase Console (settings sub-nodes = .read: true)
+- Analytics Measurement ID: `G-QVGD0RKEHP` כבר ב-config.js
+
+### נושאים טכניים פתוחים
+- בדיקת תחומים ממוינים אצל משתמשים חדשים (אחרי תיקון Firebase Rules)
+- hint_text_opened event עדיין לא מיושם
+- תיאור מקום לא מוצג ב-stop card (EmQuartier/Emporium) — צריך בדיקה
+
+---
+
 ## כלל דיבאג — אחרי 3 קומיטים כושלים
 
 > **אם אחרי 3 ניסיונות תיקון הבעיה לא נפתרה — STOP. אל תנחש יותר.**
@@ -23,7 +37,7 @@
 
 ## 📍 מצב נוכחי
 
-- **גרסה:** `3.17.53` (Apr 08, 2026)
+- **גרסה:** `3.17.57` (Apr 08, 2026)
 - **Live:** https://eitanfisher2026.github.io/FouFou/
 - **Working dir:** `/home/claude/project/` (extract zip here)
 - **Tagline:** Local picks + Google spots. Choose your vibe, follow the trail
@@ -438,6 +452,72 @@ window.BKK.i18n.t(...)   // DOES NOT EXIST
 15. **`radiusPlaceName` used for "My location" display** — when `radiusSource === 'gps'`, always use `t('wizard.myLocation')` at render/build time, never the stored string (which was saved in the previous language).
 16. **Map tile URL consistency** — ALL maps MUST use `window.BKK.getTileUrl()`. NEVER hardcode tile URLs directly.
 17. **Interest grid — `gridColumn:'1/-1'` FORBIDDEN inside grid:** Separator divs with `gridColumn:'1/-1'` inside CSS Grid cause Samsung/Android touch events to misfire (blink/no-select). Wizard step 1 interest grid MUST be a flat grid with NO spanning elements. Also: always use functional updater `setFormData(prev => {...})` for toggles — stale closure causes double-fire on Samsung/Pixel (see Stale Closure section).
+
+---
+
+## שינויים מרכזיים — סשן Apr 08, 2026 (v3.17.54→3.17.55)
+
+### Analytics — המשך
+- **`nav_menu_clicked`** (destination: form/myPlaces/myInterests/saved/settings/about) — כל לחיצה בתפריט ההמבורגר
+- **`add_place_manually_clicked`** (source: favorites) — כפתור "הוסף ידנית" במסך מועדפים
+
+---
+
+## שינויים מרכזיים — סשן Apr 08, 2026 (v3.17.53→3.17.54)
+
+### Analytics — הרחבה משמעותית
+- **הוסרה:** `hint_tts_played` — לכולן יש הקלטה קולית, TTS fallback לא נדרש
+- **נוספו 13 אירועים חדשים:**
+  - `area_selected` (area_id, area_name)
+  - `radius_mode_selected`
+  - `radius_changed` (radius_meters)
+  - `favorites_map_opened` (source: wizard_area/wizard_interests/myplaces)
+  - `route_map_opened` (stops_count)
+  - `stop_skipped` / `stop_unskipped` (stop_name, interest)
+  - `fetch_more_clicked` (interest_id, count)
+  - `manual_stop_added` (stop_name)
+  - `route_reordered` (stops_count)
+  - `route_shared` (stops_count, parts)
+  - `route_saved` (city, stops_count, area) — ב-`quickSaveRoute()`
+  - `app_shared`
+
+---
+
+## שינויים מרכזיים — סשן Apr 07-08, 2026 (v3.17.28→3.17.53)
+
+### Firebase Rules — תיקון קריטי
+- `settings/interestGroups`, `settings/interestConfig`, `settings/interestStatus`, `settings/cityHiddenInterests`, `settings/cacheVersion` — הוגדרו כ-`.read: true` לכל משתמש
+- **סיבה:** משתמשים רגילים לא יכלו לקרוא settings → interestGroups נכשל → מיון אלפבתי
+- **קובץ:** `firebase-rules.json` — יש לעדכן ב-Firebase Console
+
+### Analytics — Firebase + Google Analytics 4
+- **Measurement ID:** `G-QVGD0RKEHP`
+- SDK: `firebase-analytics-compat.js` נוסף ל-`_source-template.html`
+- `window.BKK.logEvent(eventName, params)` — פונקציה גלובלית
+- **Events:** `session_start`, `login`, `language_changed`, `city_selected`, `search_started`, `route_generated`, `route_started`, `favorite_saved`, `place_opened_google` (source param), `hint_audio_played`, `area_selected`, `radius_mode_selected`, `radius_changed`, `favorites_map_opened` (source: wizard_area/wizard_interests/myplaces), `route_map_opened`, `stop_skipped`, `stop_unskipped`, `fetch_more_clicked`, `manual_stop_added`, `route_reordered`, `route_shared`, `route_saved`, `app_shared`
+
+### Quick-Add / Capture Dialog
+- `RecordingTextarea` + `RecordingInterim` מועברים כ-props לQuickAddPlaceDialog
+- שדה שם: `lang: 'en-US'`, `clearOnStart: true`, placeholder `"הקלד/הקלט שם מקום באנגלית..."`
+- `startRec('name')` ב-quick-add-component תומך ב-`lang: 'en-US'`
+- GPS retry לפני שמירה אם אין קואורדינטות
+- `saveDisabled` מאפשר שמירה גם ללא תמונה אם יש שם ידני
+- `finalLocation.lat = enriched.lat || newLocation.lat` — קואורדינטות גוגל לא נדרסות
+- `lastCaptureInterestsRef` מסונן לפי valid IDs בלבד (מונע i_nature stale)
+- מיון `activeInterests` — ללא sort ידני, שומר סדר `allInterestOptions`
+
+### Dedup שיפורים
+- Google dedup קורא `types` מ-`interestConfig[id].types` (לא רק `interestToGooglePlaces`)
+- `googleMulti` picker — בחירה מרובה עד 3 תוצאות, ממוין לפי מרחק
+- `dedupConfirm._pickedMatch = m` — sync write לפני handleDedupConfirm (תיקון async state)
+- `handleDedupConfirm('acceptGooglePick')` קורא `dedupConfirm._pickedMatch`
+
+### UX / Recording
+- מחיקה למשתמש רגיל — מקומות שהוא יצר (userId === authUser.uid, לא locked)
+- Filter log — score מלא ליד כל מקום (googleScore + base + FF rating × bonus)
+- מיון רשימת מסלול לפי score בתוך כל קבוצה (אות A/B/C נשארת גיאוגרפית)
+- SW: `build.py` מעדכן גם OFFLINE_ASSETS URLs (תיקון לופ עדכון)
+- `systemAlertIntervalHours` בAdmin params (default=1)
 
 ---
 

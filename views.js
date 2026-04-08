@@ -297,6 +297,7 @@
                   setCurrentView(item.view);
                   setShowHeaderMenu(false);
                   window.scrollTo(0, 0);
+                  window.BKK.logEvent?.('nav_menu_clicked', { destination: item.view });
                 }}
                 style={{
                   width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
@@ -313,7 +314,7 @@
             ))}
             {/* About — visible to all users */}
             <button
-              onClick={() => { setShowAbout(true); setShowHeaderMenu(false); }}
+              onClick={() => { setShowAbout(true); setShowHeaderMenu(false); window.BKK.logEvent?.('nav_menu_clicked', { destination: 'about' }); }}
               style={{
                 width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
                 background: 'transparent', border: 'none', borderRadius: '8px', padding: '8px 12px',
@@ -758,6 +759,7 @@
                     { mode: 'radius', icon: '📍', label: t('general.nearMe'), onClick: () => {
                       if (formData.searchMode !== 'radius') {
                         setFormData(prev => ({...prev, searchMode: 'radius', radiusMeters: prev.radiusMeters || 500}));
+                        window.BKK.logEvent?.('radius_mode_selected', {});
                         if (navigator.geolocation) {
                           window.BKK.getValidatedGps(
                             (pos) => { setFormData(prev => ({...prev, currentLat: pos.coords.latitude, currentLng: pos.coords.longitude, radiusPlaceName: t('wizard.myLocation'), radiusSource: 'gps'})); showToast(t('wizard.locationFound'), 'success'); },
@@ -799,7 +801,7 @@
                         return (
                         <button
                           key={area.id}
-                          onClick={() => setFormData(prev => ({...prev, area: area.id, searchMode: 'area'}))}
+                          onClick={() => { setFormData(prev => ({...prev, area: area.id, searchMode: 'area'})); window.BKK.logEvent?.('area_selected', { area_id: area.id, area_name: area.labelEn || area.label }); }}
                           style={{
                             padding: '6px 6px', borderRadius: '8px',
                             border: formData.area === area.id && formData.searchMode === 'area' ? '2px solid #22c55e' : '1.5px solid #e5e7eb',
@@ -834,7 +836,7 @@
                           {[100, 250, 500, 750, 1000].map(r => (
                             <button
                               key={r}
-                              onClick={() => setFormData(prev => ({...prev, radiusMeters: r}))}
+                              onClick={() => { setFormData(prev => ({...prev, radiusMeters: r})); window.BKK.logEvent?.('radius_changed', { radius_meters: r }); }}
                               style={{
                                 padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
                                 border: formData.radiusMeters === r ? '2px solid #2563eb' : '1.5px solid #d1d5db',
@@ -872,6 +874,7 @@
                       setMapBottomSheet(null);
                       setMapReturnPlace(null);
                       setShowMapModal(true);
+                      window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_area', area: formData.area || null });
                     }}
                     style={{
                       width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #8b5cf6',
@@ -1047,6 +1050,7 @@
                       setMapBottomSheet(null);
                       setMapReturnPlace(null);
                       setShowMapModal(true);
+                      window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_interests' });
                     }}
                     style={{
                       width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #8b5cf6',
@@ -1355,7 +1359,8 @@
                             {!isManualGroup && (
                             <button
                               onClick={async () => {
-                                // Fetch more for this specific interest
+                                window.BKK.logEvent?.('fetch_more_clicked', { interest_id: interest, count: formData.fetchMoreCount || 3 });
+                                await fetchMoreForInterest(interest);
                                 await fetchMoreForInterest(interest);
                               }}
                               className="text-[10px] px-2 py-0.5 rounded bg-blue-500 text-white hover:bg-blue-600"
@@ -1485,7 +1490,7 @@
                                           e.preventDefault();
                                           e.stopPropagation();
                                           const nk = (stop.name || '').toLowerCase().trim();
-                                          setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]);
+                                          const _wasSkip = !disabledStops.includes(nk); setDisabledStops(prev => prev.includes(nk) ? prev.filter(n => n !== nk) : [...prev, nk]); window.BKK.logEvent?.(_wasSkip ? 'stop_skipped' : 'stop_unskipped', { stop_name: stop.name, interest: (stop.interests || [])[0] || null });
                                         }}
                                         style={{
                                           cursor: 'pointer', fontSize: '10px', flexShrink: 0,
@@ -1592,6 +1597,7 @@
                         if (allStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
                         setMapStops(allStops);
                         setMapMode('stops');
+                        window.BKK.logEvent?.('route_map_opened', { stops_count: allStops.length });
                         setShowMapModal(true);
                       };
                       if (!startPointCoordsRef.current && !formData.currentLat && navigator.geolocation) {
@@ -1702,6 +1708,7 @@
                           if (!mapUrl) return;
                           const mapLinks = urls.map((u, i) => urls.length === 1 ? u.url : `(${u.part}/${u.total}) ${u.url}`).join('\n');
                           const shareText = `🗺️ ${routeName}\n📍 ${route.areaName || ''}\n🎯 ${activeStops.length} stops\n${routeType === 'circular' ? t('route.circularRoute') : t('route.linearDesc')}\n\n${activeStops.map((s, i) => `${window.BKK.stopLabel(i)}. ${s.name}`).join('\n')}\n\n🗺️ Google Maps:\n${mapLinks}`;
+                          window.BKK.logEvent?.('route_shared', { stops_count: activeStops.length, parts: urls.length });
                           if (navigator.share) { navigator.share({ title: routeName, text: shareText }); }
                           else { navigator.clipboard.writeText(shareText); showToast(t('route.routeCopied'), 'success'); }
                         }, disabled: !route?.optimized },
@@ -2140,13 +2147,14 @@
                     setNewLocation({ name: '', description: '', notes: '', area: formData.area, areas: [formData.area], interests: lastInterests, lat: null, lng: null, mapsUrl: '', address: '', uploadedImage: null, imageUrls: [], googlePlace: false, googlePlaceId: '', googleRating: null, googleRatingCount: 0 });
                     setLocationSearchResults(null);
                     setShowAddLocationDialog(true);
+                    window.BKK.logEvent?.('add_place_manually_clicked', { source: 'favorites' });
                   }}
                   className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-teal-600"
                 >
                   {`✏️ ${t("places.addManually")}`}
                 </button>
                 <button
-                  onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); }}
+                  onClick={() => { setMapMode('favorites'); setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null); setMapFavFilter(new Set()); setMapBottomSheet(null); setShowMapModal(true); window.BKK.logEvent?.('favorites_map_opened', { source: 'myplaces' }); }}
                   style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #c084fc', background: '#f3e8ff', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', color: '#7c3aed', whiteSpace: 'nowrap' }}
                 >
                   🗺️ {t('form.favoritesMap')}
@@ -4525,6 +4533,7 @@
               onClick={() => {
                 const appUrl = 'https://eitanfisher2026.github.io/FouFou/';
                 const shareData = { title: 'FouFou', text: t('settings.appDescription') || 'City trails in Bangkok & Singapore', url: appUrl };
+                window.BKK.logEvent?.('app_shared', {});
                 if (navigator.share) { navigator.share(shareData).catch(() => {}); }
                 else { try { navigator.clipboard.writeText(appUrl); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(appUrl, 'info'); } }
               }}

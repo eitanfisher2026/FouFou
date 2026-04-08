@@ -453,7 +453,8 @@
                       <img 
                         src={newLocation.uploadedImage} 
                         alt="Preview"
-                        className="w-full h-48 object-cover rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90"
+                        className="w-full object-contain rounded-lg border-2 border-purple-300 cursor-pointer hover:opacity-90"
+                        style={{ maxHeight: '280px', background: '#111', display: 'block' }}
                         onClick={() => {
                           setModalImage(newLocation.uploadedImage);
                           setModalImageCtx({ description: newLocation.description });
@@ -533,7 +534,7 @@
                       onChange: (e) => setNewLocation(prev => ({...prev, description: e.target.value})),
                       onClear: () => setNewLocation(prev => ({...prev, description: ''})),
                       placeholder: t('places.description'),
-                      rows: 2,
+                      rows: 4,
                       className: 'w-full p-2 border-2 border-gray-300 rounded-lg focus:border-purple-500'
                     })}
                     {RecordingInterim({ fieldId: 'loc_description' })}
@@ -552,12 +553,15 @@
                           )}
                           <button
                             onClick={async () => {
-                              // Work with existing location or create a temp object from current newLocation
-                              const cl = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
-                              if (cl) {
-                                refreshSingleGoogleRating(cl);
+                              // If new (unsaved) place: auto-save first, then refresh rating
+                              const existing = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
+                              if (existing) {
+                                refreshSingleGoogleRating(existing);
+                              } else if (newLocation.name?.trim() && newLocation.interests?.length) {
+                                pendingRatingRefreshRef.current = true;
+                                addCustomLocation(false);
                               } else if (newLocation.googlePlaceId || newLocation.name) {
-                                // New location not saved yet — refresh in-place
+                                // No name/interests yet — refresh in-place without saving
                                 refreshSingleGoogleRating({ ...newLocation, firebaseId: null, _inPlace: true }, (updated) => {
                                   setNewLocation(prev => ({ ...prev, googleRating: updated.googleRating, googleRatingCount: updated.googleRatingCount }));
                                 });
@@ -569,13 +573,33 @@
                           {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
                           {ra ? (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
+                              onClick={() => {
+                                const existing = customLocations.find(l => l.name === newLocation.name);
+                                if (existing) {
+                                  openReviewDialog(existing);
+                                } else if (newLocation.name?.trim() && newLocation.interests?.length) {
+                                  pendingReviewOpenRef.current = true;
+                                  addCustomLocation(false);
+                                } else {
+                                  showToast(t('places.enterNameFirst') || 'יש להזין שם ותחום קודם', 'warning');
+                                }
+                              }}
                               style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                               title={t('reviews.seeReviews') || 'ראה ביקורות'}
                             >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
                           ) : (
                             <button
-                              onClick={() => { const cl = customLocations.find(l => l.name === newLocation.name) || { ...newLocation, _unsaved: true }; openReviewDialog(cl); }}
+                              onClick={() => {
+                                const existing = customLocations.find(l => l.name === newLocation.name);
+                                if (existing) {
+                                  openReviewDialog(existing);
+                                } else if (newLocation.name?.trim() && newLocation.interests?.length) {
+                                  pendingReviewOpenRef.current = true;
+                                  addCustomLocation(false);
+                                } else {
+                                  showToast(t('places.enterNameFirst') || 'יש להזין שם ותחום קודם', 'warning');
+                                }
+                              }}
                               style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
                             >☆ {t('reviews.rate') || 'דרג'}</button>
                           )}
@@ -2068,6 +2092,7 @@
                 }
                 
                 showToast(`➕ ${display} ${t("interests.added")} — ${t('general.addedManually') || 'נוסף לתחתית הרשימה'}`, 'success');
+                window.BKK.logEvent?.('manual_stop_added', { stop_name: display });
                 
                 // Clear input for next add
                 const inp = document.getElementById('manual-stop-input');
@@ -2282,12 +2307,12 @@
 
               {/* Scrollable body */}
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {/* Image area — fixed height */}
-                <div style={{ width: '100%', height: '200px', background: '#f9fafb', position: 'relative', overflow: 'hidden' }}>
+                {/* Image area — natural aspect ratio */}
+                <div style={{ width: '100%', background: '#111', position: 'relative' }}>
                   {hasImage ? (
-                    <img src={modalImage} alt={loc?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={modalImage} alt={loc?.name} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <div style={{ width: '100%', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                       <img src="icon-192x192.png" alt="FouFou" style={{ width: '48px', height: '48px', opacity: 0.2 }} />
                     </div>
                   )}
@@ -3402,6 +3427,7 @@
                       userManualOrderRef.current = true;
                       setRoute(prev => prev ? { ...prev, optimized: false } : prev);
                       showToast(t('route.orderUpdated'), 'success');
+                      window.BKK.logEvent?.('route_reordered', { stops_count: curr?.length || 0 });
                     }
                   }}
                   style={{ flex: 1, padding: '10px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}

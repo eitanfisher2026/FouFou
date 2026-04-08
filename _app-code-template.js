@@ -35,6 +35,7 @@ function initFirebase() {
         try {
           window.BKK._analytics = firebase.analytics();
           window.BKK.logEvent = (eventName, params) => {
+            if (window.BKK._isAdmin) return;
             try { window.BKK._analytics.logEvent(eventName, params || {}); } catch(e) {}
           };
         } catch(e) { window.BKK.logEvent = () => {}; }

@@ -88,6 +88,7 @@
         if (user.isAnonymous) {
           setUserProfile(null);
           setUserRole(0);
+          window.BKK._isAdmin = false;
           setAuthLoading(false);
           return;
         }
@@ -124,6 +125,7 @@
           }
           setUserProfile(profile);
           setUserRole(profile.role || 0);
+          window.BKK._isAdmin = (profile.role || 0) >= 2;
 
           // Run one-time migrations for admin
           if ((profile.role || 0) >= 2) {
@@ -132,11 +134,13 @@
         } catch (err) {
           console.error('[AUTH] Error loading profile:', err);
           setUserRole(0);
+          window.BKK._isAdmin = false;
         }
       } else {
         console.log('[AUTH] Signed out');
         setUserProfile(null);
         setUserRole(0);
+        window.BKK._isAdmin = false;
       }
       setAuthLoading(false);
     });
@@ -445,6 +449,9 @@
   const [showRoutePreview, setShowRoutePreview] = useState(false); // Route reorder dialog
   const reorderOriginalStopsRef = React.useRef(null); // Snapshot of stops before reorder
   const userManualOrderRef = React.useRef(false); // True after user manually reordered stops
+  // Pending actions: auto-save place first, then open review/refresh rating
+  const pendingReviewOpenRef = React.useRef(false);
+  const pendingRatingRefreshRef = React.useRef(false);
   const [showRouteMenu, setShowRouteMenu] = useState(false); // Hamburger menu in route results
   const [showHeaderMenu, setShowHeaderMenu] = useState(false); // Main hamburger menu in header
   const [routeChoiceMade, setRouteChoiceMade] = useState(null); // null | 'manual' — controls wizard step 3 split
@@ -2648,7 +2655,6 @@
       audio.play();
       return;
     }
-    window.BKK.logEvent?.('hint_tts_played', { hint_id: hintId, lang });
     speakHelp(text);
   };
   const pauseResumeHint = () => {
@@ -5810,7 +5816,6 @@
   // Sync editingLocation to newLocation when edit dialog opens
   useEffect(() => {
     if (showEditLocationDialog && editingLocation) {
-      console.log('[useEffect] Syncing editingLocation to newLocation');
       setNewLocation({
         name: editingLocation.name || '',
         description: editingLocation.description || '',
@@ -5832,6 +5837,21 @@
       });
     }
   }, [showEditLocationDialog, editingLocation]);
+
+  // After auto-save completes (editingLocation set) — fire pending action
+  useEffect(() => {
+    if (pendingReviewOpenRef.current && editingLocation && showEditLocationDialog) {
+      pendingReviewOpenRef.current = false;
+      openReviewDialog(editingLocation);
+    }
+  }, [editingLocation, showEditLocationDialog]);
+
+  useEffect(() => {
+    if (pendingRatingRefreshRef.current && editingLocation && showEditLocationDialog) {
+      pendingRatingRefreshRef.current = false;
+      refreshSingleGoogleRating(editingLocation);
+    }
+  }, [editingLocation, showEditLocationDialog]);
 
   const areaOptions = window.BKK.areaOptions || [];
 
@@ -7703,6 +7723,7 @@
           setRouteDialogMode('add');
           setShowRouteDialog(true);
           showToast(t('route.routeSaved'), 'success');
+          window.BKK.logEvent?.('route_saved', { city: selectedCityId, stops: route?.stops?.length || 0, area: route?.areaName || formData.area });
         })
         .catch((error) => {
           console.error('[FIREBASE] Error saving route:', error);
@@ -7714,6 +7735,7 @@
       saveRoutesToStorage(updated);
       setRoute(routeToSave);
       showToast(t('route.routeSaved'), 'success');
+      window.BKK.logEvent?.('route_saved', { city: selectedCityId, stops: route?.stops?.length || 0, area: route?.areaName || formData.area });
       setEditingRoute({...routeToSave});
       setRouteDialogMode('add');
       setShowRouteDialog(true);
@@ -9170,12 +9192,13 @@
       return; // Just don't add if validation fails
     }
     
-    // Check for duplicate name (warn only, don't block — auto-generated names may collide)
+    // Check for duplicate name — block save to prevent duplicates
     const exists = customLocations.find(loc => 
       loc.name.toLowerCase().trim() === locData.name.toLowerCase().trim()
     );
     if (exists) {
       showToast(`⚠️ "${locData.name}" ${t("places.alreadyInList")}`, 'warning');
+      return; // BLOCK — don't save duplicate
     }
     
     // Use provided coordinates (can be null)
@@ -9358,6 +9381,7 @@
     );
     if (exists) {
       showToast(`⚠️ "${newLocation.name}" ${t("places.alreadyInList")}`, 'warning');
+      return; // BLOCK
     }
     
     // Check if anything actually changed (normalize null/undefined)
