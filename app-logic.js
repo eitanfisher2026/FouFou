@@ -8913,6 +8913,20 @@
   // before React has re-rendered — e.g. from QuickCapture onSave where state update is async)
   const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false, overrideData = null) => {
     const loc = overrideData ? { ...overrideData } : { ...newLocation };
+
+    // Check exact name duplicate first — same dialog as proximity dedup
+    if (loc.name?.trim()) {
+      const nameMatch = customLocations.find(l =>
+        l.name.toLowerCase().trim() === loc.name.toLowerCase().trim() &&
+        l.status !== 'blacklist' &&
+        (!overrideData || l.id !== overrideData.id)
+      );
+      if (nameMatch) {
+        setDedupConfirm({ type: 'custom', loc, match: nameMatch, closeAfter, closeQuickCapture, overrideData });
+        return;
+      }
+    }
+
     if (!loc.name?.trim() || !loc.interests?.length) {
       addCustomLocation(closeAfter, overrideData);
       if (closeQuickCapture) setShowQuickCapture(false);
