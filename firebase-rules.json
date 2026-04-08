@@ -31,6 +31,21 @@
       ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2",
       "aboutContent": {
         ".read": true
+      },
+      "interestGroups": {
+        ".read": true
+      },
+      "interestConfig": {
+        ".read": true
+      },
+      "interestStatus": {
+        ".read": true
+      },
+      "cityHiddenInterests": {
+        ".read": true
+      },
+      "cacheVersion": {
+        ".read": true
       }
     },
     "aboutContent": {
@@ -70,17 +85,15 @@
         ".write": "auth != null && (!data.exists() && newData.child('userId').val() === auth.uid || data.child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() >= 2)",
         ".validate": "newData.hasChildren(['text', 'userId', 'timestamp'])"
       },
-      ".indexOn": [
-        "timestamp"
-      ]
+      ".indexOn": ["timestamp"]
+    },
+    "cityStates": {
+      ".read": true,
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() >= 2"
     },
     "$other": {
       ".read": false,
       ".write": false
-    },
-    "cityStates": {
-      ".read": true,
-      ".write": "auth != null && root.child(\"users\").child(auth.uid).child(\"role\").val() >= 2"
     }
   }
 }

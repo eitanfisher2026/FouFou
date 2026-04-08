@@ -886,7 +886,17 @@
                 const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? formData.currentLat : (formData.searchMode === 'area' ? formData.area : true));
                 return (
                 <button
-                    onClick={() => { if (canSearch) { generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0); } }}
+                    onClick={() => { if (canSearch) {
+                      // Analytics: track interests selected and context
+                      window.BKK.logEvent?.('search_started', {
+                        city: selectedCityId,
+                        lang: currentLang,
+                        interests_count: formData.interests?.length || 0,
+                        interests: (formData.interests || []).slice(0, 5).join(','),
+                        time_filter: interestTimeFilter || 'all'
+                      });
+                      generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0);
+                    } }}
                     disabled={!canSearch}
                     style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
                       margin: '0 16px calc(16px + env(safe-area-inset-bottom, 0px))', width: 'calc(100% - 32px)',
@@ -1763,6 +1773,7 @@
                           else if (isCircular) showToast(t('route.circularDesc'), 'info');
                           startActiveTrail(activeStops, formData.interests, formData.area);
                           showToast(`📸 ${t('trail.started')}`, 'success');
+                          window.BKK.logEvent?.('place_opened_google', { source: 'route_start', stops: activeStops.length });
                           window.open(mapUrl, 'city_explorer_map');
                         }}
                       >
@@ -1777,6 +1788,7 @@
                           onClick={() => {
                             if (urlInfo.url.length > 2000) showToast(`${t('toast.urlTooLong')} (${urlInfo.url.length})`, 'warning');
                             if (idx === 0) startActiveTrail(activeStops, formData.interests, formData.area);
+                            window.BKK.logEvent?.('place_opened_google', { source: 'route_part', part: idx + 1 });
                             window.open(urlInfo.url, 'city_explorer_map');
                           }}
                           style={{
@@ -4925,6 +4937,7 @@
                         const btnLabel = isCoordOnly ? (t('general.openGooglePoint') || 'פתח נקודה בגוגל') : (t('general.openInGoogle') || 'פתח בגוגל');
                         return (
                           <a href={googleViewUrl} target="_blank" rel="noopener noreferrer"
+                            onClick={() => window.BKK.logEvent?.('place_opened_google', { source: 'favorites' })}
                             style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1.5px solid #6ee7b7', background: '#ecfdf5', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#065f46', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                           >🔍 {btnLabel}</a>
                         );

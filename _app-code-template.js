@@ -30,6 +30,17 @@ function initFirebase() {
         }, isConnected ? 500 : 2000);
       });
       if (firebase.storage) { storage = firebase.storage(); }
+      // Initialize Analytics
+      if (firebase.analytics) {
+        try {
+          window.BKK._analytics = firebase.analytics();
+          window.BKK.logEvent = (eventName, params) => {
+            try { window.BKK._analytics.logEvent(eventName, params || {}); } catch(e) {}
+          };
+        } catch(e) { window.BKK.logEvent = () => {}; }
+      } else {
+        window.BKK.logEvent = () => {};
+      }
       isFirebaseAvailable = true;
       console.log('[FIREBASE] Initialized');
     }

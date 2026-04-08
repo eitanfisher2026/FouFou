@@ -79,6 +79,10 @@
       authUserRef.current = user; // keep ref in sync
       setAuthUser(user);
       if (user) {
+        // Analytics: track login
+        if (!user.isAnonymous) {
+          window.BKK.logEvent?.('login', { method: user.providerData?.[0]?.providerId || 'unknown' });
+        }
         // Anonymous users: no Firebase profile. State lives in localStorage only.
         // This prevents accumulation of empty user records in Firebase.
         if (user.isAnonymous) {
@@ -424,7 +428,15 @@
         optimized.map(s => ({ lat: s.lat, lng: s.lng, name: s.name })),
         `${autoStart.lat},${autoStart.lng}`, isCircular, window.BKK.googleMaxWaypoints || 12
       );
-      if (urls.length > 0) window.open(urls[0].url, 'city_explorer_map');
+      if (urls.length > 0) {
+        window.open(urls[0].url, 'city_explorer_map');
+        window.BKK.logEvent?.('route_started', {
+          city: selectedCityId,
+          stops: optimized.length,
+          circular: isCircular ? 1 : 0,
+          interests: formData.interests?.length || 0
+        });
+      }
     }
     
     return { optimized, disabled: disabledList, autoStart, newDisabled, isCircular };
@@ -1640,6 +1652,14 @@
     if (t.interests && t.config && t.status) {
       setIsDataLoaded(true);
       window.scrollTo(0, 0);
+      // Analytics: session start
+      setTimeout(() => {
+        window.BKK.logEvent?.('session_start', {
+          city: selectedCityId,
+          lang: currentLang,
+          user_type: authUser ? (authUser.isAnonymous ? 'anonymous' : 'registered') : 'not_signed_in'
+        });
+      }, 1000); // slight delay to ensure auth state is settled
       // Preload Leaflet in background (2s delay to not compete with rendering)
       setTimeout(() => window.BKK.loadLeaflet(), 2000);
     }
@@ -2620,15 +2640,15 @@
     const lang = window.BKK.i18n.currentLang || 'he';
     const audioUrl = hintAudioUrls[hintId + '_' + lang];
     if (audioUrl) {
-      // Play recording — do NOT fall through to TTS
+      window.BKK.logEvent?.('hint_audio_played', { hint_id: hintId, lang });
       const audio = new Audio(audioUrl);
       window._hintAudio = audio;
       audio.onended = () => { setIsSpeaking(false); setIsPaused(false); window._hintAudio = null; };
       setIsSpeaking(true); setIsPaused(false);
       audio.play();
-      return; // <-- critical: stop here, no TTS
+      return;
     }
-    // No recording — use TTS
+    window.BKK.logEvent?.('hint_tts_played', { hint_id: hintId, lang });
     speakHelp(text);
   };
   const pauseResumeHint = () => {
@@ -4436,6 +4456,7 @@
     if (!window.BKK.cities[cityId]) return;
     
     window.BKK.selectCity(cityId);
+    window.BKK.logEvent?.('city_selected', { city: cityId });
     // day/night hours and icons loaded from cities/{cityId}/general by useEffect on selectedCityId
     setSelectedCityId(cityId);
     localStorage.setItem('city_explorer_city', cityId);
@@ -4470,6 +4491,7 @@
     if (lang === currentLang) return;
     window.BKK.i18n.setLang(lang);
     setCurrentLang(lang);
+    window.BKK.logEvent?.('language_changed', { lang });
   };
   
   // Utility functions - loaded from utils.js
@@ -7131,6 +7153,14 @@
 
       setRoute(newRoute);
       userManualOrderRef.current = false; // new route resets manual order flag
+      // Analytics
+      window.BKK.logEvent?.('route_generated', {
+        city: selectedCityId,
+        stops: newRoute.stops.length,
+        interests: formData.interests?.length || 0,
+        area: formData.area || 'radius',
+        has_favorites: (newRoute.stats?.custom || 0) > 0 ? 1 : 0
+      });
 
       // ── Friendly stats toast — interests ordered as they appear in route ──
       (() => {
@@ -9230,6 +9260,14 @@
             ]);
             console.log('[FIREBASE] Location VERIFIED on server:', ref.key);
             showToast(`✅ ${locationToAdd.name} — ${t('places.placeAddedShared')}`, 'success');
+            // Analytics
+            window.BKK.logEvent?.('favorite_saved', {
+              city: selectedCityId,
+              interest: locationToAdd.interests?.[0] || 'unknown',
+              has_photo: !!locationToAdd.uploadedImage,
+              has_coords: !!(locationToAdd.lat && locationToAdd.lng),
+              from_google: !!locationToAdd.googlePlace
+            });
           } catch (verifyErr) {
             // Server unreachable but Firebase SDK has the data cached - it WILL sync when online
             console.warn('[FIREBASE] Saved to Firebase cache (will auto-sync):', verifyErr.message);

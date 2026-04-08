@@ -700,7 +700,7 @@
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
-                          onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); }}
+                          onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
                         >
                           🗺️ {btnLabel}
                         </a>
