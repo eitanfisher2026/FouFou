@@ -230,7 +230,7 @@
                           placeholder={isRecording && recordingField === 'location_name' ? '' : (t('places.namePlaceholderEn') || 'הקלד/הקלט שם מקום באנגלית...')}
                           className="w-full p-2 border-2 border-purple-300 rounded-lg focus:border-purple-500"
                           style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px', width: '100%', boxSizing: 'border-box', borderColor: isRecording && recordingField === 'location_name' ? '#ef4444' : undefined, paddingRight: window.BKK.i18n.isRTL() ? '24px' : '8px', paddingLeft: window.BKK.i18n.isRTL() ? '8px' : '24px' }}
-                          autoFocus={!showEditLocationDialog}
+                          autoFocus={false}
                         />
                         {newLocation.name && (
                           <button type="button" onClick={() => { setNewLocation({...newLocation, name: ''}); setLocationSearchResults(null); }}
@@ -380,7 +380,7 @@
                 {/* Interests - Compact Grid */}
                 <div>
                   <label className="block text-xs font-bold mb-1">{t("general.interestsHeader")}</label>
-                  <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-52 overflow-y-auto">
+                  <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg">
                     {allInterestOptions.map(option => (
                       <button
                         key={option.id}
@@ -2445,7 +2445,7 @@
               />
 
               {/* Sender info */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <input type="text" value={feedbackSenderName}
                   onChange={(e) => {
                     setFeedbackSenderName(e.target.value);
