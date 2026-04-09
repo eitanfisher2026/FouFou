@@ -1652,6 +1652,15 @@
   const [feedbackCategory, setFeedbackCategory] = useState(() => {
     try { const d = JSON.parse(localStorage.getItem('feedback_draft') || '{}'); return d.cat || 'general'; } catch(e) { return 'general'; }
   });
+  const [feedbackSubject, setFeedbackSubject] = useState(() => {
+    try { const d = JSON.parse(localStorage.getItem('feedback_draft') || '{}'); return d.subject || ''; } catch(e) { return ''; }
+  });
+  const [feedbackSenderName, setFeedbackSenderName] = useState(() => {
+    try { const d = JSON.parse(localStorage.getItem('feedback_draft') || '{}'); return d.senderName || ''; } catch(e) { return ''; }
+  });
+  const [feedbackSenderEmail, setFeedbackSenderEmail] = useState(() => {
+    try { const d = JSON.parse(localStorage.getItem('feedback_draft') || '{}'); return d.senderEmail || ''; } catch(e) { return ''; }
+  });
   const [feedbackList, setFeedbackList] = useState([]);
   const [myFeedbackList, setMyFeedbackList] = useState([]); // own feedback for non-admin users
   const [showFeedbackList, setShowFeedbackList] = useState(false);
@@ -4370,6 +4379,9 @@
 
     const feedbackEntry = {
       category: feedbackCategory,
+      subject: feedbackSubject.trim() || null,
+      senderName: feedbackSenderName.trim() || null,
+      senderEmail: feedbackSenderEmail.trim() || null,
       text: feedbackText.trim(),
       images: feedbackImages.length > 0 ? feedbackImages : null,
       userId: authUser?.uid || 'unknown',
@@ -4388,7 +4400,7 @@
         database.ref(`feedback/${existingEntry.firebaseId}`).update(feedbackEntry)
           .then(() => {
             showToast(t('toast.feedbackThanks'), 'success');
-            setFeedbackText(''); setFeedbackImages([]); try { localStorage.removeItem('feedback_draft'); } catch(e) {}
+            setFeedbackText(''); setFeedbackImages([]); setFeedbackSubject(''); setFeedbackSenderName(''); setFeedbackSenderEmail(''); try { localStorage.removeItem('feedback_draft'); } catch(e) {}
             setFeedbackCategory('general');
             setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
@@ -4402,7 +4414,7 @@
           .then((ref) => {
             showToast(t('toast.feedbackThanks'), 'success');
             setMyFeedbackList(prev => [{ ...feedbackEntry, firebaseId: ref.key }, ...prev].slice(0, 10));
-            setFeedbackText(''); setFeedbackImages([]); try { localStorage.removeItem('feedback_draft'); } catch(e) {}
+            setFeedbackText(''); setFeedbackImages([]); setFeedbackSubject(''); setFeedbackSenderName(''); setFeedbackSenderEmail(''); try { localStorage.removeItem('feedback_draft'); } catch(e) {}
             setFeedbackCategory('general');
             setEditingMyFeedback(false);
             setShowFeedbackDialog(false);

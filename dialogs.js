@@ -2432,11 +2432,47 @@
                 ))}
               </div>
 
+              {/* Subject */}
+              <input type="text" value={feedbackSubject}
+                onChange={(e) => {
+                  setFeedbackSubject(e.target.value);
+                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: e.target.value, senderName: feedbackSenderName, senderEmail: feedbackSenderEmail })); } catch(err) {}
+                }}
+                placeholder={t('settings.feedbackSubject') || 'נושא'}
+                style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
+                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
+              />
+
+              {/* Sender info */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="text" value={feedbackSenderName}
+                  onChange={(e) => {
+                    setFeedbackSenderName(e.target.value);
+                    try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: feedbackSubject, senderName: e.target.value, senderEmail: feedbackSenderEmail })); } catch(err) {}
+                  }}
+                  placeholder={t('settings.feedbackSenderName') || 'שם'}
+                  style={{ flex: 1, padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
+                />
+                <input type="email" value={feedbackSenderEmail}
+                  onChange={(e) => {
+                    setFeedbackSenderEmail(e.target.value);
+                    try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: feedbackSubject, senderName: feedbackSenderName, senderEmail: e.target.value })); } catch(err) {}
+                  }}
+                  placeholder={t('settings.feedbackSenderEmail') || 'מייל'}
+                  style={{ flex: 1, padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: 'ltr', fontFamily: 'inherit' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
+                />
+              </div>
+
               {/* Text */}
               <textarea value={feedbackText}
                 onChange={(e) => {
                   setFeedbackText(e.target.value);
-                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: e.target.value, cat: feedbackCategory })); } catch(err) {}
+                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: e.target.value, cat: feedbackCategory, subject: feedbackSubject, senderName: feedbackSenderName, senderEmail: feedbackSenderEmail })); } catch(err) {}
                 }}
                 placeholder={t("settings.feedbackPlaceholder")}
                 style={{ width: '100%', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'none', outline: 'none', lineHeight: '1.5', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', wordBreak: 'break-word', fontFamily: 'inherit' }}
@@ -2533,6 +2569,9 @@
                           </span>
                           <span className="text-[10px] text-gray-400 font-mono">{item.userId?.slice(-8)}</span>
                           <span className="text-[10px] text-gray-400">{`From: ${item.currentView || '?'}`}</span>
+                          {item.senderName && <span className="text-[10px] font-bold text-blue-600">{item.senderName}</span>}
+                          {item.senderEmail && <span className="text-[10px] text-gray-500">{item.senderEmail}</span>}
+                          {item.subject && <span className="text-[10px] font-semibold text-gray-700">📌 {item.subject}</span>}
                         </div>
                         <div className="flex items-center gap-1">
                           <button
