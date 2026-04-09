@@ -922,6 +922,8 @@
       googleTextRankPreference: 'RELEVANCE',
       // System alerts — how often to send automated system feedback (hours)
       systemAlertIntervalHours: 1,
+      // Feedback images
+      feedbackMaxImages: 3,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -1644,6 +1646,7 @@
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [editingMyFeedback, setEditingMyFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackImages, setFeedbackImages] = useState([]); // base64 array, max sp.feedbackMaxImages
   const [feedbackCategory, setFeedbackCategory] = useState('general');
   const [feedbackList, setFeedbackList] = useState([]);
   const [myFeedbackList, setMyFeedbackList] = useState([]); // own feedback for non-admin users
@@ -4364,6 +4367,7 @@
     const feedbackEntry = {
       category: feedbackCategory,
       text: feedbackText.trim(),
+      images: feedbackImages.length > 0 ? feedbackImages : null,
       userId: authUser?.uid || 'unknown',
       userEmail: authUser?.email || '',
       currentView: currentView || 'unknown',
@@ -4380,7 +4384,7 @@
         database.ref(`feedback/${existingEntry.firebaseId}`).update(feedbackEntry)
           .then(() => {
             showToast(t('toast.feedbackThanks'), 'success');
-            setFeedbackText('');
+            setFeedbackText(''); setFeedbackImages([]);
             setFeedbackCategory('general');
             setEditingMyFeedback(false);
             setShowFeedbackDialog(false);
@@ -4394,7 +4398,7 @@
           .then((ref) => {
             showToast(t('toast.feedbackThanks'), 'success');
             setMyFeedbackList(prev => [{ ...feedbackEntry, firebaseId: ref.key }, ...prev].slice(0, 10));
-            setFeedbackText('');
+            setFeedbackText(''); setFeedbackImages([]);
             setFeedbackCategory('general');
             setEditingMyFeedback(false);
             setShowFeedbackDialog(false);

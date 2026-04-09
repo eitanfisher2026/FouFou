@@ -2411,7 +2411,7 @@
         const myExisting = myFeedbackList.length > 0 ? myFeedbackList[0] : null;
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-2xl" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
               <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
               <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); setEditingMyFeedback(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
@@ -2440,7 +2440,46 @@
                   <textarea value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)}
                     placeholder={t("settings.feedbackPlaceholder")}
                     className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
-                    rows={4} autoFocus dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"} />
+                    rows={5} autoFocus dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"} />
+
+                  {/* Image upload */}
+                  {(() => {
+                    const maxImgs = sp.feedbackMaxImages || 3;
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {feedbackImages.map((img, idx) => (
+                            <div key={idx} style={{ position: 'relative' }}>
+                              <img src={img} alt="" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                onClick={() => setModalImage(img)} />
+                              <button onClick={() => setFeedbackImages(prev => prev.filter((_, i) => i !== idx))}
+                                style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                            </div>
+                          ))}
+                          {feedbackImages.length < maxImgs && (
+                            <label style={{ width: '64px', height: '64px', border: '2px dashed #d1d5db', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px', color: '#9ca3af', gap: '2px' }}>
+                              📎
+                              <span style={{ fontSize: '9px' }}>+תמונה</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  const compressed = await window.BKK.compressImage(reader.result, 480);
+                                  setFeedbackImages(prev => [...prev, compressed]);
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                              }} />
+                            </label>
+                          )}
+                          {feedbackImages.length > 0 && (
+                            <span style={{ fontSize: '10px', color: '#9ca3af' }}>{feedbackImages.length}/{maxImgs}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={submitFeedback} disabled={!feedbackText.trim()}
                       className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${feedbackText.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
@@ -2462,6 +2501,14 @@
                     {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> ✓ {t('places.handled')}</span>}
                   </div>
                   <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
+                  {myExisting.images?.length > 0 && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      {myExisting.images.map((img, idx) => (
+                        <img key={idx} src={img} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                          onClick={() => setModalImage(img)} />
+                      ))}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => { setFeedbackText(myExisting.text); setFeedbackCategory(myExisting.category || 'general'); setEditingMyFeedback(true); }}
                       style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#dbeafe', border: '1px solid #93c5fd', fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', cursor: 'pointer' }}>
@@ -2496,6 +2543,9 @@
                                 <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
                               </div>
                               <p style={{ fontSize: '12px', color: '#374151', margin: 0 }}>{f.text}</p>
+                            {f.images?.length > 0 && (
+                              <FeedbackImageStrip images={f.images} onView={(img) => setModalImage(img)} />
+                            )}
                             </div>
                             {canDelete && (
                               <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(f))}
@@ -2579,6 +2629,26 @@
                         </div>
                       </div>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.text}</p>
+                      {item.images?.length > 0 && (() => {
+                        const [imgIdx, setImgIdx] = React.useState(0);
+                        return (
+                          <div style={{ marginTop: '6px' }}>
+                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                              <img src={item.images[imgIdx]} alt="" style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', display: 'block' }}
+                                onClick={() => { setModalImage(item.images[imgIdx]); setModalImageCtx({ description: item.text }); setShowImageModal(true); }} />
+                              {item.images.length > 1 && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: '6px' }}>
+                                  <button onClick={() => setImgIdx(i => Math.max(0, i - 1))} disabled={imgIdx === 0}
+                                    style={{ padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', background: imgIdx === 0 ? '#f3f4f6' : 'white', cursor: imgIdx === 0 ? 'default' : 'pointer', fontSize: '12px', color: imgIdx === 0 ? '#d1d5db' : '#374151' }}>◀</button>
+                                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{imgIdx + 1} / {item.images.length}</span>
+                                  <button onClick={() => setImgIdx(i => Math.min(item.images.length - 1, i + 1))} disabled={imgIdx === item.images.length - 1}
+                                    style={{ padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', background: imgIdx === item.images.length - 1 ? '#f3f4f6' : 'white', cursor: imgIdx === item.images.length - 1 ? 'default' : 'pointer', fontSize: '12px', color: imgIdx === item.images.length - 1 ? '#d1d5db' : '#374151' }}>▶</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="text-[10px] text-gray-400 mt-1">
                         {item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
                       </div>

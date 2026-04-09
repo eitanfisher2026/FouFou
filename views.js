@@ -31,10 +31,10 @@
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '2px',
                 padding: '2px 8px', fontSize: '12px', fontWeight: '700',
-                background: openHintPopup === hintId ? '#1d4ed8' : '#2563eb',
-                color: 'white', border: 'none',
+                background: openHintPopup === hintId ? '#bfdbfe' : '#dbeafe',
+                color: '#1d4ed8', border: '1.5px solid #93c5fd',
                 borderRadius: '20px', cursor: 'pointer',
-                boxShadow: '0 1px 4px rgba(37,99,235,0.35)'
+                boxShadow: '0 1px 3px rgba(59,130,246,0.15)'
               }}
             >
               <span style={{ fontSize: '12px' }}>ℹ</span>
@@ -479,7 +479,7 @@
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
                     )}
                     <button onClick={() => setOpenHintPopup(openHintPopup === 'activeTrail' ? null : 'activeTrail')}
-                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: 'none', background: openHintPopup === 'activeTrail' ? '#1d4ed8' : '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: 'white', fontWeight: '700', boxShadow: '0 1px 4px rgba(37,99,235,0.35)' }}>
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1.5px solid #93c5fd', background: openHintPopup === 'activeTrail' ? '#bfdbfe' : '#dbeafe', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#1d4ed8', fontWeight: '700', boxShadow: '0 1px 3px rgba(59,130,246,0.15)' }}>
                       <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
                     </button>
                   </div>
@@ -1673,10 +1673,10 @@
                             title={window.BKK.i18n.isRTL() ? 'מה יש בתפריט?' : 'What is in the menu'}
                             style={{
                               height: '42px', borderRadius: '12px', padding: '0 10px',
-                              border: 'none', background: openHintPopup === 'hint_route_menu' ? '#1d4ed8' : '#2563eb',
+                              border: '1.5px solid #93c5fd', background: openHintPopup === 'hint_route_menu' ? '#bfdbfe' : '#dbeafe',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                              fontSize: '15px', color: 'white', fontWeight: '700', flexShrink: 0,
-                              boxShadow: '0 1px 4px rgba(37,99,235,0.35)'
+                              fontSize: '15px', color: '#1d4ed8', fontWeight: '700', flexShrink: 0,
+                              boxShadow: '0 1px 3px rgba(59,130,246,0.15)'
                             }}
                           >
                             <span>ℹ</span>
