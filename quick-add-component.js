@@ -707,3 +707,29 @@ const AutoTranslateText = ({ text, style, className, prefix, translateText, dete
     </span>
   );
 };
+
+// FeedbackItemImages — standalone component (must be outside FouFouApp for valid hook usage)
+const FeedbackItemImages = ({ images, onView }) => {
+  const [idx, setIdx] = React.useState(0);
+  if (!images || images.length === 0) return null;
+  const canPrev = idx > 0;
+  const canNext = idx < images.length - 1;
+  return (
+    <div style={{ marginTop: '6px' }}>
+      <img
+        src={images[idx]} alt=""
+        style={{ width: '100%', maxHeight: '160px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', display: 'block' }}
+        onClick={() => onView && onView(images[idx])}
+      />
+      {images.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: '6px' }}>
+          <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={!canPrev}
+            style={{ padding: '2px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: canPrev ? 'white' : '#f3f4f6', cursor: canPrev ? 'pointer' : 'default', fontSize: '12px', color: canPrev ? '#374151' : '#d1d5db' }}>◀</button>
+          <span style={{ fontSize: '10px', color: '#9ca3af' }}>{idx + 1} / {images.length}</span>
+          <button onClick={() => setIdx(i => Math.min(images.length - 1, i + 1))} disabled={!canNext}
+            style={{ padding: '2px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: canNext ? 'white' : '#f3f4f6', cursor: canNext ? 'pointer' : 'default', fontSize: '12px', color: canNext ? '#374151' : '#d1d5db' }}>▶</button>
+        </div>
+      )}
+    </div>
+  );
+};

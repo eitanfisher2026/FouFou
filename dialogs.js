@@ -2407,166 +2407,89 @@
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}
       {showFeedbackDialog && (() => {
-        const currentUserId = authUser?.uid || null;
-        const myExisting = myFeedbackList.length > 0 ? myFeedbackList[0] : null;
+        const maxImgs = sp.feedbackMaxImages || 3;
         return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
           <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
               <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
-              <button onClick={() => { setShowFeedbackDialog(false); setFeedbackText(''); setEditingMyFeedback(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
+              <button onClick={() => { setShowFeedbackDialog(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
             </div>
-            <div className="p-4 space-y-3 overflow-y-auto flex-1">
+            <div className="p-4 overflow-y-auto flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-              {/* Form: show only if no existing feedback, or if editing */}
-              {(!myExisting || editingMyFeedback) ? (
-                <>
-                  <div className="flex gap-2">
-                    {[
-                      { id: 'bug', label: t('general.bug'), color: 'red' },
-                      { id: 'idea', label: t('general.idea'), color: 'yellow' },
-                      { id: 'general', label: t('general.generalFeedback'), color: 'blue' }
-                    ].map(cat => (
-                      <button key={cat.id} onClick={() => setFeedbackCategory(cat.id)}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          feedbackCategory === cat.id
-                            ? cat.color === 'red' ? 'bg-red-100 border-2 border-red-400 text-red-700'
-                            : cat.color === 'yellow' ? 'bg-yellow-100 border-2 border-yellow-400 text-yellow-700'
-                            : 'bg-blue-100 border-2 border-blue-400 text-blue-700'
-                            : 'bg-gray-100 border-2 border-transparent text-gray-500'
-                        }`}>{cat.label}</button>
-                    ))}
-                  </div>
-                  <textarea value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)}
-                    placeholder={t("settings.feedbackPlaceholder")}
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg text-sm resize-none focus:border-blue-400 focus:outline-none"
-                    rows={5} autoFocus dir={window.BKK.i18n.isRTL() ? "rtl" : "ltr"} />
+              {/* Category picker */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[
+                  { id: 'bug', label: `🐛 ${t('general.bug')}`, color: '#fca5a5', border: '#ef4444', text: '#b91c1c', bg: '#fef2f2' },
+                  { id: 'idea', label: `💡 ${t('general.idea')}`, color: '#fcd34d', border: '#d97706', text: '#92400e', bg: '#fffbeb' },
+                  { id: 'general', label: `💭 ${t('general.generalFeedback')}`, color: '#93c5fd', border: '#3b82f6', text: '#1e40af', bg: '#eff6ff' }
+                ].map(cat => (
+                  <button key={cat.id} onClick={() => setFeedbackCategory(cat.id)}
+                    style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s',
+                      border: `2px solid ${feedbackCategory === cat.id ? cat.border : '#e5e7eb'}`,
+                      background: feedbackCategory === cat.id ? cat.bg : 'white',
+                      color: feedbackCategory === cat.id ? cat.text : '#6b7280' }}>{cat.label}</button>
+                ))}
+              </div>
 
-                  {/* Image upload */}
-                  {(() => {
-                    const maxImgs = sp.feedbackMaxImages || 3;
-                    return (
-                      <div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          {feedbackImages.map((img, idx) => (
-                            <div key={idx} style={{ position: 'relative' }}>
-                              <img src={img} alt="" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
-                                onClick={() => setModalImage(img)} />
-                              <button onClick={() => setFeedbackImages(prev => prev.filter((_, i) => i !== idx))}
-                                style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                            </div>
-                          ))}
-                          {feedbackImages.length < maxImgs && (
-                            <label style={{ width: '64px', height: '64px', border: '2px dashed #d1d5db', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px', color: '#9ca3af', gap: '2px' }}>
-                              📎
-                              <span style={{ fontSize: '9px' }}>+תמונה</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = async () => {
-                                  const compressed = await window.BKK.compressImage(reader.result, 480);
-                                  setFeedbackImages(prev => [...prev, compressed]);
-                                };
-                                reader.readAsDataURL(file);
-                                e.target.value = '';
-                              }} />
-                            </label>
-                          )}
-                          {feedbackImages.length > 0 && (
-                            <span style={{ fontSize: '10px', color: '#9ca3af' }}>{feedbackImages.length}/{maxImgs}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={submitFeedback} disabled={!feedbackText.trim()}
-                      className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${feedbackText.trim() ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-                      📨 {t('settings.send')}
-                    </button>
-                    {editingMyFeedback && (
-                      <button onClick={() => setEditingMyFeedback(false)}
-                        style={{ padding: '0 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>
-                        {t('general.cancel')}
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                /* User already submitted — show their entry with edit option */
-                <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', borderRadius: '10px', padding: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#1d4ed8', marginBottom: '6px' }}>
-                    💬 {t('settings.myPastFeedback')}
-                    {myExisting.resolved && <span style={{ marginRight: '6px', color: '#10b981' }}> ✓ {t('places.handled')}</span>}
-                  </div>
-                  <p style={{ fontSize: '13px', color: '#374151', margin: '0 0 8px 0' }}>{myExisting.text}</p>
-                  {myExisting.images?.length > 0 && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                      {myExisting.images.map((img, idx) => (
-                        <img key={idx} src={img} alt="" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb', cursor: 'pointer' }}
-                          onClick={() => setModalImage(img)} />
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => { setFeedbackText(myExisting.text); setFeedbackCategory(myExisting.category || 'general'); setEditingMyFeedback(true); }}
-                      style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#dbeafe', border: '1px solid #93c5fd', fontSize: '12px', fontWeight: 'bold', color: '#1d4ed8', cursor: 'pointer' }}>
-                      ✏️ {t('general.edit') || 'ערוך'}
-                    </button>
-                    <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(myExisting))}
-                      style={{ padding: '6px 12px', borderRadius: '8px', background: '#fee2e2', border: '1px solid #fca5a5', fontSize: '12px', fontWeight: 'bold', color: '#dc2626', cursor: 'pointer' }}>
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Text */}
+              <textarea value={feedbackText}
+                onChange={(e) => {
+                  setFeedbackText(e.target.value);
+                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: e.target.value, cat: feedbackCategory })); } catch(err) {}
+                }}
+                placeholder={t("settings.feedbackPlaceholder")}
+                style={{ width: '100%', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'none', outline: 'none', lineHeight: '1.5', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', wordBreak: 'break-word', fontFamily: 'inherit' }}
+                rows={5} autoFocus
+                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
+              />
 
-              {/* All feedback list */}
-              {feedbackList.length > 0 && (
-                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#6b7280', marginBottom: '8px' }}>
-                    📋 {t('settings.allFeedback')} ({feedbackList.length})
+              {/* Image upload */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {feedbackImages.map((img, idx) => (
+                  <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
+                    <img src={img} alt="" style={{ width: '68px', height: '68px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', display: 'block' }}
+                      onClick={() => setModalImage(img)} />
+                    <button onClick={() => setFeedbackImages(prev => prev.filter((_, i) => i !== idx))}
+                      style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {feedbackList.map(f => {
-                      const isOwn = currentUserId && f.userId === currentUserId;
-                      const canDelete = isOwn || isCurrentUserAdmin;
-                      return (
-                        <div key={f.firebaseId} style={{ background: isOwn ? '#eff6ff' : '#f9fafb', border: `1px solid ${isOwn ? '#bfdbfe' : '#e5e7eb'}`, borderRadius: '8px', padding: '8px', opacity: f.resolved ? 0.65 : 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '11px' }}>{f.category === 'bug' ? '🐛' : f.category === 'idea' ? '💡' : '💭'}</span>
-                                {isOwn && <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563eb' }}>{t('general.me') || 'אני'}</span>}
-                                {f.resolved && <span style={{ fontSize: '10px', color: '#10b981' }}>✓</span>}
-                                <span style={{ fontSize: '10px', color: '#9ca3af' }}>{f.date ? new Date(f.date).toLocaleDateString('he-IL') : ''}</span>
-                              </div>
-                              <p style={{ fontSize: '12px', color: '#374151', margin: 0 }}>{f.text}</p>
-                            {f.images?.length > 0 && (
-                              <FeedbackImageStrip images={f.images} onView={(img) => setModalImage(img)} />
-                            )}
-                            </div>
-                            {canDelete && (
-                              <button onClick={() => showConfirm(t('settings.deleteFeedbackConfirm'), () => deleteFeedback(f))}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#ef4444', opacity: 0.5, flexShrink: 0, padding: '2px' }}>
-                                🗑️
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                ))}
+                {feedbackImages.length < maxImgs && (
+                  <label style={{ width: '68px', height: '68px', border: '2px dashed #d1d5db', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', gap: '3px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '20px' }}>📎</span>
+                    <span style={{ fontSize: '9px', fontWeight: 'bold' }}>{feedbackImages.length}/{maxImgs}</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const compressed = await window.BKK.compressImage(file, 480);
+                        if (compressed) setFeedbackImages(prev => [...prev, compressed]);
+                      } catch(err) {
+                        showToast('שגיאה בטעינת תמונה', 'error');
+                      }
+                      e.target.value = '';
+                    }} />
+                  </label>
+                )}
+              </div>
+
+              {/* Send */}
+              <button onClick={submitFeedback} disabled={!feedbackText.trim()}
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: feedbackText.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s',
+                  background: feedbackText.trim() ? '#3b82f6' : '#e5e7eb',
+                  color: feedbackText.trim() ? 'white' : '#9ca3af',
+                  border: 'none' }}>
+                📨 {t('settings.send')}
+              </button>
+
             </div>
           </div>
         </div>
         );
       })()}
 
-      {/* Feedback List Dialog (Admin Only) */}
+            {/* Feedback List Dialog (Admin Only) */}
       {showFeedbackList && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
@@ -2628,27 +2551,10 @@
                           </button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.text}</p>
-                      {item.images?.length > 0 && (() => {
-                        const [imgIdx, setImgIdx] = React.useState(0);
-                        return (
-                          <div style={{ marginTop: '6px' }}>
-                            <div style={{ position: 'relative', display: 'inline-block' }}>
-                              <img src={item.images[imgIdx]} alt="" style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', display: 'block' }}
-                                onClick={() => { setModalImage(item.images[imgIdx]); setModalImageCtx({ description: item.text }); setShowImageModal(true); }} />
-                              {item.images.length > 1 && (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', gap: '6px' }}>
-                                  <button onClick={() => setImgIdx(i => Math.max(0, i - 1))} disabled={imgIdx === 0}
-                                    style={{ padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', background: imgIdx === 0 ? '#f3f4f6' : 'white', cursor: imgIdx === 0 ? 'default' : 'pointer', fontSize: '12px', color: imgIdx === 0 ? '#d1d5db' : '#374151' }}>◀</button>
-                                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{imgIdx + 1} / {item.images.length}</span>
-                                  <button onClick={() => setImgIdx(i => Math.min(item.images.length - 1, i + 1))} disabled={imgIdx === item.images.length - 1}
-                                    style={{ padding: '2px 8px', borderRadius: '6px', border: '1px solid #d1d5db', background: imgIdx === item.images.length - 1 ? '#f3f4f6' : 'white', cursor: imgIdx === item.images.length - 1 ? 'default' : 'pointer', fontSize: '12px', color: imgIdx === item.images.length - 1 ? '#d1d5db' : '#374151' }}>▶</button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.text}</p>
+                      {item.images?.length > 0 && (
+                        <FeedbackItemImages images={item.images} onView={(img) => setModalImage(img)} />
+                      )}
                       <div className="text-[10px] text-gray-400 mt-1">
                         {item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
                       </div>
