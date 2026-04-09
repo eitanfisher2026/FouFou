@@ -987,10 +987,22 @@
                       }
                       return true;
                     });
-                    // allInterestOptions already sorted (group order + alpha) — just use filtered order
-                    return (
+                    // Group by interestGroups — one grid per group, header outside grid (no gridColumn hack needed)
+                    const groupOrder = Object.keys(interestGroups || {}).sort((a, b) => {
+                      const oa = interestGroups[a]?.order ?? 99, ob = interestGroups[b]?.order ?? 99;
+                      return oa !== ob ? oa - ob : a.localeCompare(b);
+                    });
+                    const usedIds = new Set();
+                    const groups = groupOrder.map(gId => {
+                      const members = filtered.filter(o => o.group === gId);
+                      members.forEach(o => usedIds.add(o.id));
+                      return members.length > 0 ? { id: gId, label: interestGroups[gId], members } : null;
+                    }).filter(Boolean);
+                    const ungrouped = filtered.filter(o => !usedIds.has(o.id));
+
+                    const renderGrid = (options) => (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                        {filtered.map(option => {
+                        {options.map(option => {
                           const isSelected = formData.interests.includes(option.id);
                           const isDraft = (option.adminStatus || 'active') === 'draft';
                           return (
@@ -1005,10 +1017,7 @@
                                   saveInterestsForMode(interestTimeFilter, newInterests);
                                   if (!alreadySelected && option.privateOnly) {
                                     const label = tLabel(option) || option.id;
-                                    showToast(
-                                      `${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`,
-                                      'info'
-                                    );
+                                    showToast(`${t('toast.privateOnlyTitle')}\n${t('toast.privateOnlyBody').replace('{label}', label)}`, 'info');
                                   }
                                   return {...prev, interests: newInterests};
                                 });
@@ -1016,8 +1025,7 @@
                               style={{
                                 padding: '8px 4px', borderRadius: '10px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
                                 border: isSelected ? '2px solid #2563eb' : isDraft ? '2px dashed #f59e0b' : '2px solid #e5e7eb',
-                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white',
-                                position: 'relative'
+                                background: isSelected ? '#eff6ff' : isDraft ? '#fffbeb' : 'white', position: 'relative'
                               }}
                             >
                               {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
@@ -1026,6 +1034,32 @@
                             </button>
                           );
                         })}
+                      </div>
+                    );
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {groups.map(g => {
+                          const label = currentLang === 'he' ? g.label?.labelHe : (g.label?.labelEn || g.label?.labelHe || g.id);
+                          return (
+                            <div key={g.id}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', padding: '2px 4px 4px', borderBottom: '1px solid #e5e7eb', marginBottom: '6px' }}>
+                                {label}
+                              </div>
+                              {renderGrid(g.members)}
+                            </div>
+                          );
+                        })}
+                        {ungrouped.length > 0 && (
+                          <div>
+                            {groups.length > 0 && (
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', padding: '2px 4px 4px', borderBottom: '1px solid #f3f4f6', marginBottom: '6px' }}>
+                                {currentLang === 'he' ? 'נוספים' : 'More'}
+                              </div>
+                            )}
+                            {renderGrid(ungrouped)}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
