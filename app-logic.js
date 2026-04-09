@@ -9254,7 +9254,10 @@
     // Remember interests for next add
     if (locData.interests?.length > 0) lastCaptureInterestsRef.current = locData.interests;
     if (!locData.name?.trim() || !locData.interests?.length) {
-      return; // Just don't add if validation fails
+      if (locData.name?.trim() && !locData.interests?.length) {
+        showToast(t('form.selectAtLeastOneInterest') || 'יש לבחור לפחות תחום אחד', 'warning');
+      }
+      return;
     }
     
     // Check for duplicate name — block save to prevent duplicates

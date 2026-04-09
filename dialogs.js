@@ -546,6 +546,19 @@
                     })}
                     {RecordingInterim({ fieldId: 'loc_description' })}
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
+                    {RecordingTextarea({
+                      fieldId: 'loc_notes',
+                      value: newLocation.notes || '',
+                      onChange: (e) => setNewLocation(prev => ({...prev, notes: e.target.value})),
+                      onClear: () => setNewLocation(prev => ({...prev, notes: ''})),
+                      placeholder: t('places.notesPlaceholder') || t('places.notes'),
+                      rows: 2,
+                      className: 'w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500'
+                    })}
+                    {RecordingInterim({ fieldId: 'loc_notes' })}
+                  </div>
                   {/* ADD mode: big star rating (like QuickCapture) */}
                   {showAddLocationDialog && (
                     <div style={{ background: "#fefce8", borderRadius: "12px", padding: "12px", border: "1px solid #fde68a" }}>
@@ -621,19 +634,7 @@
                       </div>
                     );
                   })()}
-                  <div>
-                    <label className="block text-xs font-bold mb-1">{`💭 ${t("places.notes")}`}</label>
-                    {RecordingTextarea({
-                      fieldId: 'loc_notes',
-                      value: newLocation.notes || '',
-                      onChange: (e) => setNewLocation(prev => ({...prev, notes: e.target.value})),
-                      onClear: () => setNewLocation(prev => ({...prev, notes: ''})),
-                      placeholder: t('places.notesPlaceholder') || t('places.notes'),
-                      rows: 2,
-                      className: 'w-full p-2 border border-gray-300 rounded-lg focus:border-purple-500'
-                    })}
-                    {RecordingInterim({ fieldId: 'loc_notes' })}
-                  </div>
+
                 </div>
 
                 {/* ── "פרטים נוספים" collapsible ── */}
