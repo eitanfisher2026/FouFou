@@ -1038,12 +1038,12 @@
                     );
 
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {groups.map(g => {
                           const label = currentLang === 'he' ? g.label?.labelHe : (g.label?.labelEn || g.label?.labelHe || g.id);
                           return (
                             <div key={g.id}>
-                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', padding: '2px 4px 4px', borderBottom: '1px solid #e5e7eb', marginBottom: '6px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', padding: '2px 4px 3px', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
                                 {label}
                               </div>
                               {renderGrid(g.members)}
@@ -1053,7 +1053,7 @@
                         {ungrouped.length > 0 && (
                           <div>
                             {groups.length > 0 && (
-                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', padding: '2px 4px 4px', borderBottom: '1px solid #f3f4f6', marginBottom: '6px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', padding: '2px 4px 3px', borderBottom: '1px solid #f3f4f6', marginBottom: '4px' }}>
                                 {currentLang === 'he' ? 'נוספים' : 'More'}
                               </div>
                             )}
