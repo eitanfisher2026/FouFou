@@ -8996,29 +8996,27 @@
       return;
     }
 
-    // Skip dedup if user already chose a specific Google place — no need to warn
+    // If user selected a specific Google place — check if same placeId already in our DB
     if (loc.googlePlace || loc.googlePlaceId) {
+      const pidMatch = customLocations.find(l =>
+        l.googlePlaceId && l.googlePlaceId === loc.googlePlaceId &&
+        l.status !== 'blacklist' &&
+        (!overrideData || l.id !== overrideData.id)
+      );
+      if (pidMatch) {
+        // Same physical place already saved (possibly under a different name) → show dedup popup
+        setDedupConfirm({ type: 'custom', loc, match: pidMatch, closeAfter, closeQuickCapture, overrideData });
+        return;
+      }
+      // Not in DB — user explicitly chose this Google place → save directly
       addCustomLocation(closeAfter, loc);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
 
-    // "הוסף ידנית" (add manually dialog): user gave explicit name — name dedup was already checked above.
-    // Skip proximity/Google search entirely.
-    if (!closeQuickCapture) {
-      addCustomLocation(closeAfter, loc);
-      return;
-    }
-
-    // "צלם עכשיו" (quick capture): only do proximity Google search when name is AUTO-GENERATED.
-    // If user typed their own name, treat it as explicit → save directly.
-    if (!loc._nameIsAuto) {
-      addCustomLocation(closeAfter, loc);
-      setShowQuickCapture(false);
-      return;
-    }
-    
-    // Background dedup check — QuickCapture with auto-generated name only
+    // No googlePlaceId — run proximity search for all dialogs when coords are present
+    // (covers both "הוסף ידנית" with typed name, and "צלם עכשיו" with user or auto name)
+    // Background dedup check
     try {
       const matches = await findNearbyDuplicates(loc.lat, loc.lng, loc.interests);
       
