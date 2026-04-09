@@ -30,14 +30,14 @@
               title={isRTL ? 'הסבר מורחב' : 'More info'}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '2px',
-                padding: '2px 7px', fontSize: '11px', fontWeight: '600',
-                background: openHintPopup === hintId ? '#e5e7eb' : '#f9fafb',
-                color: '#374151', border: '1px solid #d1d5db',
+                padding: '2px 7px', fontSize: '11px', fontWeight: '800',
+                background: openHintPopup === hintId ? '#dbeafe' : '#eff6ff',
+                color: '#1d4ed8', border: '1.5px solid #93c5fd',
                 borderRadius: '20px', cursor: 'pointer',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                boxShadow: '0 1px 3px rgba(59,130,246,0.15)'
               }}
             >
-              <span style={{ fontSize: '11px' }}>ℹ</span>
+              <span style={{ fontSize: '11px', fontWeight: '800' }}>ℹ</span>
               {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
             </button>
           </div>
@@ -479,7 +479,7 @@
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
                     )}
                     <button onClick={() => setOpenHintPopup(openHintPopup === 'activeTrail' ? null : 'activeTrail')}
-                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1px solid #d1d5db', background: openHintPopup === 'activeTrail' ? '#e5e7eb' : '#f9fafb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#374151' }}>
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1.5px solid #93c5fd', background: openHintPopup === 'activeTrail' ? '#dbeafe' : '#eff6ff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#1d4ed8', fontWeight: '800' }}>
                       <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
                     </button>
                   </div>
@@ -1043,7 +1043,7 @@
                           const label = currentLang === 'he' ? g.label?.labelHe : (g.label?.labelEn || g.label?.labelHe || g.id);
                           return (
                             <div key={g.id}>
-                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', padding: '2px 4px 3px', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '800', color: '#374151', padding: '2px 4px 3px', borderBottom: '1px solid #e5e7eb', marginBottom: '4px' }}>
                                 {label}
                               </div>
                               {renderGrid(g.members)}
@@ -1053,7 +1053,7 @@
                         {ungrouped.length > 0 && (
                           <div>
                             {groups.length > 0 && (
-                              <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', padding: '2px 4px 3px', borderBottom: '1px solid #f3f4f6', marginBottom: '4px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '800', color: '#6b7280', padding: '2px 4px 3px', borderBottom: '1px solid #f3f4f6', marginBottom: '4px' }}>
                                 {currentLang === 'he' ? 'נוספים' : 'More'}
                               </div>
                             )}
@@ -1667,9 +1667,9 @@
                             title={window.BKK.i18n.isRTL() ? 'מה יש בתפריט?' : 'What is in the menu'}
                             style={{
                               height: '42px', borderRadius: '12px', padding: '0 10px',
-                              border: '1px solid #d1d5db', background: openHintPopup === 'hint_route_menu' ? '#e5e7eb' : '#f9fafb',
+                              border: '1.5px solid #93c5fd', background: openHintPopup === 'hint_route_menu' ? '#dbeafe' : '#eff6ff',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                              fontSize: '15px', color: '#374151', flexShrink: 0
+                              fontSize: '15px', color: '#1d4ed8', fontWeight: '800', flexShrink: 0
                             }}
                           >
                             <span>ℹ</span>
