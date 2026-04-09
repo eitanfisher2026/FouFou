@@ -695,6 +695,34 @@
         {/* WIZARD MODE */}
         {!activeTrail && currentView === 'form' && (
           <div className={wizardStep < 3 ? "view-fade-in" : ""}>
+
+            {/* Fixed bottom floating button — Favorites Map — visible on steps 1 & 2, just above the continue button */}
+            {wizardStep < 3 && !showMapModal && (
+              <button
+                onClick={() => {
+                  setMapMode('favorites');
+                  setMapFavArea(wizardStep === 2 && formData.searchMode === 'area' && formData.area ? formData.area : null);
+                  setMapFavRadius(wizardStep === 2 && formData.searchMode === 'radius' && formData.currentLat ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
+                  setMapFocusPlace(null);
+                  setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
+                  setMapBottomSheet(null);
+                  setMapReturnPlace(null);
+                  setShowMapModal(true);
+                  window.BKK.logEvent?.('favorites_map_opened', { source: wizardStep === 2 ? 'wizard_area' : 'wizard_interests' });
+                }}
+                style={{
+                  position: 'fixed',
+                  bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
+                  left: '16px', right: '16px', zIndex: 39,
+                  padding: '10px 16px', borderRadius: '12px',
+                  border: '2px solid #8b5cf6',
+                  background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
+                  color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  cursor: 'pointer', boxShadow: '0 -2px 12px rgba(139,92,246,0.2)'
+                }}
+              >⭐ 🗺️ {t('form.favoritesMap')}</button>
+            )}
             {/* Wizard Header — shown on all steps */}
             <div style={{ textAlign: 'center', marginBottom: '4px' }}>
               {/* Step indicators + language toggle */}
@@ -862,27 +890,8 @@
                   </div>
                 )}
 
-                {/* Map + Generate buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', marginBottom: '60px' }}>
-                  <button
-                    onClick={() => {
-                      setMapMode('favorites');
-                      setMapFavArea(formData.searchMode === 'area' && formData.area ? formData.area : null);
-                      setMapFavRadius(formData.searchMode === 'radius' && formData.currentLat ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
-                      setMapFocusPlace(null);
-                      setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
-                      setMapBottomSheet(null);
-                      setMapReturnPlace(null);
-                      setShowMapModal(true);
-                      window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_area', area: formData.area || null });
-                    }}
-                    style={{
-                      width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #8b5cf6',
-                      cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                    }}
-                  >🗺️ {t('wizard.showMapFavArea')}</button>
-                </div>
+                {/* Map button removed — now fixed top floating button */}
+                <div style={{ marginBottom: 'calc(116px + env(safe-area-inset-bottom, 0px))' }} />
               </div>
               {/* Fixed find places button — hidden when overlays are open */}
               {!showMapModal && (() => {
@@ -1038,27 +1047,8 @@
                   })()}
                 </div>
 
-                {/* Map + Next buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: formData.interests.length > 0 ? 'calc(72px + env(safe-area-inset-bottom, 0px))' : '8px' }}>
-                  <button
-                    onClick={() => {
-                      setMapMode('favorites');
-                      setMapFavArea(null);
-                      setMapFavRadius(null);
-                      setMapFocusPlace(null);
-                      setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
-                      setMapBottomSheet(null);
-                      setMapReturnPlace(null);
-                      setShowMapModal(true);
-                      window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_interests' });
-                    }}
-                    style={{
-                      width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #8b5cf6',
-                      cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', color: '#6d28d9', fontSize: '14px', fontWeight: 'bold',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                    }}
-                  >🗺️ {t('wizard.showMapFavInterest')}</button>
-                </div>
+                {/* Map button removed — now fixed top floating button */}
+                <div style={{ marginBottom: formData.interests.length > 0 ? 'calc(116px + env(safe-area-inset-bottom, 0px))' : 'calc(116px + env(safe-area-inset-bottom, 0px))' }} />
               </div>
               {/* Fixed continue button — hidden when overlays are open */}
               {!showMapModal && formData.interests.length > 0 && (
