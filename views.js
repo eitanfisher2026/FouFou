@@ -3457,27 +3457,6 @@
               </div>
             </div>
 
-            {/* Migration: reviewRatings — admin only, temporary */}
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">🔧 מיגרציה — reviewRatings</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  מעביר את הדרוגים ממבנה הישן (reviews/) למבנה החדש (reviewRatings/). יש להריץ פעם אחת.
-                </p>
-                <button
-                  onClick={async () => {
-                    localStorage.removeItem('foufou_migration_reviewRatings_done');
-                    await migrateReviewRatings();
-                    await loadReviewRatings(selectedCityId);
-                    showToast('✅ מיגרציה הושלמה — דרוגים נטענו', 'success');
-                  }}
-                  className="w-full py-2 px-3 rounded-lg font-bold text-sm bg-purple-500 text-white hover:bg-purple-600 active:bg-purple-700 transition"
-                >
-                  🔧 הרץ מיגרציה
-                </button>
-              </div>
-            </div>
-
             )}
             {/* Bulk Approve Drafts */}
             {true && (

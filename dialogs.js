@@ -308,8 +308,15 @@
                                 ...areaUpdates
                               };
                               updatedLoc.mapsUrl = window.BKK.getGoogleMapsUrl(updatedLoc);
+                              // Apply rating from search result immediately
+                              if (result.rating) {
+                                updatedLoc.googleRating = result.rating;
+                                updatedLoc.googleRatingCount = result.ratingCount || 0;
+                              }
                               setNewLocation(updatedLoc);
                               setLocationSearchResults(null);
+                              // Auto-fetch full Google info (includes rating)
+                              fetchGooglePlaceInfo(updatedLoc);
                               showToast(`✅ ${result.name} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
                             }}
                             style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
@@ -539,69 +546,76 @@
                     })}
                     {RecordingInterim({ fieldId: 'loc_description' })}
                   </div>
-                  {/* Ratings row — Google + FouFou */}
-                  {(() => {
-                    const pk = (newLocation.name || '').replace(/[.#$/\[\]]/g, '_');
+                  {/* ADD mode: big star rating (like QuickCapture) */}
+                  {showAddLocationDialog && (
+                    <div style={{ background: "#fefce8", borderRadius: "12px", padding: "12px", border: "1px solid #fde68a" }}>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#92400e", marginBottom: "8px", textAlign: window.BKK.i18n.isRTL() ? "right" : "left" }}>
+                        {`⭐ ${t("reviews.rate")} (${t("general.optional")})`}
+                      </label>
+                      {newLocation.googleRating && (
+                        <div style={{ fontSize: "12px", color: "#b45309", fontWeight: 600, marginBottom: "6px" }}>
+                          🔍 Google: ⭐ {newLocation.googleRating.toFixed?.(1) || newLocation.googleRating}{newLocation.googleRatingCount ? <span style={{color:"#9ca3af",fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: "4px", marginBottom: addLocRatingScore > 0 ? "8px" : "0" }}>
+                        {[1,2,3,4,5].map(n => (
+                          <button key={n} type="button" onClick={() => setAddLocRatingScore(addLocRatingScore === n ? 0 : n)}
+                            style={{ fontSize: "26px", background: "none", border: "none", cursor: "pointer", opacity: n <= addLocRatingScore ? 1 : 0.25, lineHeight: 1, padding: "0 2px" }}>⭐</button>
+                        ))}
+                      </div>
+                      {addLocRatingScore > 0 && (
+                        <div style={{ position: "relative" }}>
+                          <textarea
+                            value={addLocRatingText}
+                            onChange={e => setAddLocRatingText(e.target.value)}
+                            rows={2}
+                            placeholder={t("reviews.writeReview")}
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:border-yellow-400"
+                            style={{ direction: window.BKK.i18n.isRTL() ? "rtl" : "ltr", fontSize: "14px", resize: "vertical", width: "100%", boxSizing: "border-box" }}
+                          />
+                          {addLocRatingText.trim() && (
+                            <button type="button" onClick={() => setAddLocRatingText("")}
+                              style={{ position: "absolute", top: "6px", [window.BKK.i18n.isRTL() ? "right" : "left"]: "6px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "13px" }}>✕</button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* EDIT mode: compact Google + FouFou rating row */}
+                  {showEditLocationDialog && (() => {
+                    const pk = (newLocation.name || "").replace(/[.#$/\[\]]/g, "_");
                     const ra = reviewAverages[pk];
                     const gR = newLocation.googleRating;
-                    // Always show — at minimum shows "rate" link
                     return (
-                      <div style={{ padding: '4px 0' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
+                      <div style={{ padding: "4px 0" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", flexWrap: "wrap", whiteSpace: "nowrap" }}>
                           {gR && (
-                            <span style={{ fontSize: '12px', color: '#b45309', fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:'#9ca3af',fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
+                            <span style={{ fontSize: "12px", color: "#b45309", fontWeight: 600 }}>⭐ {gR.toFixed?.(1) || gR}{newLocation.googleRatingCount ? <span style={{color:"#9ca3af",fontWeight:400}}> ({newLocation.googleRatingCount})</span> : null}</span>
                           )}
                           <button
                             onClick={async () => {
-                              // If new (unsaved) place: auto-save first, then refresh rating
                               const existing = customLocations.find(l => l.firebaseId === editingLocation?.firebaseId) || customLocations.find(l => l.name === newLocation.name);
-                              if (existing) {
-                                refreshSingleGoogleRating(existing);
-                              } else if (newLocation.name?.trim() && newLocation.interests?.length) {
-                                pendingRatingRefreshRef.current = true;
-                                addCustomLocation(false);
-                              } else if (newLocation.googlePlaceId || newLocation.name) {
-                                // No name/interests yet — refresh in-place without saving
+                              if (existing) { refreshSingleGoogleRating(existing); }
+                              else if (newLocation.googlePlaceId || newLocation.name) {
                                 refreshSingleGoogleRating({ ...newLocation, firebaseId: null, _inPlace: true }, (updated) => {
                                   setNewLocation(prev => ({ ...prev, googleRating: updated.googleRating, googleRatingCount: updated.googleRatingCount }));
                                 });
                               }
                             }}
-                            style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', color: '#92400e', fontWeight: 700, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                            title={t('settings.refreshRatings') || 'רענן דירוג גוגל'}
-                          >⭐ {t('settings.refreshRatings') || 'רענן'}</button>
-                          {gR && ra && <span style={{ color: '#d1d5db', fontSize: '12px' }}>·</span>}
+                            style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "6px", cursor: "pointer", fontSize: "11px", color: "#92400e", fontWeight: 700, padding: "2px 7px", display: "inline-flex", alignItems: "center", gap: "3px" }}
+                            title={t("settings.refreshRatings") || "רענן דירוג גוגל"}
+                          >⭐ {t("settings.refreshRatings") || "רענן"}</button>
+                          {gR && ra && <span style={{ color: "#d1d5db", fontSize: "12px" }}>·</span>}
                           {ra ? (
                             <button
-                              onClick={() => {
-                                const existing = customLocations.find(l => l.name === newLocation.name);
-                                if (existing) {
-                                  openReviewDialog(existing);
-                                } else if (newLocation.name?.trim() && newLocation.interests?.length) {
-                                  pendingReviewOpenRef.current = true;
-                                  addCustomLocation(false);
-                                } else {
-                                  showToast(t('places.enterNameFirst') || 'יש להזין שם ותחום קודם', 'warning');
-                                }
-                              }}
-                              style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#7c3aed', fontWeight: 700, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                              title={t('reviews.seeReviews') || 'ראה ביקורות'}
-                            >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: '14px' }}>›</span></button>
+                              onClick={() => { const existing = customLocations.find(l => l.name === newLocation.name); if (existing) { openReviewDialog(existing); } else { showToast(t("places.enterNameFirst") || "יש להזין שם ותחום קודם", "warning"); } }}
+                              style={{ background: "#f5f3ff", border: "1px solid #c4b5fd", borderRadius: "6px", cursor: "pointer", fontSize: "12px", color: "#7c3aed", fontWeight: 700, padding: "2px 8px", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                            >🌟 {ra.avg.toFixed(1)} ({ra.count}) <span style={{ fontSize: "14px" }}>›</span></button>
                           ) : (
                             <button
-                              onClick={() => {
-                                const existing = customLocations.find(l => l.name === newLocation.name);
-                                if (existing) {
-                                  openReviewDialog(existing);
-                                } else if (newLocation.name?.trim() && newLocation.interests?.length) {
-                                  pendingReviewOpenRef.current = true;
-                                  addCustomLocation(false);
-                                } else {
-                                  showToast(t('places.enterNameFirst') || 'יש להזין שם ותחום קודם', 'warning');
-                                }
-                              }}
-                              style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', color: '#6b7280', padding: '2px 8px' }}
-                            >☆ {t('reviews.rate') || 'דרג'}</button>
+                              onClick={() => { const existing = customLocations.find(l => l.name === newLocation.name); if (existing) { openReviewDialog(existing); } else { showToast(t("places.enterNameFirst") || "יש להזין שם ותחום קודם", "warning"); } }}
+                              style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "6px", cursor: "pointer", fontSize: "12px", color: "#6b7280", padding: "2px 8px" }}
+                            >☆ {t("reviews.rate") || "דרג"}</button>
                           )}
                         </span>
                       </div>
@@ -622,260 +636,175 @@
                   </div>
                 </div>
 
-                {/* Address + Coordinates + GPS */}
-                <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
-                  <div className="mb-1.5">
-                    <label className="block text-xs font-bold mb-1">{`🏠 ${t("places.address")}`}</label>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        value={newLocation.address || ''}
-                        onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
-                        placeholder={t("places.address")}
-                        className="flex-1 p-1.5 border border-gray-300 rounded-lg focus:border-purple-500"
-                        style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px' }}
-                      />
-                      <button
-                        onClick={() => geocodeAddress(newLocation.address || newLocation.name)}
-                        disabled={!newLocation.address?.trim() && !newLocation.name?.trim()}
-                        style={{
-                          padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: (newLocation.address?.trim() || newLocation.name?.trim()) ? 'pointer' : 'not-allowed',
-                          background: (newLocation.address?.trim() || newLocation.name?.trim()) ? '#8b5cf6' : '#d1d5db', color: 'white', fontSize: '14px', flexShrink: 0
-                        }}
-                        title={t("form.searchByAddress")}
-                      >🏠</button>
-                    </div>
-                  </div>
-                  
-                  <label className="block text-xs font-bold mb-1">{`📍 ${t("general.coordinates")}`}</label>
-                  
-                  {/* Lat/Lng Inputs with GPS button */}
-                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%' }}>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      value={newLocation.lng || ''}
-                      onChange={(e) => setNewLocation({...newLocation, lng: parseFloat(e.target.value) || null})}
-                      placeholder="Lng"
-                      className="p-1.5 text-xs border border-gray-300 rounded-lg"
-                      style={{ flex: 1, minWidth: 0 }}
-                    />
-                    <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>⇄</span>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      value={newLocation.lat || ''}
-                      onChange={(e) => setNewLocation({...newLocation, lat: parseFloat(e.target.value) || null})}
-                      placeholder="Lat"
-                      className="p-1.5 text-xs border border-gray-300 rounded-lg"
-                      style={{ flex: 1, minWidth: 0 }}
-                    />
-                    <button
-                      onClick={getCurrentLocation}
-                      style={{
-                        padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                        background: '#22c55e', color: 'white', fontSize: '14px', flexShrink: 0
-                      }}
-                      title={t("form.gps")}
-                    >📍</button>
-                  </div>
-                </div>
+                {/* ── "פרטים נוספים" collapsible ── */}
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewLocation(prev => ({ ...prev, _detailsOpen: !prev._detailsOpen }))}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f9fafb', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
+                  >
+                    <span>📋 {t("places.moreDetails") || "פרטים נוספים"}</span>
+                    <span style={{ fontSize: '10px' }}>{newLocation._detailsOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {newLocation._detailsOpen && (
+                    <div style={{ padding: '8px 12px', background: 'white' }} className="space-y-2">
 
-                {/* Google Maps URL */}
-                {isUnlocked && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <label className="block text-xs font-bold">🔗 Google Maps URL</label>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      {newLocation.mapsUrl && (
-                        <button type="button" onClick={() => {
-                          navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {});
-                        }} style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
-                      )}
-                      {isUnlocked && newLocation.mapsUrl && (
-                        <button type="button" onClick={() => setNewLocation({...newLocation, mapsUrl: ''})}
-                          style={{ fontSize: '11px', color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}
-                          title="מחק URL">✕</button>
-                      )}
-                    </div>
-                  </div>
-                  <textarea
-                    value={newLocation.mapsUrl || ''}
-                    onChange={(e) => setNewLocation({...newLocation, mapsUrl: e.target.value})}
-                    placeholder="https://maps.google.com/..."
-                    className="w-full p-1.5 border border-gray-300 rounded-lg"
-                    style={{ direction: 'ltr', fontSize: '13px', minHeight: '56px', resize: 'vertical', wordBreak: 'break-all', fontFamily: 'monospace' }}
-                    rows={2}
-                  />
-                </div>
-                )}
-
-                {/* Google + Lock + Actions — compact */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
-                  {/* Row 1: Open in Google + Google Info + Lock toggle */}
-                  <div className="flex gap-1.5 items-center">
-                    {newLocation.lat && newLocation.lng ? (() => {
-                      const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
-                      const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
-                      const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
-                      return (
-                        <a
-                          href={viewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
-                          onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
-                        >
-                          🗺️ {btnLabel}
-                        </a>
-                      );
-                    })() : (
-                      <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
-                        🗺️ {t("general.openInGoogleNoCoords")}
-                      </button>
-                    )}
-                    {(isAdmin || isEditor) && (
-                    <button
-                      onClick={() => {
-                        setGooglePlaceInfo(null);
-                        fetchGooglePlaceInfo(newLocation);
-                      }}
-                      disabled={!newLocation.name?.trim() || loadingGoogleInfo}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
-                        newLocation.name?.trim() && !loadingGoogleInfo
-                          ? 'bg-indigo-500 text-white hover:bg-indigo-600'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}
-                    </button>
-                    )}
-                    {(isAdmin || isEditor) && (
-                      <button type="button"
-                        onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
-                        title={newLocation.locked ? t('places.approved') || 'מאושר' : t('places.draft') || 'טיוטה'}
-                      >
-                        {newLocation.locked ? '✅' : '✏️'}
-                      </button>
-                    )}
-                  </div>
-                  {googlePlaceInfo && !googlePlaceInfo.notFound && (
-                    <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
-                      <div>
-                        <span className="font-bold text-indigo-700">Found:</span>
-                        <span className="ml-1">{googlePlaceInfo.name}</span>
-                      </div>
-                      <div>
-                        <span className="font-bold text-indigo-700">Primary Type:</span>
-                        <span className="ml-1 bg-indigo-200 px-2 py-0.5 rounded">
-                          {googlePlaceInfo.primaryType || googlePlaceInfo.primaryTypeDisplayName || 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-bold text-indigo-700">All Types:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {googlePlaceInfo.types.map((type, idx) => (
-                            <span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-[10px]">{type}</span>
-                          ))}
+                      {/* Address */}
+                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-2">
+                        <div className="mb-1.5">
+                          <label className="block text-xs font-bold mb-1">{`🏠 ${t("places.address")}`}</label>
+                          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            <input type="text" value={newLocation.address || ''} onChange={(e) => setNewLocation({...newLocation, address: e.target.value})}
+                              placeholder={t("places.address")} className="flex-1 p-1.5 border border-gray-300 rounded-lg focus:border-purple-500"
+                              style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontSize: '16px' }} />
+                            <button onClick={() => geocodeAddress(newLocation.address || newLocation.name)}
+                              disabled={!newLocation.address?.trim() && !newLocation.name?.trim()}
+                              style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: (newLocation.address?.trim() || newLocation.name?.trim()) ? 'pointer' : 'not-allowed', background: (newLocation.address?.trim() || newLocation.name?.trim()) ? '#8b5cf6' : '#d1d5db', color: 'white', fontSize: '14px', flexShrink: 0 }}
+                              title={t("form.searchByAddress")}>🏠</button>
+                          </div>
+                        </div>
+                        <label className="block text-xs font-bold mb-1">{`📍 ${t("general.coordinates")}`}</label>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', width: '100%' }}>
+                          <input type="number" step="0.000001" value={newLocation.lng || ''} onChange={(e) => setNewLocation({...newLocation, lng: parseFloat(e.target.value) || null})}
+                            placeholder="Lng" className="p-1.5 text-xs border border-gray-300 rounded-lg" style={{ flex: 1, minWidth: 0 }} />
+                          <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>⇄</span>
+                          <input type="number" step="0.000001" value={newLocation.lat || ''} onChange={(e) => setNewLocation({...newLocation, lat: parseFloat(e.target.value) || null})}
+                            placeholder="Lat" className="p-1.5 text-xs border border-gray-300 rounded-lg" style={{ flex: 1, minWidth: 0 }} />
+                          <button onClick={getCurrentLocation}
+                            style={{ padding: '4px 8px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: '#22c55e', color: 'white', fontSize: '14px', flexShrink: 0 }}
+                            title={t("form.gps")}>📍</button>
                         </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-indigo-700">Rating:</span>
-                        <span className="ml-1">⭐ {googlePlaceInfo.rating?.toFixed(1) || 'N/A'} ({googlePlaceInfo.ratingCount || 0})</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {googlePlaceInfo && googlePlaceInfo.notFound && (
-                    <div className="text-xs text-red-600 bg-white rounded p-2 border border-red-200">
-                      ❌ Place not found on Google for: "{googlePlaceInfo.searchQuery}"
-                    </div>
-                  )}
 
-                  {/* Metadata row — addedBy + addedAt (visible to all users) */}
-                  {showEditLocationDialog && editingLocation && (editingLocation.addedBy || editingLocation.addedAt) && (
-                    <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      {editingLocation.addedBy && <span>👤 {userNamesMap[editingLocation.addedBy] || editingLocation.addedBy.slice(0,8)}</span>}
-                      {editingLocation.addedAt && <span title={t('places.addedAt') || 'נוסף'}>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
-                      {editingLocation.updatedAt && editingLocation.updatedAt !== editingLocation.addedAt && (
-                        <span title={t('places.updatedAt') || 'עודכן'}>✏️ {new Date(editingLocation.updatedAt).toLocaleDateString()}</span>
+                      {/* Google Maps URL */}
+                      {isUnlocked && (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <label className="block text-xs font-bold">🔗 Google Maps URL</label>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              {newLocation.mapsUrl && (
+                                <button type="button" onClick={() => { navigator.clipboard?.writeText(newLocation.mapsUrl).then(() => showToast('📋 URL הועתק', 'success')).catch(() => {}); }}
+                                  style={{ fontSize: '11px', color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }}>📋 {t('general.copy') || 'העתק'}</button>
+                              )}
+                              {isUnlocked && newLocation.mapsUrl && (
+                                <button type="button" onClick={() => setNewLocation({...newLocation, mapsUrl: ''})}
+                                  style={{ fontSize: '11px', color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: '4px', padding: '2px 7px', cursor: 'pointer' }} title="מחק URL">✕</button>
+                              )}
+                            </div>
+                          </div>
+                          <textarea value={newLocation.mapsUrl || ''} onChange={(e) => setNewLocation({...newLocation, mapsUrl: e.target.value})}
+                            placeholder="https://maps.google.com/..."
+                            className="w-full p-1.5 border border-gray-300 rounded-lg"
+                            style={{ direction: 'ltr', fontSize: '13px', minHeight: '56px', resize: 'vertical', wordBreak: 'break-all', fontFamily: 'monospace' }} rows={2} />
+                        </div>
                       )}
-                      {editingLocation.fromGoogle && <span>🔍 Google</span>}
-                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
-                        <span
-                          title="googlePlaceId — לחץ להעתקה"
-                          onClick={() => navigator.clipboard?.writeText(editingLocation.googlePlaceId).then(() => showToast('📋 Place ID הועתק', 'success')).catch(() => {})}
-                          style={{ cursor: 'pointer', color: '#6366f1', fontFamily: 'monospace', fontSize: '9px', background: '#eef2ff', padding: '1px 4px', borderRadius: '4px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >🆔 {editingLocation.googlePlaceId.slice(0, 20)}…</span>
-                      )}
-                      {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
-                        <button
-                          title="מחק googlePlaceId"
-                          onClick={() => {
-                            showConfirm(
-                              'למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.',
-                              () => {
-                                setNewLocation(prev => ({ ...prev, googlePlaceId: '' }));
-                                if (editingLocation.firebaseId && isFirebaseAvailable && database) {
-                                  removeLocationGooglePlaceId(selectedCityId, editingLocation.firebaseId);
-                                  setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l));
-                                  showToast('✅ Place ID נמחק', 'success');
-                                }
-                              },
-                              { confirmLabel: 'מחק', confirmColor: '#ef4444' }
-                            );
-                          }}
-                          style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
-                        >✕ ID</button>
-                      )}
-                    </div>
-                  )}
 
-                  {/* Row 2: Skip + Delete (edit mode only) — editor/admin, or own non-locked location */}
-                  {showEditLocationDialog && editingLocation && (
-                    (isAdmin || isEditor) ||
-                    (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
-                  ) && (
-                    <div className="flex gap-1.5 pt-1 border-t border-gray-200">
-                      {editingLocation.status === 'blacklist' ? (
-                        <button
-                          onClick={() => {
-                            toggleLocationStatus(editingLocation.id);
-                            setShowEditLocationDialog(false);
-                            setEditingLocation(null);
-                          }}
-                          style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
-                        >
-                          ✅ {t("general.restoreActive")}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            toggleLocationStatus(editingLocation.id);
-                            setShowEditLocationDialog(false);
-                            setEditingLocation(null);
-                          }}
-                          style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c' }}
-                        >
-                          🚫 {t("route.skipPermanently")}
-                        </button>
+                      {/* Edit-mode only: Google Info + Lock + Skip + Metadata */}
+                      {showEditLocationDialog && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
+                          {/* Row 1: Open in Google + Google Info + Lock toggle */}
+                          <div className="flex gap-1.5 items-center">
+                            {newLocation.lat && newLocation.lng ? (() => {
+                              const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
+                              const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
+                              const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
+                              return (
+                                <a href={viewUrl} target="_blank" rel="noopener noreferrer"
+                                  className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                                  onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
+                                >🗺️ {btnLabel}</a>
+                              );
+                            })() : (
+                              <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
+                                🗺️ {t("general.openInGoogleNoCoords")}
+                              </button>
+                            )}
+                            {(isAdmin || isEditor) && (
+                              <button onClick={() => { setGooglePlaceInfo(null); fetchGooglePlaceInfo(newLocation); }}
+                                disabled={!newLocation.name?.trim() || loadingGoogleInfo}
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() && !loadingGoogleInfo ? 'bg-indigo-500 text-white hover:bg-indigo-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                              >🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}</button>
+                            )}
+                            {(isAdmin || isEditor) && (
+                              <button type="button" onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
+                                title={newLocation.locked ? t('places.approved') || 'מאושר' : t('places.draft') || 'טיוטה'}
+                              >{newLocation.locked ? '✅' : '✏️'}</button>
+                            )}
+                          </div>
+                          {googlePlaceInfo && !googlePlaceInfo.notFound && (
+                            <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
+                              <div><span className="font-bold text-indigo-700">Found:</span><span className="ml-1">{googlePlaceInfo.name}</span></div>
+                              <div><span className="font-bold text-indigo-700">Primary Type:</span><span className="ml-1 bg-indigo-200 px-2 py-0.5 rounded">{googlePlaceInfo.primaryType || googlePlaceInfo.primaryTypeDisplayName || 'N/A'}</span></div>
+                              <div><span className="font-bold text-indigo-700">All Types:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">{googlePlaceInfo.types.map((type, idx) => (<span key={idx} className="bg-gray-200 px-2 py-0.5 rounded text-[10px]">{type}</span>))}</div>
+                              </div>
+                              <div><span className="font-bold text-indigo-700">Rating:</span><span className="ml-1">⭐ {googlePlaceInfo.rating?.toFixed(1) || 'N/A'} ({googlePlaceInfo.ratingCount || 0})</span></div>
+                            </div>
+                          )}
+                          {googlePlaceInfo && googlePlaceInfo.notFound && (
+                            <div className="text-xs text-red-600 bg-white rounded p-2 border border-red-200">❌ Place not found on Google for: "{googlePlaceInfo.searchQuery}"</div>
+                          )}
+                          {/* Metadata */}
+                          {editingLocation && (editingLocation.addedBy || editingLocation.addedAt) && (
+                            <div style={{ fontSize: '10px', color: '#9ca3af', padding: '4px 0', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              {editingLocation.addedBy && <span>👤 {userNamesMap[editingLocation.addedBy] || editingLocation.addedBy.slice(0,8)}</span>}
+                              {editingLocation.addedAt && <span title={t('places.addedAt') || 'נוסף'}>📅 {new Date(editingLocation.addedAt).toLocaleDateString()}</span>}
+                              {editingLocation.updatedAt && editingLocation.updatedAt !== editingLocation.addedAt && (
+                                <span title={t('places.updatedAt') || 'עודכן'}>✏️ {new Date(editingLocation.updatedAt).toLocaleDateString()}</span>
+                              )}
+                              {editingLocation.fromGoogle && <span>🔍 Google</span>}
+                              {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                                <span title="googlePlaceId — לחץ להעתקה"
+                                  onClick={() => navigator.clipboard?.writeText(editingLocation.googlePlaceId).then(() => showToast('📋 Place ID הועתק', 'success')).catch(() => {})}
+                                  style={{ cursor: 'pointer', color: '#6366f1', fontFamily: 'monospace', fontSize: '9px', background: '#eef2ff', padding: '1px 4px', borderRadius: '4px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >🆔 {editingLocation.googlePlaceId.slice(0, 20)}…</span>
+                              )}
+                              {(isAdmin || isEditor) && editingLocation.googlePlaceId && (
+                                <button title="מחק googlePlaceId"
+                                  onClick={() => { showConfirm('למחוק את ה-Place ID של גוגל מהמקום הזה?\nהמקום ייהפך לנקודת קואורדינטות בלבד.',
+                                    () => { setNewLocation(prev => ({ ...prev, googlePlaceId: '' })); if (editingLocation.firebaseId && isFirebaseAvailable && database) { removeLocationGooglePlaceId(selectedCityId, editingLocation.firebaseId); setCustomLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, googlePlaceId: '' } : l)); showToast('✅ Place ID נמחק', 'success'); } }, { confirmLabel: 'מחק', confirmColor: '#ef4444' }); }}
+                                  style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
+                                >✕ ID</button>
+                              )}
+                            </div>
+                          )}
+                          {/* Skip / Restore — inside collapsible */}
+                          {editingLocation && (
+                            (isAdmin || isEditor) ||
+                            (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
+                          ) && (
+                            <div className="flex gap-1.5 pt-1 border-t border-gray-200">
+                              {editingLocation.status === 'blacklist' ? (
+                                <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
+                                  style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
+                                >✅ {t("general.restoreActive")}</button>
+                              ) : (
+                                <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
+                                  style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c' }}
+                                >🚫 {t("route.skipPermanently")}</button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
-                      <button
-                        onClick={() => {
-                          showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => {
-                            deleteCustomLocation(editingLocation.id);
-                            setShowEditLocationDialog(false);
-                            setEditingLocation(null);
-                          });
-                        }}
-                        style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626' }}
-                      >
-                        🗑️ {t("general.deletePlace")}
-                      </button>
+
                     </div>
                   )}
                 </div>
+
+                {/* Delete — outside collapsible, edit mode only */}
+                {showEditLocationDialog && editingLocation && (
+                  (isAdmin || isEditor) ||
+                  (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
+                ) && (
+                  <div className="flex pt-1">
+                    <button
+                      onClick={() => { showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => { deleteCustomLocation(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }); }}
+                      style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626' }}
+                    >🗑️ {t("general.deletePlace")}</button>
+                  </div>
+                )}
 
                 </div>{/* close inner wrapper */}
 

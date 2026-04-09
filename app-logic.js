@@ -756,6 +756,8 @@
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
+  const [addLocRatingScore, setAddLocRatingScore] = useState(0);
+  const [addLocRatingText, setAddLocRatingText] = useState('');
   const [placesTab, setPlacesTab] = useState('all'); // 'all' | 'drafts' | 'ready' | 'skipped'
   const [lastImportBatch, setLastImportBatch] = useState(null); // batch ID of last import
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
@@ -8958,6 +8960,11 @@
   const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false, overrideData = null) => {
     const loc = overrideData ? { ...overrideData } : { ...newLocation };
 
+    // Attach add-dialog rating if present (add mode only, not QuickCapture which passes its own)
+    if (!closeQuickCapture && !overrideData?.userRating && addLocRatingScore > 0) {
+      loc.userRating = { score: addLocRatingScore, text: addLocRatingText };
+    }
+
     // Check exact name duplicate first — same dialog as proximity dedup
     if (loc.name?.trim()) {
       const nameMatch = customLocations.find(l =>
@@ -9355,18 +9362,22 @@
             showToast(`💾 ${locationToAdd.name} — ${t('toast.savedWillSync')}`, 'warning', 'sticky');
           }
           
-          // Save userRating if provided (from QuickCapture)
+          // Save userRating if provided (from QuickCapture or add dialog)
           if (locData.userRating && isFirebaseAvailable && database) {
             try {
               const pk = (locationToAdd.name || '').replace(/[.#$/\[\]]/g, '_');
               const uid = authUser?.uid || window.BKK.visitorId;
+              const ratingScore = locData.userRating.score || locData.userRating;
+              const ratingText = locData.userRating.text || '';
               await database.ref(`cities/${selectedCityId}/reviews/${pk}/${uid}`).set({
-                rating: locData.userRating.score || locData.userRating,
-                text: locData.userRating.text || '',
+                rating: ratingScore,
+                text: ratingText,
                 timestamp: Date.now(),
                 uid,
                 userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
               });
+              await database.ref(`cities/${selectedCityId}/reviewRatings/${pk}/${uid}`).set(ratingScore);
+              refreshReviewRating(selectedCityId, pk);
             } catch(e) { /* rating save failure is non-critical */ }
           }
 
@@ -9408,6 +9419,8 @@
     
     if (closeAfter) {
       setShowAddLocationDialog(false);
+      setAddLocRatingScore(0);
+      setAddLocRatingText('');
       setNewLocation({ 
         name: '', 
         description: '', 
@@ -9422,6 +9435,9 @@
         uploadedImage: null,
         imageUrls: []
       });
+    } else {
+      setAddLocRatingScore(0);
+      setAddLocRatingText('');
     }
   };
   
