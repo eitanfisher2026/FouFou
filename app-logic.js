@@ -8979,20 +8979,24 @@
     }
 
     if (!loc.name?.trim() || !loc.interests?.length) {
-      addCustomLocation(closeAfter, overrideData);
+      if (loc.name?.trim() && !loc.interests?.length) {
+        showToast(t('form.selectAtLeastOneInterest') || 'יש לבחור לפחות תחום אחד', 'warning');
+        return;
+      }
+      addCustomLocation(closeAfter, loc);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
     // Skip dedup if no GPS or dedup disabled
     if (!loc.lat || !loc.lng || (!sp.dedupGoogleEnabled && !sp.dedupCustomEnabled)) {
-      addCustomLocation(closeAfter, overrideData);
+      addCustomLocation(closeAfter, loc);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
 
     // Skip dedup if user already chose a specific Google place — no need to warn
     if (loc.googlePlace || loc.googlePlaceId) {
-      addCustomLocation(closeAfter, overrideData);
+      addCustomLocation(closeAfter, loc);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
@@ -9003,7 +9007,7 @@
       
       if (matches && matches.custom.length > 0) {
         const dup = matches.custom[0];
-        setDedupConfirm({ type: 'custom', loc, match: dup, closeAfter, closeQuickCapture, overrideData });
+        setDedupConfirm({ type: 'custom', loc, match: dup, closeAfter, closeQuickCapture, overrideData: loc });
         return;
       }
       
@@ -9013,10 +9017,10 @@
         const top3 = sorted.slice(0, 3);
         if (top3.length === 1) {
           // Single match — show as before
-          setDedupConfirm({ type: 'google', loc, match: top3[0], closeAfter, closeQuickCapture, overrideData });
+          setDedupConfirm({ type: 'google', loc, match: top3[0], closeAfter, closeQuickCapture, overrideData: loc });
         } else {
           // Multiple matches — show picker
-          setDedupConfirm({ type: 'googleMulti', loc, matches: top3, closeAfter, closeQuickCapture, overrideData });
+          setDedupConfirm({ type: 'googleMulti', loc, matches: top3, closeAfter, closeQuickCapture, overrideData: loc });
         }
         return;
       }
@@ -9025,7 +9029,7 @@
     }
     
     // No matches or check failed — save normally
-    addCustomLocation(closeAfter, overrideData);
+    addCustomLocation(closeAfter, loc);
     if (closeQuickCapture) {
       setShowQuickCapture(false);
       showToast('✅ ' + t('trail.saved'), 'success');
