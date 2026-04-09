@@ -91,7 +91,8 @@ const QuickAddPlaceDialog = ({
       description: qaDescription.trim(),
       notes: qaNotes.trim(),
       interests: qaInterests.length > 0 ? qaInterests : place.interests,
-      uploadedImage: qaImage || null
+      uploadedImage: qaImage || null,
+      _nameIsAuto: qaNameIsAuto  // flag: true = auto-generated name → trigger proximity dedup
     };
     // In captureMode: if no GPS yet, try once more before saving
     if (captureMode && !gpsStatus?.lat && !enriched.lat) {

@@ -266,25 +266,6 @@
                         disabled={!newLocation.name?.trim()}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                       >🔍 {t("form.searchPlaceGoogle")}</button>
-                      <button
-                        onClick={() => {
-                          const interestId = (newLocation.interests || [])[0];
-                          if (!interestId) {
-                            showToast(t('form.selectAtLeastOneInterest'), 'warning');
-                            return;
-                          }
-                          const result = window.BKK.generateLocationName(
-                            interestId, newLocation.lat, newLocation.lng,
-                            interestCounters, allInterestOptions, areaOptions
-                          );
-                          if (result.name) {
-                            setNewLocation({...newLocation, name: result.name});
-                            showToast(`🏷️ ${result.name}`, 'success');
-                          }
-                        }}
-                        disabled={!(newLocation.interests || []).length}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${(newLocation.interests || []).length ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                      >🏷️ {t("places.autoName")}</button>
                     </div>
                     {/* Search Results Dropdown */}
                     {locationSearchResults !== null && (
@@ -711,7 +692,7 @@
                               <button type="button" onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
                                 title={newLocation.locked ? t('places.approved') || 'מאושר' : t('places.draft') || 'טיוטה'}
-                              >{newLocation.locked ? '✅' : '✏️'}</button>
+                              >{newLocation.locked ? '🔒' : '✏️'}</button>
                             </div>
                           )}
                           {googlePlaceInfo && !googlePlaceInfo.notFound && (
@@ -749,22 +730,17 @@
                                   style={{ cursor: 'pointer', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '1px 5px', fontSize: '9px', fontWeight: 'bold' }}
                                 >✕ ID</button>
                               )}
-                            </div>
-                          )}
-                          {/* Skip / Restore — inside collapsible */}
-                          {editingLocation && (
-                            (isAdmin || isEditor) ||
-                            (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
-                          ) && (
-                            <div className="flex gap-1.5 pt-1 border-t border-gray-200">
-                              {editingLocation.status === 'blacklist' ? (
-                                <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
-                                  style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534' }}
-                                >✅ {t("general.restoreActive")}</button>
-                              ) : (
-                                <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
-                                  style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c' }}
-                                >🚫 {t("route.skipPermanently")}</button>
+                              {/* Skip / Restore — inline with metadata */}
+                              {((isAdmin || isEditor) || (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)) && (
+                                editingLocation.status === 'blacklist' ? (
+                                  <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
+                                    style={{ padding: '1px 7px', borderRadius: '6px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #86efac', background: '#f0fdf4', color: '#166534', whiteSpace: 'nowrap' }}
+                                  >↩ {t("general.restoreActive")}</button>
+                                ) : (
+                                  <button onClick={() => { toggleLocationStatus(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }}
+                                    style={{ padding: '1px 7px', borderRadius: '6px', fontSize: '9px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fdba74', background: '#fff7ed', color: '#ea580c', whiteSpace: 'nowrap' }}
+                                  >🚫 {t("route.skipPermanently")}</button>
+                                )
                               )}
                             </div>
                           )}

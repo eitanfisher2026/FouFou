@@ -8958,7 +8958,7 @@
   // overrideData: use this instead of newLocation (needed when called right after setNewLocation,
   // before React has re-rendered — e.g. from QuickCapture onSave where state update is async)
   const saveWithDedupCheck = async (closeAfter = true, closeQuickCapture = false, overrideData = null) => {
-    const loc = overrideData ? { ...overrideData } : { ...newLocation };
+    let loc = overrideData ? { ...overrideData } : { ...newLocation };
 
     // Attach add-dialog rating if present (add mode only, not QuickCapture which passes its own)
     if (!closeQuickCapture && !overrideData?.userRating && addLocRatingScore > 0) {
@@ -9002,8 +9002,23 @@
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
     }
+
+    // "הוסף ידנית" (add manually dialog): user gave explicit name — name dedup was already checked above.
+    // Skip proximity/Google search entirely.
+    if (!closeQuickCapture) {
+      addCustomLocation(closeAfter, loc);
+      return;
+    }
+
+    // "צלם עכשיו" (quick capture): only do proximity Google search when name is AUTO-GENERATED.
+    // If user typed their own name, treat it as explicit → save directly.
+    if (!loc._nameIsAuto) {
+      addCustomLocation(closeAfter, loc);
+      setShowQuickCapture(false);
+      return;
+    }
     
-    // Background dedup check
+    // Background dedup check — QuickCapture with auto-generated name only
     try {
       const matches = await findNearbyDuplicates(loc.lat, loc.lng, loc.interests);
       
