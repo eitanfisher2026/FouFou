@@ -315,8 +315,6 @@
                               }
                               setNewLocation(updatedLoc);
                               setLocationSearchResults(null);
-                              // Auto-fetch full Google info (includes rating)
-                              fetchGooglePlaceInfo(updatedLoc);
                               showToast(`✅ ${result.name} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
                             }}
                             style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
@@ -401,7 +399,7 @@
                 {/* Interests - Compact Grid */}
                 <div>
                   <label className="block text-xs font-bold mb-1">{t("general.interestsHeader")}</label>
-                  <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-36 overflow-y-auto">
+                  <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg max-h-52 overflow-y-auto">
                     {allInterestOptions.map(option => (
                       <button
                         key={option.id}
@@ -438,15 +436,15 @@
                           
                           setNewLocation(updates);
                         }}
-                        className={`p-1 rounded-lg text-[10px] font-bold transition-all ${
+                        className={`p-1.5 rounded-lg text-[10px] font-bold transition-all ${
                           (newLocation.interests || []).includes(option.id)
                             ? 'bg-purple-500 text-white shadow-md'
                             : 'bg-white border border-gray-300 hover:border-purple-300'
                         }`}
                         title={tLabel(option)}
                       >
-                        <span className="text-xl block" style={{ lineHeight: 1.2 }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-6 h-6 object-contain mx-auto" /> : option.icon}</span>
-                        <span className="text-[7px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
+                        <span className="text-2xl block" style={{ lineHeight: 1.2 }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" className="w-7 h-7 object-contain mx-auto" /> : option.icon}</span>
+                        <span className="text-[8px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
                       </button>
                     ))}
                   </div>
@@ -644,7 +642,7 @@
                     onClick={() => setNewLocation(prev => ({ ...prev, _detailsOpen: !prev._detailsOpen }))}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f9fafb', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: '#6b7280' }}
                   >
-                    <span>📋 {t("places.moreDetails") || "פרטים נוספים"}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#374151' }}>📋 {t("places.moreDetails") || "פרטים נוספים"}</span>
                     <span style={{ fontSize: '10px' }}>{newLocation._detailsOpen ? "▲" : "▼"}</span>
                   </button>
                   {newLocation._detailsOpen && (
@@ -703,36 +701,19 @@
                       {/* Edit-mode only: Google Info + Lock + Skip + Metadata */}
                       {showEditLocationDialog && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
-                          {/* Row 1: Open in Google + Google Info + Lock toggle */}
-                          <div className="flex gap-1.5 items-center">
-                            {newLocation.lat && newLocation.lng ? (() => {
-                              const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
-                              const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
-                              const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
-                              return (
-                                <a href={viewUrl} target="_blank" rel="noopener noreferrer"
-                                  className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
-                                  onClick={() => { if (window.BKK._logUrlBuild) window.BKK._logUrlBuild(newLocation.name, newLocation); window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
-                                >🗺️ {btnLabel}</a>
-                              );
-                            })() : (
-                              <button disabled className="flex-1 py-1.5 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
-                                🗺️ {t("general.openInGoogleNoCoords")}
-                              </button>
-                            )}
-                            {(isAdmin || isEditor) && (
+                          {/* Row 1: Google Info + Lock toggle */}
+                          {(isAdmin || isEditor) && (
+                            <div className="flex gap-1.5 items-center">
                               <button onClick={() => { setGooglePlaceInfo(null); fetchGooglePlaceInfo(newLocation); }}
                                 disabled={!newLocation.name?.trim() || loadingGoogleInfo}
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() && !loadingGoogleInfo ? 'bg-indigo-500 text-white hover:bg-indigo-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                               >🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}</button>
-                            )}
-                            {(isAdmin || isEditor) && (
                               <button type="button" onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
                                 className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
                                 title={newLocation.locked ? t('places.approved') || 'מאושר' : t('places.draft') || 'טיוטה'}
                               >{newLocation.locked ? '✅' : '✏️'}</button>
-                            )}
-                          </div>
+                            </div>
+                          )}
                           {googlePlaceInfo && !googlePlaceInfo.notFound && (
                             <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
                               <div><span className="font-bold text-indigo-700">Found:</span><span className="ml-1">{googlePlaceInfo.name}</span></div>
@@ -794,6 +775,26 @@
                   )}
                 </div>
 
+                {/* Open in Google — outside collapsible, edit mode only */}
+                {showEditLocationDialog && editingLocation && (
+                  <div className="flex pt-1">
+                    {newLocation.lat && newLocation.lng ? (() => {
+                      const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
+                      const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
+                      const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
+                      return (
+                        <a href={viewUrl} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                          onClick={() => { window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
+                        >🗺️ {btnLabel}</a>
+                      );
+                    })() : (
+                      <button disabled className="flex-1 py-2 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
+                        🗺️ {t("general.openInGoogleNoCoords")}
+                      </button>
+                    )}
+                  </div>
+                )}
                 {/* Delete — outside collapsible, edit mode only */}
                 {showEditLocationDialog && editingLocation && (
                   (isAdmin || isEditor) ||

@@ -8965,7 +8965,13 @@
       loc.userRating = { score: addLocRatingScore, text: addLocRatingText };
     }
 
-    // Check exact name duplicate first — same dialog as proximity dedup
+    // Check interests first — before any other validation
+    if (loc.name?.trim() && !loc.interests?.length) {
+      showToast(t('form.selectAtLeastOneInterest') || 'יש לבחור לפחות תחום אחד', 'warning');
+      return;
+    }
+
+    // Check exact name duplicate — same dialog as proximity dedup
     if (loc.name?.trim()) {
       const nameMatch = customLocations.find(l =>
         l.name.toLowerCase().trim() === loc.name.toLowerCase().trim() &&
@@ -8979,10 +8985,6 @@
     }
 
     if (!loc.name?.trim() || !loc.interests?.length) {
-      if (loc.name?.trim() && !loc.interests?.length) {
-        showToast(t('form.selectAtLeastOneInterest') || 'יש לבחור לפחות תחום אחד', 'warning');
-        return;
-      }
       addCustomLocation(closeAfter, loc);
       if (closeQuickCapture) setShowQuickCapture(false);
       return;
