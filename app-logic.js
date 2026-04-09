@@ -9265,6 +9265,13 @@
       }
       return;
     }
+
+    // Require coordinates
+    const _lat = locData.lat, _lng = locData.lng;
+    if (!_lat || !_lng || _lat === 0 || _lng === 0) {
+      showToast(t('places.noCoordinates') || '📍 לא ניתן לשמור מקום ללא קואורדינטות — יש להזין כתובת או GPS', 'warning');
+      return;
+    }
     
     // Check for duplicate name — block save to prevent duplicates
     const exists = customLocations.find(loc => 
@@ -9454,6 +9461,12 @@
   const updateCustomLocation = (closeAfter = true) => {
     if (!newLocation.name?.trim()) {
       showToast(t('places.enterPlaceName'), 'warning');
+      return;
+    }
+
+    // Require coordinates
+    if (!newLocation.lat || !newLocation.lng || newLocation.lat === 0 || newLocation.lng === 0) {
+      showToast(t('places.noCoordinates') || '📍 לא ניתן לשמור מקום ללא קואורדינטות — יש להזין כתובת או GPS', 'warning');
       return;
     }
     

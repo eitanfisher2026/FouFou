@@ -775,36 +775,31 @@
                   )}
                 </div>
 
-                {/* Open in Google — outside collapsible, edit mode only */}
+                {/* Open in Google (3/4) + Delete (1/4) — outside collapsible, edit mode only */}
                 {showEditLocationDialog && editingLocation && (
-                  <div className="flex pt-1">
+                  (isAdmin || isEditor) ||
+                  (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
+                ) && (
+                  <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }}>
                     {newLocation.lat && newLocation.lng ? (() => {
                       const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
                       const viewUrl = window.BKK.getGoogleViewUrl(newLocation) || window.BKK.getGoogleMapsUrl(newLocation);
                       const btnLabel = isCoordOnly ? (t('general.openPointInGoogle') || 'פתח נקודה בגוגל') : t('general.openInGoogle');
                       return (
                         <a href={viewUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 text-center"
+                          style={{ flex: 3, padding: '6px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', background: '#22c55e', color: 'white', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', textDecoration: 'none' }}
                           onClick={() => { window.BKK.logEvent?.('place_opened_google', { source: 'edit_dialog' }); }}
                         >🗺️ {btnLabel}</a>
                       );
                     })() : (
-                      <button disabled className="flex-1 py-2 bg-gray-300 text-gray-500 rounded-lg text-xs font-bold cursor-not-allowed">
+                      <button disabled style={{ flex: 3, padding: '6px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', background: '#d1d5db', color: '#9ca3af', cursor: 'not-allowed', border: 'none' }}>
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
                     )}
-                  </div>
-                )}
-                {/* Delete — outside collapsible, edit mode only */}
-                {showEditLocationDialog && editingLocation && (
-                  (isAdmin || isEditor) ||
-                  (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
-                ) && (
-                  <div className="flex pt-1">
                     <button
                       onClick={() => { showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => { deleteCustomLocation(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }); }}
-                      style={{ flex: 1, padding: '5px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626' }}
-                    >🗑️ {t("general.deletePlace")}</button>
+                      style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', textAlign: 'center' }}
+                    >🗑️</button>
                   </div>
                 )}
 
@@ -2988,7 +2983,7 @@
 
             {toastMessage && (<>
         {/* Backdrop — click anywhere outside closes toast */}
-        <div onClick={() => setToastMessage(null)} style={{ position: 'fixed', inset: 0, zIndex: 9998 }} />
+        <div onClick={() => setToastMessage(null)} style={{ position: 'fixed', inset: 0, zIndex: 10498 }} />
         <div
           dir={window.BKK.i18n.isRTL() ? 'rtl' : 'ltr'}
           style={{
@@ -3003,7 +2998,7 @@
             backgroundColor: toastMessage.type === 'error' ? '#fef2f2' : toastMessage.type === 'warning' ? '#fffbeb' : toastMessage.type === 'info' ? '#eff6ff' : '#f0fdf4',
             border: `1px solid ${toastMessage.type === 'error' ? '#fca5a5' : toastMessage.type === 'warning' ? '#fcd34d' : toastMessage.type === 'info' ? '#93c5fd' : '#86efac'}`,
             boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-            zIndex: 9999,
+            zIndex: 10499,
             animation: 'slideDown 0.15s ease-out',
             direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr',
           }}
