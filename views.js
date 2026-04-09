@@ -696,33 +696,7 @@
         {!activeTrail && currentView === 'form' && (
           <div className={wizardStep < 3 ? "view-fade-in" : ""}>
 
-            {/* Fixed bottom floating button — Favorites Map — visible on steps 1 & 2, just above the continue button */}
-            {wizardStep < 3 && !showMapModal && (
-              <button
-                onClick={() => {
-                  setMapMode('favorites');
-                  setMapFavArea(wizardStep === 2 && formData.searchMode === 'area' && formData.area ? formData.area : null);
-                  setMapFavRadius(wizardStep === 2 && formData.searchMode === 'radius' && formData.currentLat ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
-                  setMapFocusPlace(null);
-                  setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
-                  setMapBottomSheet(null);
-                  setMapReturnPlace(null);
-                  setShowMapModal(true);
-                  window.BKK.logEvent?.('favorites_map_opened', { source: wizardStep === 2 ? 'wizard_area' : 'wizard_interests' });
-                }}
-                style={{
-                  position: 'fixed',
-                  bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))',
-                  left: '16px', right: '16px', zIndex: 39,
-                  padding: '10px 16px', borderRadius: '12px',
-                  border: '2px solid #8b5cf6',
-                  background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
-                  color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                  cursor: 'pointer', boxShadow: '0 -2px 12px rgba(139,92,246,0.2)'
-                }}
-              >⭐ 🗺️ {t('form.favoritesMap')}</button>
-            )}
+
             {/* Wizard Header — shown on all steps */}
             <div style={{ textAlign: 'center', marginBottom: '4px' }}>
               {/* Step indicators + language toggle */}
@@ -890,38 +864,48 @@
                   </div>
                 )}
 
-                {/* Map button removed — now fixed top floating button */}
-                <div style={{ marginBottom: 'calc(116px + env(safe-area-inset-bottom, 0px))' }} />
               </div>
-              {/* Fixed find places button — hidden when overlays are open */}
-              {!showMapModal && (() => {
-                const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? formData.currentLat : (formData.searchMode === 'area' ? formData.area : true));
-                return (
+
+              {/* Sticky bottom buttons — favorites map + find places */}
+              <div style={{
+                position: 'sticky', bottom: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column', gap: '6px',
+                padding: '8px 0 env(safe-area-inset-bottom, 8px)',
+                background: 'linear-gradient(to top, rgba(255,251,235,1) 80%, rgba(255,251,235,0))'
+              }}>
                 <button
-                    onClick={() => { if (canSearch) {
-                      // Analytics: track interests selected and context
-                      window.BKK.logEvent?.('search_started', {
-                        city: selectedCityId,
-                        lang: currentLang,
-                        interests_count: formData.interests?.length || 0,
-                        interests: (formData.interests || []).slice(0, 5).join(','),
-                        time_filter: interestTimeFilter || 'all'
-                      });
-                      generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0);
-                    } }}
-                    disabled={!canSearch}
-                    style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-                      margin: '0 16px calc(16px + env(safe-area-inset-bottom, 0px))', width: 'calc(100% - 32px)',
-                      padding: '14px', borderRadius: '12px',
-                      cursor: canSearch ? 'pointer' : 'not-allowed',
-                      border: canSearch ? '2px solid #22c55e' : '2px solid #d1d5db',
-                      background: canSearch ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f3f4f6',
-                      color: canSearch ? '#15803d' : '#9ca3af', fontSize: '16px', fontWeight: 'bold',
-                      boxShadow: '0 -2px 16px rgba(0,0,0,0.12)'
-                    }}
-                  >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${formData.maxStops || 10})` : `⏳ ${t('general.loading')}...`}</button>
-                );
-              })()}
+                  onClick={() => {
+                    setMapMode('favorites');
+                    setMapFavArea(formData.searchMode === 'area' && formData.area ? formData.area : null);
+                    setMapFavRadius(formData.searchMode === 'radius' && formData.currentLat ? { lat: formData.currentLat, lng: formData.currentLng, meters: formData.radiusMeters } : null);
+                    setMapFocusPlace(null);
+                    setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
+                    setMapBottomSheet(null); setMapReturnPlace(null); setShowMapModal(true);
+                    window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_area', area: formData.area || null });
+                  }}
+                  style={{ padding: '10px', borderRadius: '12px', border: '2px solid #8b5cf6',
+                    cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
+                    color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >⭐ 🗺️ {t('form.favoritesMap')}</button>
+                {(() => {
+                  const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? formData.currentLat : (formData.searchMode === 'area' ? formData.area : true));
+                  return (
+                    <button
+                      onClick={() => { if (canSearch) {
+                        window.BKK.logEvent?.('search_started', { city: selectedCityId, lang: currentLang, interests_count: formData.interests?.length || 0, interests: (formData.interests || []).slice(0, 5).join(','), time_filter: interestTimeFilter || 'all' });
+                        generateRoute(); setRouteChoiceMade(null); setWizardStep(3); window.scrollTo(0, 0);
+                      } }}
+                      disabled={!canSearch}
+                      style={{ padding: '14px', borderRadius: '12px',
+                        cursor: canSearch ? 'pointer' : 'not-allowed',
+                        border: canSearch ? '2px solid #22c55e' : '2px solid #d1d5db',
+                        background: canSearch ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f3f4f6',
+                        color: canSearch ? '#15803d' : '#9ca3af', fontSize: '16px', fontWeight: 'bold' }}
+                    >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${formData.maxStops || 10})` : `⏳ ${t('general.loading')}...`}</button>
+                  );
+                })()}
+              </div>
             </>)}
 
             {/* Step 1: Choose Interests (was step 2) */}
@@ -1047,24 +1031,38 @@
                   })()}
                 </div>
 
-                {/* Map button removed — now fixed top floating button */}
-                <div style={{ marginBottom: formData.interests.length > 0 ? 'calc(116px + env(safe-area-inset-bottom, 0px))' : 'calc(116px + env(safe-area-inset-bottom, 0px))' }} />
               </div>
-              {/* Fixed continue button — hidden when overlays are open */}
-              {!showMapModal && formData.interests.length > 0 && (
+
+              {/* Sticky bottom buttons — favorites map + continue */}
+              <div style={{
+                position: 'sticky', bottom: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column', gap: '6px',
+                padding: '8px 0 env(safe-area-inset-bottom, 8px)',
+                background: 'linear-gradient(to top, rgba(255,251,235,1) 80%, rgba(255,251,235,0))'
+              }}>
                 <button
+                  onClick={() => {
+                    setMapMode('favorites');
+                    setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null);
+                    setMapFavFilter(formData.interests.length > 0 ? new Set(formData.interests) : new Set());
+                    setMapBottomSheet(null); setMapReturnPlace(null); setShowMapModal(true);
+                    window.BKK.logEvent?.('favorites_map_opened', { source: 'wizard_interests' });
+                  }}
+                  style={{ padding: '10px', borderRadius: '12px', border: '2px solid #8b5cf6',
+                    cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
+                    color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >⭐ 🗺️ {t('form.favoritesMap')}</button>
+                {formData.interests.length > 0 && (
+                  <button
                     onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
-                    style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
-                      margin: '0 16px calc(16px + env(safe-area-inset-bottom, 0px))', width: 'calc(100% - 32px)',
-                      padding: '14px', borderRadius: '12px',
-                      cursor: 'pointer',
+                    style={{ padding: '14px', borderRadius: '12px', cursor: 'pointer',
                       border: '2px solid #22c55e',
                       background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
-                      color: '#15803d', fontSize: '16px', fontWeight: 'bold',
-                      boxShadow: '0 -2px 16px rgba(0,0,0,0.12)'
-                    }}
+                      color: '#15803d', fontSize: '16px', fontWeight: 'bold' }}
                   >{t("general.next")} ({formData.interests.length})</button>
-              )}
+                )}
+              </div>
             </>)}
           </div>
         )}
