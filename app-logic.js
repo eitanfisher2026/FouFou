@@ -60,8 +60,7 @@
   const [roleOverride, setRoleOverride] = useState(null); // null = no override, 0/1/2 = impersonate
 
   // Effective role: override if set (admin testing), otherwise real role
-  // roleOverride: null=real, -1=anonymous(no auth), 0=regular, 1=editor, 2=admin
-  const effectiveRole = (roleOverride !== null && userRole >= 2) ? Math.max(0, roleOverride) : userRole;
+  const effectiveRole = (roleOverride !== null && userRole >= 2) ? roleOverride : userRole;
 
   // Computed role checks use effectiveRole
   const isEditor = effectiveRole >= 1;
@@ -69,8 +68,7 @@
   // But keep real admin check for impersonation UI itself
   const isRealAdmin = userRole >= 2;
   const isUnlocked = isEditor; // backward compat — most old checks mean "can edit content"
-  // For anonymous simulation: hide authUser-dependent features
-  const authUserEffective = (roleOverride === -1) ? null : authUser;
+
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -8452,10 +8450,7 @@
   const requireSignIn = () => {
     if (!authUser || authUser.isAnonymous) {
       showToast(t('auth.signInRequired') || '🔒 כדי לבצע פעולה זו יש להתחבר', 'info', 'sticky');
-      // Check CURRENT auth state at timeout time (not stale closure) to avoid showing
-      // login dialog when Firebase briefly sets authUser=null during token refresh
       setTimeout(() => {
-        // Also guard: don't show if auth is still loading (startup race condition)
         if (!authLoading && (!authUserRef.current || authUserRef.current.isAnonymous)) {
           setShowLoginDialog(true);
         }

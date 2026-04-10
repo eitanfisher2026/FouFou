@@ -3565,8 +3565,7 @@
                       {[
                         { role: null, label: '👑 Admin', desc: 'Real' },
                         { role: 1, label: '✏️ Editor', desc: '' },
-                        { role: 0, label: '👤 רשום', desc: '' },
-                        { role: -1, label: '🕶️ אנונימי', desc: '' }
+                        { role: 0, label: '👤 Regular', desc: '' }
                       ].map(opt => {
                         const isActive = roleOverride === opt.role;
                         return (
