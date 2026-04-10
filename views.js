@@ -1649,7 +1649,12 @@
                   })()}
                 </div>
                 
-                <div className="mt-3 space-y-1" style={{ position: 'relative' }}>
+                <div className="mt-3 space-y-1" style={{
+                  position: 'sticky', bottom: 0, zIndex: 20,
+                  background: 'linear-gradient(to top, rgba(239,246,255,1) 85%, rgba(239,246,255,0))',
+                  paddingTop: '10px',
+                  paddingBottom: 'env(safe-area-inset-bottom, 8px)'
+                }}>
                   {/* Row 1: Map & Plan + Doc + Hamburger */}
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                   <button
