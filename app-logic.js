@@ -8249,6 +8249,19 @@
   // Legacy stub — ratings now loaded city-wide via loadReviewRatings
   const loadReviewAverages = (_placeNames) => {};;
 
+  // Quick-patch a single field on an existing location (for popup inline edits)
+  const patchLocationField = async (loc, fields) => {
+    if (!loc?.firebaseId || !isFirebaseAvailable || !database) return false;
+    try {
+      await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(fields);
+      setCustomLocations(prev => prev.map(l => l.id === loc.id ? { ...l, ...fields } : l));
+      return true;
+    } catch(e) {
+      showToast(t('toast.sendError') + ': ' + (e.message || e), 'error');
+      return false;
+    }
+  };
+
   const openReviewDialog = async (place) => {
     const cityId = window.BKK.selectedCityId || 'bangkok';
     const placeKey = (place.name || '').replace(/[.#$/\[\]]/g, '_');

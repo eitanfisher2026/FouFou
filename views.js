@@ -195,7 +195,13 @@
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {/* Feedback button - left in RTL, right in LTR */}
           <button
-            onClick={() => setShowFeedbackDialog(true)}
+            onClick={() => {
+                if (authUser) {
+                  if (!feedbackSenderName && authUser.displayName) setFeedbackSenderName(authUser.displayName);
+                  if (!feedbackSenderEmail && authUser.email) setFeedbackSenderEmail(authUser.email);
+                }
+                setShowFeedbackDialog(true);
+              }}
             style={{
               position: 'absolute',
               [currentLang === 'he' ? 'left' : 'right']: '0',
