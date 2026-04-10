@@ -30,14 +30,14 @@
               title={isRTL ? 'הסבר מורחב' : 'More info'}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '2px',
-                padding: '2px 8px', fontSize: '12px', fontWeight: '700',
-                background: openHintPopup === hintId ? '#bfdbfe' : '#dbeafe',
-                color: '#1d4ed8', border: '1.5px solid #93c5fd',
+                padding: '2px 9px', fontSize: '14px', fontWeight: '800',
+                background: openHintPopup === hintId ? '#c7d2fe' : '#e0e7ff',
+                color: '#3730a3', border: '1.5px solid #818cf8',
                 borderRadius: '20px', cursor: 'pointer',
-                boxShadow: '0 1px 3px rgba(59,130,246,0.15)'
+                boxShadow: '0 1px 4px rgba(99,102,241,0.3)'
               }}
             >
-              <span style={{ fontSize: '12px' }}>ℹ</span>
+              <span style={{ fontSize: '14px', fontWeight: '800' }}>ℹ</span>
               {hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
             </button>
           </div>
@@ -485,7 +485,7 @@
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0' }}>✏️</button>
                     )}
                     <button onClick={() => setOpenHintPopup(openHintPopup === 'activeTrail' ? null : 'activeTrail')}
-                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1.5px solid #93c5fd', background: openHintPopup === 'activeTrail' ? '#bfdbfe' : '#dbeafe', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '14px', color: '#1d4ed8', fontWeight: '700', boxShadow: '0 1px 3px rgba(59,130,246,0.15)' }}>
+                      style={{ height: '100%', minHeight: '38px', borderRadius: '10px', padding: '0 10px', border: '1.5px solid #818cf8', background: openHintPopup === 'activeTrail' ? '#c7d2fe' : '#e0e7ff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '15px', color: '#3730a3', fontWeight: '800' }}>
                       <span>ℹ</span>{hasAudio && <span style={{ fontSize: '10px' }}>🔈</span>}
                     </button>
                   </div>
@@ -665,6 +665,12 @@
               <button
                 onClick={() => {
                   endActiveTrail();
+                  // Also stop Google Maps navigation if open
+                  try {
+                    if (window._googleMapsWindow && !window._googleMapsWindow.closed) {
+                      window._googleMapsWindow.close();
+                    }
+                  } catch(e) {}
                   showToast(t('trail.ended'), 'success');
                 }}
                 style={{
@@ -1115,30 +1121,49 @@
 
         {/* Wizard Step 3 = results */}
         
-        {/* Floating audio player — shown when hint audio plays and popup is closed */}
-        {isSpeaking && !openHintPopup && (
-          <div style={{
-            position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 1050, background: '#1e293b', color: 'white',
-            borderRadius: '24px', padding: '8px 14px',
-            display: 'flex', alignItems: 'center', gap: '10px',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
-            maxWidth: 'calc(100vw - 32px)', minWidth: '200px'
-          }}>
-            <span style={{ fontSize: '16px' }}>🔊</span>
-            <span style={{ fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85 }}>
-              {playingHintLabel || '...'}
-            </span>
-            <button onClick={pauseResumeHint}
-              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {isPaused ? '▶️' : '⏸️'}
-            </button>
-            <button onClick={stopHintPlayback}
-              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              ⏹️
-            </button>
-          </div>
-        )}
+        {/* Floating audio player — draggable, no text, buttons only */}
+        {isSpeaking && !openHintPopup && (() => {
+          const ref = React.useRef({ dragging: false, startX: 0, startY: 0, ox: 0, oy: 0 });
+          const [pos, setPos] = React.useState({ x: null, y: null });
+          const left = pos.x !== null ? pos.x : (window.innerWidth / 2 - 52);
+          const top = pos.y !== null ? pos.y : (window.innerHeight - 148);
+          const onDown = (e) => {
+            const cx = e.touches ? e.touches[0].clientX : e.clientX;
+            const cy = e.touches ? e.touches[0].clientY : e.clientY;
+            ref.current = { dragging: true, startX: cx, startY: cy, ox: left, oy: top };
+            const onMove = (ev) => {
+              if (!ref.current.dragging) return;
+              const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+              const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
+              setPos({ x: ref.current.ox + mx - ref.current.startX, y: ref.current.oy + my - ref.current.startY });
+            };
+            const onUp = () => { ref.current.dragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); };
+            document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, { passive: true }); document.addEventListener('touchend', onUp);
+          };
+          return (
+            <div
+              onMouseDown={onDown} onTouchStart={onDown}
+              style={{
+                position: 'fixed', left: left + 'px', top: top + 'px',
+                zIndex: 1050, background: '#1e293b', color: 'white',
+                borderRadius: '32px', padding: '6px 10px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                cursor: 'grab', userSelect: 'none', touchAction: 'none'
+              }}>
+              <span style={{ fontSize: '14px', pointerEvents: 'none' }}>🔊</span>
+              <button onClick={(e) => { e.stopPropagation(); pauseResumeHint(); }}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {isPaused ? '▶️' : '⏸️'}
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); stopHintPlayback(); }}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                ⏹️
+              </button>
+            </div>
+          );
+        })()}
 
         {/* FAB: Quick Capture — draggable, available when no active trail */}
         {!showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
@@ -1704,10 +1729,10 @@
                             title={window.BKK.i18n.isRTL() ? 'מה יש בתפריט?' : 'What is in the menu'}
                             style={{
                               height: '42px', borderRadius: '12px', padding: '0 10px',
-                              border: '1.5px solid #93c5fd', background: openHintPopup === 'hint_route_menu' ? '#bfdbfe' : '#dbeafe',
+                              border: '1.5px solid #818cf8', background: openHintPopup === 'hint_route_menu' ? '#c7d2fe' : '#e0e7ff',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-                              fontSize: '15px', color: '#1d4ed8', fontWeight: '700', flexShrink: 0,
-                              boxShadow: '0 1px 3px rgba(59,130,246,0.15)'
+                              fontSize: '16px', color: '#3730a3', fontWeight: '800', flexShrink: 0,
+                              boxShadow: '0 1px 4px rgba(99,102,241,0.3)'
                             }}
                           >
                             <span>ℹ</span>
