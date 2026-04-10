@@ -262,13 +262,19 @@
                         title="Duplicate OK"
                       >{newLocation.dedupOk ? '✓✓' : '✓'}</button>
                     )}
-                    <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                      <button
-                        onClick={() => searchPlacesByName(newLocation.name)}
-                        disabled={!newLocation.name?.trim()}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                      >🔍 {t("form.searchPlaceGoogle")}</button>
-                    </div>
+                    {(() => {
+                      const isOwnP = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
+                      const canSearchEdit = !showEditLocationDialog || isAdmin || isEditor || (isOwnP && !editingLocation?.locked);
+                      return canSearchEdit ? (
+                        <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                          <button
+                            onClick={() => searchPlacesByName(newLocation.name)}
+                            disabled={!newLocation.name?.trim()}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                          >🔍 {t("form.searchPlaceGoogle")}</button>
+                        </div>
+                      ) : null;
+                    })()}
                     {/* Search Results Dropdown */}
                     {locationSearchResults !== null && (
                       <div style={{ marginTop: '4px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', background: 'white' }}>
@@ -753,11 +759,8 @@
                   )}
                 </div>
 
-                {/* Open in Google (3/4) + Delete (1/4) — outside collapsible, edit mode only */}
+                {/* Open in Google — always visible in edit mode. Delete — only for owners/admins */}
                 {showEditLocationDialog && editingLocation && (
-                  (isAdmin || isEditor) ||
-                  (!editingLocation.locked && editingLocation.userId && editingLocation.userId === authUser?.uid)
-                ) && (
                   <div style={{ display: 'flex', gap: '6px', paddingTop: '4px' }}>
                     {newLocation.lat && newLocation.lng ? (() => {
                       const isCoordOnly = window.BKK.isCoordOnlyPlace(newLocation);
@@ -774,10 +777,16 @@
                         🗺️ {t("general.openInGoogleNoCoords")}
                       </button>
                     )}
-                    <button
-                      onClick={() => { showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => { deleteCustomLocation(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }); }}
-                      style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', textAlign: 'center' }}
-                    >🗑️</button>
+                    {(() => {
+                      const isOwnDel = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
+                      const canDelete = isAdmin || isEditor || (isOwnDel && !editingLocation?.locked);
+                      return canDelete ? (
+                        <button
+                          onClick={() => { showConfirm(`${t("general.deletePlace")} "${editingLocation.name}"?`, () => { deleteCustomLocation(editingLocation.id); setShowEditLocationDialog(false); setEditingLocation(null); }); }}
+                          style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', textAlign: 'center' }}
+                        >🗑️</button>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
