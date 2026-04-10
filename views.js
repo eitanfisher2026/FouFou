@@ -33,7 +33,7 @@
                 padding: '2px 9px', fontSize: '14px', fontWeight: '800',
                 background: openHintPopup === hintId ? '#c7d2fe' : '#e0e7ff',
                 color: '#3730a3', border: '1.5px solid #818cf8',
-                borderRadius: '20px', cursor: 'pointer',
+                borderRadius: '999px', cursor: 'pointer',
                 boxShadow: '0 1px 4px rgba(99,102,241,0.3)'
               }}
             >
@@ -579,7 +579,7 @@
                               style={{
                                 background: ra ? '#fefce8' : '#f9fafb',
                                 border: `1px solid ${ra ? '#fde68a' : '#e5e7eb'}`,
-                                borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
+                                borderRadius: '999px', cursor: 'pointer', padding: '2px 7px',
                                 fontSize: '10px', fontWeight: '600', flexShrink: 0,
                                 color: ra ? '#92400e' : '#9ca3af', whiteSpace: 'nowrap'
                               }}
@@ -593,7 +593,7 @@
                               onClick={() => (addGooglePlaceToCustom(stop))}
                               style={{
                                 background: '#f0fdf4', border: '1px solid #6ee7b7',
-                                borderRadius: '20px', cursor: 'pointer', padding: '2px 7px',
+                                borderRadius: '999px', cursor: 'pointer', padding: '2px 7px',
                                 fontSize: '10px', fontWeight: '600', flexShrink: 0,
                                 color: '#059669', whiteSpace: 'nowrap'
                               }}
