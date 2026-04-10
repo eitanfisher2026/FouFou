@@ -8526,6 +8526,13 @@
     locationToAdd.mapsUrl = window.BKK.getGoogleMapsUrl(locationToAdd);
     locationToAdd = sanitizeMapsUrl(locationToAdd);
 
+    if (forceAdd) {
+      // forceAdd=true: came from dedup confirm "add anyway" — save directly, no dialog
+      setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
+      await saveQuickAddPlace(locationToAdd, null);
+      return true;
+    }
+
     // Open quick-add dialog for user to enrich and optionally rate before saving
     setAddingPlaceIds(prev => prev.filter(id => id !== placeId));
     setQuickAddPlace(locationToAdd);
