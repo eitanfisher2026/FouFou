@@ -60,7 +60,8 @@
   const [roleOverride, setRoleOverride] = useState(null); // null = no override, 0/1/2 = impersonate
 
   // Effective role: override if set (admin testing), otherwise real role
-  const effectiveRole = (roleOverride !== null && userRole >= 2) ? roleOverride : userRole;
+  // roleOverride: null=real, -1=anonymous(no auth), 0=regular, 1=editor, 2=admin
+  const effectiveRole = (roleOverride !== null && userRole >= 2) ? Math.max(0, roleOverride) : userRole;
 
   // Computed role checks use effectiveRole
   const isEditor = effectiveRole >= 1;
@@ -68,6 +69,8 @@
   // But keep real admin check for impersonation UI itself
   const isRealAdmin = userRole >= 2;
   const isUnlocked = isEditor; // backward compat — most old checks mean "can edit content"
+  // For anonymous simulation: hide authUser-dependent features
+  const authUserEffective = (roleOverride === -1) ? null : authUser;
 
 
   // ═══════════════════════════════════════════════════════════════

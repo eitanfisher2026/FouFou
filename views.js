@@ -360,6 +360,21 @@
                 <span>{t('auth.userManagement')}</span>
               </button>
             )}
+            {/* Return to Admin — shown when simulating another role */}
+            {isRealAdmin && roleOverride !== null && (
+              <button
+                onClick={() => { setRoleOverride(null); setShowHeaderMenu(false); showToast('👑 חזרת למצב Admin', 'success'); }}
+                style={{
+                  width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
+                  background: '#faf5ff', border: 'none', borderRadius: '8px', padding: '8px 12px',
+                  color: '#7c3aed', fontSize: '13px', fontWeight: '700',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+              >
+                <span style={{ fontSize: '15px' }}>🎭</span>
+                <span>👑 חזור למצב Admin</span>
+              </button>
+            )}
           </div>
         </>)}
       </div>
@@ -1122,48 +1137,13 @@
         {/* Wizard Step 3 = results */}
         
         {/* Floating audio player — draggable, no text, buttons only */}
-        {isSpeaking && !openHintPopup && (() => {
-          const ref = React.useRef({ dragging: false, startX: 0, startY: 0, ox: 0, oy: 0 });
-          const [pos, setPos] = React.useState({ x: null, y: null });
-          const left = pos.x !== null ? pos.x : (window.innerWidth / 2 - 52);
-          const top = pos.y !== null ? pos.y : (window.innerHeight - 148);
-          const onDown = (e) => {
-            const cx = e.touches ? e.touches[0].clientX : e.clientX;
-            const cy = e.touches ? e.touches[0].clientY : e.clientY;
-            ref.current = { dragging: true, startX: cx, startY: cy, ox: left, oy: top };
-            const onMove = (ev) => {
-              if (!ref.current.dragging) return;
-              const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
-              const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
-              setPos({ x: ref.current.ox + mx - ref.current.startX, y: ref.current.oy + my - ref.current.startY });
-            };
-            const onUp = () => { ref.current.dragging = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); };
-            document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-            document.addEventListener('touchmove', onMove, { passive: true }); document.addEventListener('touchend', onUp);
-          };
-          return (
-            <div
-              onMouseDown={onDown} onTouchStart={onDown}
-              style={{
-                position: 'fixed', left: left + 'px', top: top + 'px',
-                zIndex: 1050, background: '#1e293b', color: 'white',
-                borderRadius: '32px', padding: '6px 10px',
-                display: 'flex', alignItems: 'center', gap: '6px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-                cursor: 'grab', userSelect: 'none', touchAction: 'none'
-              }}>
-              <span style={{ fontSize: '14px', pointerEvents: 'none' }}>🔊</span>
-              <button onClick={(e) => { e.stopPropagation(); pauseResumeHint(); }}
-                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {isPaused ? '▶️' : '⏸️'}
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); stopHintPlayback(); }}
-                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ⏹️
-              </button>
-            </div>
-          );
-        })()}
+        {isSpeaking && !openHintPopup && (
+          <FloatingAudioPlayer
+            isPaused={isPaused}
+            onPauseResume={pauseResumeHint}
+            onStop={stopHintPlayback}
+          />
+        )}
 
         {/* FAB: Quick Capture — draggable, available when no active trail */}
         {!showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
@@ -5402,22 +5382,7 @@
           );
         })()}
 
-        {/* Floating role impersonation badge */}
-        {isRealAdmin && roleOverride !== null && (
-          <div style={{
-            position: 'fixed', bottom: '70px', left: '50%', transform: 'translateX(-50%)',
-            zIndex: 45, background: 'linear-gradient(135deg, #7c3aed, #a855f7)', color: 'white',
-            padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold',
-            boxShadow: '0 4px 12px rgba(124,58,237,0.4)', display: 'flex', alignItems: 'center', gap: '8px',
-            cursor: 'pointer', userSelect: 'none'
-          }}
-            onClick={() => { setRoleOverride(null); showToast('👑 Admin', 'info'); }}
-          >
-            <span>🎭</span>
-            <span>{roleOverride === 0 ? 'Regular' : 'Editor'}</span>
-            <span style={{ fontSize: '10px', opacity: 0.8 }}>tap to exit</span>
-          </div>
-        )}
+        {/* Role badge removed — return to admin via hamburger menu */}
 
         {/* === CITY VISIBILITY DIALOG === */}
         {cityVisibilityInterest && (() => {

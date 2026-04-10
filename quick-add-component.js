@@ -733,3 +733,62 @@ const FeedbackItemImages = ({ images, onView }) => {
     </div>
   );
 };
+
+// FloatingAudioPlayer — standalone draggable component (hooks outside JSX callbacks)
+const FloatingAudioPlayer = ({ isPaused, onPauseResume, onStop }) => {
+  const ref = React.useRef({ dragging: false, startX: 0, startY: 0, ox: 0, oy: 0 });
+  const [pos, setPos] = React.useState(null);
+
+  const left = pos ? pos.x : (window.innerWidth / 2 - 52);
+  const top  = pos ? pos.y : (window.innerHeight - 148);
+
+  const onDown = (e) => {
+    e.preventDefault();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    const curLeft = pos ? pos.x : (window.innerWidth / 2 - 52);
+    const curTop  = pos ? pos.y : (window.innerHeight - 148);
+    ref.current = { dragging: true, startX: cx, startY: cy, ox: curLeft, oy: curTop };
+    const onMove = (ev) => {
+      if (!ref.current.dragging) return;
+      const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      setPos({ x: ref.current.ox + mx - ref.current.startX, y: ref.current.oy + my - ref.current.startY });
+    };
+    const onUp = () => {
+      ref.current.dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  };
+
+  return (
+    <div
+      onMouseDown={onDown}
+      onTouchStart={onDown}
+      style={{
+        position: 'fixed', left: left + 'px', top: top + 'px',
+        zIndex: 1050, background: '#1e293b', color: 'white',
+        borderRadius: '32px', padding: '6px 10px',
+        display: 'flex', alignItems: 'center', gap: '6px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        cursor: 'grab', userSelect: 'none', touchAction: 'none'
+      }}>
+      <span style={{ fontSize: '14px', pointerEvents: 'none' }}>🔊</span>
+      <button onClick={(e) => { e.stopPropagation(); onPauseResume(); }}
+        style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {isPaused ? '▶️' : '⏸️'}
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); onStop(); }}
+        style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '15px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        ⏹️
+      </button>
+    </div>
+  );
+};

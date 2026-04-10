@@ -2618,43 +2618,59 @@
               ) : (
                 <div className="space-y-2">
                   {feedbackList.map((item) => (
-                    <div key={item.firebaseId} className={`p-3 rounded-lg border-2 transition-all ${
-                      item.resolved ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-white border-gray-300'
-                    }`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">
-                            {item.category === 'bug' ? '🐛' : item.category === 'idea' ? '💡' : '💭'}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-mono">{item.userId?.slice(-8)}</span>
-                          <span className="text-[10px] text-gray-400">{`From: ${item.currentView || '?'}`}</span>
-                          {item.senderName && <span className="text-[10px] font-bold text-blue-600">{item.senderName}</span>}
-                          {item.senderEmail && <span className="text-[10px] text-gray-500">{item.senderEmail}</span>}
-                          {item.subject && <span className="text-[10px] font-semibold text-gray-700">📌 {item.subject}</span>}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => toggleFeedbackResolved(item)}
-                            className={`text-sm px-1 ${item.resolved ? 'opacity-50' : ''}`}
-                            title={item.resolved ? t('places.markUnhandled') : t('places.markHandled')}
-                          >
+                    <div key={item.firebaseId} style={{
+                      borderRadius: '10px', border: `2px solid ${item.resolved ? '#e5e7eb' : '#d1d5db'}`,
+                      background: item.resolved ? '#f9fafb' : 'white', opacity: item.resolved ? 0.7 : 1,
+                      overflow: 'hidden', marginBottom: '2px'
+                    }}>
+                      {/* Header row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px 4px', borderBottom: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '16px' }}>{item.category === 'bug' ? '🐛' : item.category === 'idea' ? '💡' : '💭'}</span>
+                        {item.subject ? (
+                          <span style={{ fontWeight: '700', fontSize: '13px', color: '#111827', flex: 1 }}>{item.subject}</span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#9ca3af', flex: 1 }}>({item.category || 'general'})</span>
+                        )}
+                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                          <button onClick={() => toggleFeedbackResolved(item)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px 4px', opacity: item.resolved ? 0.5 : 1 }}
+                            title={item.resolved ? t('places.markUnhandled') : t('places.markHandled')}>
                             {item.resolved ? '↩️' : '✅'}
                           </button>
-                          <button
-                            onClick={() => deleteFeedback(item)}
-                            className="text-sm px-1 opacity-50 hover:opacity-100"
-                            title={t("general.delete")}
-                          >
-                            🗑️
-                          </button>
+                          <button onClick={() => deleteFeedback(item)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px 4px', opacity: 0.5 }}
+                            title={t('general.delete')}>🗑️</button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.text}</p>
-                      {item.images?.length > 0 && (
-                        <FeedbackItemImages images={item.images} onView={(img) => setModalImage(img)} />
+
+                      {/* Sender info */}
+                      {(item.senderName || item.senderEmail || item.userEmail) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 10px', background: '#f0f9ff', flexWrap: 'wrap' }}>
+                          {item.senderName && <span style={{ fontSize: '12px', fontWeight: '700', color: '#1e40af' }}>👤 {item.senderName}</span>}
+                          {(item.senderEmail || item.userEmail) && (
+                            <a href={`mailto:${item.senderEmail || item.userEmail}?subject=Re: ${encodeURIComponent(item.subject || 'FouFou Feedback')}`}
+                              style={{ fontSize: '11px', color: '#2563eb', textDecoration: 'underline' }}>
+                              ✉️ {item.senderEmail || item.userEmail}
+                            </a>
+                          )}
+                        </div>
                       )}
-                      <div className="text-[10px] text-gray-400 mt-1">
-                        {item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+
+                      {/* Message body */}
+                      <div style={{ padding: '8px 10px', fontSize: '13px', color: '#374151', lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                        {item.text}
+                      </div>
+
+                      {item.images?.length > 0 && (
+                        <div style={{ padding: '0 10px 8px' }}>
+                          <FeedbackItemImages images={item.images} onView={(img) => setModalImage(img)} />
+                        </div>
+                      )}
+
+                      {/* Footer */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 10px 6px', fontSize: '10px', color: '#9ca3af', borderTop: '1px solid #f3f4f6' }}>
+                        <span>{`From: ${item.currentView || '?'} · ${item.userId?.slice(-6) || ''}`}</span>
+                        <span>{item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
                       </div>
                     </div>
                   ))}
@@ -3547,7 +3563,8 @@
                       {[
                         { role: null, label: '👑 Admin', desc: 'Real' },
                         { role: 1, label: '✏️ Editor', desc: '' },
-                        { role: 0, label: '👤 Regular', desc: '' }
+                        { role: 0, label: '👤 רשום', desc: '' },
+                        { role: -1, label: '🕶️ אנונימי', desc: '' }
                       ].map(opt => {
                         const isActive = roleOverride === opt.role;
                         return (
