@@ -428,7 +428,7 @@
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
             <button
               onClick={() => {
-                if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.loginToSave'), 'warning'); return; }
+                if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.signInRequired'), 'info', 'sticky'); return; }
                 // Interest priority: user's manual selection this session > trail interests > wizard selection
                 // Filter to valid IDs only (prevents stale i_nature etc from old sessions)
                 const validIds = new Set(allInterestOptions.map(o => o.id));
@@ -1178,7 +1178,7 @@
           };
           const openCapture = () => {
             if (fabDragRef.current.moved) return;
-            if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.loginToSave'), 'warning'); return; }
+            if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.signInRequired'), 'info', 'sticky'); return; }
             // Interest priority: user's manual selection this session > trail interests > wizard selection
             // Filter to valid IDs only (prevents stale IDs from old sessions)
             const validIds = new Set(allInterestOptions.map(o => o.id));
@@ -2213,7 +2213,7 @@
               <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
                 <button
                   onClick={() => {
-                    if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.loginToSave'), 'warning'); return; }
+                    if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.signInRequired'), 'info', 'sticky'); return; }
                     const lastInterests = lastCaptureInterestsRef.current?.length > 0
                       ? lastCaptureInterestsRef.current
                       : formData.interests?.length > 0 ? formData.interests.slice(0, 1) : [];
