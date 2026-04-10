@@ -273,17 +273,17 @@ const QuickAddPlaceDialog = ({
                 })}
               </div>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {activeInterests.map(opt => {
-                  const sel = qaInterests.includes(opt.id);
-                  const iconRaw = opt.icon || "";
-                  const isImg = iconRaw.startsWith("data:") || iconRaw.startsWith("http");
+              <div className="grid grid-cols-6 gap-1.5 p-2 bg-gray-50 rounded-lg">
+                {activeInterests.map(option => {
+                  const sel = qaInterests.includes(option.id);
                   return (
-                    <button key={opt.id} type="button"
-                      onClick={() => handleInterestToggle(opt.id)}
-                      style={{ padding: "4px 10px", borderRadius: "20px", cursor: "pointer", border: `2px solid ${sel ? "#a855f7" : "#e5e7eb"}`, background: sel ? "#faf5ff" : "white", color: sel ? "#7c3aed" : "#6b7280", fontSize: "12px", fontWeight: "600", display: "flex", alignItems: "center", gap: "4px" }}>
-                      {isImg ? <img src={iconRaw} alt="" style={{ width: "14px", height: "14px" }} /> : <span>{iconRaw}</span>}
-                      {tLabel(opt) || opt.labelEn}
+                    <button key={option.id} type="button"
+                      onClick={() => handleInterestToggle(option.id)}
+                      className={`p-1.5 rounded-lg text-[10px] font-bold transition-all ${sel ? "bg-purple-500 text-white shadow-md" : "bg-white border border-gray-300"}`}>
+                      <span className="text-lg block">
+                        {option.icon?.startsWith?.("data:") ? <img src={option.icon} alt="" className="w-5 h-5 object-contain mx-auto" /> : option.icon}
+                      </span>
+                      <span className="text-[7px] block truncate leading-tight mt-0.5">{tLabel(option)}</span>
                     </button>
                   );
                 })}
