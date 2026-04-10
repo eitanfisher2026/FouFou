@@ -8258,6 +8258,7 @@
 
   // Quick-patch a single field on an existing location (for popup inline edits)
   const patchLocationField = async (loc, fields) => {
+    if (!requireSignIn()) return false;
     if (!loc?.firebaseId || !isFirebaseAvailable || !database) return false;
     try {
       await database.ref(`cities/${selectedCityId}/locations/${loc.firebaseId}`).update(fields);
@@ -9512,6 +9513,7 @@
   
   // Update existing location
   const updateCustomLocation = (closeAfter = true) => {
+    if (!requireSignIn()) return;
     if (!newLocation.name?.trim()) {
       showToast(t('places.enterPlaceName'), 'warning');
       return;
