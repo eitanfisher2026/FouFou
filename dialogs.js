@@ -2214,7 +2214,7 @@
                   {hasImage ? (
                     <img src={modalImage} alt={loc?.name} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f3f4f6' }}>
+                    <div style={{ width: '100%', height: '140px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#f3f4f6' }}>
                       <img src="icon-192x192.png" alt="FouFou" style={{ width: '40px', height: '40px', opacity: 0.15 }} />
                       {authUser && loc && (
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: '1.5px dashed #9ca3af', cursor: 'pointer', fontSize: '12px', color: '#6b7280', background: 'white' }}>
@@ -2237,29 +2237,52 @@
                   )}
                 </div>
 
-                {/* Description — auto-translated if language mismatch */}
+                {/* Description — show only, no edit. Add only if empty */}
                 {modalImageCtx?.description ? (
                   <div style={{ padding: '12px 16px 8px', lineHeight: 1.55, whiteSpace: 'pre-line' }}>
                     <AutoTranslateText text={modalImageCtx.description} style={{ fontSize: '13px', color: '#374151' }} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
-                    {authUser && loc && (
-                      <button onClick={() => {
-                        const newDesc = prompt(window.BKK.i18n.currentLang === 'he' ? 'ערוך תיאור:' : 'Edit description:', modalImageCtx.description || '');
-                        if (newDesc !== null) patchLocationField(loc, { description: newDesc }).then(ok => {
-                          if (ok) { setModalImageCtx(prev => ({ ...prev, description: newDesc })); showToast('✅ תיאור עודכן', 'success'); }
-                        });
-                      }} style={{ marginRight: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#9ca3af', verticalAlign: 'middle' }}>✏️</button>
-                    )}
                   </div>
-                ) : authUser && loc ? (
+                ) : authUser && loc && !modalAddingDesc ? (
                   <div style={{ padding: '10px 16px 4px' }}>
-                    <button onClick={() => {
-                      const newDesc = prompt(window.BKK.i18n.currentLang === 'he' ? 'הוסף תיאור:' : 'Add description:', '');
-                      if (newDesc?.trim()) patchLocationField(loc, { description: newDesc.trim() }).then(ok => {
-                        if (ok) { setModalImageCtx(prev => ({ ...prev, description: newDesc.trim() })); showToast('✅ תיאור נוסף', 'success'); }
-                      });
-                    }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '12px', border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}>
+                    <button
+                      onClick={() => { setModalAddingDesc(true); setModalDescDraft(''); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '12px', border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: '11px', color: '#9ca3af' }}>
                       ✏️ {window.BKK.i18n.currentLang === 'he' ? '+ הוסף תיאור' : '+ Add description'}
                     </button>
+                  </div>
+                ) : authUser && loc && modalAddingDesc ? (
+                  <div style={{ padding: '10px 16px 8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <textarea
+                      value={modalDescDraft}
+                      onChange={(e) => setModalDescDraft(e.target.value)}
+                      placeholder={window.BKK.i18n.currentLang === 'he' ? 'כתוב תיאור קצר...' : 'Write a short description...'}
+                      autoFocus
+                      rows={3}
+                      style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', resize: 'none', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
+                      onFocus={(e) => { e.target.style.borderColor = '#8b5cf6'; }}
+                      onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
+                    />
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        onClick={async () => {
+                          if (!modalDescDraft.trim()) return;
+                          const ok = await patchLocationField(loc, { description: modalDescDraft.trim() });
+                          if (ok) {
+                            setModalImageCtx(prev => ({ ...prev, description: modalDescDraft.trim() }));
+                            setModalAddingDesc(false);
+                            showToast('✅ ' + (window.BKK.i18n.currentLang === 'he' ? 'תיאור נוסף' : 'Description added'), 'success');
+                          }
+                        }}
+                        disabled={!modalDescDraft.trim()}
+                        style={{ flex: 1, padding: '7px', borderRadius: '8px', border: 'none', background: modalDescDraft.trim() ? '#8b5cf6' : '#e5e7eb', color: modalDescDraft.trim() ? 'white' : '#9ca3af', fontSize: '12px', fontWeight: 'bold', cursor: modalDescDraft.trim() ? 'pointer' : 'default' }}>
+                        {window.BKK.i18n.currentLang === 'he' ? 'שמור' : 'Save'}
+                      </button>
+                      <button
+                        onClick={() => { setModalAddingDesc(false); setModalDescDraft(''); }}
+                        style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', fontSize: '12px', color: '#6b7280', cursor: 'pointer' }}>
+                        {window.BKK.i18n.currentLang === 'he' ? 'ביטול' : 'Cancel'}
+                      </button>
+                    </div>
                   </div>
                 ) : null}
 

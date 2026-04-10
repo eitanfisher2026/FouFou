@@ -1625,6 +1625,8 @@
   }, [showMapModal, mapMode, mapStops, mapUserLocation, mapSkippedStops, mapFavFilter, mapFavArea, mapFavRadius, mapFocusPlace, customLocations, formData.currentLat, formData.currentLng, formData.radiusMeters, mapVersion]);
   const [modalImage, setModalImage] = useState(null);
   const [modalImageCtx, setModalImageCtx] = useState(null); // { description, location } for image modal
+  const [modalAddingDesc, setModalAddingDesc] = useState(false); // inline description input visible
+  const [modalDescDraft, setModalDescDraft] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [placeSearchQuery, setPlaceSearchQuery] = useState(() => {
@@ -2700,8 +2702,9 @@
       window.BKK.logEvent?.('hint_audio_played', { hint_id: hintId, lang });
       const audio = new Audio(audioUrl);
       window._hintAudio = audio;
-      audio.onended = () => { setIsSpeaking(false); setIsPaused(false); window._hintAudio = null; };
+      audio.onended = () => { setIsSpeaking(false); setIsPaused(false); setPlayingHintLabel(''); window._hintAudio = null; };
       setIsSpeaking(true); setIsPaused(false);
+      setPlayingHintLabel(text?.slice(0, 40) || hintId);
       audio.play();
       return;
     }
@@ -2722,14 +2725,15 @@
   const stopHintPlayback = () => {
     if (window._hintAudio) { window._hintAudio.pause(); window._hintAudio = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    setIsSpeaking(false); setIsPaused(false);
+    setIsSpeaking(false); setIsPaused(false); setPlayingHintLabel('');
   };
 
   // Render a context-sensitive hint bar
   const [openHintPopup, setOpenHintPopup] = useState(null);
+  const [playingHintLabel, setPlayingHintLabel] = useState(''); // label shown in floating player
   const [hintDragPos, setHintDragPos] = React.useState({ x: 0, y: 0 });
   const hintDragRef = React.useRef({ x: 0, y: 0, startX: 0, startY: 0, dragging: false });
-  const closeHintPopup = () => { setOpenHintPopup(null); stopHintPlayback(); };
+  const closeHintPopup = () => { setOpenHintPopup(null); /* audio continues — stops only via floating player */ };
   const renderContextHint = (hintId) => {
     const s = getHelpSection(hintId);
     const txt = (s && s.content && s.content.trim()) || '';

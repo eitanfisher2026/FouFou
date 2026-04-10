@@ -1115,6 +1115,31 @@
 
         {/* Wizard Step 3 = results */}
         
+        {/* Floating audio player — shown when hint audio plays and popup is closed */}
+        {isSpeaking && !openHintPopup && (
+          <div style={{
+            position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 1050, background: '#1e293b', color: 'white',
+            borderRadius: '24px', padding: '8px 14px',
+            display: 'flex', alignItems: 'center', gap: '10px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+            maxWidth: 'calc(100vw - 32px)', minWidth: '200px'
+          }}>
+            <span style={{ fontSize: '16px' }}>🔊</span>
+            <span style={{ fontSize: '12px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85 }}>
+              {playingHintLabel || '...'}
+            </span>
+            <button onClick={pauseResumeHint}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {isPaused ? '▶️' : '⏸️'}
+            </button>
+            <button onClick={stopHintPlayback}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', fontSize: '14px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              ⏹️
+            </button>
+          </div>
+        )}
+
         {/* FAB: Quick Capture — draggable, available when no active trail */}
         {!showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
           const pos = fabPos || { right: 16, bottom: 80 };
