@@ -2,14 +2,14 @@
 // Strategy: Network First — תמיד מנסה רשת, cache רק אם אין חיבור
 // זה בטוח: המשתמש תמיד מקבל את הגרסה העדכנית כשיש חיבור
 
-const CACHE_NAME = 'foufou-v3.18.18';
+const CACHE_NAME = 'foufou-v3.18.19';
 
 // קבצים לcache לoffline fallback בלבד
 const OFFLINE_ASSETS = [
   '/FouFou/',
   '/FouFou/index.html',
-  '/FouFou/app-data.js?v=3.18.18',
-  '/FouFou/app-code.js?v=3.18.18'
+  '/FouFou/app-data.js?v=3.18.19',
+  '/FouFou/app-code.js?v=3.18.19'
 ];
 
 // ──── Install: שמור assets בסיסיים ────
