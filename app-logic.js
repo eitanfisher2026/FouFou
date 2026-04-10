@@ -3744,11 +3744,11 @@
       console.log('[DATA] Loading locations for city:', selectedCityId);
       const locationsRef = database.ref(`cities/${selectedCityId}/locations`);
       
-      let lastSnapshotTs = 0; // guard against double-fire within same 200ms window
+      let lastSnapshotTs = 0; // guard against double-fire within same 50ms window
       const onValue = locationsRef.on('value', (snapshot) => {
-        // Deduplicate: Firebase sometimes fires twice rapidly — ignore if within 200ms
+        // Deduplicate: Firebase sometimes fires twice rapidly — ignore if within 50ms
         const now = Date.now();
-        if (now - lastSnapshotTs < 200) return;
+        if (now - lastSnapshotTs < 50) return;
         lastSnapshotTs = now;
         const data = snapshot.val();
         if (data) {
@@ -8557,8 +8557,8 @@
       try {
         const ref = await database.ref(`cities/${selectedCityId}/locations`).push(enriched);
         saved = { ...enriched, firebaseId: ref.key };
-        // Immediately update local state so the list refreshes without waiting for Firebase sync
-        setCustomLocations(prev => [...prev, saved]);
+        // Don't do optimistic update here — Firebase listener will refresh the list
+        // (optimistic update + debounce caused duplicates to appear)
         setRouteListKey(k => k + 1);
         addDebugLog('ADD', `QuickAdd "${enriched.name}" saved to Firebase`);
       } catch (error) {
