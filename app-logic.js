@@ -233,26 +233,6 @@
     }
   };
 
-  const authDeleteAccount = async () => {
-    if (!auth || !authUser || authUser.isAnonymous) return;
-    const confirmed = window.confirm(
-      (t('auth.deleteAccountConfirm') || 'האם אתה בטוח שברצונך למחוק את החשבון?\nפעולה זו בלתי הפיכה.')
-    );
-    if (!confirmed) return;
-    try {
-      await authUser.delete();
-      setShowLoginDialog(false);
-      showToast(t('auth.accountDeleted') || '🗑️ החשבון נמחק', 'info');
-    } catch (err) {
-      if (err.code === 'auth/requires-recent-login') {
-        showToast(t('auth.recentLoginRequired') || '⚠️ יש להתחבר מחדש לפני מחיקת החשבון', 'error');
-        await auth.signOut();
-      } else {
-        console.error('[AUTH] Delete account error:', err);
-        showToast(t('auth.deleteAccountError') || '❌ שגיאה במחיקת החשבון', 'error');
-      }
-    }
-  };
   const authLinkAnonymousToGoogle = async () => {
     if (!auth || !authUser || !authUser.isAnonymous) return;
     setLoginError('');
