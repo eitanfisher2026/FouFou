@@ -33,7 +33,7 @@
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => { handleDedupConfirm('reject'); }} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  <button onClick={() => { handleDedupConfirm('addNew'); }} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #e5e7eb', background: 'white', color: '#6b7280', fontSize: '13px', cursor: 'pointer', fontWeight: 'bold' }}>
                     {t('dedup.noneOfThese') || 'אף אחד מאלה — שמור כמקום חדש'}
                   </button>
                 </div>
@@ -3566,6 +3566,12 @@
                   style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #fca5a5', background: '#fef2f2', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#dc2626' }}>
                   🚪 {t('auth.signOut') || 'התנתק'}
                 </button>
+                {!authUser?.isAnonymous && (
+                  <button onClick={authDeleteAccount}
+                    style={{ width: '100%', padding: '8px', borderRadius: '10px', border: '1px solid #fca5a5', background: 'white', fontSize: '12px', cursor: 'pointer', color: '#ef4444', marginTop: '6px' }}>
+                    🗑️ {t('auth.deleteAccount') || 'מחק חשבון'}
+                  </button>
+                )}
                 {/* Role Impersonation — real admin only */}
                 {isRealAdmin && (
                   <div style={{ marginTop: '10px', padding: '10px', background: '#faf5ff', borderRadius: '8px', border: '1px solid #e9d5ff' }}>
