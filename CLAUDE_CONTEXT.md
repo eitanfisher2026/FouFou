@@ -7,7 +7,7 @@ https://eitanfisher2026.github.io/FouFou/
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Version
-**v3.20.0**
+**v3.21.0**
 
 ---
 
@@ -154,7 +154,7 @@ Must be defined here (outside FouFouApp) when they use hooks:
 
 ---
 
-## Google Play Store Status (v3.20.0)
+## Google Play Store Status (v3.21.0)
 - **Package:** `com.foufou.citytrails`
 - **Play Console:** Internal Testing track — active ✅
 - **Store listing:** EN + HE — complete ✅
@@ -162,19 +162,23 @@ Must be defined here (outside FouFouApp) when they use hooks:
 - **Cities live:** Bangkok, Singapore
 - **Pending before Production:** promote from Internal Testing → Production track
 
-## Auth — Delete Account (v3.20.0)
+## Auth — Delete Account (v3.21.0)
 - `authDeleteAccount()` in `app-logic.js` — calls `authUser.delete()`
 - Shows `window.confirm` before deleting
 - Handles `auth/requires-recent-login` error → signs out + toast
 - Button shown in login dialog below "התנתק", hidden for anonymous users
 - i18n keys: `auth.deleteAccount`, `auth.deleteAccountConfirm`, `auth.accountDeleted`, `auth.deleteAccountError`, `auth.recentLoginRequired`
 
-## Dedup Fix (v3.20.0)
+## Dedup Fix (v3.21.0)
 - **Bug fixed:** `googleMulti` dialog "אף אחד מאלה" button called `handleDedupConfirm('reject')` — no handler → dialog closed silently without saving
 - **Fix:** changed `'reject'` → `'addNew'` in `dialogs.js` line 36
 
 ## i18n Keys (added in 3.19-3.20)
 - `auth.deleteAccount`, `auth.deleteAccountConfirm`, `auth.accountDeleted`, `auth.deleteAccountError`, `auth.recentLoginRequired`
+
+## applyUpdate Fix (v3.21.0)
+- **Bug fixed:** `applyUpdate` cleared caches but did NOT unregister Service Worker → SW re-activated after reload and served stale JS → infinite update loop
+- **Fix:** Added `navigator.serviceWorker.getRegistrations()` → `r.unregister()` before clearing caches and reloading
 
 ## Pending / Known Issues
 - `hint_text_opened` analytics event not yet implemented

@@ -232,6 +232,27 @@
       }
     }
   };
+
+  const authDeleteAccount = async () => {
+    if (!auth || !authUser || authUser.isAnonymous) return;
+    const confirmed = window.confirm(
+      (t('auth.deleteAccountConfirm') || 'האם אתה בטוח שברצונך למחוק את החשבון?\nפעולה זו בלתי הפיכה.')
+    );
+    if (!confirmed) return;
+    try {
+      await authUser.delete();
+      setShowLoginDialog(false);
+      showToast(t('auth.accountDeleted') || '🗑️ החשבון נמחק', 'info');
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        showToast(t('auth.recentLoginRequired') || '⚠️ יש להתחבר מחדש לפני מחיקת החשבון', 'error');
+        await auth.signOut();
+      } else {
+        console.error('[AUTH] Delete account error:', err);
+        showToast(t('auth.deleteAccountError') || '❌ שגיאה במחיקת החשבון', 'error');
+      }
+    }
+  };
   const authLinkAnonymousToGoogle = async () => {
     if (!auth || !authUser || !authUser.isAnonymous) return;
     setLoginError('');
@@ -5861,24 +5882,28 @@
   };
 
   const applyUpdate = () => {
-    // Remove beforeunload handler FIRST to prevent browser native "Leave site?" confirm dialog.
-    // That dialog causes partial JS teardown on Android Chrome — Firebase auth gets into a broken
-    // state and the user appears logged out on first load after update.
-    // The handler is stored as window.__beforeUnloadHandler so we can remove it here.
     if (window.__beforeUnloadHandler) {
       window.removeEventListener('beforeunload', window.__beforeUnloadHandler);
     }
-    // Clear service-worker / PWA caches, then do a simple reload.
-    // Do NOT use reload(true) — it is deprecated and behaves same as reload() in modern browsers.
-    // Do NOT change the URL (?_r=...) — that can break Firebase signInWithRedirect pending state.
     const doReload = () => { window.location.reload(); };
-    if ('caches' in window) {
-      caches.keys().then(names => {
-        names.forEach(name => caches.delete(name));
+    const clearAndReload = () => {
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+          doReload();
+        }).catch(doReload);
+      } else {
         doReload();
-      }).catch(doReload);
+      }
+    };
+    // Unregister SW first — prevents old SW from re-activating and serving stale JS after reload
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then(registrations => Promise.all(registrations.map(r => r.unregister())))
+        .then(clearAndReload)
+        .catch(clearAndReload);
     } else {
-      doReload();
+      clearAndReload();
     }
   };
 
