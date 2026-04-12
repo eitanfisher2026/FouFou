@@ -4451,8 +4451,13 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   
   const buildPointsList = (stopsSlice, originCoord, circular) => {
     const points = [];
-    points.push('');
-    if (originCoord) points.push(originCoord);
+    // If origin provided, start directly from it — never use empty string ("Your location")
+    // which causes Google Maps to route from the user's GPS even when far from the city
+    if (originCoord) {
+      points.push(originCoord);
+    } else {
+      points.push('');
+    }
     stopsSlice.forEach(s => points.push(`${s.lat},${s.lng}`));
     if (circular && originCoord) points.push(originCoord);
     return points;
@@ -4482,8 +4487,12 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     const points = [];
     
     if (isFirst) {
-      points.push(''); // "Your location"
-      if (currentOrigin) points.push(currentOrigin);
+      // Start directly from origin — never use empty string ("Your location")
+      if (currentOrigin) {
+        points.push(currentOrigin);
+      } else {
+        points.push('');
+      }
     } else {
       points.push(currentOrigin);
     }
