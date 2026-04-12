@@ -3824,6 +3824,7 @@
         if (g.nameEn) city.nameEn = g.nameEn;
         if (g.dayStartHour != null) { city.dayStartHour = g.dayStartHour; window.BKK.dayStartHour = g.dayStartHour; }
         if (g.nightStartHour != null) { city.nightStartHour = g.nightStartHour; window.BKK.nightStartHour = g.nightStartHour; }
+        if (g.boundaryFactor != null) city.boundaryFactor = g.boundaryFactor;
         addDebugLog('firebase', `[CITY-LOAD] Applied`, { cityIcon: city.icon?.substring(0,20), sameRef: city === window.BKK.selectedCity });
         setCityEditCounter(c => c + 1);
       }).catch(() => {});
@@ -8569,12 +8570,34 @@
   
 
   
+  // Boundary check before any location save. Returns 'ok', 'warn' (admin), or 'block'.
+  const checkLocationBoundary = (lat, lng) => {
+    if (!lat || !lng) return 'ok';
+    const cityData = window.BKK.activeCityData;
+    if (!cityData?.center) return 'ok';
+    const R = 6371e3;
+    const dLat = (cityData.center.lat - lat) * Math.PI / 180;
+    const dLng = (cityData.center.lng - lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat * Math.PI / 180) * Math.cos(cityData.center.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const factor = cityData.boundaryFactor ?? 1.5;
+    const maxRadius = (cityData.allCityRadius || 15000) * factor;
+    if (distance <= maxRadius) return 'ok';
+    return isAdmin ? 'warn' : 'block';
+  };
+
   // Save a place from the QuickAddDialog (enriched by user before saving)
   const saveQuickAddPlace = async (enriched, rating) => {
     if (!requireSignIn()) return;
     const placeId = enriched.id || enriched.name;
     // Guard: prevent duplicate save if already in progress for this place
     if (addingPlaceIds.includes(placeId)) return;
+    // Boundary check
+    const boundaryResult = checkLocationBoundary(enriched.lat, enriched.lng);
+    if (boundaryResult === 'block') { showToast(t('toast.savingOutsideCity'), 'warning', 'sticky'); return; }
+    if (boundaryResult === 'warn') showToast(t('toast.adminSavingOutsideCity'), 'warning', 'sticky');
     // Remember interests for next add/capture
     if (enriched.interests?.length > 0) lastCaptureInterestsRef.current = enriched.interests;
     setAddingPlaceIds(prev => [...prev, placeId]);
@@ -9420,7 +9443,12 @@
       cityId: selectedCityId
     };
     locationToAdd = sanitizeMapsUrl(locationToAdd);
-    
+
+    // Boundary check
+    const boundaryResultAdd = checkLocationBoundary(locationToAdd.lat, locationToAdd.lng);
+    if (boundaryResultAdd === 'block') { showToast(t('toast.savingOutsideCity'), 'warning', 'sticky'); return; }
+    if (boundaryResultAdd === 'warn') showToast(t('toast.adminSavingOutsideCity'), 'warning', 'sticky');
+
     // Increment interest counters for auto-naming (if name matches "#N" pattern)
     const incrementCounters = () => {
       const nameMatch = locationToAdd.name.match(/#(\d+)$/);
@@ -9609,7 +9637,12 @@
       missingCoordinates: !hasCoordinates,
       updatedAt: new Date().toISOString() // Stamp update time
     });
-    
+
+    // Boundary check
+    const boundaryResultUpdate = checkLocationBoundary(updatedLocation.lat, updatedLocation.lng);
+    if (boundaryResultUpdate === 'block') { showToast(t('toast.savingOutsideCity'), 'warning', 'sticky'); return; }
+    if (boundaryResultUpdate === 'warn') showToast(t('toast.adminSavingOutsideCity'), 'warning', 'sticky');
+
     // Update in Firebase (or localStorage fallback)
     if (isFirebaseAvailable && database) {
       // DYNAMIC MODE: Firebase (shared)

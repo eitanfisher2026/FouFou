@@ -3566,7 +3566,7 @@
                   style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #fca5a5', background: '#fef2f2', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', color: '#dc2626' }}>
                   🚪 {t('auth.signOut') || 'התנתק'}
                 </button>
-                {!authUser?.isAnonymous && (
+                {!authUser?.isAnonymous && !isEditor && (
                   <button onClick={authDeleteAccount}
                     style={{ width: '100%', padding: '8px', borderRadius: '10px', border: '1px solid #fca5a5', background: 'white', fontSize: '12px', cursor: 'pointer', color: '#ef4444', marginTop: '6px' }}>
                     🗑️ {t('auth.deleteAccount') || 'מחק חשבון'}
