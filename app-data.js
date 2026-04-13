@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.22.0
+// FouFou app-data.js v3.22.4
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3472,7 +3472,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.22.0';
+window.BKK.VERSION = '3.22.6';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3979,10 +3979,18 @@ window.BKK.normalizeLocationAreas = (loc) => {
  * @param {number} total — total number of interests
  * @returns {string} hex color
  */
+// Hash ID to hue — stable color regardless of language or sort order
+window.BKK.idToHue = (str) => {
+  let h = 5381;
+  for (let i = 0; i < (str || '').length; i++) {
+    h = Math.imul(h, 31) + (str || '').charCodeAt(i) | 0;
+  }
+  return Math.abs(h) % 360;
+};
 window.BKK.generateInterestColor = (index, total) => {
   const hue = (index * 137.508) % 360;
-  const saturation = 65 + (index % 3) * 10; // 65-85%
-  const lightness = 45 + (index % 2) * 8;   // 45-53%
+  const saturation = 65 + (index % 3) * 10;
+  const lightness = 45 + (index % 2) * 8;
   return window.BKK.hslToHex(hue, saturation, lightness);
 };
 
@@ -4007,11 +4015,45 @@ window.BKK.hslToHex = (h, s, l) => {
  * @param {Array} allInterests — full ordered list for index calculation
  * @returns {string} hex color
  */
+// Stable colors by interest ID — consistent across languages and sort orders
+window.BKK.INTEREST_COLORS = {
+  cafes:         '#e07b39', // orange-brown
+  coffee:        '#e07b39', // orange-brown (alias)
+  food:          '#e05c5c', // red-orange
+  restaurants:   '#e05c5c', // red-orange
+  architecture:  '#5b8dd9', // blue
+  galleries:     '#9b59b6', // purple
+  museums:       '#27ae60', // green
+  culture:       '#16a085', // teal
+  history:       '#8e6c3e', // brown
+  temples:       '#c0392b', // dark red
+  parks:         '#2ecc71', // light green
+  markets:       '#f1c40f', // yellow
+  shopping:      '#e67e22', // amber
+  nightlife:     '#6c3483', // dark purple
+  bars:          '#884ea0', // purple
+  rooftop:       '#2980b9', // sky blue
+  entertainment: '#d35400', // deep orange
+  beaches:       '#1abc9c', // turquoise
+  canals:        '#3498db', // blue
+  artisans:      '#e91e8c', // pink
+  graffiti:      '#ff5722', // deep orange-red
+};
+
 window.BKK.getInterestColor = (interestId, allInterests) => {
-  const interest = allInterests.find(i => i.id === interestId);
+  const interest = (allInterests || []).find(i => i.id === interestId);
+  // Priority 1: color set explicitly on the interest object (by admin/editor in Firebase)
   if (interest?.color) return interest.color;
-  const idx = allInterests.findIndex(i => i.id === interestId);
-  return window.BKK.generateInterestColor(idx >= 0 ? idx : 0, allInterests.length);
+  // Priority 2: known semantic colors — check both raw ID and without i_ prefix
+  const IC = window.BKK.INTEREST_COLORS;
+  if (IC && IC[interestId]) return IC[interestId];
+  const baseId = (interestId || '').replace(/^i_/, '');
+  if (IC && baseId !== interestId && IC[baseId]) return IC[baseId];
+  // Priority 3: stable hash fallback for unknown/new interest types
+  const hue = window.BKK.idToHue(interestId);
+  const saturation = 68;
+  const lightness = 46;
+  return window.BKK.hslToHex(hue, saturation, lightness);
 };
 
 // ============================================================================

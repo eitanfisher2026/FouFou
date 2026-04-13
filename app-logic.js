@@ -1318,7 +1318,7 @@
           });
           
           stops.forEach((stop, i) => {
-            const color = colorPalette[i % colorPalette.length];
+            const color = (stop.interests && stop.interests[0] ? window.BKK.getInterestColor(stop.interests[0], allInterestOptions || []) : null) || colorPalette[i % colorPalette.length];
             const nameKey = (stop.name || '').toLowerCase().trim();
             const isDisabled = disabledStops.includes(nameKey) || mapSkippedStops.has(i);
             const stopLetter = mapLetterMap[i] || '';
@@ -5869,10 +5869,10 @@
     const doReload = () => { window.location.reload(); };
     const clearAndReload = () => {
       if ('caches' in window) {
-        caches.keys().then(names => {
-          names.forEach(name => caches.delete(name));
-          doReload();
-        }).catch(doReload);
+        caches.keys()
+          .then(names => Promise.all(names.map(name => caches.delete(name))))
+          .then(doReload)
+          .catch(doReload);
       } else {
         doReload();
       }

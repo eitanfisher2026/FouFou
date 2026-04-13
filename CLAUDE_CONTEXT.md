@@ -7,7 +7,7 @@ https://eitanfisher2026.github.io/FouFou/
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Version
-**v3.22.0**
+**v3.22.4**
 
 ---
 
@@ -19,10 +19,17 @@ React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Pla
 | `views.js` | Wizard + trail views JSX |
 | `dialogs.js` | All dialogs/modals JSX |
 | `quick-add-component.js` | QuickAdd + standalone components (FeedbackItemImages, FloatingAudioPlayer, FeedbackItemImages) |
-| `config.js` | VERSION, systemParams defaults |
-| `utils.js` | compressImage, uploadImage, i18n helpers |
-| `i18n.js` | All Hebrew + English strings |
+| `config.js` | VERSION, systemParams defaults — **SOURCE ONLY, not loaded directly** |
+| `utils.js` | compressImage, uploadImage, i18n helpers — **SOURCE ONLY** |
+| `i18n.js` | All Hebrew + English strings — **SOURCE ONLY** |
 | `city-*.js` | Per-city data |
+
+## Built Files (deployed, not source)
+| File | Contents |
+|------|----------|
+| `app-data.js` | **Built** — contains config.js + utils.js + i18n.js + city files inlined. This is what the browser loads. `window.BKK.VERSION` lives here. |
+| `app-code.js` | **Built** — compiled/minified JSX (app-logic + views + dialogs + quick-add) |
+| `index.html` | **Built** — assembled from `_source-template.html` with CSS inlined |
 
 ## Build
 ```bash
@@ -37,6 +44,31 @@ node compile.js app-code.js  # JSX → minified JS
 - Balance check: `() +0  {} -3  [] -2`
 - Standalone components (with hooks) → `quick-add-component.js` (before FouFouApp)
 - **Never use `React.useState`/`React.useRef` inside `.map()`, IIFEs, or callbacks**
+
+---
+
+## ⚠️ VERSION BUMP — MANDATORY CHECKLIST (every release)
+**Missing even one file causes an infinite update loop in production.**
+`app-data.js` is the built file the browser actually executes — it defines `window.BKK.VERSION`.
+`config.js` is source only and does NOT affect the running app.
+
+| # | File | What to change |
+|---|------|----------------|
+| 1 | `app-data.js` | Line 1 comment + `window.BKK.VERSION = 'X.X.X'` |
+| 2 | `version.json` | `{"version": "X.X.X"}` |
+| 3 | `sw.js` | Comment line 1 + `CACHE_NAME` + all URLs in `OFFLINE_ASSETS` |
+| 4 | `index.html` | All `?v=X.X.X` query strings (preload + script + fetch + sw register) |
+| 5 | `config.js` | `window.BKK.VERSION` (source reference, for consistency) |
+| 6 | `.last_built_version` | Version string |
+
+### Version numbering
+- **Patch** (bug fix, no new feature): `3.22.x` → 📦 GitHub only
+- **Minor** (new feature or Play Store release): `3.x.0` → may need 🏪 Play Store + twa-manifest
+
+### Packaging rule
+Every response that produces a modified zip must state:
+- 📦 **GitHub only — no Play Store needed**, OR
+- 🏪 **GitHub + Play Store** → include separate `twa-manifest` file
 
 ---
 
@@ -169,16 +201,35 @@ Must be defined here (outside FouFouApp) when they use hooks:
 - Button shown in login dialog below "התנתק", hidden for anonymous users
 - i18n keys: `auth.deleteAccount`, `auth.deleteAccountConfirm`, `auth.accountDeleted`, `auth.deleteAccountError`, `auth.recentLoginRequired`
 
-## Dedup Fix (v3.21.0)
-- **Bug fixed:** `googleMulti` dialog "אף אחד מאלה" button called `handleDedupConfirm('reject')` — no handler → dialog closed silently without saving
-- **Fix:** changed `'reject'` → `'addNew'` in `dialogs.js` line 36
 
-## i18n Keys (added in 3.19-3.20)
-- `auth.deleteAccount`, `auth.deleteAccountConfirm`, `auth.accountDeleted`, `auth.deleteAccountError`, `auth.recentLoginRequired`
 
-## applyUpdate Fix (v3.21.0)
-- **Bug fixed:** `applyUpdate` cleared caches but did NOT unregister Service Worker → SW re-activated after reload and served stale JS → infinite update loop
-- **Fix:** Added `navigator.serviceWorker.getRegistrations()` → `r.unregister()` before clearing caches and reloading
+## Color Architecture Fix (v3.22.4) — Root cause resolved
+
+### The two root causes
+1. **Step-3 list used group color, not stop color**: A stop in the "cafes" group showed the cafes color, but the same stop on the map showed its `interests[0]` color (e.g. architecture = red). Fix: circles in step-3 list now use `stop.interests[0]` — exactly like the map.
+2. **Auto-generated colors were index-based**: `generateInterestColor(index)` used the array position, which changes when sorted by Hebrew vs English label. Fix: replaced with `idToHue(interestId)` — a hash of the ID string, deterministic and language-independent.
+
+### Files changed
+- `app-data.js`: Added `window.BKK.idToHue()` (djb2 hash → hue). Updated `getInterestColor` fallback to use `idToHue(interestId)` instead of array index.
+- `app-code.js`: Step-3 list circles now use `stop.interests[0] || interest` (stop's primary interest = same as map marker color).
+
+### Color priority (in getInterestColor)
+1. Firebase `interest.color` override (admin-set) — highest priority
+2. `idToHue(id)` hash — stable fallback, same in all languages
+
+## Color & Legend Fix (v3.22.3)
+Changes in `app-code.js` and `app-data.js`:
+1. **Stable interest colors** (`app-data.js`): Added `window.BKK.INTEREST_COLORS` map — fixed English same-color bug where cafes/architecture got identical auto-generated colors
+2. **Step-3 trail list** (`app-code.js`): Letter circles now use `getInterestColor(interest)` per group — matches map markers
+3. **Active trail stop circles** (`app-code.js`): Color now from `stop.interest` via `getInterestColor` — matches map
+4. **Active trail legend** (`app-code.js`): Added מקרא row showing all trail interests with color dot + icon + label
+5. **Map legend** (`app-code.js`): Now shows ALL `formData.interests` (selected), not just interests that happen to have stops. Interests with 0 stops shown at 45% opacity with dashed border
+
+**IMPORTANT**: These fixes are in `app-code.js` (compiled). `views.js` source was also updated for reference but `app-code.js` is what the browser loads.
+
+## Color Consistency Fix (v3.22.1)
+- Stop circles in step-3 list and active trail now use `window.BKK.getInterestColor()` — matches map markers
+- Legend (מקרא) added to active trail stops card
 
 ## Pending / Known Issues
 - `hint_text_opened` analytics event not yet implemented
