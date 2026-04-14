@@ -10,7 +10,16 @@ window.BKK = window.BKK || {};
 // ============================================================================
 
 window.BKK.i18n = {
-  currentLang: localStorage.getItem('city_explorer_lang') || 'he',
+  currentLang: (() => {
+    const saved = localStorage.getItem('city_explorer_lang');
+    if (saved) return saved;
+    // Detect browser language
+    const browserLang = ((navigator.language || navigator.userLanguage || '')).toLowerCase();
+    if (browserLang.startsWith('he')) return 'he';
+    if (browserLang.startsWith('en')) return 'en';
+    // Admin-set default (falls back to 'en')
+    return localStorage.getItem('foufou_admin_default_lang') || 'en';
+  })(),
   
   setLang(lang) {
     this.currentLang = lang;
@@ -877,6 +886,8 @@ settings: {
   exportSchema: 'ייצא סכמה (ל-AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'שפה',
+  newUserDefaultLang: 'ברירת מחדל למשתמשים חדשים',
+  newUserDefaultLangHint: 'כשאין שפה שמורה ולא זוהתה שפת דפדפן',
   password: 'סיסמה',
   systemPassword: 'סיסמת מערכת',
   error: 'שגיאה',
@@ -973,6 +984,8 @@ auth: {
   recentLoginRequired: '⚠️ יש להתחבר מחדש לפני מחיקת החשבון',
   loginSubtitle: 'התחבר כדי לשמור את ההתקדמות שלך',
   continueGoogle: 'המשך עם Google',
+  continueMicrosoft: 'המשך עם Microsoft',
+  continueApple: 'המשך עם Apple',
   continueAnonymous: 'המשך בלי חשבון',
   or: 'או',
   orSkip: 'או',
@@ -1985,8 +1998,8 @@ settings: {
   exportSchema: 'Export schema (for AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'Language',
-  password: 'Password',
-  systemPassword: 'System password',
+  newUserDefaultLang: 'Default for new users',
+  newUserDefaultLangHint: 'When no saved preference & browser language unrecognized',
   error: 'Error',
   maxStops: 'Places per route',
   googleMaxWaypoints: 'Max points in Google Maps',
@@ -2081,6 +2094,8 @@ auth: {
   recentLoginRequired: '⚠️ Please sign in again before deleting your account',
   loginSubtitle: 'Sign in to save your progress',
   continueGoogle: 'Continue with Google',
+  continueMicrosoft: 'Continue with Microsoft',
+  continueApple: 'Continue with Apple',
   continueAnonymous: 'Continue without account',
   or: 'or',
   orSkip: 'or',
