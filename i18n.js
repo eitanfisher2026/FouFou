@@ -241,6 +241,12 @@ general: {
   later: 'אח״כ',
   howItWorks: 'איך זה עובד?',
   nearMe: 'קרוב אליי',
+  nearLocation: 'קרוב למיקום',
+  nearMeGps: 'קרוב אליי',
+  nearMePoint: 'נקודה מוגדרת',
+  searchPointPlaceholder: 'חפש מלון, כתובת, מקום...',
+  pointSelected: '📍 נקודה נבחרה',
+  changePoint: 'שנה נקודה',
   next: 'המשך',
   back: 'חזרה',
   backToRoute: 'חזרה למסלול',
@@ -398,7 +404,7 @@ wizard: {
 // --- Form / Search ---
 form: {
   whatInterests: '⭐ מה מעניין?',
-  searchRadius: '📍 רדיוס חיפוש',
+  searchRadius: '⭕ רדיוס חיפוש',
   radiusLabel: 'רדיוס:',
   gpsSearch: 'חיפוש לפי GPS',
   gps: 'GPS',
@@ -1344,6 +1350,12 @@ general: {
   later: 'Later',
   howItWorks: 'How it works',
   nearMe: 'Near me',
+  nearLocation: 'Near location',
+  nearMeGps: 'Near me',
+  nearMePoint: 'Custom point',
+  searchPointPlaceholder: 'Search hotel, address, place...',
+  pointSelected: '📍 Point selected',
+  changePoint: 'Change point',
   next: 'Next',
   back: 'Back',
   backToRoute: 'Back to route',
@@ -1497,7 +1509,7 @@ wizard: {
 
 form: {
   whatInterests: '⭐ What interests you?',
-  searchRadius: '📍 Search radius',
+  searchRadius: '⭕ Search radius',
   radiusLabel: 'Radius:',
   gpsSearch: 'Search by GPS',
   gps: 'GPS',

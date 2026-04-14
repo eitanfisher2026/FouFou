@@ -465,7 +465,18 @@
     }
     
     // Step 3: Optimize route order
-    const optimized = optimizeStopOrder(selected, autoStart, isCircular);
+    // If there's an isRadiusCenter stop, pin it at position 0 — UNLESS the user manually chose a different start point
+    const radiusCenterStop = selected.find(s => s.isRadiusCenter) || null;
+    // User overrode start = overrideStart provided AND it doesn't match the radius center's coordinates
+    const userOverrodeStart = overrideStart && radiusCenterStop &&
+      (Math.abs(overrideStart.lat - radiusCenterStop.lat) > 0.0001 ||
+       Math.abs(overrideStart.lng - radiusCenterStop.lng) > 0.0001);
+    if (userOverrodeStart) {
+      // User took manual control — release the pin so radius center becomes a regular stop
+      radiusCenterStop.isRadiusCenter = false;
+    }
+    const pinnedFirstStop = (radiusCenterStop && !userOverrodeStart) ? radiusCenterStop : null;
+    const optimized = optimizeStopOrder(selected, autoStart, isCircular, pinnedFirstStop);
     
     // For linear without explicit start: use first optimized stop
     if (!autoStart && optimized.length > 0) {
@@ -913,6 +924,9 @@
       speechRate: 1.0,
       // Toast display duration (ms)
       toastDuration: 4000,
+      // Point search (מסביב למקום dropdown)
+      pointSearchMaxGoogle: 10,   // max Google results in dropdown
+      pointSearchMaxFavorites: 5, // max favorite results in dropdown
       // Favorite scoring — weighted priority vs Google results
       // favoriteBaseScore: base score added to any favorite (no rating yet)
       // favoriteBonusPerStar: added per ⭐ when rated above threshold
@@ -969,6 +983,8 @@
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [loadingGoogleInfo, setLoadingGoogleInfo] = useState(false);
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
+  const [pointSearchResults, setPointSearchResults] = useState(null); // null=hidden, []=loading, [...]= results for step-2 point mode
+  const [pointSearchQuery, setPointSearchQuery] = useState(''); // tracks input value for button enable/disable
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
   const [interestDialogReadOnly, setInterestDialogReadOnly] = useState(false);
@@ -1318,7 +1334,14 @@
           });
           
           stops.forEach((stop, i) => {
-            const color = (stop.interests && stop.interests[0] ? window.BKK.getInterestColor(stop.interests[0], allInterestOptions || []) : null) || colorPalette[i % colorPalette.length];
+            const isManualStop = stop.manuallyAdded || stop.isRadiusCenter;
+            // Manual stops: white fill + green border. Regular stops: interest color.
+            const interestColor = (stop.interests && stop.interests[0] && stop.interests[0] !== '_manual'
+              ? window.BKK.getInterestColor(stop.interests[0], allInterestOptions || [])
+              : null) || colorPalette[i % colorPalette.length];
+            const color = isManualStop ? '#22c55e' : interestColor; // border/outline color
+            const fillColor = isManualStop ? 'white' : interestColor;
+            const labelTextColor = isManualStop ? '#15803d' : 'white';
             const nameKey = (stop.name || '').toLowerCase().trim();
             const isDisabled = disabledStops.includes(nameKey) || mapSkippedStops.has(i);
             const stopLetter = mapLetterMap[i] || '';
@@ -1336,15 +1359,15 @@
             }
             
             const circle = L.circleMarker([stop.lat, stop.lng], {
-              radius: mc.radius, color: color, fillColor: color,
-              fillOpacity: isDisabled ? mc.disabledFillOpacity : mc.fillOpacity, weight: mc.weight,
+              radius: mc.radius, color: color, fillColor: fillColor,
+              fillOpacity: isDisabled ? mc.disabledFillOpacity : mc.fillOpacity, weight: isManualStop ? 2.5 : mc.weight,
               opacity: isDisabled ? mc.disabledOpacity : 1
             }).addTo(map);
             
             const label = L.marker([stop.lat, stop.lng], {
               icon: L.divIcon({
                 className: '',
-                html: '<div style="font-size:' + mc.labelFontSize + ';font-weight:bold;text-align:center;color:white;width:' + mc.labelSize + 'px;height:' + mc.labelSize + 'px;line-height:' + mc.labelSize + 'px;border-radius:50%;background:' + color + ';border:2px solid ' + (isStart ? mc.startRingColor : 'white') + ';box-shadow:0 1px 4px rgba(0,0,0,0.3);opacity:' + (isDisabled ? mc.disabledOpacity : '1') + ';">' + (isStart ? '▶' : stopLetter) + '</div>',
+                html: '<div style="font-size:' + mc.labelFontSize + ';font-weight:bold;text-align:center;color:' + labelTextColor + ';width:' + mc.labelSize + 'px;height:' + mc.labelSize + 'px;line-height:' + mc.labelSize + 'px;border-radius:50%;background:' + fillColor + ';border:2px solid ' + (isManualStop ? '#22c55e' : (isStart ? mc.startRingColor : 'white')) + ';box-shadow:0 1px 4px rgba(0,0,0,0.3);opacity:' + (isDisabled ? mc.disabledOpacity : '1') + ';">' + (isStart && !isManualStop ? '▶' : stopLetter) + '</div>',
                 iconSize: [mc.labelSize, mc.labelSize], iconAnchor: [mc.labelSize/2, mc.labelSize/2]
               }),
               opacity: isDisabled ? mc.disabledOpacity : 1
@@ -5794,6 +5817,7 @@
         group: config.group || opt.group || '',
         noGoogleSearch: config.noGoogleSearch || opt.noGoogleSearch || false,
         privateOnly: config.privateOnly || opt.privateOnly || false,
+        color: config.color || opt.color || null,
       };
     });
     // Sort: group order then alphabetical within group — re-sorts on language change
@@ -6438,14 +6462,22 @@
   };
 
   // ========== ROUTE OPTIMIZATION (Nearest Neighbor + 2-opt) ==========
-  const optimizeStopOrder = (stops, startCoords, isCircular) => {
-    if (stops.length <= 2) return stops;
+  const optimizeStopOrder = (stops, startCoords, isCircular, pinnedFirstStop = null) => {
+    // pinnedFirstStop: a stop that must be at position 0 (radius center / GPS point).
+    // It is excluded from the TSP optimization and prepended to the result.
+    const stopsToOptimize = pinnedFirstStop
+      ? stops.filter(s => s !== pinnedFirstStop && !(s.isRadiusCenter && pinnedFirstStop.isRadiusCenter))
+      : stops;
+    if (stopsToOptimize.length <= 1) return pinnedFirstStop ? [pinnedFirstStop, ...stopsToOptimize] : stops;
     
-    // Filter stops with valid coordinates
-    const withCoords = stops.filter(s => s.lat && s.lng);
-    const noCoords = stops.filter(s => !s.lat || !s.lng);
+    // Filter stops with valid coordinates (operates on stopsToOptimize, not stops)
+    const withCoords = stopsToOptimize.filter(s => s.lat && s.lng);
+    const noCoords = stopsToOptimize.filter(s => !s.lat || !s.lng);
     
-    if (withCoords.length <= 1) return [...withCoords, ...noCoords];
+    if (withCoords.length <= 1) {
+      const result = [...withCoords, ...noCoords];
+      return pinnedFirstStop ? [pinnedFirstStop, ...result] : result;
+    }
     
     // Distance matrix (using calcDistance which is Haversine)
     const dist = (a, b) => calcDistance(a.lat, a.lng, b.lat, b.lng);
@@ -6672,7 +6704,9 @@
         while (contentImproved && contentPasses < maxContentPasses) {
           contentImproved = false;
           contentPasses++;
-          for (let i = 0; i < ordered.length; i++) {
+          // When pinnedFirstStop is set, start from i=1 — position 0 is locked
+          const startIdx = pinnedFirstStop ? 1 : 0;
+          for (let i = startIdx; i < ordered.length; i++) {
             for (let j = i + 1; j < ordered.length; j++) {
               const curPenalty = contentPenalty(ordered);
               // Try swap
@@ -6700,10 +6734,13 @@
     }
     
     // Append stops without coordinates at the end
-    return [...ordered, ...noCoords];
+    // If pinnedFirstStop exists, prepend it — it is always position 0 (letter A), untouched by TSP
+    return pinnedFirstStop
+      ? [pinnedFirstStop, ...ordered, ...noCoords]
+      : [...ordered, ...noCoords];
   };
 
-  const generateRoute = async () => {
+  const generateRoute = async (extraManualStop = null) => {
     searchRunIdRef.current = Date.now().toString();
     const isRadiusMode = formData.searchMode === 'radius' || formData.searchMode === 'all';
     
@@ -6824,10 +6861,20 @@
           const key = (cs.name || '').toLowerCase().trim();
           if (!addedCustomNames.has(key)) {
             addedCustomNames.add(key);
-            allStops.push({ ...cs, _debug: {
+            // Pick best matching interest: prefer the most specific (whose dedupRelated includes another match)
+            const allMatches = searchInterests.filter(si => (cs.interests || []).includes(si));
+            let bestMatch = interest;
+            if (allMatches.length > 1) {
+              for (const m of allMatches) {
+                const rel = (interestConfig[m]?.dedupRelated || []);
+                if (allMatches.some(other => other !== m && rel.includes(other))) { bestMatch = m; break; }
+              }
+            }
+            const reorderedInterests = [bestMatch, ...(cs.interests || []).filter(i => i !== bestMatch)];
+            allStops.push({ ...cs, interests: reorderedInterests, _debug: {
               source: 'custom',
-              interestId: interest,
-              interestLabel: tLabel(allInterestOptions.find(o => o.id === interest)) || interest,
+              interestId: bestMatch,
+              interestLabel: tLabel(allInterestOptions.find(o => o.id === bestMatch)) || bestMatch,
               area: formData.area || 'radius',
               searchMode: formData.searchMode,
               timestamp: Date.now()
@@ -7240,14 +7287,28 @@
       };
 
       // Include manually added stops (if any)
-      if (manualStops.length > 0) {
+      const allManualStops = extraManualStop
+        ? [extraManualStop, ...manualStops.filter(s => !s.isRadiusCenter)]
+        : manualStops;
+      if (allManualStops.length > 0) {
         const existingNames = new Set(uniqueStops.map(s => (s.name || '').toLowerCase().trim()));
-        const nonDuplicateManual = manualStops.filter(ms => !existingNames.has((ms.name || '').toLowerCase().trim()));
+        const nonDuplicateManual = allManualStops.filter(ms => !existingNames.has((ms.name || '').toLowerCase().trim()));
         if (nonDuplicateManual.length > 0) {
-          newRoute.stops = [...newRoute.stops, ...nonDuplicateManual];
+          // Radius center goes first (gets letter A), other manual stops go at the end
+          const radiusCenterStops = nonDuplicateManual.filter(s => s.isRadiusCenter);
+          const otherManual = nonDuplicateManual.filter(s => !s.isRadiusCenter);
+          newRoute.stops = [...radiusCenterStops, ...newRoute.stops, ...otherManual];
           newRoute.stats.manual = nonDuplicateManual.length;
           newRoute.stats.total = newRoute.stops.length;
+          // Mark as optimized so letter circles render immediately (radius center = letter A)
+          if (radiusCenterStops.length > 0) newRoute.optimized = true;
         }
+      }
+      // Set radius center as start point AFTER route is built
+      if (extraManualStop?.isRadiusCenter) {
+        const sp = { lat: extraManualStop.lat, lng: extraManualStop.lng, address: extraManualStop.name };
+        setStartPointCoords(sp);
+        startPointCoordsRef.current = sp;
       }
 
       console.log('[ROUTE] Route created successfully:', {
@@ -9841,7 +9902,7 @@
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
           'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount'
         },
-        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 5 })
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: window.BKK.systemParams?.pointSearchMaxGoogle || 10 })
       });
       const data = await response.json();
       if (data.places && data.places.length > 0) {
@@ -9862,6 +9923,64 @@
       console.error('[SEARCH] Error:', err);
       showToast(t('toast.searchError'), 'error');
       setLocationSearchResults(null);
+    }
+  };
+
+  // Search places for radius-mode point selection in step 2
+  const searchPointForRadius = async (query) => {
+    if (!query || !query.trim()) return;
+    try {
+      setPointSearchResults([]); // empty = loading
+      const q = query.toLowerCase().trim();
+      // Search favorites by name only — address search causes false matches (e.g. "Watthana" district)
+      const favMatches = (customLocations || []).filter(cl => {
+        if (!cl.lat || !cl.lng) return false;
+        const name = (cl.name || '').toLowerCase();
+        return name.includes(q);
+      }).slice(0, window.BKK.systemParams?.pointSearchMaxFavorites || 5).map(cl => ({
+        name: cl.name, lat: cl.lat, lng: cl.lng,
+        address: cl.address || '', rating: cl.googleRating,
+        ratingCount: cl.googleRatingCount, googlePlaceId: cl.googlePlaceId,
+        isFavorite: true, favData: cl
+      }));
+      // Search Google Places
+      const cityForSearch = window.BKK.cityNameForSearch || 'Bangkok';
+      const countryForSearch = window.BKK.selectedCity?.country || '';
+      const searchQuery = query.toLowerCase().includes(cityForSearch.toLowerCase()) ? query : `${query}, ${cityForSearch}${countryForSearch ? ', ' + countryForSearch : ''}`;
+      const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount'
+        },
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: 5 })
+      });
+      const data = await response.json();
+      const googleResults = data.places && data.places.length > 0
+        ? data.places.map(p => ({
+            name: p.displayName?.text || '',
+            lat: p.location?.latitude, lng: p.location?.longitude,
+            address: p.formattedAddress || '', rating: p.rating,
+            ratingCount: p.userRatingCount, googlePlaceId: p.id,
+            isFavorite: false
+          })).filter(p => {
+            // Remove from Google list if already in favorites (by placeId or proximity)
+            return !favMatches.some(f =>
+              (f.googlePlaceId && p.googlePlaceId && f.googlePlaceId === p.googlePlaceId) ||
+              (f.lat && f.lng && Math.abs(f.lat - p.lat) < 0.0002 && Math.abs(f.lng - p.lng) < 0.0002)
+            );
+          })
+        : [];
+      if (favMatches.length === 0 && googleResults.length === 0) {
+        setPointSearchResults([]);
+        showToast(t('places.noPlacesFound'), 'warning');
+      } else {
+        setPointSearchResults({ favorites: favMatches, google: googleResults });
+      }
+    } catch (err) {
+      console.error('[POINT SEARCH] Error:', err);
+      setPointSearchResults(null);
     }
   };
 
