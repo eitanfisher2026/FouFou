@@ -828,6 +828,7 @@
   const [lastImportBatch, setLastImportBatch] = useState(null); // batch ID of last import
   const [filterImportBatch, setFilterImportBatch] = useState(false); // filter to show only last import
   const [filterNoInterest, setFilterNoInterest] = useState(false); // admin/editor: show places with no interest
+  const [filterAddedBy, setFilterAddedBy] = useState(() => { try { return localStorage.getItem('foufou_filter_addedby') || ''; } catch(_) { return ''; } }); // admin/editor: filter by uid of creator
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [placesGroupBy, setPlacesGroupBy] = useState('interest'); // 'interest' or 'area'
   const [placesSortBy, setPlacesSortBy] = useState(() => {
@@ -964,10 +965,16 @@
       // favoriteBonusPerStar: added per ⭐ when rated above threshold
       // favoriteLowRatingThreshold: avg below this = penalty instead of bonus
       // favoriteLowRatingPenalty: subtracted from base when rating is poor
+      // Formula: googleScore + base + (ff_rating - favoriteNeutralRating) × bonusPerStar
+      // ff_rating > neutral → bonus, ff_rating = neutral → no change, ff_rating < threshold → penalty
+      // bonus applies only if favoriteMinRatingsForBonus ratings exist in FouFou
       favoriteBaseScore: 20,
       favoriteBonusPerStar: 5,
+      favoriteNeutralRating: 3.0,
       favoriteLowRatingThreshold: 2.5,
       favoriteLowRatingPenalty: 60,
+      favoriteMinRatingsForBonus: 1,
+      favoriteGoogleScoreWeight: 1.0,
 
       // Google Places rating count filters (applies only to Google results, never to saved favorites)
       // googleMinRatingCount: places with fewer ratings than this are NEVER shown (filtered like blacklist)
@@ -6052,13 +6059,16 @@
       if (filteredTabLocations.length === 0) return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: draftsLocations.length + readyLocations.length, blacklistedLocations, draftsLocations, readyLocations, draftsCount: draftsLocations.length, readyCount: readyLocations.length, blacklistCount: blacklistedLocations.length };
       
       // Derive grouping mode from sort selection
+      const filteredByUser = filterAddedBy
+        ? filteredTabLocations.filter(loc => loc.addedBy === filterAddedBy)
+        : filteredTabLocations;
       const isFlatEarly = placesSortBy === 'updatedAt' || placesSortBy === 'addedAt' || placesSortBy === 'name';
       const groupByMode = placesSortBy === 'area' ? 'area' : 'interest';
 
       const groups = {};
       const ungrouped = [];
       
-      filteredTabLocations.forEach(loc => {
+      filteredByUser.forEach(loc => {
         if (groupByMode === 'interest') {
           const interests = (loc.interests || []).filter(i => i !== '_manual');
           if (interests.length === 0) {
@@ -6097,8 +6107,8 @@
         return d ? (new Date(d).getTime() || 0) : 0;
       };
       if (isFlatEarly) {
-        const flat = [...filteredTabLocations].sort((a, b) => {
-          if (placesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+        const flat = [...filteredByUser].sort((a, b) => {
+          if (placesSortBy === 'name') { const na = (a.name || '').trim().toLowerCase(); const nb = (b.name || '').trim().toLowerCase(); return na.localeCompare(nb, 'en', { sensitivity: 'base', numeric: true }); }
           const ta = getTs2(a), tb = getTs2(b);
           if (ta === 0 && tb === 0) return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
           if (ta === 0) return 1; if (tb === 0) return -1;
@@ -6127,7 +6137,7 @@
       console.error('[MEMO] groupedPlaces error:', e);
       return { groups: {}, ungrouped: [], sortedKeys: [], activeCount: 0, blacklistedLocations: [], draftsLocations: [], readyLocations: [], draftsCount: 0, readyCount: 0, blacklistCount: 0 };
     }
-  }, [cityCustomLocations, placesGroupBy, placesSortBy, placesTab, interestMap, areaMap, searchQuery]);
+  }, [cityCustomLocations, placesGroupBy, placesSortBy, placesTab, interestMap, areaMap, searchQuery, filterAddedBy]);
 
   // Flat navigation list for prev/next in edit dialog
   const flatNavList = useMemo(() => {
@@ -6375,16 +6385,22 @@
       }
       // Favorite base priority (unrated favorites get this by default)
       const base = sp.favoriteBaseScore ?? 20;
+      const googleWeight = sp.favoriteGoogleScoreWeight ?? 1.0;
+      const weightedGoogle = googleScore * googleWeight;
       const pk = (s.name || '').replace(/[.#$/\[\]]/g, '_');
       const ra = reviewAverages[pk];
-      if (!ra || ra.count === 0) return googleScore + base; // no rating yet — default priority
+      const minRatings = sp.favoriteMinRatingsForBonus ?? 1;
+      const hasEnoughRatings = ra && ra.count >= minRatings;
+      if (!hasEnoughRatings) return weightedGoogle + base; // no rating or too few — default priority
       const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
       if (ra.avg < threshold) {
         // Poor rating — penalize: may fall below strong Google results
-        return googleScore + base - (sp.favoriteLowRatingPenalty ?? 60);
+        return weightedGoogle + base - (sp.favoriteLowRatingPenalty ?? 60);
       }
-      // Good rating — bonus per star (e.g. 4.5⭐ × 5 = +22.5 on top of base)
-      return googleScore + base + ra.avg * (sp.favoriteBonusPerStar ?? 5);
+      // Neutral rating = no bonus/penalty. Above neutral = bonus. Formula: (ff - neutral) × bonusPerStar
+      const neutral = sp.favoriteNeutralRating ?? 3.0;
+      const bonusPerStar = sp.favoriteBonusPerStar ?? 5;
+      return weightedGoogle + base + (ra.avg - neutral) * bonusPerStar;
     };
     for (const id of selectedInterests) {
       buckets[id].sort((a, b) => {
@@ -7659,7 +7675,11 @@
       let fromApi = 0;
       
       for (const interest of formData.interests) {
-        const allUsedNames = [...existingNames, ...allNewPlaces.map(p => p.name.toLowerCase().trim())];
+        // allUsedNames must be recomputed each iteration to include places added in previous iterations
+        const allUsedNames = [
+          ...existingNames,
+          ...allNewPlaces.map(p => p.name.toLowerCase().trim())
+        ];
         let placesForInterest = [];
         
         // LAYER 1: Unused custom locations

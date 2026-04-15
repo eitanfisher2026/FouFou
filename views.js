@@ -1612,14 +1612,37 @@
                     const calcStopScore = (stop) => {
                       const googleScore = (stop.rating || stop.googleRating || 0) * Math.log10((stop.ratingCount || stop.googleRatingCount || 0) + 1);
                       const isCustom = stop.source === 'custom' || stop.custom || !!customLocations.find(loc => loc.name === stop.name);
+                      const gWeight = sp.favoriteGoogleScoreWeight ?? 1.0;
+                      const wG = googleScore * gWeight;
                       if (!isCustom) return googleScore;
                       const base = sp.favoriteBaseScore ?? 20;
                       const pk = (stop.name || '').replace(/[.#$/\\[\\]]/g, '_');
                       const ra = reviewAverages[pk];
-                      if (!ra || ra.count === 0) return googleScore + base;
+                      const minRatings = sp.favoriteMinRatingsForBonus ?? 1;
+                      if (!ra || ra.count < minRatings) return wG + base;
                       const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
-                      if (ra.avg < threshold) return googleScore + base - (sp.favoriteLowRatingPenalty ?? 60);
-                      return googleScore + base + ra.avg * (sp.favoriteBonusPerStar ?? 5);
+                      if (ra.avg < threshold) return wG + base - (sp.favoriteLowRatingPenalty ?? 60);
+                      const neutral = sp.favoriteNeutralRating ?? 3.0;
+                      return wG + base + (ra.avg - neutral) * (sp.favoriteBonusPerStar ?? 5);
+                    };
+                    const calcStopScoreDetail = (stop) => {
+                      const g = (stop.rating || stop.googleRating || 0);
+                      const cnt = (stop.ratingCount || stop.googleRatingCount || 0);
+                      const googleScore = g * Math.log10(cnt + 1);
+                      const isCustom = stop.source === 'custom' || stop.custom || !!customLocations.find(loc => loc.name === stop.name);
+                      const gWeight = sp.favoriteGoogleScoreWeight ?? 1.0;
+                      const wG = googleScore * gWeight;
+                      if (!isCustom) return `G:${g}×log(${cnt}+1)=${googleScore.toFixed(1)}`;
+                      const base = sp.favoriteBaseScore ?? 20;
+                      const pk = (stop.name || '').replace(/[.#$/\\[\\]]/g, '_');
+                      const ra = reviewAverages[pk];
+                      const minRatings = sp.favoriteMinRatingsForBonus ?? 1;
+                      if (!ra || ra.count < minRatings) return `G:${wG.toFixed(1)}+base:${base}=${( wG+base).toFixed(1)}`;
+                      const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
+                      if (ra.avg < threshold) return `G:${wG.toFixed(1)}+${base}-pen=${( wG+base-(sp.favoriteLowRatingPenalty??60)).toFixed(1)}`;
+                      const neutral = sp.favoriteNeutralRating ?? 3.0;
+                      const adj = (ra.avg - neutral) * (sp.favoriteBonusPerStar ?? 5);
+                      return `G:${wG.toFixed(1)}+${base}+(${ra.avg.toFixed(1)}-${neutral})×${sp.favoriteBonusPerStar??5}=${(wG+base+adj).toFixed(1)}`;
                     };
                     
                     return Object.entries(groupedStops)
@@ -1876,6 +1899,15 @@
                                         </div>
                                       );
                                     })()}
+                                  {debugMode && isUnlocked && (() => {
+                                    const score = calcStopScore(stop);
+                                    const detail = calcStopScoreDetail(stop);
+                                    return (
+                                      <div style={{ fontSize: '9px', marginTop: '2px', color: '#7c3aed', fontFamily: 'monospace', background: '#f5f3ff', borderRadius: '4px', padding: '1px 5px', display: 'inline-block' }}>
+                                        🔢 {score.toFixed(1)} | {detail}
+                                      </div>
+                                    );
+                                  })()}
                                   </a>
                                   {/* Add to favorites — compact inline star, editors/admins only (regular users add during active trail) */}
                                   {!isCustom && !isDisabled && isEditor && (() => {
@@ -2396,37 +2428,41 @@
         {/* My Content View - Compact Design */}
         {currentView === 'myPlaces' && (
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
-            <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-lg font-bold">{`⭐ ${t("nav.favorites")}`}</h2>
-              <button
-                onClick={() => refreshAllData()}
-                disabled={isRefreshing}
-                style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', cursor: isRefreshing ? 'wait' : 'pointer' }}
-                title={t('settings.refreshData') || 'רענן'}
-              ><span className={isRefreshing ? 'animate-spin inline-block' : ''}>🔄</span></button>
+            <div className="flex items-center gap-2 mb-3" style={{ flexWrap: 'nowrap' }}>
+              <h2 className="text-lg font-bold" style={{ flexShrink: 0 }}>{`⭐ ${t("nav.favorites")}`}</h2>
+              <span style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>({cityCustomLocations.filter(l => l.status !== 'blacklist').length})</span>
               {isUnlocked && customLocations.length > 1 && (
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px' }}>
-                  <button
-                    onClick={() => scanAllDuplicates(false)}
-                    style={{ padding: '5px 10px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
-                    title={t('dedup.scanByInterest')}
-                  >🔍 {t('dedup.scanButton')}</button>
-                  <button
-                    onClick={() => scanAllDuplicates(true)}
-                    style={{ padding: '5px 10px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
-                    title={t('dedup.scanByCoords')}
-                  >📐 {t('dedup.scanCoordsButton')}</button>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button onClick={() => scanAllDuplicates(false)}
+                    style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                    title={t('dedup.scanByInterest')}>🔍</button>
+                  <button onClick={() => scanAllDuplicates(true)}
+                    style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                    title={t('dedup.scanCoordsButton')}>📐</button>
                 </div>
               )}
-              {isUnlocked && (
-                <div style={{ marginLeft: customLocations.length <= 1 ? 'auto' : '0' }}>
-                  <input type="file" accept=".json" id="importDataFav" className="hidden"
-                    onChange={(e) => { parseImportFile(e.target.files?.[0]); e.target.value = ''; }} />
-                  <label htmlFor="importDataFav"
-                    style={{ padding: '5px 10px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', display: 'inline-block' }}
-                  >📥 {t('general.import')}</label>
-                </div>
-              )}
+              <div style={{ marginInlineStart: 'auto', display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
+                {authUser && !authUser.isAnonymous && !isUnlocked && (() => {
+                  const myUid = authUser.uid;
+                  if (!cityCustomLocations.some(l => l.addedBy === myUid)) return null;
+                  const isFiltered = filterAddedBy === myUid;
+                  return (
+                    <button
+                      onClick={() => { const v = isFiltered ? '' : myUid; setFilterAddedBy(v); try { localStorage.setItem('foufou_filter_addedby', v); } catch(_) {} }}
+                      style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', background: isFiltered ? '#ede9fe' : '#f3f4f6', color: isFiltered ? '#7c3aed' : '#6b7280' }}
+                    >{isFiltered ? '👤 אני' : '👤 הכל'}</button>
+                  );
+                })()}
+                {isAdmin && (
+                  <>
+                    <input type="file" accept=".json" id="importDataFav" className="hidden"
+                      onChange={(e) => { parseImportFile(e.target.files?.[0]); e.target.value = ''; }} />
+                    <label htmlFor="importDataFav"
+                      style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', display: 'inline-block' }}
+                    >📥</label>
+                  </>
+                )}
+              </div>
             </div>
             {renderContextHint('hint_favorites')}
             
@@ -2470,6 +2506,7 @@
                   )}
                 </div>
               </div>
+              {/* Filter by addedBy — admin: dropdown; editor: icon toggle in filter row below */}
               {/* Row 2: Action buttons — Snap place removed (use floating camera button) */}
               <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
                 <button
@@ -2523,9 +2560,40 @@
                     >🏷️ {noInterestCount}</button>
                   );
                 })()}
+                {/* addedBy filter — admin: dropdown with names; any logged-in: הכל/אני toggle */}
+                {authUser && !authUser.isAnonymous && (() => {
+                  const myUid = authUser.uid;
+                  const hasMine = cityCustomLocations.some(l => l.addedBy === myUid);
+                  if (!hasMine && !isAdmin) return null;
+                  if (isAdmin) {
+                    const allContribs = Object.entries(userNamesMap || {})
+                      .filter(([uid]) => cityCustomLocations.some(l => l.addedBy === uid))
+                      .sort(([,a],[,b]) => a.localeCompare(b));
+                    if (allContribs.length <= 1) return null;
+                    return (
+                      <select
+                        value={filterAddedBy}
+                        onChange={e => { const v = e.target.value; setFilterAddedBy(v); try { localStorage.setItem('foufou_filter_addedby', v); } catch(_) {} }}
+                        style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '8px', border: '1px solid #d1d5db', background: filterAddedBy ? '#ede9fe' : 'white', color: filterAddedBy ? '#7c3aed' : '#374151', fontWeight: filterAddedBy ? 'bold' : 'normal', cursor: 'pointer', maxWidth: '110px' }}
+                      >
+                        <option value="">👤 {t('general.all') || 'הכל'}</option>
+                        {allContribs.map(([uid, name]) => <option key={uid} value={uid}>{name}</option>)}
+                      </select>
+                    );
+                  }
+                  // Any logged-in user: simple הכל/אני toggle
+                  const isFiltered = filterAddedBy === myUid;
+                  return (
+                    <button
+                      onClick={() => { const v = isFiltered ? '' : myUid; setFilterAddedBy(v); try { localStorage.setItem('foufou_filter_addedby', v); } catch(_) {} }}
+                      className={`px-2 py-1 rounded text-xs font-bold transition-all ${isFiltered ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                    >{isFiltered ? '👤 אני' : '👤 הכל'}</button>
+                  );
+                })()}
               </div>
               )}
-              
+
+
               {/* Pending locations waiting for sync */}
               {lastImportBatch && (placesTab === 'all' || placesTab === 'drafts') && (() => {
                 const batchCount = cityCustomLocations.filter(l => l.importBatch === lastImportBatch && l.status !== 'blacklist' && !l.locked).length;
@@ -2658,7 +2726,10 @@
                   {groupedPlaces.ungrouped.length > 0 && (
                     <div className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                       <div className="bg-gray-100 px-2 py-1 text-xs font-bold text-gray-500">
-                        {t("places.noInterest")} ({groupedPlaces.ungrouped.length})
+                        {placesSortBy === 'updatedAt' ? `🕐 ${t('places.sortByUpdated') || 'עודכן לאחרונה'}` :
+                         placesSortBy === 'addedAt' ? `📅 ${t('places.sortByAdded') || 'נוסף לאחרונה'}` :
+                         placesSortBy === 'name' ? `🔤 ${t('places.sortByName') || 'שם'} (${groupedPlaces.ungrouped.length})` :
+                         `${t("places.noInterest")} (${groupedPlaces.ungrouped.length})`}
                       </div>
                       <div className="p-1">
                         {groupedPlaces.ungrouped.filter(loc => (!filterImportBatch || !lastImportBatch || loc.importBatch === lastImportBatch) && (!filterNoInterest || !loc.interests || loc.interests.length === 0)).map(loc => {
@@ -4386,6 +4457,11 @@
                       {cityLabel}
                     </button>
                     <button onClick={() => openFn(i)} style={{ padding: '2px 6px', fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', flexShrink: 0 }}>✏️</button>
+                    {customInterests.some(ci => ci.id === i.id) && (
+                      <button onClick={() => {
+                        showConfirm(`מחק תחום "${tLabel(i) || i.id}"? פעולה זו בלתי הפיכה.`, () => deleteCustomInterest(i.id));
+                      }} style={{ fontSize: '9px', color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }} title="מחק תחום">🗑️</button>
+                    )}
                   </div>
                 );
               };
@@ -4570,8 +4646,8 @@
                             <input value={gData.labelEn || ''} onChange={(e) => saveInterestGroup(gId, gData.labelHe || '', e.target.value, gData.order ?? idx)} placeholder="English" style={{ fontSize: '12px', fontWeight: 'bold', border: '1px solid #d1d5db', borderRadius: '4px', padding: '2px 6px', width: '80px' }} />
                             <button onClick={() => {
                               if (members.length > 0) { showToast('⚠️ יש ' + members.length + ' תחומים בקיבוץ — שנה אותם קודם', 'warning'); return; }
-                              deleteInterestGroup(gId);
-                            }} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', marginLeft: 'auto' }}>🗑️</button>
+                              showConfirm(`מחק קיבוץ "${gData.labelHe || gId}"?`, () => deleteInterestGroup(gId));
+                            }} style={{ fontSize: '9px', color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', marginInlineStart: 'auto' }} title="מחק קיבוץ">🗑️</button>
                           </div>
                           {members.length > 0 && (
                             <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' }}>
@@ -4637,8 +4713,12 @@
                   { key: 'gapPenaltyMultiplier', label: t('sysParams.gapPenalty'), desc: t('sysParams.gapPenaltyDesc'), min: 1, max: 20, step: 1, type: 'int' },
                 ]},
                 { title: t('sysParams.sectionFavorites') || '⭐ מועדפים', icon: '⭐', color: '#f59e0b', params: [
+                  { key: '_formula', type: 'info', desc: '📐 נוסחה: googleWeight×G + base + (ff - neutral)×bonusPerStar | ff < threshold → -penalty | ff = neutral → ±0' },
                   { key: 'favoriteBaseScore', label: t('sysParams.favoriteBaseScore'), desc: t('sysParams.favoriteBaseScoreDesc'), min: 0, max: 100, step: 5, type: 'int' },
+                  { key: 'favoriteGoogleScoreWeight', label: t('sysParams.favoriteGoogleScoreWeight') || 'משקל ניקוד גוגל (מועדף)', desc: t('sysParams.favoriteGoogleScoreWeightDesc') || 'כפל על googleScore של מועדף — 1.0=רגיל, 0=מתעלם מגוגל, 2=מכפיל (ברירת מחדל: 1.0)', min: 0, max: 3, step: 0.1, type: 'float' },
                   { key: 'favoriteBonusPerStar', label: t('sysParams.favoriteBonusPerStar'), desc: t('sysParams.favoriteBonusPerStarDesc'), min: 0, max: 30, step: 1, type: 'int' },
+                  { key: 'favoriteNeutralRating', label: t('sysParams.favoriteNeutralRating') || 'דרוג ניטרלי', desc: t('sysParams.favoriteNeutralRatingDesc') || 'דרוג שמעליו = בונוס, שמתחתיו = מינוס, בדיוק עליו = ±0 (ברירת מחדל: 3.0)', min: 1, max: 5, step: 0.5, type: 'float' },
+                  { key: 'favoriteMinRatingsForBonus', label: t('sysParams.favoriteMinRatingsForBonus') || 'מינימום דרוגי פופו לבונוס', desc: t('sysParams.favoriteMinRatingsForBonusDesc') || 'כמה אנשים צריכים לדרג בפופו כדי שהבונוס יופעל — פחות מכך = כאילו אין דרוג (ברירת מחדל: 1)', min: 1, max: 20, step: 1, type: 'int' },
                   { key: 'favoriteLowRatingThreshold', label: t('sysParams.favoriteLowRatingThreshold'), desc: t('sysParams.favoriteLowRatingThresholdDesc'), min: 1, max: 4, step: 0.5, type: 'float' },
                   { key: 'favoriteLowRatingPenalty', label: t('sysParams.favoriteLowRatingPenalty'), desc: t('sysParams.favoriteLowRatingPenaltyDesc'), min: 0, max: 200, step: 10, type: 'int' },
                 ]},
@@ -4710,6 +4790,49 @@
                 showToast(t('sysParams.resetDone'), 'success');
               };
               const renderRow = (p) => {
+                if (p.type === 'info') return (
+                  <div key={p.key} style={{ padding: '6px 10px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', fontSize: '10px', color: '#0369a1', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ flex: 1 }}>{p.desc}</span>
+                    <button onClick={() => {
+                      const _sp = window.BKK.systemParams || {};
+                      const _base = _sp.favoriteBaseScore ?? 20;
+                      const _bps = _sp.favoriteBonusPerStar ?? 5;
+                      const _neutral = _sp.favoriteNeutralRating ?? 3.0;
+                      const _penalty = _sp.favoriteLowRatingPenalty ?? 60;
+                      const _threshold = _sp.favoriteLowRatingThreshold ?? 2.5;
+                      const _gw = _sp.favoriteGoogleScoreWeight ?? 1.0;
+                      const _g1 = (_gw * 4.5 * Math.log10(409)).toFixed(1);
+                      const _g2 = (_gw * 4.2 * Math.log10(6708)).toFixed(1);
+                      const _g3 = (_gw * 4.8 * Math.log10(51)).toFixed(1);
+                      const _fav1 = (parseFloat(_g2) + _base + (4.5 - _neutral) * _bps).toFixed(1);
+                      const _fav2 = (parseFloat(_g2) + _base + (3.0 - _neutral) * _bps).toFixed(1);
+                      const _fav3 = (parseFloat(_g2) + _base - _penalty).toFixed(1);
+                      showToast([
+                        '📐 Score Formula (current params)',
+                        '',
+                        '── Google places ──',
+                        'score = rating × log₁₀(reviews + 1)',
+                        '',
+                        '  Ex1: 4.5⭐ / 408 reviews',
+                        '       4.5 × log(409) = ' + _g1,
+                        '  Ex2: 4.2⭐ / 6707 reviews',
+                        '       4.2 × log(6708) = ' + _g2,
+                        '  Ex3: 4.8⭐ / 50 reviews',
+                        '       4.8 × log(51) = ' + _g3,
+                        '',
+                        'Why log? 400 reviews is more reliable than 40,',
+                        'but not 10× better. log() compresses large counts.',
+                        '',
+                        '── Favorites (4.2⭐/6707 as base G=' + _g2 + ') ──',
+                        'score = ' + _gw + '×G + ' + _base + ' + (ff − ' + _neutral + ') × ' + _bps,
+                        '',
+                        '  Ex1: FF=4.5 (good) → ' + _g2 + ' + ' + _base + ' + (4.5−' + _neutral + ')×' + _bps + ' = ' + _fav1,
+                        '  Ex2: FF=' + _neutral + ' (neutral) → ' + _g2 + ' + ' + _base + ' + 0 = ' + _fav2,
+                        '  Ex3: FF=' + (_threshold - 0.1).toFixed(1) + ' (poor) → ' + _g2 + ' + ' + _base + ' − ' + _penalty + ' = ' + _fav3,
+                      ].join('\n'), 'info', 'sticky');
+                    }} style={{ flexShrink: 0, background: '#0369a1', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', fontStyle: 'italic', fontWeight: 'bold' }}>i</button>
+                  </div>
+                );
                 const def = window.BKK._defaultSystemParams[p.key];
                 const isDefault = systemParams[p.key] === def;
                 const isToggle = p.min === 0 && p.max === 1 && p.step === 1;
@@ -5472,28 +5595,35 @@
                       const lines = ['=== FouFou Filter Log ===', new Date().toLocaleString('he-IL'), ''];
                       const calcScore = (p) => {
                         const googleScore = (p.rating || 0) * Math.log10((p.reviews || 0) + 1);
-                        const base = window.BKK.systemParams?.favoriteBaseScore ?? 20;
-                        const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
-                        const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
-                        const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
+                        const sp = window.BKK.systemParams || {};
+                        const base = sp.favoriteBaseScore ?? 20;
+                        const bonusPerStar = sp.favoriteBonusPerStar ?? 5;
+                        const neutral = sp.favoriteNeutralRating ?? 3.0;
+                        const penalty = sp.favoriteLowRatingPenalty ?? 60;
+                        const threshold = sp.favoriteLowRatingThreshold ?? 2.5;
+                        const minRatings = sp.favoriteMinRatingsForBonus ?? 1;
+                        const gWeight = sp.favoriteGoogleScoreWeight ?? 1.0;
+                        const wG = googleScore * gWeight;
                         const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom'
                           || !!(customLocations||[]).find(cl => cl.name === p.name);
                         const pk = (p.name||'').replace(/[.#$/\\[\\]]/g,'_');
                         const ra = reviewAverages?.[pk];
-                        const fouFouRating = ra?.count > 0 ? ra.avg : null;
+                        const hasRatings = ra && ra.count >= minRatings;
+                        const fouFouRating = hasRatings ? ra.avg : null;
                         let score, formula;
                         if (!isFav) {
                           score = googleScore;
                           formula = `G:${p.rating}×log(${p.reviews}+1)=${googleScore.toFixed(1)}`;
                         } else if (!fouFouRating) {
-                          score = googleScore + base;
-                          formula = `G:${googleScore.toFixed(1)} + base:${base} = ${score.toFixed(1)}`;
+                          score = wG + base;
+                          formula = `${gWeight!==1?gWeight+'×':''}G:${wG.toFixed(1)} + base:${base} = ${score.toFixed(1)}`;
                         } else if (fouFouRating < threshold) {
-                          score = googleScore + base - penalty;
-                          formula = `G:${googleScore.toFixed(1)} + base:${base} - penalty:${penalty} = ${score.toFixed(1)}`;
+                          score = wG + base - penalty;
+                          formula = `${gWeight!==1?gWeight+'×':''}G:${wG.toFixed(1)} + base:${base} - pen:${penalty} = ${score.toFixed(1)}`;
                         } else {
-                          score = googleScore + base + fouFouRating * bonusPerStar;
-                          formula = `G:${googleScore.toFixed(1)} + base:${base} + FF:${fouFouRating.toFixed(1)}×${bonusPerStar} = ${score.toFixed(1)}`;
+                          const adj = (fouFouRating - neutral) * bonusPerStar;
+                          score = wG + base + adj;
+                          formula = `${gWeight!==1?gWeight+'×':''}G:${wG.toFixed(1)} + base:${base} + (FF:${fouFouRating.toFixed(1)}-${neutral})×${bonusPerStar}=${adj.toFixed(1)} = ${score.toFixed(1)}`;
                         }
                         return { score, formula, isFav, fouFouRating };
                       };
@@ -5589,20 +5719,26 @@
                         </div>
                         {entry.passed.map((p, pi) => {
                           const googleScore = (p.rating || 0) * Math.log10((p.reviews || 0) + 1);
-                          const base = window.BKK.systemParams?.favoriteBaseScore ?? 20;
-                          const bonusPerStar = window.BKK.systemParams?.favoriteBonusPerStar ?? 5;
-                          const penalty = window.BKK.systemParams?.favoriteLowRatingPenalty ?? 60;
-                          const threshold = window.BKK.systemParams?.favoriteLowRatingThreshold ?? 2.5;
+                          const _sp = window.BKK.systemParams || {};
+                          const base = _sp.favoriteBaseScore ?? 20;
+                          const bonusPerStar = _sp.favoriteBonusPerStar ?? 5;
+                          const neutral = _sp.favoriteNeutralRating ?? 3.0;
+                          const penalty = _sp.favoriteLowRatingPenalty ?? 60;
+                          const threshold = _sp.favoriteLowRatingThreshold ?? 2.5;
+                          const minRatings = _sp.favoriteMinRatingsForBonus ?? 1;
+                          const gWeight = _sp.favoriteGoogleScoreWeight ?? 1.0;
+                          const wG = googleScore * gWeight;
                           const isFav = p.isFavorite || p.custom || p.fetchMoreSource === 'custom'
                             || !!(customLocations||[]).find(cl => cl.name === p.name);
                           const pk = (p.name||'').replace(/[.#$/\\[\\]]/g,'_');
                           const ra = reviewAverages?.[pk];
-                          const fr = ra?.count > 0 ? ra.avg : null;
+                          const hasRatings = ra && ra.count >= minRatings;
+                          const fr = hasRatings ? ra.avg : null;
                           let score, formula;
                           if (!isFav) { score = googleScore; formula = `G:${googleScore.toFixed(1)}`; }
-                          else if (!fr) { score = googleScore + base; formula = `G:${googleScore.toFixed(1)}+base:${base}`; }
-                          else if (fr < threshold) { score = googleScore + base - penalty; formula = `G:${googleScore.toFixed(1)}+${base}-pen:${penalty}`; }
-                          else { score = googleScore + base + fr * bonusPerStar; formula = `G:${googleScore.toFixed(1)}+${base}+FF:${fr.toFixed(1)}×${bonusPerStar}`; }
+                          else if (!fr) { score = wG + base; formula = `G:${wG.toFixed(1)}+base:${base}`; }
+                          else if (fr < threshold) { score = wG + base - penalty; formula = `G:${wG.toFixed(1)}+${base}-pen:${penalty}`; }
+                          else { const adj=(fr-neutral)*bonusPerStar; score = wG + base + adj; formula = `G:${wG.toFixed(1)}+${base}+(${fr.toFixed(1)}-${neutral})×${bonusPerStar}=${adj.toFixed(1)}`; }
                           return (
                           <div key={pi} style={{ padding: '6px 12px', borderBottom: '1px solid #f0fdf4', fontSize: '11px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                             {p.rank != null && <span style={{ color: '#6b7280', minWidth: '16px', fontSize: '10px' }}>#{p.rank}</span>}

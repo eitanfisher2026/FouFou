@@ -998,19 +998,44 @@
                     )}
                   </div>
                 </div>
-                {/* Color override for map markers — admin only */}
+                {/* Color override for map markers + delete — admin/editor only */}
                 {isUnlocked && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280' }}>{t('interests.mapColor') || 'צבע במפה:'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'nowrap' }}>
+                    {/* Delete — first in row */}
+                    {editingCustomInterest && isEditor && (() => {
+                      const inUseCount = customLocations.filter(loc => (loc.interests || []).includes(editingCustomInterest?.id)).length;
+                      const canDelete = isAdmin || inUseCount === 0;
+                      return canDelete ? (
+                        <button
+                          onClick={() => {
+                            if (newInterest.builtIn) {
+                              const msg = `${t('interests.deleteBuiltIn')} "${newInterest.label}"?`;
+                              showConfirm(msg, () => {
+                                if (isFirebaseAvailable && database) removeInterestConfig(editingCustomInterest.id);
+                                showToast(t('interests.builtInRemoved'), 'success');
+                                setShowAddInterestDialog(false); setEditingCustomInterest(null);
+                              }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+                            } else {
+                              showConfirm(`מחק "${newInterest.label}"?`, () => {
+                                setShowAddInterestDialog(false); setEditingCustomInterest(null);
+                                deleteCustomInterest(editingCustomInterest.id);
+                              }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
+                            }
+                          }}
+                          style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '4px', border: '1px solid #fca5a5', background: 'white', color: '#dc2626', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                        >{t("general.deleteInterest") || 'מחק תחום'}</button>
+                      ) : <span style={{ fontSize: '9px', color: '#9ca3af', flexShrink: 0 }} title={`${inUseCount} places`}>🔗{inUseCount}</span>;
+                    })()}
+                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#6b7280', whiteSpace: 'nowrap' }}>{t('interests.mapColor') || 'צבע:'}</span>
                     <input
                       type="color"
                       value={newInterest.color || window.BKK.getInterestColor(newInterest.id || '', allInterestOptions || [])}
                       onChange={e => setNewInterest({...newInterest, color: e.target.value})}
-                      style={{ width: '28px', height: '22px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', padding: 0 }}
+                      style={{ width: '28px', height: '22px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', padding: 0, flexShrink: 0 }}
                     />
                     {newInterest.color && (
                       <button onClick={() => setNewInterest({...newInterest, color: ''})}
-                        style={{ fontSize: '9px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>✕ auto</button>
+                        style={{ fontSize: '9px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                     )}
                     {newInterest.id && (
                       <button
@@ -1025,8 +1050,8 @@
                           setMapReturnPlace(null);
                           setShowMapModal(true);
                         }}
-                        style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '4px', background: '#f3e8ff', border: '1px solid #c084fc', color: '#7c3aed', cursor: 'pointer', fontWeight: 'bold', marginRight: 'auto' }}
-                      >🗺️ {t('wizard.showMap') || 'מפה'}</button>
+                        style={{ fontSize: '9px', padding: '2px 8px', borderRadius: '4px', background: '#f3e8ff', border: '1px solid #c084fc', color: '#7c3aed', cursor: 'pointer', fontWeight: 'bold', flexShrink: 0 }}
+                      >🗺️</button>
                     )}
                   </div>
                 )}
@@ -1164,7 +1189,7 @@
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '10px', color: '#92400e', marginBottom: '3px' }}>
-                        {window.BKK.i18n.currentLang === 'en' ? 'Min ratings (filtered out below)' : 'מינימום דירוגים (מסונן מתחת)'}
+                        {window.BKK.i18n.currentLang === 'en' ? 'Min ratings' : 'מינ׳ דירוגים'}
                       </label>
                       <input
                         type="number" min="0" max="10000"
@@ -1177,7 +1202,7 @@
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '10px', color: '#92400e', marginBottom: '3px' }}>
-                        {window.BKK.i18n.currentLang === 'en' ? 'Low ratings (deprioritized below)' : 'דירוגים נמוכים (מדורג נמוך מתחת)'}
+                        {window.BKK.i18n.currentLang === 'en' ? 'Low ratings' : 'דירוגים נמוכים'}
                       </label>
                       <input
                         type="number" min="0" max="10000"
@@ -1420,6 +1445,26 @@
                           ))}
                         </div>
                       </div>
+                      {isAdmin && (
+                        <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b' }}>Lock</div>
+                          <button type="button"
+                            onClick={async () => {
+                              const newLocked = !cfg.locked;
+                              const updCfg = { ...interestConfig, [interestId]: { ...cfg, locked: newLocked } };
+                              setInterestConfig(updCfg);
+                              if (isFirebaseAvailable && database) {
+                                database.ref(`settings/interestConfig/${interestId}/locked`).set(newLocked).catch(() => {});
+                                database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
+                              }
+                              showToast(`${newLocked ? '🔒' : '🔓'} ${tLabel(editingCustomInterest) || interestId}`, 'info');
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${cfg.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
+                            title={cfg.locked ? 'Locked' : 'Unlocked'}>
+                            {cfg.locked ? '🔒' : '✏️'}
+                          </button>
+                        </div>
+                      )}
                       <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '8px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>⭐ Places</div>
                         <div style={{ fontSize: '11px', fontWeight: 'bold', color: tagged.length > 0 ? '#059669' : '#94a3b8' }}>
@@ -1457,49 +1502,7 @@
                 </div>
                 )}
 
-                {/* Status toggle - locked (admin only) */}
-                {/* Actions: Enable/Disable + Delete (edit mode only) */}
-                {editingCustomInterest && isUnlocked && (
-                  <div className="border-t border-red-200 bg-red-50 px-4 py-2">
-                    <div className="flex gap-2">
-
-                      {isEditor && (() => {
-                        const inUseCount = customLocations.filter(loc => (loc.interests || []).includes(editingCustomInterest?.id)).length;
-                        const canDelete = isAdmin || inUseCount === 0;
-                        return canDelete ? (
-                        <button
-                          onClick={() => {
-                            if (newInterest.builtIn) {
-                              // Built-in interests: simple confirm + remove config only
-                              const msg = `${t('interests.deleteBuiltIn')} "${newInterest.label}"?`;
-                              showConfirm(msg, () => {
-                                if (isFirebaseAvailable && database) {
-                                  removeInterestConfig(editingCustomInterest.id);
-                                }
-                                showToast(t('interests.builtInRemoved'), 'success');
-                                setShowAddInterestDialog(false);
-                                setEditingCustomInterest(null);
-                              }, { confirmLabel: t('general.delete') || 'מחק', confirmColor: '#ef4444' });
-                            } else {
-                              // Custom interests: deleteCustomInterest handles its own confirm + full cleanup
-                              setShowAddInterestDialog(false);
-                              setEditingCustomInterest(null);
-                              deleteCustomInterest(editingCustomInterest.id);
-                            }
-                          }}
-                          className="flex-1 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
-                        >
-                          🗑️ {t("general.deleteInterest")}
-                        </button>
-                        ) : (
-                        <div className="flex-1 py-2 bg-gray-200 text-gray-500 rounded-lg text-xs font-bold text-center" title={`${inUseCount} ${t('route.places')}`}>
-                          🔗 {t('auth.inUseBy') || `בשימוש ${inUseCount} מקומות`}
-                        </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
+                {/* Delete button moved to map color row */}
               </div>
               
               {/* Footer */}
