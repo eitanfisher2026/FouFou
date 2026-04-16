@@ -255,13 +255,7 @@
                     {isRecording && recordingField === 'location_name' && interimText && (
                       <div style={{ marginTop: '4px', padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>🎤 {interimText}</div>
                     )}
-                    {isUnlocked && showEditLocationDialog && (
-                      <button type="button"
-                        onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
-                        className={`mt-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.dedupOk ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white text-gray-400'}`}
-                        title="Duplicate OK"
-                      >{newLocation.dedupOk ? '✓✓' : '✓'}</button>
-                    )}
+
                     {(() => {
                       const isOwnP = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
                       const canSearchEdit = !showEditLocationDialog || isAdmin || isEditor || (isOwnP && !editingLocation?.locked);
@@ -622,6 +616,38 @@
                     );
                   })()}
 
+                  {/* Status toggle + dedupOk — same row, below ratings */}
+                  {showEditLocationDialog && (() => {
+                    const canToggleStatus = isAdmin || isEditor ||
+                      (authUser?.uid && (editingLocation?.userId === authUser?.uid || editingLocation?.addedBy === authUser?.uid));
+                    if (!canToggleStatus && !isUnlocked) return null;
+                    const isApproved = !!newLocation.locked;
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingTop: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '600', flexShrink: 0 }}>
+                          {currentLang === 'he' ? 'סטטוס:' : 'Status:'}
+                        </span>
+                        {canToggleStatus && (
+                          <button type="button"
+                            onClick={() => setNewLocation({...newLocation, locked: !isApproved})}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s', border: isApproved ? '1.5px solid #16a34a' : '1.5px solid #f59e0b', background: isApproved ? '#f0fdf4' : '#fffbeb', color: isApproved ? '#15803d' : '#b45309' }}
+                            title={isApproved ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')}
+                          >
+                            {isApproved ? '✅' : '✕'}
+                            {isApproved ? (t('places.approved') || 'מאושר') : (t('places.draft') || 'טיוטה')}
+                          </button>
+                        )}
+                        {isUnlocked && (
+                          <button type="button"
+                            onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
+                            style={{ marginInlineStart: 'auto', display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s', border: newLocation.dedupOk ? '1.5px solid #16a34a' : '1.5px solid #d1d5db', background: newLocation.dedupOk ? '#f0fdf4' : '#f9fafb', color: newLocation.dedupOk ? '#15803d' : '#9ca3af' }}
+                            title={newLocation.dedupOk ? 'כפילות אושרה' : 'לא נבדק לכפילויות'}
+                          >{newLocation.dedupOk ? '✓ כפילות' : '✕ כפילות'}</button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                 </div>
 
                 {/* ── "פרטים נוספים" collapsible ── */}
@@ -690,18 +716,12 @@
                       {/* Edit-mode only: Google Info + Lock + Skip + Metadata */}
                       {showEditLocationDialog && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
-                          {/* Row 1: Google Info + Lock toggle */}
+                          {/* Row 1: Google Info */}
                           {(isAdmin || isEditor) && (
-                            <div className="flex gap-1.5 items-center">
-                              <button onClick={() => { setGooglePlaceInfo(null); fetchGooglePlaceInfo(newLocation); }}
-                                disabled={!newLocation.name?.trim() || loadingGoogleInfo}
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() && !loadingGoogleInfo ? 'bg-indigo-500 text-white hover:bg-indigo-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                              >🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}</button>
-                              <button type="button" onClick={() => setNewLocation({...newLocation, locked: !newLocation.locked})}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${newLocation.locked ? 'border-green-600 bg-green-600 text-white' : 'border-amber-300 bg-amber-50 text-amber-600'}`}
-                                title={newLocation.locked ? t('places.approved') || 'מאושר' : t('places.draft') || 'טיוטה'}
-                              >{newLocation.locked ? '🔒' : '✏️'}</button>
-                            </div>
+                            <button onClick={() => { setGooglePlaceInfo(null); fetchGooglePlaceInfo(newLocation); }}
+                              disabled={!newLocation.name?.trim() || loadingGoogleInfo}
+                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() && !loadingGoogleInfo ? 'bg-indigo-500 text-white hover:bg-indigo-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                            >🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}</button>
                           )}
                           {googlePlaceInfo && !googlePlaceInfo.notFound && (
                             <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
@@ -1955,74 +1975,43 @@
 
       {/* Manual Add Stop Dialog */}
       {showManualAddDialog && (() => {
-        const searchManualPlace = async () => {
-          const input = document.getElementById('manual-stop-input');
-          const resultsDiv = document.getElementById('manual-stop-results');
-          const q = input?.value?.trim();
-          if (!q || !resultsDiv) return;
-          
-          resultsDiv.innerHTML = '<p style="text-align:center;color:#9ca3af;font-size:12px;padding:8px">{t("general.searching")}...</p>';
-          
-          try {
-            const result = await window.BKK.geocodeAddress(q);
-            if (result) {
-              const display = result.displayName || result.address || q;
-              resultsDiv.innerHTML = '';
-              const btn = document.createElement('button');
-              btn.className = 'w-full p-3 text-right bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition';
-              btn.style.direction = 'rtl';
-              btn.innerHTML = `<div style="font-weight:bold;font-size:14px;color:#6d28d9">📍 ${display}</div><div style="font-size:10px;color:#6b7280;margin-top:2px">${result.lat.toFixed(5)}, ${result.lng.toFixed(5)}</div>`;
-              btn.onclick = () => {
-                const newStop = {
-                  name: display,
-                  lat: result.lat,
-                  lng: result.lng,
-                  description: `⭐ N/A`,
-                  address: result.address || display,
-                  duration: 45,
-                  interests: ['_manual'],
-                  manuallyAdded: true,
-                  googlePlace: false,
-                  rating: 0,
-                  ratingCount: 0
-                };
-                
-                // Check duplicates against current route
-                const isDup = route?.stops?.some(s => s.name.toLowerCase().trim() === newStop.name.toLowerCase().trim());
-                if (isDup) {
-                  showToast(`"${display}" ${t("places.alreadyInRoute")}`, 'warning');
-                  return;
-                }
-                
-                // Add to manualStops (session state)
-                setManualStops(prev => [...prev, newStop]);
-                
-                // Add to current route if exists
-                if (route) {
-                  setRoute(prev => prev ? {
-                    ...prev,
-                    stops: [...prev.stops, newStop],
-                    optimized: false
-                  } : prev);
-                  scheduleReoptimize();
-                }
-                
-                showToast(`➕ ${display} ${t("interests.added")} — ${t('general.addedManually') || 'נוסף לתחתית הרשימה'}`, 'success');
-                window.BKK.logEvent?.('manual_stop_added', { stop_name: display });
-                
-                // Clear input for next add
-                const inp = document.getElementById('manual-stop-input');
-                if (inp) inp.value = '';
-                resultsDiv.innerHTML = '<p style="text-align:center;color:#16a34a;font-size:12px;padding:8px">✅ Added! You can add more or close</p>';
-              };
-              resultsDiv.appendChild(btn);
-            } else {
-              resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ No results found</p>';
-            }
-          } catch (err) {
-            console.error('[MANUAL_ADD] Search error:', err);
-            resultsDiv.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:12px;padding:8px">❌ Search error</p>';
+        const searchManualPlace = () => {
+          const inp = document.getElementById('manual-stop-input');
+          const q = inp?.value?.trim();
+          if (q) searchManualForDialog(q);
+        };
+
+        const addManualStop = (result) => {
+          const display = result.name;
+          const newStop = {
+            name: display,
+            lat: result.lat,
+            lng: result.lng,
+            description: result.rating ? `⭐ ${result.rating}` : '⭐ N/A',
+            address: result.address || display,
+            duration: 45,
+            interests: ['_manual'],
+            manuallyAdded: true,
+            googlePlace: !!result.googlePlaceId,
+            googlePlaceId: result.googlePlaceId || null,
+            rating: result.rating || 0,
+            ratingCount: result.ratingCount || 0
+          };
+          const isDup = route?.stops?.some(s => s.name.toLowerCase().trim() === newStop.name.toLowerCase().trim());
+          if (isDup) {
+            showToast(`"${display}" ${t('places.alreadyInRoute')}`, 'warning');
+            return;
           }
+          setManualStops(prev => [...prev, newStop]);
+          if (route) {
+            setRoute(prev => prev ? { ...prev, stops: [...prev.stops, newStop], optimized: false } : prev);
+            scheduleReoptimize();
+          }
+          showToast(`➕ ${display} ${t('interests.added')} — ${t('general.addedManually') || 'נוסף לתחתית הרשימה'}`, 'success');
+          window.BKK.logEvent?.('manual_stop_added', { stop_name: display });
+          const inp = document.getElementById('manual-stop-input');
+          if (inp) inp.value = '';
+          setManualSearchResults(null);
         };
         
         return (
@@ -2032,7 +2021,7 @@
               <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-sm font-bold">{t("route.addManualStop")}</h3>
                 <button
-                  onClick={() => setShowManualAddDialog(false)}
+                  onClick={() => { setShowManualAddDialog(false); setManualSearchResults(null); }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >
                   ✕
@@ -2087,8 +2076,71 @@
                   </div>
                 )}
                 
-                {/* Results container */}
-                <div id="manual-stop-results" className="space-y-2 max-h-60 overflow-y-auto"></div>
+                {/* Multi-result dropdown — same structure as point search, purple theme */}
+                {manualSearchResults !== null && (
+                  <div style={{ border: '1.5px solid #d8b4fe', borderRadius: '10px', overflow: 'hidden', background: 'white', boxShadow: '0 4px 12px rgba(109,40,217,0.10)', maxHeight: '240px', overflowY: 'auto' }}>
+                    {/* Loading */}
+                    {Array.isArray(manualSearchResults) && manualSearchResults.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '12px', color: '#9ca3af', fontSize: '12px' }}>⏳ {t('general.searching')}...</div>
+                    )}
+                    {/* Two-group results */}
+                    {manualSearchResults && !Array.isArray(manualSearchResults) && (() => {
+                      const { favorites, google } = manualSearchResults;
+                      const isRTL = window.BKK.i18n.isRTL();
+                      const handleRowClick = (result, isFav) => {
+                        if (!isFav && result.googlePlaceId) {
+                          const matchedFav = (customLocations || []).find(cl =>
+                            cl.googlePlaceId && cl.googlePlaceId === result.googlePlaceId
+                          );
+                          if (matchedFav) {
+                            const msg = currentLang === 'he'
+                              ? `"${matchedFav.name}" קיים במועדפים. להשתמש בו?`
+                              : `"${matchedFav.name}" is in your favorites. Use it?`;
+                            showConfirm(msg,
+                              () => addManualStop({ name: matchedFav.name, lat: matchedFav.lat, lng: matchedFav.lng, address: matchedFav.address, rating: matchedFav.googleRating, ratingCount: matchedFav.googleRatingCount, googlePlaceId: matchedFav.googlePlaceId, isFavorite: true }),
+                              { confirmLabel: currentLang === 'he' ? '⭐ כן, השתמש במועדף' : '⭐ Yes, use favorite', confirmColor: '#2563eb', cancelLabel: currentLang === 'he' ? 'לא, גוגל' : 'No, Google', onCancel: () => addManualStop(result) }
+                            );
+                            return;
+                          }
+                        }
+                        addManualStop(result);
+                      };
+                      const renderRow = (result, idx, arr, isFav) => (
+                        <button key={idx}
+                          onClick={() => handleRowClick(result, isFav)}
+                          style={{ width: '100%', textAlign: isRTL ? 'right' : 'left', padding: '8px 12px', cursor: 'pointer', background: 'none', border: 'none', borderBottom: idx < arr.length - 1 ? '1px solid #f5f3ff' : 'none', direction: isRTL ? 'rtl' : 'ltr', display: 'block' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f5f3ff'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: isFav ? '#6d28d9' : '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {isFav ? '⭐' : '📍'} {result.name}
+                            {isFav && <img src="icon-32x32.png" alt="FouFou" style={{ width: '14px', height: '14px', flexShrink: 0, opacity: 0.8 }} />}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '1px' }}>{result.address}{result.rating ? ` · ⭐ ${result.rating}` : ''}</div>
+                        </button>
+                      );
+                      return (
+                        <>
+                          {favorites.length > 0 && (
+                            <>
+                              <div style={{ padding: '4px 12px', background: '#f5f3ff', fontSize: '10px', fontWeight: '700', color: '#6d28d9', borderBottom: '1px solid #d8b4fe' }}>
+                                {currentLang === 'he' ? '⭐ מהמועדפים שלך' : '⭐ Your favorites'}
+                              </div>
+                              {favorites.map((r, i) => renderRow(r, i, favorites, true))}
+                            </>
+                          )}
+                          {google.length > 0 && (
+                            <>
+                              <div style={{ padding: '4px 12px', background: '#faf5ff', fontSize: '10px', fontWeight: '700', color: '#7c3aed', borderBottom: '1px solid #e9d5ff', borderTop: favorites.length > 0 ? '1px solid #e9d5ff' : 'none' }}>
+                                {currentLang === 'he' ? '🔍 מגוגל' : '🔍 From Google'}
+                              </div>
+                              {google.map((r, i) => renderRow(r, i, google, false))}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           </div>

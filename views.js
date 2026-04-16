@@ -285,7 +285,7 @@
           }}>
             {[
               { icon: '🗺️', label: t('nav.route'), view: 'form' },
-              { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: cityCustomLocations.filter(l => l.status !== 'blacklist').length },
+              { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: groupedPlaces.activeCount },
               { icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 const aStatus = o.adminStatus || 'active';
                 if (aStatus === 'hidden') return false;
@@ -1020,8 +1020,8 @@
                                             if (matchedFav) {
                                               // Ask user — different name, same place
                                               const msg = currentLang === 'he'
-                                                ? `"${matchedFav.name}" שמור אצלך במועדפים — להשתמש בגרסה שלך?`
-                                                : `"${matchedFav.name}" is in your favorites — use your saved version?`;
+                                                ? `"${matchedFav.name}" קיים במועדפים. להשתמש בו?`
+                                                : `"${matchedFav.name}" is in your favorites. Use it?`;
                                               showConfirm(msg,
                                                 () => applyResult({ name: matchedFav.name, lat: matchedFav.lat, lng: matchedFav.lng, googlePlaceId: matchedFav.googlePlaceId || result.googlePlaceId, isFavorite: true }),
                                                 { confirmLabel: currentLang === 'he' ? '⭐ כן, השתמש במועדף' : '⭐ Yes, use favorite', confirmColor: '#2563eb', cancelLabel: currentLang === 'he' ? 'לא, גוגל' : 'No, Google', onCancel: () => applyResult(result, true) }
@@ -1183,7 +1183,7 @@
                         border: canSearch ? '2px solid #22c55e' : '2px solid #d1d5db',
                         background: canSearch ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#f3f4f6',
                         color: canSearch ? '#15803d' : '#9ca3af', fontSize: '16px', fontWeight: 'bold' }}
-                    >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${formData.maxStops || 10})` : `⏳ ${t('general.loading')}...`}</button>
+                    >{isDataLoaded ? `🔍 ${t('wizard.findPlaces')} (${t('general.upTo') || 'עד'} ${formData.maxStops || 10})` : `⏳ ${t('general.loading')}...`}</button>
                   );
                 })()}
               </div>
@@ -2430,7 +2430,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center gap-2 mb-3" style={{ flexWrap: 'nowrap' }}>
               <h2 className="text-lg font-bold" style={{ flexShrink: 0 }}>{`⭐ ${t("nav.favorites")}`}</h2>
-              <span style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>({cityCustomLocations.filter(l => l.status !== 'blacklist').length})</span>
+              <span style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>({groupedPlaces.activeCount})</span>
               {isUnlocked && customLocations.length > 1 && (
                 <div style={{ display: 'flex', gap: '4px' }}>
                   <button onClick={() => scanAllDuplicates(false)}
@@ -5056,9 +5056,14 @@
                   {mapMode === 'areas' ? t('wizard.allAreasMap') : mapMode === 'stops' ? `${t('route.showStopsOnMap')} (${mapStops.length})` : mapMode === 'favorites' ? `⭐ ${t('nav.favorites')}` : t('form.searchRadius')}
                 </h3>
                 {mapMode === 'favorites' && (() => {
+                  const _mapAnon = !authUser || authUser.isAnonymous;
+                  const _mapUid = authUser?.uid;
                   const activeCount = customLocations.filter(loc => {
                     if (loc.status === 'blacklist' || !loc.lat || !loc.lng) return false;
-                    if (window.BKK.systemParams?.includeDrafts === false && !loc.locked) return false;
+                    if (!loc.locked) {
+                      if (isUnlocked) { if (window.BKK.systemParams?.includeDrafts === false) return false; }
+                      else { if (_mapAnon || !_mapUid || loc.addedBy !== _mapUid) return false; }
+                    }
                     if (mapFavArea) { const la = loc.areas || (loc.area ? [loc.area] : []); if (!la.includes(mapFavArea)) return false; }
                     if (mapFavFilter.size > 0) { if (!(loc.interests || []).some(i => mapFavFilter.has(i))) return false; }
                     return true;
@@ -5162,8 +5167,17 @@
                         <div style={{ marginBottom: '14px' }}>
                           <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', color: '#374151' }}>🔎 {t('places.searchPlace') || 'חפש מקום'}</div>
                           {(() => {
-                            const sd = window.BKK.systemParams?.includeDrafts !== false;
-                            const searchable = customLocations.filter(l => l.lat && l.lng && l.status !== 'blacklist' && (sd || l.locked));
+                            const _srchAnon = !authUser || authUser.isAnonymous;
+                            const _srchUid = authUser?.uid;
+                            const searchable = customLocations.filter(l => {
+                              if (!l.lat || !l.lng || l.status === 'blacklist') return false;
+                              if (!l.locked) {
+                                if (isUnlocked) { return window.BKK.systemParams?.includeDrafts !== false; }
+                                if (_srchAnon || !_srchUid) return false;
+                                return l.addedBy === _srchUid;
+                              }
+                              return true;
+                            });
                             return (
                               <div>
                                 <input

@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.22.54
+// FouFou app-data.js v3.22.65
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -119,6 +119,7 @@ general: {
   appName: 'FouFou',
   city: 'עיר',
   all: 'כל',
+  upTo: 'עד',
   allCity: 'כל העיר',
   me: 'אני',
   viewImage: 'הצג תמונה',
@@ -1237,6 +1238,7 @@ general: {
   appName: 'FouFou',
   city: 'City',
   all: 'All',
+  upTo: 'up to',
   allCity: 'Entire city',
   me: 'Me',
   menu: 'Menu',
@@ -3511,7 +3513,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.22.54';
+window.BKK.VERSION = '3.22.65';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -4076,6 +4078,23 @@ window.BKK.getInterestColor = (interestId, allInterests) => {
   if (window.BKK.INTEREST_COLORS[interestId]) return window.BKK.INTEREST_COLORS[interestId];
   const idx = allInterests.findIndex(i => i.id === interestId);
   return window.BKK.generateInterestColor(idx >= 0 ? idx : 0, allInterests.length);
+};
+
+// ============================================================================
+// ============================================================================
+window.BKK.pickDominantInterest = (ids, allInts) => {
+  if (!ids || ids.length === 0) return null;
+  if (ids.length === 1) return ids[0];
+  const set = new Set(ids);
+  const children = ids.filter(id =>
+    allInts.some(o => set.has(o.id) && o.id !== id && (o.dedupRelated || []).includes(id))
+  );
+  const ordered = allInts.map(o => o.id).filter(id => set.has(id));
+  if (children.length > 0) {
+    const winner = ordered.find(id => children.includes(id));
+    if (winner) return winner;
+  }
+  return ordered[0] || ids[0];
 };
 
 // ============================================================================
