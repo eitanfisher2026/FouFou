@@ -2432,14 +2432,9 @@
               <h2 className="text-lg font-bold" style={{ flexShrink: 0 }}>{`⭐ ${t("nav.favorites")}`}</h2>
               <span style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0 }}>({groupedPlaces.activeCount})</span>
               {isUnlocked && customLocations.length > 1 && (
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button onClick={() => scanAllDuplicates(false)}
-                    style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                    title={t('dedup.scanByInterest')}>🔍</button>
-                  <button onClick={() => scanAllDuplicates(true)}
-                    style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                    title={t('dedup.scanCoordsButton')}>📐</button>
-                </div>
+                <button onClick={() => scanAllDuplicates()}
+                  style={{ padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', background: 'linear-gradient(135deg, #f59e0b, #8b5cf6)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }}
+                  title={t('dedup.scanByInterest')}>🔍📐 {currentLang === 'he' ? 'כפילויות' : 'Dupes'}</button>
               )}
               <div style={{ marginInlineStart: 'auto', display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0 }}>
                 {authUser && !authUser.isAnonymous && !isUnlocked && (() => {
@@ -2453,15 +2448,7 @@
                     >{isFiltered ? '👤 אני' : '👤 הכל'}</button>
                   );
                 })()}
-                {isAdmin && (
-                  <>
-                    <input type="file" accept=".json" id="importDataFav" className="hidden"
-                      onChange={(e) => { parseImportFile(e.target.files?.[0]); e.target.value = ''; }} />
-                    <label htmlFor="importDataFav"
-                      style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', cursor: 'pointer', display: 'inline-block' }}
-                    >📥</label>
-                  </>
-                )}
+
               </div>
             </div>
             {renderContextHint('hint_favorites')}
@@ -3039,14 +3026,6 @@
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🔧 פרמטרים</button>
-              {debugMode && (
-              <button
-                onClick={() => setSettingsTab('debug')}
-                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
-                  settingsTab === 'debug' ? 'bg-gray-800 text-yellow-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >🐛 {debugSessions.length > 0 ? `דיבאג (${debugSessions.length})` : 'דיבאג'}</button>
-              )}
             </div>
 
             {/* ===== CITIES & AREAS TAB ===== */}
@@ -3780,56 +3759,6 @@
               </div>
             </div>
 
-            {/* Voice & Speech Rate */}
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-2">
-                <h3 className="text-sm font-bold text-gray-800 mb-2">{`🔊 ${t('settings.voiceSelect')}`}</h3>
-                {ttsVoices.length > 0 && (
-                <select
-                  value={selectedVoice}
-                  onChange={(e) => {
-                    setSelectedVoice(e.target.value);
-                    localStorage.setItem('foufou_tts_voice', e.target.value);
-                    if (window.speechSynthesis) {
-                      window.speechSynthesis.cancel();
-                      const u = new SpeechSynthesisUtterance(window.BKK.i18n.currentLang === 'en' ? 'Hello, this is FouFou' : 'שלום, זה פופו');
-                      const voice = ttsVoices.find(v => v.name === e.target.value);
-                      if (voice) u.voice = voice;
-                      u.lang = window.BKK.i18n.currentLang === 'en' ? 'en-US' : 'he-IL';
-                      u.rate = systemParams.speechRate || 1.0;
-                      window.speechSynthesis.speak(u);
-                    }
-                  }}
-                  style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '12px', direction: 'ltr', marginBottom: '8px' }}
-                >
-                  <option value="">{t('settings.defaultVoice')}</option>
-                  {ttsVoices.filter(v => v.lang === 'he-IL' || v.lang === 'en-US' || v.lang === 'en-GB').map(v => (
-                    <option key={v.name} value={v.name}>{v.name} {v.localService ? '' : '☁️'}</option>
-                  ))}
-                </select>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                  <span className="text-xs font-bold text-gray-600">{`⏩ ${t('settings.speechRate')}:`}</span>
-                  {[0.7, 0.85, 1.0, 1.2, 1.5].map(rate => (
-                    <button key={rate}
-                      onClick={() => {
-                        const updated = { ...systemParams, speechRate: rate };
-                        window.BKK.systemParams = updated;
-                        setSystemParams(updated);
-                        saveSpeechRate(rate);
-                      }}
-                      style={{
-                        padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
-                        border: (systemParams.speechRate || 1.0) === rate ? '2px solid #7c3aed' : '1px solid #d1d5db',
-                        background: (systemParams.speechRate || 1.0) === rate ? '#ede9fe' : 'white',
-                        color: (systemParams.speechRate || 1.0) === rate ? '#7c3aed' : '#6b7280'
-                      }}
-                    >{rate}x</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             
             {/* Refresh Data Button */}
             <div className="mb-3">
@@ -4146,287 +4075,6 @@
                     </ul>
                   </div>
 
-                  {/* Export Schema for AI agents */}
-                  <button
-                    onClick={() => {
-                      try {
-                        const allInterests = allInterestOptions || [];
-                        const schema = {
-                          _description: "FouFou Places Import Schema — use this to generate places for import",
-                          _instructions: "Generate a JSON file with a 'customLocations' array (or just a plain JSON array). Each item is a place. The importer auto-maps Hebrew field names (שם המקום→name, תיאור→description, כתובת→address, קטגוריה→notes). Coordinates (lat/lng) are recommended but optional. Interests array is optional — places can be assigned to interests manually after import.",
-                          cityId: selectedCityId,
-                          cityName: tLabel((window.BKK.cities || {})[selectedCityId]) || selectedCityId,
-                          placeFormat: {
-                            name: { type: "string", required: true, description: "Place name (Hebrew or English)" },
-                            description: { type: "string", required: false, description: "Short description of the place" },
-                            notes: { type: "string", required: false, description: "Personal notes or tips" },
-                            lat: { type: "number", required: true, description: "Latitude coordinate" },
-                            lng: { type: "number", required: true, description: "Longitude coordinate" },
-                            address: { type: "string", required: false, description: "Street address" },
-                            mapsUrl: { type: "string", required: false, description: "Google Maps URL" },
-                            interests: { type: "array of strings", required: false, description: "Interest IDs from the availableInterests list. Can be empty — places without interests can be assigned later." },
-                            areas: { type: "array of strings", required: false, description: "Area IDs from the availableAreas list. If empty, will be auto-detected from coordinates." },
-                          },
-                          availableInterests: allInterests.map(i => ({
-                            id: i.id,
-                            label: i.label || i.name,
-                            labelEn: i.labelEn || '',
-                            icon: i.icon?.startsWith?.('data:') ? '(custom image)' : (i.icon || ''),
-                          })),
-                          availableAreas: (window.BKK.areaOptions || []).map(a => ({
-                            id: a.id,
-                            label: a.label,
-                            labelEn: a.labelEn || '',
-                            ...(window.BKK.areaCoordinates?.[a.id] ? {
-                              center: { lat: window.BKK.areaCoordinates[a.id].lat, lng: window.BKK.areaCoordinates[a.id].lng },
-                              radiusMeters: window.BKK.areaCoordinates[a.id].radius || 1500
-                            } : {})
-                          })),
-                          examplePlace: {
-                            name: "Example Cafe",
-                            description: "Cozy corner cafe with great espresso",
-                            notes: "Best visited in the morning",
-                            lat: 13.7563,
-                            lng: 100.5018,
-                            address: "123 Sukhumvit Soi 11, Bangkok",
-                            interests: allInterests.length > 0 ? [allInterests[0].id] : [],
-                            areas: (window.BKK.areaOptions || []).length > 0 ? [(window.BKK.areaOptions[0]).id] : []
-                          },
-                          exampleImportFile: {
-                            customLocations: [
-                              {
-                                name: "Example Cafe",
-                                description: "Cozy corner cafe",
-                                lat: 13.7563,
-                                lng: 100.5018,
-                                interests: allInterests.length > 0 ? [allInterests[0].id] : [],
-                                areas: (window.BKK.areaOptions || []).length > 0 ? [(window.BKK.areaOptions[0]).id] : []
-                              }
-                            ]
-                          },
-                          exampleMinimalFile: [
-                            { "שם המקום": "בית קפה לדוגמה", "תיאור": "בית קפה נעים", "קטגוריה": "קפה" },
-                            { "שם המקום": "מסעדה לדוגמה", "תיאור": "אוכל מצוין", "קטגוריה": "אוכל" }
-                          ],
-                          acceptedFieldAliases: {
-                            "name": ["שם המקום", "שם", "place", "title"],
-                            "description": ["תיאור", "desc"],
-                            "notes": ["הערות", "tip", "tips"],
-                            "address": ["כתובת", "location"],
-                            "interests": ["תחומים", "tags"],
-                            "areas": ["אזור", "אזורים", "area"],
-                            "_category→notes": ["קטגוריה", "category", "type", "סוג"]
-                          }
-                        };
-                        const dataStr = JSON.stringify(schema, null, 2);
-                        const blob = new Blob([dataStr], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `foufou-schema-${selectedCityId}-${new Date().toISOString().split('T')[0]}.json`;
-                        link.click();
-                        URL.revokeObjectURL(url);
-                        showToast(`📋 Schema exported (${allInterests.length} interests, ${(window.BKK.areaOptions || []).length} areas)`, 'success');
-                      } catch (e) {
-                        console.error('[SCHEMA]', e);
-                        showToast('Error exporting schema', 'error');
-                      }
-                    }}
-                    style={{
-                      width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold',
-                      cursor: 'pointer', border: '1.5px solid #d1d5db', background: '#f9fafb', color: '#374151',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                    }}
-                  >📋 {t('settings.exportSchema') || 'Export Schema (for AI)'}</button>
-                  
-                  {/* Firebase Cleanup (Admin only) */}
-                  {true && (
-                    <div className="mt-3 border-t border-red-200 pt-3">
-                      <p className="text-xs font-bold text-red-700 mb-2">🔧 Firebase Admin Tools</p>
-                      <div className="space-y-2">
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm('Clean up stale _verify nodes and check database sizes?')) return;
-                            try {
-                              showToast('🔧 Running cleanup...', 'info');
-                              const result = await window.BKK.cleanupFirebase(database);
-                              if (result) {
-                                const msg = `Cleaned ${result.verifyRemoved} _verify nodes. ` + 
-                                  (result.nodes || []).map(n => `${n.node}: ${n.count} entries (~${n.sizeKB}KB)`).join(', ');
-                                showToast(`✅ ${msg}`, 'success', 'sticky');
-                              }
-                            } catch (e) {
-                              showToast(`❌ Cleanup failed: ${e.message}`, 'error');
-                            }
-                          }}
-                          className="w-full bg-red-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-red-600 transition"
-                        >
-                          🧹 Clean _verify nodes + check sizes
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (!window.confirm('Mark migration as completed? Only use if data is already in per-city structure.')) return;
-                            localStorage.setItem('locations_migrated_v2', 'true');
-                            showToast('✅ Migration marked as completed', 'success');
-                          }}
-                          className="w-full bg-orange-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-orange-600 transition"
-                        >
-                          ✅ Mark migration done (skip re-run)
-                        </button>
-
-                        <button
-                          onClick={async () => {
-                            if (!window.confirm('Delete ALL old accessLog entries? (replaced by accessStats)')) return;
-                            try {
-                              await clearAccessLog();
-                              showToast('✅ Old accessLog deleted', 'success');
-                            } catch (e) {
-                              showToast(`❌ Failed: ${e.message}`, 'error');
-                            }
-                          }}
-                          className="w-full bg-yellow-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-yellow-600 transition"
-                        >
-                          🗑️ Delete old accessLog data
-                        </button>
-
-                        {/* Geo Cleanup — remove locations outside this city's bounds */}
-                        <div className="mt-3 border-t border-red-300 pt-3">
-                          <p className="text-xs font-bold text-red-800 mb-2">🗺️ Geo Cleanup — wrong-city locations</p>
-                          <button
-                            onClick={async () => {
-                              const city = window.BKK.selectedCity;
-                              const cityId = selectedCityId;
-                              const center = city.center;
-                              const maxRadius = (city.allCityRadius || 20000) * 1.5;
-                              if (!center?.lat || !center?.lng) { showToast('No city center coords', 'error'); return; }
-                              const outliers = customLocations.filter(loc => {
-                                if (!loc.lat || !loc.lng) return false;
-                                const R = 6371e3;
-                                const r1 = center.lat * Math.PI / 180;
-                                const r2 = loc.lat * Math.PI / 180;
-                                const dLat = (loc.lat - center.lat) * Math.PI / 180;
-                                const dLng = (loc.lng - center.lng) * Math.PI / 180;
-                                const a = Math.sin(dLat/2)**2 + Math.cos(r1)*Math.cos(r2)*Math.sin(dLng/2)**2;
-                                const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                                return dist > maxRadius;
-                              });
-                              const noName = customLocations.filter(loc => loc.name?.startsWith('(no name)'));
-                              const seen = new Set();
-                              const toDelete = [...outliers, ...noName].filter(l => { if (seen.has(l.firebaseId)) return false; seen.add(l.firebaseId); return true; });
-                              if (toDelete.length === 0) { showToast('No out-of-city locations found!', 'success'); return; }
-                              const preview = toDelete.slice(0, 5).map(l => `• ${l.name} (${l.lat?.toFixed(3)}, ${l.lng?.toFixed(3)})`).join('\n');
-                              const msg = `Found ${toDelete.length} locations outside ${city.nameEn}:\n${preview}${toDelete.length > 5 ? `\n... +${toDelete.length-5} more` : ''}\n\nMax radius: ${(maxRadius/1000).toFixed(1)}km\n\nDelete all ${toDelete.length}?`;
-                              if (!window.confirm(msg)) return;
-                              try {
-                                showToast((t('toast.cleanupDeleting') || 'Deleting {count}...').replace('{count}', toDelete.length), 'info');
-                                const batch = {};
-                                toDelete.forEach(loc => {
-                                  if (loc.firebaseId) {
-                                    batch[`cities/${cityId}/locations/${loc.firebaseId}`] = null;
-                                    const pk = loc.name?.replace(/[.#$\/\[\]]/g, '_');
-                                    if (pk && !pk.startsWith('(no name)')) batch[`cities/${cityId}/reviews/${pk}`] = null;
-                                  }
-                                });
-                                if (Object.keys(batch).length > 0) await saveBulkUpdate(batch);
-                                setCustomLocations(prev => prev.filter(l => !toDelete.find(d => d.firebaseId === l.firebaseId)));
-                                showToast((t('toast.cleanupDeleted') || 'Deleted {count} wrong-city locations').replace('{count}', toDelete.length), 'success', 'sticky');
-                                console.log(`[CLEANUP] Geo-deleted ${toDelete.length} outliers from ${cityId}`);
-                              } catch(e) { showToast(`Cleanup failed: ${e.message}`, 'error'); }
-                            }}
-                            className="w-full bg-red-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-red-800 transition"
-                          >
-                            🗺️ Delete locations outside city bounds
-                          </button>
-                          <p className="text-[10px] text-gray-400 mt-1">
-                            Removes favorites outside this city's geographic radius (allCityRadius × 1.5). Also removes (no name) entries.
-                          </p>
-                        </div>
-
-                        {/* URL Health Check */}
-                        <div className="mt-3 border-t border-gray-200 pt-3">
-                          <p className="text-xs font-bold text-blue-700 mb-2">🔗 URL Health Check</p>
-                          <button
-                            onClick={() => {
-                              const isValidPid = (pid) => pid && /^(ChIJ|EiI|GhIJ)/.test(pid);
-                              // Firebase Realtime DB push keys always start with '-' (e.g. -Mxyz123abc)
-                              // Other corrupt patterns: or_xyz (seen in West Eden case)
-                              const looksLikeFirebaseKey = (val) => val && (
-                                /^-[a-zA-Z0-9_-]{10,}$/.test(val) ||   // standard push key: -Mxyz...
-                                /^or_[a-zA-Z0-9_-]{5,}$/.test(val)     // or_ prefix pattern
-                              );
-                              const results = [];
-                              customLocations.forEach(loc => {
-                                const url = loc.mapsUrl || '';
-                                if (!url) return; // No URL — not a problem, skip
-                                // Check query_place_id param
-                                const mPid = url.match(/query_place_id=([^&]+)/);
-                                if (mPid) {
-                                  const pid = decodeURIComponent(mPid[1]);
-                                  if (!isValidPid(pid)) {
-                                    results.push({ loc, reason: `bad query_place_id: ${pid.substring(0, 25)}` });
-                                    return;
-                                  }
-                                }
-                                // Check query param — if it looks like a Firebase key, it's corrupt
-                                const mQuery = url.match(/[?&]query=([^&]+)/);
-                                if (mQuery) {
-                                  const q = decodeURIComponent(mQuery[1]);
-                                  if (looksLikeFirebaseKey(q)) {
-                                    results.push({ loc, reason: `query param is a Firebase key: ${q.substring(0, 25)}` });
-                                    return;
-                                  }
-                                }
-                                if (!url.includes('google.com/maps')) {
-                                  results.push({ loc, reason: 'not a Google Maps URL' });
-                                }
-                              });
-
-                              if (results.length === 0) {
-                                showToast('✅ All mapsUrls look valid!', 'success');
-                                return;
-                              }
-
-                              // Show results as a toast + console
-                              const lines = results.map(r => `• ${r.loc.name} (${r.reason})`).join('\n');
-                              console.warn('[URL-CHECK] Bad mapsUrls found:\n' + lines);
-                              showToast(
-                                `⚠️ ${results.length} bad URL${results.length > 1 ? 's' : ''} found — see console for details`,
-                                'warning', 'sticky'
-                              );
-
-                              // Open edit dialog for first bad location
-                              const first = results[0].loc;
-                              setEditingLocation(first);
-                              setNewLocation({
-                                name: first.name || '',
-                                description: first.description || '',
-                                notes: first.notes || '',
-                                areas: first.areas || (first.area ? [first.area] : []),
-                                interests: first.interests || [],
-                                lat: first.lat || null,
-                                lng: first.lng || null,
-                                address: first.address || '',
-                                mapsUrl: first.mapsUrl || '',
-                                uploadedImage: first.uploadedImage || null,
-                                locked: !!first.locked,
-                                googlePlaceId: first.googlePlaceId || '',
-                                googleRating: first.googleRating || null,
-                                googleRatingCount: first.googleRatingCount || 0,
-                                googlePlace: !!first.googlePlace,
-                              });
-                              setShowEditLocationDialog(true);
-                            }}
-                            className="w-full bg-blue-500 text-white py-1.5 px-3 rounded-lg text-xs font-bold hover:bg-blue-600 transition"
-                          >
-                            🔍 Check all mapsUrls
-                          </button>
-                          <p className="text-[10px] text-gray-400 mt-1">
-                            Finds locations with invalid query_place_id. Opens first bad one for editing — use "מידע מגוגל" to fix.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -4434,7 +4082,6 @@
             </div>)}
 
             {/* ===== INTERESTS TAB ===== */}
-            {settingsTab === 'interests' && (() => { if(debugMode){addDebugLog('INTEREST',`Settings/Interests tab: customInterests.length=${customInterests.length}`);} return null; })()}
             {settingsTab === 'interests' && (() => {
                             const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
                 const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
@@ -4982,23 +4629,6 @@
 
 
 
-            {/* ===== DEBUG TAB ===== */}
-            {settingsTab === 'debug' && debugMode && (
-              <DebugTab
-                debugSessions={debugSessions}
-                searchDebugLog={searchDebugLog}
-                debugFlagged={debugFlagged}
-                debugCategories={debugCategories}
-                debugClaudeQ={debugClaudeQ}
-                setDebugClaudeQ={setDebugClaudeQ}
-                toggleDebugCategory={toggleDebugCategory}
-                toggleDebugFlag={toggleDebugFlag}
-                exportDebugSessions={exportDebugSessions}
-                clearDebugSessions={clearDebugSessions}
-                exportFlaggedStops={exportFlaggedStops}
-                askClaude={askClaude}
-              />
-            )}
             
           </div>
         )}

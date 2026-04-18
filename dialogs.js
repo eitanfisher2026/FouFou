@@ -265,7 +265,7 @@
                             onClick={() => searchPlacesByName(newLocation.name)}
                             disabled={!newLocation.name?.trim()}
                             className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                          >🔍 {t("form.searchPlaceGoogle")}</button>
+                          >🔍 {t('form.searchPlaceGoogle')}</button>
                         </div>
                       ) : null;
                     })()}
@@ -298,6 +298,19 @@
                               }
                               setNewLocation(updatedLoc);
                               setLocationSearchResults(null);
+                              // Auto-populate Google Info from search result (types already in FieldMask — no extra API call)
+                              if (isUnlocked && (result.types || result.primaryType)) {
+                                setGooglePlaceInfo({
+                                  name: result.name,
+                                  address: result.address,
+                                  types: result.types || [],
+                                  primaryType: result.primaryType || null,
+                                  primaryTypeDisplayName: result.primaryTypeDisplayName || null,
+                                  rating: result.rating,
+                                  ratingCount: result.ratingCount,
+                                  googlePlaceId: result.googlePlaceId
+                                });
+                              }
                               showToast(`✅ ${result.name} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
                             }}
                             style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
@@ -639,7 +652,15 @@
                         )}
                         {isUnlocked && (
                           <button type="button"
-                            onClick={() => setNewLocation({...newLocation, dedupOk: !newLocation.dedupOk})}
+                            onClick={() => {
+                              const newVal = !newLocation.dedupOk;
+                              setNewLocation({...newLocation, dedupOk: newVal});
+                              setEditingLocation(prev => prev ? { ...prev, dedupOk: newVal } : prev);
+                              setCustomLocations(prev => prev.map(l => l.id === editingLocation?.id ? { ...l, dedupOk: newVal } : l));
+                              if (editingLocation?.firebaseKey && isFirebaseAvailable && database) {
+                                database.ref(`cities/${selectedCityId}/locations/${editingLocation.firebaseKey}`).update({ dedupOk: newVal });
+                              }
+                            }}
                             style={{ marginInlineStart: 'auto', display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s', border: newLocation.dedupOk ? '1.5px solid #16a34a' : '1.5px solid #d1d5db', background: newLocation.dedupOk ? '#f0fdf4' : '#f9fafb', color: newLocation.dedupOk ? '#15803d' : '#9ca3af' }}
                             title={newLocation.dedupOk ? 'כפילות אושרה' : 'לא נבדק לכפילויות'}
                           >{newLocation.dedupOk ? '✓ כפילות' : '✕ כפילות'}</button>
@@ -716,13 +737,7 @@
                       {/* Edit-mode only: Google Info + Lock + Skip + Metadata */}
                       {showEditLocationDialog && (
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 space-y-1.5" style={{ position: 'relative', zIndex: 15 }}>
-                          {/* Row 1: Google Info */}
-                          {(isAdmin || isEditor) && (
-                            <button onClick={() => { setGooglePlaceInfo(null); fetchGooglePlaceInfo(newLocation); }}
-                              disabled={!newLocation.name?.trim() || loadingGoogleInfo}
-                              className={`w-full py-1.5 rounded-lg text-xs font-bold ${newLocation.name?.trim() && !loadingGoogleInfo ? 'bg-indigo-500 text-white hover:bg-indigo-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                            >🔍 {loadingGoogleInfo ? '...' : t('places.googleInfo')}</button>
-                          )}
+                          {/* Google Info result panel — populated by search button above */}
                           {googlePlaceInfo && !googlePlaceInfo.notFound && (
                             <div className="text-xs space-y-1 bg-white rounded p-2 border border-indigo-200" style={{ direction: 'ltr' }}>
                               <div><span className="font-bold text-indigo-700">Found:</span><span className="ml-1">{googlePlaceInfo.name}</span></div>
@@ -2457,16 +2472,10 @@
                 {(section && section.title) || t('general.help')}
               </h3>
               <div className="flex items-center gap-1">
-                <button onClick={() => speakHelp(content)}
-                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                >{isSpeaking ? (isPaused ? '▶️' : '⏸️') : '🔊'}</button>
-                {isSpeaking && <button onClick={stopSpeaking}
-                  className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
-                >⏹️</button>}
                 {isAdmin && <button onClick={() => { if (!helpEditing) { setHelpEditText(content); setHelpEditing(true); } else { setHelpEditing(false); } }}
                   className="hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center text-sm"
                 >{helpEditing ? '👁️' : '✏️'}</button>}
-                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
+                <button onClick={() => setShowHelp(false)}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >✕</button>
               </div>
@@ -2507,7 +2516,7 @@
                   >{t('general.cancel') || 'ביטול'}</button>
                 </>
               ) : (
-                <button onClick={() => { setShowHelp(false); stopSpeaking(); }}
+                <button onClick={() => setShowHelp(false)}
                   className="w-full py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 text-sm"
                 >{t('general.close')} ✓</button>
               )}
@@ -3530,24 +3539,39 @@
             const all = [cluster.loc, ...cluster.matches];
             return !all.every(p => p.dedupOk);
           }) || [];
-          return filtered.length > 0 && (
+          const approvedForDialog = customLocations.filter(l => l.dedupOk && l.status !== 'blacklist');
+          return (bulkDedupResults !== null && (filtered.length > 0 || approvedForDialog.length > 0)) && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'white', zIndex: 10000, display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '2px solid #eab308', background: 'linear-gradient(135deg, #fefce8, #fef9c3)' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#92400e' }}>🔍 {t('dedup.title')} ({filtered.length})</h3>
-              <button onClick={() => setBulkDedupResults(null)} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #6b7280, #4b5563)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: 'white' }}>
-                {t('dedup.close')} ✕
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => { setBulkDedupResults(null); setTimeout(() => scanAllDuplicates(), 50); }} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #f59e0b, #8b5cf6)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: 'white' }}>
+                  🔄
+                </button>
+                <button onClick={() => setBulkDedupResults(null)} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #6b7280, #4b5563)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', color: 'white' }}>
+                  {t('dedup.close')} ✕
+                </button>
+              </div>
             </div>
             
             {/* Scrollable content */}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
+              {filtered.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#16a34a' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>✅</div>
+                  <div style={{ fontSize: '14px', fontWeight: '700' }}>{currentLang === 'he' ? 'לא נמצאו כפילויות פעילות' : 'No active duplicates found'}</div>
+                </div>
+              )}
               {filtered.map((cluster, ci) => {
                 const allPlaces = [cluster.loc, ...cluster.matches];
                 return (
                 <div key={ci} style={{ marginBottom: '16px', padding: '12px', background: '#fefce8', border: '2px solid #eab308', borderRadius: '14px' }}>
                   <div style={{ fontSize: '10px', color: '#92400e', fontWeight: 'bold', marginBottom: '8px', textAlign: 'center' }}>
-                    {allPlaces.length} {t('route.places')} · {cluster.matches[0]?._distance || 0}m
+                    {cluster._matchType === 'placeId'
+                      ? `🆔 ${currentLang === 'he' ? 'אותו Place ID' : 'Same Place ID'} · ${allPlaces.length} ${t('route.places')}`
+                      : `📐 ${allPlaces.length} ${t('route.places')} · ${cluster.matches[0]?._distance || 0}m`
+                    }
                   </div>
                   {allPlaces.map((loc, li) => {
                     const interest = allInterestOptions.find(o => loc.interests?.includes(o.id));
@@ -3596,6 +3620,138 @@
                 </div>
                 );
               })}
+              {/* ── Approved duplicates — cluster format, collapsible ── */}
+              {(() => {
+                const allActive = customLocations.filter(l => l.status !== 'blacklist' && l.lat && l.lng);
+                const dedupLocs = allActive.filter(l => l.dedupOk);
+                if (dedupLocs.length === 0) return null;
+
+                // Build clusters using same logic as scanAllDuplicates, but including dedupOk places
+                const aRadius = window.BKK.systemParams?.dedupRadiusMeters || 50;
+                const relMap = {};
+                for (const opt of allInterestOptions) {
+                  const rel = interestConfig[opt.id]?.dedupRelated || opt.dedupRelated || [];
+                  if (!relMap[opt.id]) relMap[opt.id] = new Set();
+                  rel.forEach(r => { relMap[opt.id].add(r); if (!relMap[r]) relMap[r] = new Set(); relMap[r].add(opt.id); });
+                }
+                const intOverlap = (a, b) => {
+                  if (!a?.length || !b?.length) return false;
+                  for (const ia of a) { if (b.includes(ia)) return true; const r = relMap[ia]; if (r && b.some(ib => r.has(ib))) return true; }
+                  return false;
+                };
+                const dist = (a, b) => Math.round(calcDistance(a.lat, a.lng, b.lat, b.lng));
+                const locKey = (l) => l.firebaseKey || l.firebaseId || l.id;
+                const approvedClusters = [];
+                const used = new Set();
+
+                // Pass 1: same googlePlaceId
+                const byPid = {};
+                for (const l of allActive) { if (l.googlePlaceId) { if (!byPid[l.googlePlaceId]) byPid[l.googlePlaceId] = []; byPid[l.googlePlaceId].push(l); } }
+                for (const grp of Object.values(byPid)) {
+                  if (grp.length < 2 || !grp.some(l => l.dedupOk)) continue;
+                  const [f, ...rest] = grp;
+                  grp.forEach(l => used.add(locKey(l)));
+                  approvedClusters.push({ loc: f, matches: rest.map(l => ({ ...l, _distance: dist(f, l) })), _matchType: 'placeId' });
+                }
+                // Pass 2: proximity for remaining dedupOk places
+                for (const dl of dedupLocs.filter(l => !used.has(locKey(l)))) {
+                  const partners = allActive.filter(l =>
+                    !used.has(locKey(l)) && locKey(l) !== locKey(dl) &&
+                    dist(dl, l) <= aRadius && intOverlap(dl.interests, l.interests)
+                  );
+                  if (partners.length === 0) continue; // no partner → Pass 3 will auto-clear
+                  used.add(locKey(dl));
+                  partners.forEach(l => used.add(locKey(l)));
+                  approvedClusters.push({ loc: dl, matches: partners.map(l => ({ ...l, _distance: dist(dl, l) })), _matchType: 'proximity' });
+                }
+                // Dedup approvedClusters by loc key (guard against React double-render)
+                const seenClusterKeys = new Set();
+                const dedupedClusters = approvedClusters.filter(c => {
+                  const k = locKey(c.loc);
+                  if (seenClusterKeys.has(k)) return false;
+                  seenClusterKeys.add(k);
+                  return true;
+                });
+                // Pass 3: solo dedupOk — partner was deleted, auto-clear the flag
+                for (const dl of dedupLocs.filter(l => !used.has(locKey(l)))) {
+                  setCustomLocations(prev => prev.map(l => l.id === dl.id ? { ...l, dedupOk: false } : l));
+                  const fbKey = dl.firebaseId || dl.firebaseKey;
+                  if (isFirebaseAvailable && database && fbKey) {
+                    database.ref(`cities/${selectedCityId}/locations/${fbKey}`).update({ dedupOk: false });
+                  }
+                }
+
+                const isOpen = !!window._dedupApprovedOpen;
+                const toggle = () => { window._dedupApprovedOpen = !isOpen; setBulkDedupResults(prev => prev ? [...prev] : prev); };
+                const revoke = (loc) => {
+                  setCustomLocations(prev => prev.map(l => l.id === loc.id ? { ...l, dedupOk: false } : l));
+                  const fbKey = loc.firebaseId || loc.firebaseKey;
+                  if (isFirebaseAvailable && database && fbKey) {
+                    database.ref(`cities/${selectedCityId}/locations/${fbKey}`).update({ dedupOk: false });
+                  }
+                };
+
+                return (
+                  <div style={{ marginTop: '16px', border: '1.5px solid #d1d5db', borderRadius: '12px', overflow: 'hidden' }}>
+                    <button onClick={toggle} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f0fdf4', border: 'none', cursor: 'pointer' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#15803d' }}>
+                        ✓ {currentLang === 'he' ? `כפילויות מאושרות (${dedupLocs.length})` : `Approved duplicates (${dedupLocs.length})`}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>{isOpen ? '▲' : '▼'}</span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: '8px 12px', background: 'white' }}>
+                        {dedupedClusters.map((cluster, ci) => {
+                          const allPlaces = [cluster.loc, ...cluster.matches];
+                          return (
+                            <div key={ci} style={{ marginBottom: '12px', padding: '10px', background: '#f0fdf4', border: '2px solid #86efac', borderRadius: '12px' }}>
+                              <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 'bold', marginBottom: '6px', textAlign: 'center' }}>
+                                {cluster._matchType === 'placeId'
+                                  ? `🆔 ${currentLang === 'he' ? 'אותו Place ID' : 'Same Place ID'} · ${allPlaces.length} ${t('route.places')}`
+                                  : cluster._matchType === 'proximity'
+                                  ? `📐 ${allPlaces.length} ${t('route.places')} · ${cluster.matches[0]?._distance || 0}m`
+                                  : `✓ ${currentLang === 'he' ? 'אושר ידנית — לא נמצא שותף' : 'Manually approved — no partner found'}`}
+                              </div>
+                              {allPlaces.map((loc, li) => {
+                                const interest = allInterestOptions.find(o => loc.interests?.includes(o.id));
+                                const icon = interest?.icon?.startsWith?.('data:') ? '📍' : (interest?.icon || '📍');
+                                const mapsUrl = window.BKK.getGoogleMapsUrl(loc);
+                                return (
+                                  <div key={li} style={{ marginBottom: '4px', background: 'white', borderRadius: '8px', border: '1px solid #bbf7d0', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                                      <span style={{ fontSize: '18px' }}>{icon}</span>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div onClick={() => { const fl = customLocations.find(cl => cl.id === loc.id); if (fl) handleEditLocation(fl); }}
+                                          style={{ fontSize: '13px', fontWeight: 'bold', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}>{loc.name}</div>
+                                        {loc.address && <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '1px' }}>{loc.address}</div>}
+                                      </div>
+                                      {loc.dedupOk && (
+                                        <button onClick={() => revoke(loc)}
+                                          style={{ padding: '2px 8px', fontSize: '10px', fontWeight: '700', borderRadius: '6px', border: '1.5px solid #f59e0b', background: '#fffbeb', color: '#b45309', cursor: 'pointer', flexShrink: 0 }}>
+                                          {currentLang === 'he' ? 'בטל' : 'Revoke'}
+                                        </button>
+                                      )}
+                                    </div>
+                                    {mapsUrl && (
+                                      <div style={{ padding: '0 8px 6px', direction: 'ltr' }}>
+                                        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                                          style={{ padding: '3px 8px', fontSize: '9px', fontWeight: 'bold', background: '#22c55e', color: 'white', borderRadius: '5px', textDecoration: 'none' }}>
+                                          🗺️ Google Maps
+                                        </a>
+                                        {loc.lat && loc.lng && <span style={{ marginInlineStart: '6px', fontSize: '9px', color: '#9ca3af' }}>{loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );})()}
@@ -3910,5 +4066,6 @@
           </div>
         );
       })()}
+
 
 

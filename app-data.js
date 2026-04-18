@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.22.65
+// FouFou app-data.js v3.22.92
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -277,7 +277,6 @@ general: {
   resultsFound: 'תוצאות נמצאו',
   noInterestManual: 'ללא תחום / נוספו ידנית',
   showActivityLog: 'הצג לוג לאיתור בעיות',
-  debugMessages: 'הודעות Debug יופיעו בקונסול (F12)',
   adminManagement: 'ניהול Admin',
   currentDevice: 'מכשיר נוכחי',
   status: 'סטטוס',
@@ -294,7 +293,6 @@ general: {
   import: 'ייבוא מועדפים',
   saveAndTransfer: 'שמור והעבר נתונים בין מכשירים',
   exportAll: 'ייצא הכל',
-  exportSchema: 'ייצא סכמה (עבור AI)',
   importFromFile: 'ייבא מקובץ',
   transferDevices: 'העברה בין Claude ל-GitHub',
   dataBackup: 'גיבוי נתונים',
@@ -585,6 +583,7 @@ places: {
   outsideArea: 'מקום מחוץ לגבולות האזור',
   placeNotOnGoogle: 'המקום לא נמצא ב-Google',
   notEnoughInfo: 'אין מספיק מידע על המקום',
+  noChanges: 'אין שינויים לשמור',
   noPlacesFound: 'לא נמצאו תוצאות',
   noMorePlaces: 'לא נמצאו עוד מקומות',
   noMatchingPlaces: 'לא נמצאו מקומות. נסה תחומי עניין או אזור אחר.',
@@ -885,7 +884,6 @@ settings: {
   deleteAllFeedback: 'למחוק את כל המשובים?',
   accessStats: 'סטטיסטיקות גישה',
   totalVisits: 'סה"כ ביקורים',
-  exportSchema: 'ייצא סכמה (ל-AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'שפה',
   newUserDefaultLang: 'ברירת מחדל למשתמשים חדשים',
@@ -906,12 +904,6 @@ settings: {
   radiusDescription: 'רדיוס חיפוש מסביב למיקום נוכחי (מטרים)',
   refreshData: 'רענון נתונים',
   refreshDescription: 'טען מחדש את כל הנתונים מ-Firebase: תחומים, מקומות, מסלולים והגדרות',
-  voiceSelect: 'קול השמעה',
-  defaultVoice: 'ברירת מחדל',
-  otherVoices: 'קולות נוספים',
-  noVoices: 'לא נמצאו קולות במערכת',
-  speechRate: 'קצב דיבור',
-  voiceHint: 'בחר קול ושמע דוגמה. ☁️ = קול ענן (איכות גבוהה יותר)',
   translating: 'מתרגם לאנגלית...',
   translated: 'תורגם ונשמר באנגלית!',
   translateBtn: '🌐 תרגם לעברית',
@@ -1396,7 +1388,6 @@ general: {
   resultsFound: 'results found',
   noInterestManual: 'No interest / manually added',
   showActivityLog: 'Show activity log for debugging',
-  debugMessages: 'Debug messages will appear in console (F12)',
   adminManagement: 'Admin management',
   currentDevice: 'Current device',
   status: 'Status',
@@ -1413,7 +1404,6 @@ general: {
   import: 'Import favorites',
   saveAndTransfer: 'Save and transfer data between devices',
   exportAll: 'Export all',
-  exportSchema: 'Export Schema (for AI)',
   importFromFile: 'Import from file',
   transferDevices: 'Transfer between Claude and GitHub',
   dataBackup: 'Data backup',
@@ -1708,6 +1698,7 @@ places: {
   outsideArea: 'Place outside area boundaries',
   placeNotOnGoogle: 'Place not found on Google',
   notEnoughInfo: 'Not enough info about the place',
+  noChanges: 'No changes to save',
   noPlacesFound: 'No results found',
   noMorePlaces: 'No more places found',
   noMatchingPlaces: 'No places found. Try different interests or area.',
@@ -2004,7 +1995,6 @@ settings: {
   deleteAllFeedback: 'Delete all feedback?',
   accessStats: 'Access statistics',
   totalVisits: 'Total visits',
-  exportSchema: 'Export schema (for AI)',
   appDescription: 'Local picks + Google spots. Choose your vibe, follow the trail 🍜🏛️🎭',
   language: 'Language',
   newUserDefaultLang: 'Default for new users',
@@ -2023,12 +2013,6 @@ settings: {
   radiusDescription: 'Search radius around current location (meters)',
   refreshData: 'Refresh data',
   refreshDescription: 'Reload all data from Firebase: interests, places, routes and settings',
-  voiceSelect: 'Voice',
-  defaultVoice: 'Default',
-  otherVoices: 'Other voices',
-  noVoices: 'No voices found on this device',
-  speechRate: 'Speech rate',
-  voiceHint: 'Choose a voice and hear a preview. ☁️ = cloud voice (higher quality)',
   translating: 'Translating to English...',
   translated: 'Translated and saved in English!',
   translateBtn: '🌐 Translate to English',
@@ -3045,7 +3029,7 @@ window.BKK.cityData.gushdan = {
   "systemRoutes": []
 };
 
-// City data: malaga
+// City data: Malaga
 window.BKK.cityData = window.BKK.cityData || {};
 window.BKK.cityData.malaga = {
   "id": "malaga",
@@ -3059,10 +3043,10 @@ window.BKK.cityData.malaga = {
   "dayStartHour": 8,
   "nightStartHour": 20,
   "center": {
-    "lat": 36.7178196,
-    "lng": -4.4255569999999995
+    "lat": 36.7282,
+    "lng": -4.4282
   },
-  "allCityRadius": 12185,
+  "allCityRadius": 6500,
   "areas": [
     {
       "id": "centro",
@@ -3070,9 +3054,9 @@ window.BKK.cityData.malaga = {
       "labelEn": "Centro",
       "desc": "Centro, Malaga, Spain",
       "descEn": "Centro, Malaga, Spain",
-      "lat": 36.7213,
-      "lng": -4.423,
-      "radius": 2500,
+      "lat": 36.7242,
+      "lng": -4.4177,
+      "radius": 2000,
       "size": "medium",
       "safety": "safe"
     },
@@ -3082,57 +3066,33 @@ window.BKK.cityData.malaga = {
       "labelEn": "Este",
       "desc": "",
       "descEn": "",
-      "lat": 36.7845,
-      "lng": -4.365,
-      "radius": 7000,
+      "lat": 36.7319,
+      "lng": -4.3786,
+      "radius": 2000,
       "size": "medium",
       "safety": "safe"
     },
     {
       "id": "ciudad_jard_n",
-      "label": "Ciudad Jardin",
-      "labelEn": "Ciudad Jardin",
+      "label": "צפון מלגה",
+      "labelEn": "Ciudad Jardin & Palma-Palmilla",
       "desc": "",
       "descEn": "",
-      "lat": 36.7653,
-      "lng": -4.4165,
-      "radius": 3800,
+      "lat": 36.7467,
+      "lng": -4.4124,
+      "radius": 1500,
       "size": "medium",
       "safety": "safe"
     },
     {
       "id": "bail_n_miraflores",
-      "label": "Bailen-Miraflores",
-      "labelEn": "Bailen-Miraflores",
+      "label": "מערב מלגה",
+      "labelEn": "Bailen-Miraflores & Cruz de Humilladero",
       "desc": "",
       "descEn": "",
-      "lat": 36.7226,
-      "lng": -4.4402,
-      "radius": 1000,
-      "size": "medium",
-      "safety": "safe"
-    },
-    {
-      "id": "palma_palmilla",
-      "label": "Palma-Palmilla",
-      "labelEn": "Palma-Palmilla",
-      "desc": "",
-      "descEn": "",
-      "lat": 36.7554,
-      "lng": -4.4618,
-      "radius": 2600,
-      "size": "medium",
-      "safety": "safe"
-    },
-    {
-      "id": "cruz_de_humilladero",
-      "label": "Cruz de Humilladero",
-      "labelEn": "Cruz de Humilladero",
-      "desc": "",
-      "descEn": "",
-      "lat": 36.7144,
-      "lng": -4.4584,
-      "radius": 2000,
+      "lat": 36.7191,
+      "lng": -4.4683,
+      "radius": 3000,
       "size": "medium",
       "safety": "safe"
     },
@@ -3142,45 +3102,9 @@ window.BKK.cityData.malaga = {
       "labelEn": "Carretera de Cadiz",
       "desc": "",
       "descEn": "",
-      "lat": 36.6866,
-      "lng": -4.4673,
+      "lat": 36.6907,
+      "lng": -4.4383,
       "radius": 2500,
-      "size": "medium",
-      "safety": "safe"
-    },
-    {
-      "id": "churriana",
-      "label": "Churriana",
-      "labelEn": "Churriana",
-      "desc": "",
-      "descEn": "",
-      "lat": 36.6359,
-      "lng": -4.5525,
-      "radius": 6700,
-      "size": "medium",
-      "safety": "safe"
-    },
-    {
-      "id": "campanillas",
-      "label": "Campanillas",
-      "labelEn": "Campanillas",
-      "desc": "",
-      "descEn": "",
-      "lat": 36.7207,
-      "lng": -4.5003,
-      "radius": 3600,
-      "size": "medium",
-      "safety": "safe"
-    },
-    {
-      "id": "puerto_de_la_torre",
-      "label": "Puerto de la Torre",
-      "labelEn": "Puerto de la Torre",
-      "desc": "",
-      "descEn": "",
-      "lat": 36.7433,
-      "lng": -4.5285,
-      "radius": 4800,
       "size": "medium",
       "safety": "safe"
     }
@@ -3241,7 +3165,8 @@ window.BKK.cityData.malaga = {
     "iconLeft": "🏖️",
     "iconRight": "🌞"
   },
-  "systemRoutes": []
+  "systemRoutes": [],
+  "boundaryFactor": 1.2
 };
 
 // City data: Singapore
@@ -3513,7 +3438,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.22.65';
+window.BKK.VERSION = '3.22.92';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3750,52 +3675,6 @@ window.BKK.cleanupInProgress = function(database) {
     localStorage.setItem('cleanup_inprogress_done', 'true');
   }).catch(function(err) {
     console.error('[CLEANUP] inProgress removal error:', err);
-  });
-};
-
-/**
- * DISABLED — this function was incorrectly deleting valid interests.
- * It checked for types/textSearch on the interest object, but search config
- * is stored in settings/interestConfig/{id}, not on the interest itself.
- * Non-privateOnly interests were incorrectly flagged as orphans and deleted.
- */
-window.BKK.cleanupOrphanedInterests = function(database) {
-  return Promise.resolve();
-};
-
-/**
- * Admin utility: clean up stale _verify nodes and diagnose Firebase issues.
- */
-window.BKK.cleanupFirebase = function(database) {
-  if (!database) { console.log('[CLEANUP] No database'); return Promise.resolve(); }
-  var cleaned = 0;
-  return database.ref('_verify').once('value').then(function(snap) {
-    var data = snap.val();
-    if (!data) {
-      return;
-    }
-    cleaned = Object.keys(data).length;
-    return database.ref('_verify').remove();
-  }).then(function() {
-    if (cleaned > 0) console.log('[CLEANUP] Removed ' + cleaned + ' _verify nodes');
-    return Promise.all([
-      database.ref('accessLog').once('value').then(function(s) {
-        var d = s.val();
-        var count = d ? Object.keys(d).length : 0;
-        var size = d ? JSON.stringify(d).length : 0;
-        return { node: 'accessLog', count: count, sizeKB: Math.round(size/1024) };
-      }),
-      database.ref('feedback').once('value').then(function(s) {
-        var d = s.val();
-        var count = d ? Object.keys(d).length : 0;
-        var size = d ? JSON.stringify(d).length : 0;
-        return { node: 'feedback', count: count, sizeKB: Math.round(size/1024) };
-      })
-    ]);
-  }).then(function(results) {
-    return { verifyRemoved: cleaned, nodes: results };
-  }).catch(function(err) {
-    console.error('[CLEANUP] Error:', err);
   });
 };
 
