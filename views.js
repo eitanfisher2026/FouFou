@@ -2067,7 +2067,7 @@
                             ? activeStops.filter(s => !(Math.abs(s.lat - startPointCoords.lat) < 0.0001 && Math.abs(s.lng - startPointCoords.lng) < 0.0001))
                             : activeStops.slice(1);
                           const isCirc = routeType === 'circular';
-                          const urls = window.BKK.buildGoogleMapsUrls(stopsForUrl, origin, isCirc, googleMaxWaypoints);
+                          const urls = window.BKK.buildGoogleMapsUrls(stopsForUrl, origin, isCirc, googleMaxWaypoints, false);
                           const routeName = route.name || t('route.myRoute');
                           const mapUrl = urls.length > 0 ? urls[0].url : '';
                           if (!mapUrl) return;
@@ -2120,14 +2120,17 @@
                       ? activeStops.filter(s => !isOverlapStart(s))
                       : activeStops.slice(1);
                     const isCircular = routeType === 'circular';
+                    const userLoc = (formData.currentLat && formData.currentLng)
+                      ? { lat: formData.currentLat, lng: formData.currentLng }
+                      : null;
                     const urls = route?.optimized && activeStops.length > 0
-                      ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints)
+                      ? window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints, userLoc)
                       : [];
 
                     return urls.length <= 1 ? (
                       <button
                         id="open-google-maps-btn"
-                        disabled={!route?.optimized}
+                        disabled={!route?.optimized || waitingForGps}
                         style={{
                           width: '100%', height: '48px', 
                           background: route?.optimized ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)' : '#d1d5db',
@@ -2135,12 +2138,33 @@
                           borderRadius: '14px', fontWeight: 'bold', fontSize: '15px',
                           border: route?.optimized ? '2px solid #22c55e' : '2px solid #d1d5db',
                           boxShadow: route?.optimized ? '0 4px 6px -1px rgba(34, 197, 94, 0.3)' : 'none',
-                          cursor: route?.optimized ? 'pointer' : 'not-allowed'
+                          cursor: route?.optimized && !waitingForGps ? 'pointer' : 'not-allowed',
+                          opacity: waitingForGps ? 0.7 : 1
                         }}
-                        onClick={() => {
+                        onClick={async () => {
                           if (!route?.optimized) { showToast(t('route.calcRoutePrevious'), 'warning'); return; }
                           if (activeStops.length === 0) { showToast(t('places.noPlacesWithCoords'), 'warning'); return; }
-                          const mapUrl = urls.length === 1 ? urls[0].url : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getNavigateUrl(activeStops[0]) : '#');
+
+                          // Most of the time the background prefetch (triggered when we entered
+                          // wizard step 3) has already populated lastKnownGPS — so this branch
+                          // is a no-op and the click feels instant. Only if the prefetch is still
+                          // in-flight OR permission hasn't been granted yet will we await here.
+                          // getUserGPS is a cached-first, never-throws helper with an 8 s timeout.
+                          let liveUserLoc = userLoc;
+                          if (!liveUserLoc && !window.BKK.lastKnownGPS) {
+                            setWaitingForGps(true);
+                            const timeoutMs = window.BKK.systemParams?.gpsTimeoutMs || 8000;
+                            liveUserLoc = await window.BKK.getUserGPS(timeoutMs);
+                            setWaitingForGps(false);
+                          }
+                          // Rebuild URLs with the (possibly newly-acquired) userLoc. If we still
+                          // have none, buildGoogleMapsUrls will consult its internal cache and
+                          // fall back to "no prepend" (Preview) — correct when we can't confirm
+                          // the user is in the city.
+                          const liveUrls = window.BKK.buildGoogleMapsUrls(stopsForUrls, origin, isCircular, googleMaxWaypoints, liveUserLoc);
+                          const mapUrl = liveUrls.length === 1
+                            ? liveUrls[0].url
+                            : (activeStops.length === 1 && !hasStartPoint ? window.BKK.getNavigateUrl(activeStops[0]) : '#');
                           if (mapUrl.length > 2000) showToast(`${t('toast.urlTooLong')} (${mapUrl.length})`, 'warning');
                           else if (isCircular) showToast(t('route.circularDesc'), 'info');
                           startActiveTrail(activeStops, formData.interests, formData.area);
@@ -2149,7 +2173,15 @@
                           window.open(mapUrl, 'city_explorer_map');
                         }}
                       >
-                        {`🚀 ${t('route.openRouteInGoogle')}`}
+                        {waitingForGps ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <svg className="animate-spin" style={{ width: '18px', height: '18px' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span>{t('trail.locating') || '📍 Locating...'}</span>
+                          </span>
+                        ) : `🚀 ${t('route.openRouteInGoogle')}`}
                       </button>
                     ) : (
                       <div style={{ display: 'flex', gap: '4px' }}>
@@ -2519,11 +2551,13 @@
                 </button>
               </div>
 
-              {/* Filter button for editor/admin */}
-              {isUnlocked && (
+              {/* Filter bar: status tabs + no-interest filter + addedBy filter.
+                  Entire row hidden from anonymous users (they just see the list).
+                  Status tabs are visible to all logged-in users; 'skipped' (blacklist) is editor/admin only. */}
+              {authUser && !authUser.isAnonymous && (
               <div className="flex mb-2 gap-1 items-center justify-end">
-                <span className="text-xs text-gray-400 mr-auto">{groupedPlaces.draftsCount + groupedPlaces.readyCount} {t('nav.favorites')} {groupedPlaces.blacklistCount > 0 ? `· ${groupedPlaces.blacklistCount} 🚫` : ''}</span>
-                {['all', 'drafts', 'ready', 'skipped'].map(tab => (
+                <span className="text-xs text-gray-400 mr-auto">{groupedPlaces.draftsCount + groupedPlaces.readyCount} {t('nav.favorites')} {isUnlocked && groupedPlaces.blacklistCount > 0 ? `· ${groupedPlaces.blacklistCount} 🚫` : ''}</span>
+                {(isUnlocked ? ['all', 'drafts', 'ready', 'skipped'] : ['all', 'drafts', 'ready']).map(tab => (
                   <button key={tab}
                     onClick={() => { setPlacesTab(tab); setFilterNoInterest(false); }}
                     className={`px-2 py-1 rounded text-xs font-bold transition-all ${
@@ -2547,25 +2581,48 @@
                     >🏷️ {noInterestCount}</button>
                   );
                 })()}
-                {/* addedBy filter — admin: dropdown with names; any logged-in: הכל/אני toggle */}
+                {/* addedBy filter — admin: הכל / אני / dropdown of other users; any logged-in: הכל/אני toggle */}
                 {authUser && !authUser.isAnonymous && (() => {
                   const myUid = authUser.uid;
                   const hasMine = cityCustomLocations.some(l => l.addedBy === myUid);
                   if (!hasMine && !isAdmin) return null;
                   if (isAdmin) {
-                    const allContribs = Object.entries(userNamesMap || {})
-                      .filter(([uid]) => cityCustomLocations.some(l => l.addedBy === uid))
+                    // Collect all unique addedBy uids from this city's places, not only those in userNamesMap
+                    const uidSet = new Set();
+                    cityCustomLocations.forEach(l => { if (l.addedBy) uidSet.add(l.addedBy); });
+                    const allContribs = Array.from(uidSet)
+                      .map(uid => [uid, (userNamesMap && userNamesMap[uid]) || (uid.slice(0, 6) + '…')])
                       .sort(([,a],[,b]) => a.localeCompare(b));
+                    // Split: "me" is handled by its own button, dropdown lists others only
+                    const others = allContribs.filter(([uid]) => uid !== myUid);
                     if (allContribs.length <= 1) return null;
+                    const isAll = !filterAddedBy;
+                    const isMe = filterAddedBy === myUid;
+                    const isOther = filterAddedBy && filterAddedBy !== myUid;
+                    const setFilter = (v) => { setFilterAddedBy(v); try { localStorage.setItem('foufou_filter_addedby', v); } catch(_) {} };
                     return (
-                      <select
-                        value={filterAddedBy}
-                        onChange={e => { const v = e.target.value; setFilterAddedBy(v); try { localStorage.setItem('foufou_filter_addedby', v); } catch(_) {} }}
-                        style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '8px', border: '1px solid #d1d5db', background: filterAddedBy ? '#ede9fe' : 'white', color: filterAddedBy ? '#7c3aed' : '#374151', fontWeight: filterAddedBy ? 'bold' : 'normal', cursor: 'pointer', maxWidth: '110px' }}
-                      >
-                        <option value="">👤 {t('general.all') || 'הכל'}</option>
-                        {allContribs.map(([uid, name]) => <option key={uid} value={uid}>{name}</option>)}
-                      </select>
+                      <>
+                        <button
+                          onClick={() => setFilter('')}
+                          className={`px-2 py-1 rounded text-xs font-bold transition-all ${isAll ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        >👥 {t('general.all') || 'הכל'}</button>
+                        {hasMine && (
+                          <button
+                            onClick={() => setFilter(myUid)}
+                            className={`px-2 py-1 rounded text-xs font-bold transition-all ${isMe ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                          >👤 {window.BKK.i18n.currentLang === 'en' ? 'Me' : 'אני'}</button>
+                        )}
+                        {others.length > 0 && (
+                          <select
+                            value={isOther ? filterAddedBy : ''}
+                            onChange={e => setFilter(e.target.value)}
+                            style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '8px', border: '1px solid #d1d5db', background: isOther ? '#ede9fe' : 'white', color: isOther ? '#7c3aed' : '#6b7280', fontWeight: isOther ? 'bold' : 'normal', cursor: 'pointer', maxWidth: '110px' }}
+                          >
+                            <option value="">👥 {window.BKK.i18n.currentLang === 'en' ? 'Choose user…' : 'בחר משתמש…'}</option>
+                            {others.map(([uid, name]) => <option key={uid} value={uid}>{name}</option>)}
+                          </select>
+                        )}
+                      </>
                     );
                   }
                   // Any logged-in user: simple הכל/אני toggle
@@ -2702,7 +2759,7 @@
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
                                   className="text-xs px-1 py-0.5 rounded"
-                                  title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
+                                  title={!canEdit ? t("general.viewOnly") : (loc.locked ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || loc.locked ? "👁️" : "✏️"}</button>
                               </div>
                             );
                           })}
@@ -2758,7 +2815,7 @@
                               ); })()}
                               <button onClick={() => handleEditLocation(loc, flatNavList)}
                                 className="text-xs px-1 py-0.5 rounded"
-                                title={canEdit ? t("places.detailsEdit") : t("general.viewOnly")}>{canEdit ? "✏️" : "👁️"}</button>
+                                title={!canEdit ? t("general.viewOnly") : (loc.locked ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || loc.locked ? "👁️" : "✏️"}</button>
                             </div>
                           );
                         })}
@@ -3789,7 +3846,8 @@
               </div>
             </div>
             
-            {/* Refresh Google Ratings */}
+            {/* Refresh Google Ratings — editor/admin only */}
+            {isUnlocked && (
             <div className="mb-3">
               <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">{`⭐ ${t("settings.refreshRatings") || 'רענן דירוגי גוגל'}`}</h3>
@@ -3819,10 +3877,11 @@
                 </button>
               </div>
             </div>
+            )}
 
             )}
-            {/* Bulk Approve Drafts */}
-            {true && (
+            {/* Bulk Approve Drafts — editor/admin only */}
+            {isUnlocked && (
             <div className="mb-3">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
                 <h3 className="text-base font-bold text-gray-800 mb-1">{`✅ ${t("settings.bulkApprove") || 'אשר טיוטות'}`}</h3>
@@ -4337,6 +4396,7 @@
                   { key: 'systemAlertIntervalHours', label: 'System Alert Interval (hours)', desc: 'How often to send automated system feedback alerts (e.g. corrupted cacheVersion). Default: 1', min: 1, max: 72, step: 1, type: 'int' },
                   { key: 'pointSearchMaxGoogle', label: 'מסביב למקום — תוצאות גוגל', desc: 'מקסימום תוצאות גוגל בחיפוש מסביב למקום. ברירת מחדל: 10', min: 3, max: 20, step: 1, type: 'int' },
                   { key: 'pointSearchMaxFavorites', label: 'מסביב למקום — תוצאות מועדפים', desc: 'מקסימום מועדפים בחיפוש מסביב למקום. ברירת מחדל: 5', min: 1, max: 10, step: 1, type: 'int' },
+                  { key: 'gpsTimeoutMs', label: 'GPS Timeout (ms)', desc: 'זמן מקסימלי להמתנה למיקום GPS לפני ויתור ומעבר ל-Preview. משפיע גם על ה-prefetch ברקע וגם על הלחיצה על "יאללה לדרך". ברירת מחדל: 8000', min: 3000, max: 15000, step: 500, type: 'int' },
                 ]},
                 { title: t('sysParams.sectionDedup'), icon: '🔍', color: '#8b5cf6', params: [
                   { key: 'dedupRadiusMeters', label: t('sysParams.dedupRadius'), desc: t('sysParams.dedupRadiusDesc'), min: 10, max: 200, step: 10, type: 'int' },

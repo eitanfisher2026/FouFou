@@ -222,19 +222,6 @@
     }
   };
 
-  const authLinkAnonymousToGoogle = async () => {
-    if (!auth || !authUser || !authUser.isAnonymous) return;
-    setLoginError('');
-    try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await authUser.linkWithPopup(provider);
-      showToast(t('auth.accountLinked') || '✅ החשבון קושר בהצלחה!', 'success');
-    } catch (err) {
-      console.error('[AUTH] Link error:', err);
-      setLoginError(err.message);
-    }
-  };
-
   const authUpdateUserRole = async (uid, newRole) => {
     if (!isRealAdmin || !database) return;
     try {
@@ -342,6 +329,22 @@
   const [route, setRoute] = useState(null);
   const [routeListKey, setRouteListKey] = useState(0); // incremented to force re-render of route stop list after favorites change
   const [isGenerating, setIsGenerating] = useState(false);
+  const [waitingForGps, setWaitingForGps] = useState(false); // true while "open in Google Maps" is waiting on GPS
+
+  // Proactive GPS prefetch: when the user reaches wizard step 3 (the route preview
+  // screen where "Open in Google Maps" lives), kick off a background GPS fetch if
+  // we don't already have one cached. This fills `window.BKK.lastKnownGPS` while
+  // the user is still looking at the route, so by the time they tap the button
+  // the URL can include "" ("Your location") without making them wait.
+  // Silent: no spinner, no errors surfaced — it's a best-effort prime-the-cache.
+  React.useEffect(() => {
+    if (wizardStep !== 3) return;
+    if (window.BKK.lastKnownGPS) return; // already cached
+    if (typeof window.BKK.getUserGPS !== 'function') return;
+    // Fire and forget — never throws, resolves to null on failure.
+    const timeoutMs = window.BKK.systemParams?.gpsTimeoutMs || 8000;
+    window.BKK.getUserGPS(timeoutMs).catch(() => {});
+  }, [wizardStep]);
   const [disabledStops, setDisabledStops] = useState([]); // Track disabled stop IDs
   const disabledStopsRef = React.useRef(disabledStops);
   React.useEffect(() => { disabledStopsRef.current = disabledStops; }, [disabledStops]);
@@ -482,9 +485,12 @@
     // Step 5: Optional actions
     if (startTrail) startActiveTrail(optimized, formData.interests, formData.area);
     if (openMap && autoStart) {
+      const userLoc = (formData.currentLat && formData.currentLng)
+        ? { lat: formData.currentLat, lng: formData.currentLng }
+        : null;
       const urls = window.BKK.buildGoogleMapsUrls(
         optimized.map(s => ({ lat: s.lat, lng: s.lng, name: s.name })),
-        `${autoStart.lat},${autoStart.lng}`, isCircular, window.BKK.googleMaxWaypoints || 12
+        `${autoStart.lat},${autoStart.lng}`, isCircular, window.BKK.googleMaxWaypoints || 12, userLoc
       );
       if (urls.length > 0) {
         window.open(urls[0].url, 'city_explorer_map');
@@ -955,6 +961,13 @@
       systemAlertIntervalHours: 1,
       // Feedback images
       feedbackMaxImages: 3,
+      // GPS timeout (ms) — max time to wait for a device GPS reading before giving up.
+      // Used by both the proactive prefetch on wizard step 3 and the click-time fallback
+      // on "Open in Google Maps". Most modern devices return a fix within a second or
+      // two; this is just the upper bound before we resolve null and fall back to
+      // Preview mode. Do NOT set below ~3000 — some devices (especially indoors)
+      // genuinely take a few seconds.
+      gpsTimeoutMs: 8000,
     };
     window.BKK.systemParams = { ...window.BKK._defaultSystemParams };
   }
@@ -1190,7 +1203,10 @@
                 remaining.push(firstStop);
               }
 
-              const urls = window.BKK.buildGoogleMapsUrls(remaining, origin, false, window.BKK.googleMaxWaypoints || 12);
+              const userLoc = (formData.currentLat && formData.currentLng)
+                ? { lat: formData.currentLat, lng: formData.currentLng }
+                : null;
+              const urls = window.BKK.buildGoogleMapsUrls(remaining, origin, false, window.BKK.googleMaxWaypoints || 12, userLoc);
               map.closePopup();
               if (urls.length > 0) {
                 window.open(urls[0].url, 'city_explorer_map');
@@ -2645,11 +2661,8 @@
     showToast(`💾 ${interestData.label || interestData.name} — ${t('toast.savedPending')}`, 'warning', 'sticky');
   };
 
-  // One-time migration: move old customLocations to per-city structure
   useEffect(() => {
     if (isFirebaseAvailable && database) {
-      window.BKK.migrateLocationsToPerCity(database);
-      window.BKK.cleanupInProgress(database);
       window.BKK.seedSystemRoutes(database);
 
       // interests and interestConfig live entirely in Firebase — no hardcoded seeds or patches
@@ -8607,8 +8620,9 @@
         addCustomLocation(closeAfter, googleData);
         showToast(`📍 ${t('dedup.googleMatch')}: ${match.name}`, 'success');
       } else {
-        // Custom match — don't add, merge interests if needed
+        // Custom match — don't add, merge interests if needed, then open place details
         const newInterests = loc.interests.filter(i => !match.interests?.includes(i));
+        let finalMatch = match;
         if (newInterests.length > 0) {
           const mergedInterests = [...(match.interests || []), ...newInterests];
           const updated = customLocations.map(l => 
@@ -8618,14 +8632,22 @@
           if (isFirebaseAvailable && database && match.firebaseKey) {
             database.ref(`cities/${selectedCityId}/locations/${match.firebaseKey}/interests`).set(mergedInterests);
           }
+          finalMatch = { ...match, interests: mergedInterests };
           const interestNames = newInterests.map(id => {
             const opt = allInterestOptions.find(o => o.id === id);
             return opt ? (tLabel(opt) || id) : id;
           }).join(', ');
           showToast(`🔗 "${match.name}" +${interestNames}`, 'success');
-        } else {
-          showToast(`✅ "${match.name}" ${t('dedup.alreadyExists')}`, 'info');
         }
+        // Close dedup and open the FouFou place info popup on the existing match
+        setDedupConfirm(null);
+        if (closeQuickCapture) setShowQuickCapture(false);
+        setTimeout(() => {
+          setModalImage(finalMatch.uploadedImage || (finalMatch.imageUrls && finalMatch.imageUrls[0]) || '__placeholder__');
+          setModalImageCtx({ description: finalMatch.description, location: finalMatch });
+          setShowImageModal(true);
+        }, 120);
+        return;
       }
     } else if (action === 'addNew') {
       if (dedupConfirm.pendingGooglePlace) {
@@ -9024,9 +9046,20 @@
     }
     if (finalAreas.length === 0) finalAreas = editingLocation.areas || [formData.area || areaOptions[0]?.id || 'center'];
     
+    // Auto-revert approved → draft on content edit.
+    // If the place WAS approved and the status toggle wasn't flipped by an editor/admin,
+    // any content change (name/description/coords/interests/etc.) downgrades it back to draft,
+    // requiring re-approval. When an editor/admin flips draft→approved explicitly via the status
+    // toggle (editingLocation.locked=false, newLocation.locked=true), we preserve that.
+    const wasApproved = !!editingLocation.locked;
+    const nowApproved = !!newLocation.locked;
+    const userFlippedUpToApproved = !wasApproved && nowApproved;
+    const finalLocked = userFlippedUpToApproved ? true : false;
+
     const updatedLocation = sanitizeMapsUrl({ 
       ...editingLocation, // Keep existing fields like status
       ...newLocation, // Override with edited fields
+      locked: finalLocked,
       area: finalAreas[0],
       areas: finalAreas,
       custom: true, 

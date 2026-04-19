@@ -11,6 +11,83 @@ window.BKK = window.BKK || {};
 // ============================================================================
 
 /**
+ * Session-cached user GPS. Populated by setUserGPS() or by a successful
+ * getUserGPS() call. Cleared only when the page reloads. Callers may read this
+ * synchronously as a best-effort hint — prefer getUserGPS() for an async
+ * fresh-or-cached lookup.
+ */
+window.BKK.lastKnownGPS = null; // { lat, lng, timestamp } | null
+
+/**
+ * Store a known GPS reading in the session cache. Call this from anywhere that
+ * legitimately obtains device coordinates (e.g. the GPS search flow).
+ */
+window.BKK.setUserGPS = (lat, lng) => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return;
+  window.BKK.lastKnownGPS = { lat, lng, timestamp: Date.now() };
+};
+
+/**
+ * Async fetch of device GPS with a session cache and a timeout.
+ *
+ * - If we already have a cached reading in this session, return it immediately.
+ *   GPS doesn't change the hemisphere mid-visit, so a cached value is reliable
+ *   enough for "which city are you in" questions.
+ * - Otherwise wrap `getValidatedGps` (which handles permissions, high-accuracy,
+ *   and timing consistently with the rest of the app). On any failure or timeout,
+ *   resolve with null — callers must handle absence gracefully.
+ *
+ * Note: we accept both in-city and out-of-city successful reads here (by calling
+ * `navigator.geolocation.getCurrentPosition` directly via the wrapper and
+ * catching the 'outside_city' case as success). Downstream logic in
+ * buildGoogleMapsUrls handles the in-city decision itself.
+ *
+ * Never rejects; always resolves to `{ lat, lng }` or `null`.
+ */
+window.BKK.getUserGPS = (timeoutMs) => {
+  timeoutMs = timeoutMs || 8000;
+  // Synchronous cache hit
+  if (window.BKK.lastKnownGPS) {
+    const c = window.BKK.lastKnownGPS;
+    return Promise.resolve({ lat: c.lat, lng: c.lng });
+  }
+  if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      resolve(val);
+    };
+    // Outer safety timer — guarantees we resolve even if the browser hangs.
+    const timer = setTimeout(() => done(null), timeoutMs);
+    try {
+      // Use same options as getValidatedGps for consistent device behavior.
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          clearTimeout(timer);
+          const lat = pos?.coords?.latitude;
+          const lng = pos?.coords?.longitude;
+          if (typeof lat === 'number' && typeof lng === 'number') {
+            window.BKK.setUserGPS(lat, lng);
+            done({ lat, lng });
+          } else {
+            done(null);
+          }
+        },
+        () => { clearTimeout(timer); done(null); },
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+      );
+    } catch (_) {
+      clearTimeout(timer);
+      done(null);
+    }
+  });
+};
+
+/**
  * Check if a location is within an area's boundaries using Haversine formula
  * @returns {{ valid: boolean, distance: number, distanceKm: string }}
  */
@@ -69,6 +146,10 @@ window.BKK.getValidatedGps = (onSuccess, onError) => {
   if (!navigator.geolocation) { if (onError) onError('unavailable'); return; }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      // Populate the session GPS cache regardless of city-bounds check — even if the
+      // user is outside the city, we still know where they are, and that information
+      // is useful for downstream decisions (e.g. buildGoogleMapsUrls avoiding a 17-day-walk).
+      window.BKK.setUserGPS(pos.coords.latitude, pos.coords.longitude);
       const check = window.BKK.isGpsWithinCity(pos.coords.latitude, pos.coords.longitude);
       if (check.withinCity) {
         if (onSuccess) onSuccess(pos);
@@ -469,26 +550,6 @@ window.BKK.getButtonStyle = (isActive = false, variant = 'primary') => {
 };
 
 /**
- * Build Google Maps directions URL from stops
- */
-window.BKK.buildMapsUrl = (stops, circular = false) => {
-  if (!stops || stops.length === 0) return '';
-  
-  const validStops = stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
-  if (validStops.length === 0) return '';
-  
-  // Path-based format: opens in overview mode with Start button
-  const points = [''];  // Empty = "Your location"
-  validStops.forEach(s => points.push(`${s.lat},${s.lng}`));
-  if (circular && validStops.length > 1) {
-    points.push(points[1]); // Return to first stop
-  }
-  
-  const encoded = points.map(p => encodeURIComponent(p)).join('/');
-  return `https://www.google.com/maps/dir/${encoded}/data=!4m2!4m1!3e2`;
-};
-
-/**
  * Parse user agent for readable browser/OS info
  */
 window.BKK.parseUserAgent = (ua) => {
@@ -680,8 +741,19 @@ window.BKK.getGoogleViewUrl = (place) => {
 
 // Build Google Maps direction URLs, splitting into multiple if exceeding maxPoints limit
 // maxPoints = total points including origin + destination (default 12 = 10 waypoints + origin + dest)
+// userLoc = { lat, lng } — optional current device location. Controls whether "" ("Your location")
+//           is prepended as the first point (enables the Start button in Google Maps):
+//             - origin OUT of city bounds → never prepend
+//             - origin IN city, userLoc IN city → prepend (Start)
+//             - origin IN city, userLoc OUT of city → no prepend (Preview; user is elsewhere)
+//             - origin IN city, userLoc absent → falls back to `window.BKK.lastKnownGPS`; if that
+//               is also empty, we do NOT prepend (safer to get Preview than risk the 17-day-walk
+//               bug for a user who is actually abroad). Callers that want reliable Start should
+//               `await window.BKK.getUserGPS()` first and pass the result in.
+//           Pass userLoc === false to force no-prepend regardless — used by the share-route
+//           button because the recipient's location is unknown.
 // Returns array of { url, fromIndex, toIndex, label } objects
-window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
+window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints, userLoc) => {
   maxPoints = maxPoints || 12;
   
   if (stops.length === 0) return [];
@@ -692,14 +764,80 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
   // Empty first segment = "Your location"
   
   const walkingData = 'data=!4m2!4m1!3e2';
+
+  // Decide whether to prepend "" ("Your location") as the first point.
+  // Google Maps only shows the "Start" (turn-by-turn) button when the URL's starting
+  // point is close to the device. Prepending "" enables Start, BUT if the user is far
+  // from the route's origin (different city), Google draws a gigantic walking path from
+  // device → origin (e.g. Bangkok → Singapore = 17 days). If we skip "", Google only
+  // offers Preview (no Start) but the route displays correctly.
+  //
+  // Decision:
+  // 1. If userLoc is provided AND inside the selected city's bounds AND origin also in
+  //    bounds → prepend "" (Start available, user is here, safe).
+  // 2. If userLoc is NOT provided (no GPS yet — e.g. "by area" search mode where we
+  //    never captured GPS) → fall back to the selected city's center as a proxy: if
+  //    the origin is inside the city's bounds, assume the user is also in the city
+  //    (they explicitly chose it in FouFou). If they aren't, Google will still show
+  //    Start once it reads the real device location — and if the route's origin is far,
+  //    the real-location mismatch would trigger the 17-day path, BUT only when the
+  //    device actually is far. This is an acceptable bet because most users plan
+  //    routes in the city they're visiting.
+  // 3. If userLoc IS provided but far from origin → do NOT prepend "" (user is
+  //    genuinely cross-city; Preview is correct).
+  const originCoords = (() => {
+    if (!origin) return null;
+    const m = String(origin).match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (!m) return null;
+    return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  })();
+  const distMeters = (a, b) => {
+    if (typeof window.BKK.calcDistance === 'function') {
+      return window.BKK.calcDistance(a.lat, a.lng, b.lat, b.lng);
+    }
+    const toRad = d => d * Math.PI / 180;
+    const R = 6371000;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const v = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(v));
+  };
+  const shouldPrependYourLoc = (() => {
+    if (!originCoords) return false;
+    // Explicit opt-out (for sharing) — caller says "don't assume my location".
+    if (userLoc === false) return false;
+    const city = window.BKK.selectedCity || window.BKK.activeCityData;
+    const center = city && city.center;
+    const radius = city && city.allCityRadius;
+    if (!center || !radius) return false;
+    // Origin must be in the selected city — required for any Start consideration.
+    const originInCity = distMeters(originCoords, center) <= radius;
+    if (!originInCity) return false;
+    // Prefer an explicit userLoc; fall back to the session cache if nothing was passed.
+    let loc = (userLoc && typeof userLoc.lat === 'number' && typeof userLoc.lng === 'number')
+      ? userLoc
+      : null;
+    if (!loc && window.BKK.lastKnownGPS) {
+      loc = { lat: window.BKK.lastKnownGPS.lat, lng: window.BKK.lastKnownGPS.lng };
+    }
+    // Safe default: if we have NO GPS information at all, do not prepend ""
+    // (Preview is better than a wildly long walking path if the user is actually
+    // far from the city). Callers that want Start should await getUserGPS() first.
+    if (!loc) return false;
+    return distMeters(loc, center) <= radius;
+  })();
   
-  // Build ordered list of all points: origin → stops → (origin if circular)
+  // Build ordered list of all points: [userLoc?] → origin → stops → (origin if circular)
   const buildPointsList = (stopsSlice, originCoord, circular) => {
     const points = [];
-    // Empty string = "Your location" as starting point
-    points.push('');
-    // Add origin as first waypoint if it exists
-    if (originCoord) points.push(originCoord);
+    // Prepend "" ("Your location") only when userLoc is close to origin (see comment above)
+    if (originCoord) {
+      if (shouldPrependYourLoc) points.push('');
+      points.push(originCoord);
+    } else {
+      // No origin at all — fall back to "Your location" as the sole starting point
+      points.push('');
+    }
     // Add all stops
     stopsSlice.forEach(s => points.push(`${s.lat},${s.lng}`));
     // For circular: return to origin
@@ -733,8 +871,13 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     const points = [];
     
     if (isFirst) {
-      points.push(''); // "Your location"
-      if (currentOrigin) points.push(currentOrigin);
+      // First segment: prepend "" only if userLoc is close to origin (see above)
+      if (currentOrigin) {
+        if (shouldPrependYourLoc) points.push('');
+        points.push(currentOrigin);
+      } else {
+        points.push('');
+      }
     } else {
       points.push(currentOrigin);
     }

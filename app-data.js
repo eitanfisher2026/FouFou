@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.22.92
+// FouFou app-data.js v3.23.4
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -989,9 +989,6 @@ auth: {
   noAccount: 'אין חשבון? הירשם',
   anonymous: 'אנונימי',
   regular: 'משתמש',
-  anonWarning: '⚠️ חשבון אנונימי — אם תנקה cache הנתונים יאבדו. קשר לחשבון Google כדי לשמור.',
-  linkGoogle: 'קשר לחשבון Google',
-  accountLinked: '✅ החשבון קושר בהצלחה!',
   userNotFound: 'משתמש לא קיים. נסה להירשם.',
   wrongPassword: 'סיסמה שגויה',
   emailInUse: 'אימייל כבר רשום. נסה להתחבר.',
@@ -1176,6 +1173,7 @@ help: {
     useThis: 'השתמש במקום זה',
     addAsNew: 'התעלם, הוסף כמקום חדש',
     alreadyExists: 'מקום זה כבר קיים ברשימה',
+    alreadyExistsOpen: 'מקום כבר קיים ברשימה, פתח ודרג',
     customExists: 'כבר קיים ברשימה שלך',
     googleMatchMulti: 'מקומות קרובים בגוגל',
     selectOrSkip: 'בחר את המקום שצילמת, או דלג',
@@ -2098,9 +2096,6 @@ auth: {
   noAccount: "Don't have an account? Register",
   anonymous: 'Anonymous',
   regular: 'User',
-  anonWarning: '⚠️ Anonymous account — data will be lost if you clear cache. Link to Google to keep it safe.',
-  linkGoogle: 'Link to Google account',
-  accountLinked: '✅ Account linked successfully!',
   userNotFound: 'User not found. Try registering.',
   wrongPassword: 'Wrong password',
   emailInUse: 'Email already registered. Try signing in.',
@@ -2294,6 +2289,7 @@ help: {
     useThis: 'Use this place',
     addAsNew: 'Ignore, add as new place',
     alreadyExists: 'This place already exists in your list',
+    alreadyExistsOpen: 'Already in your list — open and rate',
     customExists: 'Already in your list',
     googleMatchMulti: 'Nearby places on Google',
     selectOrSkip: 'Select the place you photographed, or skip',
@@ -3438,7 +3434,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.22.92';
+window.BKK.VERSION = '3.23.4';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3558,82 +3554,6 @@ window.BKK.exportCityFile = function(city) {
  */
 window.BKK.getCityRegistryEntry = function(city) {
   return '  ' + city.id + ": { id: '" + city.id + "', name: '" + city.name + "', nameEn: '" + city.nameEn + "', country: '" + (city.country || '') + "', icon: '" + city.icon + "', file: 'city-" + city.id + ".js' }";
-};
-
-/**
- * One-time migration: move old flat customLocations to per-city structure.
- * Old: customLocations/{id} → New: cities/{cityId}/locations/{id}
- * Writes ONE item at a time to avoid Firebase "Write too large" error.
- */
-window.BKK.migrateLocationsToPerCity = function(database) {
-  if (!database) return Promise.resolve();
-  var migrated = localStorage.getItem('locations_migrated_v2');
-  if (migrated === 'true') return Promise.resolve();
-  
-  var locCount = 0;
-  var routeCount = 0;
-  var errors = 0;
-  
-  return database.ref('customLocations').once('value').then(function(snap) {
-    var data = snap.val();
-    if (!data) return Promise.resolve();
-    var keys = Object.keys(data);
-    locCount = keys.length;
-    return keys.reduce(function(chain, key) {
-      return chain.then(function() {
-        var loc = data[key];
-        if (loc.uploadedImage && typeof loc.uploadedImage === 'string' && loc.uploadedImage.startsWith('data:')) {
-          delete loc.uploadedImage;
-        }
-        var cityId = loc.cityId || 'bangkok';
-        return database.ref('cities/' + cityId + '/locations/' + key).set(loc).catch(function(e) {
-          errors++;
-        });
-      });
-    }, Promise.resolve());
-  }).then(function() {
-    return database.ref('savedRoutes').once('value');
-  }).then(function(snap) {
-    var data = snap.val();
-    if (!data) return Promise.resolve();
-    var keys = Object.keys(data);
-    routeCount = keys.length;
-    return keys.reduce(function(chain, key) {
-      return chain.then(function() {
-        var route = data[key];
-        if (route.stops && Array.isArray(route.stops)) {
-          route.stops = route.stops.map(function(s) {
-            if (s.uploadedImage && typeof s.uploadedImage === 'string' && s.uploadedImage.startsWith('data:')) {
-              var copy = Object.assign({}, s);
-              delete copy.uploadedImage;
-              return copy;
-            }
-            return s;
-          });
-        }
-        var cityId = route.cityId || 'bangkok';
-        return database.ref('cities/' + cityId + '/routes/' + key).set(route).catch(function(e) {
-          errors++;
-        });
-      });
-    }, Promise.resolve());
-  }).then(function() {
-    if (locCount === 0 && routeCount === 0) {
-      localStorage.setItem('locations_migrated_v2', 'true');
-      return;
-    }
-    if (errors > 0) {
-      return;
-    }
-    var removals = [];
-    if (locCount > 0) removals.push(database.ref('customLocations').remove());
-    if (routeCount > 0) removals.push(database.ref('savedRoutes').remove());
-    return Promise.all(removals).then(function() {
-      localStorage.setItem('locations_migrated_v2', 'true');
-    });
-  }).catch(function(err) {
-    console.error('[MIGRATION] Error:', err);
-  });
 };
 
 /**
@@ -3777,6 +3697,80 @@ window.BKK = window.BKK || {};
 // ============================================================================
 
 /**
+ * Session-cached user GPS. Populated by setUserGPS() or by a successful
+ * getUserGPS() call. Cleared only when the page reloads. Callers may read this
+ * synchronously as a best-effort hint — prefer getUserGPS() for an async
+ * fresh-or-cached lookup.
+ */
+window.BKK.lastKnownGPS = null; // { lat, lng, timestamp } | null
+
+/**
+ * Store a known GPS reading in the session cache. Call this from anywhere that
+ * legitimately obtains device coordinates (e.g. the GPS search flow).
+ */
+window.BKK.setUserGPS = (lat, lng) => {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return;
+  window.BKK.lastKnownGPS = { lat, lng, timestamp: Date.now() };
+};
+
+/**
+ * Async fetch of device GPS with a session cache and a timeout.
+ *
+ * - If we already have a cached reading in this session, return it immediately.
+ *   GPS doesn't change the hemisphere mid-visit, so a cached value is reliable
+ *   enough for "which city are you in" questions.
+ * - Otherwise wrap `getValidatedGps` (which handles permissions, high-accuracy,
+ *   and timing consistently with the rest of the app). On any failure or timeout,
+ *   resolve with null — callers must handle absence gracefully.
+ *
+ * Note: we accept both in-city and out-of-city successful reads here (by calling
+ * `navigator.geolocation.getCurrentPosition` directly via the wrapper and
+ * catching the 'outside_city' case as success). Downstream logic in
+ * buildGoogleMapsUrls handles the in-city decision itself.
+ *
+ * Never rejects; always resolves to `{ lat, lng }` or `null`.
+ */
+window.BKK.getUserGPS = (timeoutMs) => {
+  timeoutMs = timeoutMs || 8000;
+  if (window.BKK.lastKnownGPS) {
+    const c = window.BKK.lastKnownGPS;
+    return Promise.resolve({ lat: c.lat, lng: c.lng });
+  }
+  if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (val) => {
+      if (settled) return;
+      settled = true;
+      resolve(val);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          clearTimeout(timer);
+          const lat = pos?.coords?.latitude;
+          const lng = pos?.coords?.longitude;
+          if (typeof lat === 'number' && typeof lng === 'number') {
+            window.BKK.setUserGPS(lat, lng);
+            done({ lat, lng });
+          } else {
+            done(null);
+          }
+        },
+        () => { clearTimeout(timer); done(null); },
+        { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+      );
+    } catch (_) {
+      clearTimeout(timer);
+      done(null);
+    }
+  });
+};
+
+/**
  * Check if a location is within an area's boundaries using Haversine formula
  * @returns {{ valid: boolean, distance: number, distanceKm: string }}
  */
@@ -3835,6 +3829,7 @@ window.BKK.getValidatedGps = (onSuccess, onError) => {
   if (!navigator.geolocation) { if (onError) onError('unavailable'); return; }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
+      window.BKK.setUserGPS(pos.coords.latitude, pos.coords.longitude);
       const check = window.BKK.isGpsWithinCity(pos.coords.latitude, pos.coords.longitude);
       if (check.withinCity) {
         if (onSuccess) onSuccess(pos);
@@ -4210,25 +4205,6 @@ window.BKK.getButtonStyle = (isActive = false, variant = 'primary') => {
 };
 
 /**
- * Build Google Maps directions URL from stops
- */
-window.BKK.buildMapsUrl = (stops, circular = false) => {
-  if (!stops || stops.length === 0) return '';
-  
-  const validStops = stops.filter(s => s.lat && s.lng && s.lat !== 0 && s.lng !== 0);
-  if (validStops.length === 0) return '';
-  
-  const points = [''];  // Empty = "Your location"
-  validStops.forEach(s => points.push(`${s.lat},${s.lng}`));
-  if (circular && validStops.length > 1) {
-    points.push(points[1]); // Return to first stop
-  }
-  
-  const encoded = points.map(p => encodeURIComponent(p)).join('/');
-  return `https://www.google.com/maps/dir/${encoded}/data=!4m2!4m1!3e2`;
-};
-
-/**
  * Parse user agent for readable browser/OS info
  */
 window.BKK.parseUserAgent = (ua) => {
@@ -4404,17 +4380,57 @@ window.BKK.getGoogleViewUrl = (place) => {
   return null;
 };
 
-window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
+window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints, userLoc) => {
   maxPoints = maxPoints || 12;
   
   if (stops.length === 0) return [];
   
   const walkingData = 'data=!4m2!4m1!3e2';
+
+  const originCoords = (() => {
+    if (!origin) return null;
+    const m = String(origin).match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (!m) return null;
+    return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  })();
+  const distMeters = (a, b) => {
+    if (typeof window.BKK.calcDistance === 'function') {
+      return window.BKK.calcDistance(a.lat, a.lng, b.lat, b.lng);
+    }
+    const toRad = d => d * Math.PI / 180;
+    const R = 6371000;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const v = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(v));
+  };
+  const shouldPrependYourLoc = (() => {
+    if (!originCoords) return false;
+    if (userLoc === false) return false;
+    const city = window.BKK.selectedCity || window.BKK.activeCityData;
+    const center = city && city.center;
+    const radius = city && city.allCityRadius;
+    if (!center || !radius) return false;
+    const originInCity = distMeters(originCoords, center) <= radius;
+    if (!originInCity) return false;
+    let loc = (userLoc && typeof userLoc.lat === 'number' && typeof userLoc.lng === 'number')
+      ? userLoc
+      : null;
+    if (!loc && window.BKK.lastKnownGPS) {
+      loc = { lat: window.BKK.lastKnownGPS.lat, lng: window.BKK.lastKnownGPS.lng };
+    }
+    if (!loc) return false;
+    return distMeters(loc, center) <= radius;
+  })();
   
   const buildPointsList = (stopsSlice, originCoord, circular) => {
     const points = [];
-    points.push('');
-    if (originCoord) points.push(originCoord);
+    if (originCoord) {
+      if (shouldPrependYourLoc) points.push('');
+      points.push(originCoord);
+    } else {
+      points.push('');
+    }
     stopsSlice.forEach(s => points.push(`${s.lat},${s.lng}`));
     if (circular && originCoord) points.push(originCoord);
     return points;
@@ -4444,8 +4460,12 @@ window.BKK.buildGoogleMapsUrls = (stops, origin, isCircular, maxPoints) => {
     const points = [];
     
     if (isFirst) {
-      points.push(''); // "Your location"
-      if (currentOrigin) points.push(currentOrigin);
+      if (currentOrigin) {
+        if (shouldPrependYourLoc) points.push('');
+        points.push(currentOrigin);
+      } else {
+        points.push('');
+      }
     } else {
       points.push(currentOrigin);
     }
