@@ -1,15 +1,15 @@
-// FouFou Service Worker v3.23.4
+// FouFou Service Worker v3.23.6
 // Strategy: Network First — תמיד מנסה רשת, cache רק אם אין חיבור
 // זה בטוח: המשתמש תמיד מקבל את הגרסה העדכנית כשיש חיבור
 
-const CACHE_NAME = 'foufou-dev-v3.23.4';
+const CACHE_NAME = 'foufou-v3.23.6';
 
 // קבצים לcache לoffline fallback בלבד
 const OFFLINE_ASSETS = [
-  '/FouFou-dev/',
-  '/FouFou-dev/index.html',
-  '/FouFou-dev/app-data.js?v=3.23.4',
-  '/FouFou-dev/app-code.js?v=3.23.4'
+  '/FouFou/',
+  '/FouFou/index.html',
+  '/FouFou/app-data.js?v=3.23.6',
+  '/FouFou/app-code.js?v=3.23.6'
 ];
 
 // ──── Install: שמור assets בסיסיים ────
@@ -72,7 +72,7 @@ self.addEventListener('fetch', function(event) {
     }).catch(function() {
       // אין רשת — החזר מcache
       return caches.match(event.request).then(function(cached) {
-        return cached || caches.match('/FouFou-dev/index.html');
+        return cached || caches.match('/FouFou/index.html');
       });
     })
   );

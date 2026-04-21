@@ -186,13 +186,14 @@ def build():
     if os.path.exists('sw.js'):
         with open('sw.js', 'r', encoding='utf-8') as f:
             sw = f.read()
-        sw = re.sub(r"const CACHE_NAME = 'foufou(-\w+)?-v[\d.]+'", f"const CACHE_NAME = 'foufou-dev-v{ver}'", sw)
+        sw = re.sub(r"const CACHE_NAME = 'foufou(-\w+)?-v[\d.]+'", lambda m: f"const CACHE_NAME = 'foufou{m.group(1) or ''}-v{ver}'", sw)
         # Also update versioned asset URLs in OFFLINE_ASSETS
         sw = re.sub(r"app-data\.js\?v=[\d.]+", f"app-data.js?v={ver}", sw)
         sw = re.sub(r"app-code\.js\?v=[\d.]+", f"app-code.js?v={ver}", sw)
         with open('sw.js', 'w', encoding='utf-8') as f:
             f.write(sw)
-        print(f"📄 sw.js cache updated → foufou-v{ver}")
+        cache_match = re.search(r"const CACHE_NAME = '([^']+)'", sw)
+        print(f"📄 sw.js cache updated → {cache_match.group(1) if cache_match else 'v' + ver}")
 
     # === BUILD FILE 3: index.html (tiny shell with splash) ===
     index_html = template.replace('__VERSION__', ver)

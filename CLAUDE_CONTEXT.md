@@ -1,13 +1,14 @@
 # FouFou — City Trail Generator · Claude Context
 
 ## Live
-https://eitanfisher2026.github.io/FouFou-dev/
+https://eitanfisher2026.github.io/FouFou/  (production — TWA-wrapped)
+Dev repo: https://eitanfisher2026.github.io/FouFou-dev/
 
 ## Stack
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Current Version
-**v3.23.4**
+**v3.23.6**
 
 ## Recent Changes (v3.22.87 → v3.23.4)
 - **v3.22.87**: Debug tab + `addDebugLog` infrastructure removed
