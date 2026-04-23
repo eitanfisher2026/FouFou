@@ -996,7 +996,7 @@
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
   const [interestDialogReadOnly, setInterestDialogReadOnly] = useState(false);
   const [cityVisibilityInterest, setCityVisibilityInterest] = useState(null); // interest object for city visibility dialog
-  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', nameKeywords: '', privateOnly: true, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, minRatingCount: null, lowRatingCount: null });
+  const [newInterest, setNewInterest] = useState({ label: '', icon: '📍', searchMode: 'types', types: '', textSearch: '', blacklist: '', nameKeywords: '', privateOnly: false, locked: false, scope: 'global', category: 'attraction', weight: 3, minStops: 1, maxStops: 10, minRatingCount: null, lowRatingCount: null });
   const [iconPickerConfig, setIconPickerConfig] = useState(null); // { description: '', callback: fn, suggestions: [], loading: false }
   const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -1957,13 +1957,6 @@
     database.ref(`cities/${cityId}/locations/${firebaseId}/locked`).set(locked);
   };
 
-  // Set interest adminStatus
-  const saveInterestAdminStatus = (interestId, status) => {
-    if (!isFirebaseAvailable || !database) return;
-    database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(status).catch(() => {});
-    database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
-  };
-
   // Save a single system param
   const saveSystemParam = (key, value) => {
     if (!isFirebaseAvailable || !database) return;
@@ -1998,12 +1991,6 @@
     if (!isFirebaseAvailable || !database) return;
     database.ref(`settings/cityHiddenInterests/${cityId}`).set(arr.length > 0 ? arr : null)
       .catch(e => console.error('[CITY] toggle error:', e));
-  };
-
-  // Set interest adminStatus (cycled in interest dialog)
-  const saveInterestAdminStatusAsync = async (interestId, status) => {
-    if (!isFirebaseAvailable || !database) return;
-    try { await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(status); } catch(e) {}
   };
 
   // Save interest counter
@@ -2041,14 +2028,16 @@
     database.ref('settings/cacheVersion').set(Date.now());
   };
 
-  // Save/update customInterest + config in one operation
-  const saveCustomInterestAndConfig = (firebaseId, interestId, updatedInterest, mergedConfig) => {
+  // Save/update customInterest + config (v3.23.8: sequential, not atomic batch).
+  // customInterests must land before interestConfig because the interestConfig rule
+  // joins with customInterests.addedBy to authorize editor writes.
+  const saveCustomInterestAndConfig = async (firebaseId, interestId, updatedInterest, mergedConfig) => {
     if (!isFirebaseAvailable || !database) return;
-    const batch = {};
-    batch[`customInterests/${firebaseId || interestId}`] = updatedInterest;
-    if (mergedConfig) batch[`settings/interestConfig/${interestId}`] = mergedConfig;
-    batch['settings/cacheVersion'] = Date.now();
-    database.ref().update(batch).catch(() => {});
+    try {
+      await database.ref(`customInterests/${firebaseId || interestId}`).set(updatedInterest);
+      if (mergedConfig) await database.ref(`settings/interestConfig/${interestId}`).set(mergedConfig);
+      await database.ref('settings/cacheVersion').set(Date.now()).catch(() => {});
+    } catch (e) { console.warn('[INTEREST-SAVE] failed:', e); }
   };
 
 
@@ -2704,16 +2693,8 @@
         });
       }
 
-      // ONE-TIME RESTORE: Set culture and shopping back to active (v3.12.5)
-      if (localStorage.getItem('restore_culture_shopping_v125') !== 'true') {
-        const writes = {};
-        ['culture', 'shopping'].forEach(id => {
-          writes[`settings/interestConfig/${id}/adminStatus`] = 'active';
-        });
-        database.ref().update(writes)
-          .then(() => localStorage.setItem('restore_culture_shopping_v125', 'true'))
-          .catch(e => console.error('[RESTORE] culture/shopping failed:', e));
-      }
+      // v3.12.5 adminStatus restore retired — adminStatus field removed entirely in v3.23.8
+      // v3.23.8 backfill + cleanup moved to their own useEffect below (depends on isAdmin state so it fires AFTER auth resolves)
 
       // ONE-TIME MIGRATION: Move labelOverride/labelEnOverride → customInterests.label/labelEn (v3.12.11)
       // After this, interestConfig holds search config only — no display fields
@@ -3089,6 +3070,69 @@
       }
     }
   }, []);
+
+  // v3.23.8 admin-only migrations — fire AFTER admin role resolves, not on mount.
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (!isFirebaseAvailable || !database) return;
+
+    // BACKFILL: copy addedBy/addedByName/addedAt from a reference interest onto any that lack them.
+    if (localStorage.getItem('interest_owner_backfill_v3238') !== 'true') {
+      database.ref('customInterests').once('value').then(snap => {
+        const all = snap.val() || {};
+        const keys = Object.keys(all);
+        let template = null;
+        keys.forEach(k => {
+          const v = all[k];
+          if (v && v.addedBy && (!template || (v.addedAt && template.addedAt && v.addedAt < template.addedAt))) {
+            template = v;
+          }
+        });
+        if (!template) {
+          console.log('[BACKFILL v3.23.8] no template interest with addedBy found — skipping until one exists');
+          return;
+        }
+        const tplBy   = template.addedBy;
+        const tplName = template.addedByName || 'Admin';
+        const tplAt   = template.addedAt || new Date().toISOString();
+        const writes = {};
+        keys.forEach(k => {
+          const v = all[k];
+          if (!v || v.addedBy) return;
+          writes[`customInterests/${k}/addedBy`]     = tplBy;
+          writes[`customInterests/${k}/addedByName`] = tplName;
+          writes[`customInterests/${k}/addedAt`]     = tplAt;
+        });
+        if (Object.keys(writes).length > 0) {
+          database.ref().update(writes)
+            .then(() => { console.log(`[BACKFILL v3.23.8] stamped ${Object.keys(writes).length / 3} interests from template "${template.id || '?'}"`); localStorage.setItem('interest_owner_backfill_v3238', 'true'); })
+            .catch(e => console.warn('[BACKFILL v3.23.8] failed:', e));
+        } else {
+          console.log('[BACKFILL v3.23.8] all interests already have addedBy — nothing to do');
+          localStorage.setItem('interest_owner_backfill_v3238', 'true');
+        }
+      }).catch(() => {});
+    }
+
+    // CLEANUP: strip orphaned adminStatus + duplicate locked from interestConfig.
+    if (localStorage.getItem('interestConfig_cleanup_v3238') !== 'true') {
+      database.ref('settings/interestConfig').once('value').then(snap => {
+        const cfg = snap.val() || {};
+        const writes = {};
+        Object.keys(cfg).forEach(id => {
+          if (cfg[id] && cfg[id].adminStatus !== undefined) writes[`settings/interestConfig/${id}/adminStatus`] = null;
+          if (cfg[id] && cfg[id].locked !== undefined)      writes[`settings/interestConfig/${id}/locked`] = null;
+        });
+        if (Object.keys(writes).length > 0) {
+          database.ref().update(writes)
+            .then(() => { console.log('[CLEANUP v3.23.8] removed', Object.keys(writes).length, 'orphan fields'); localStorage.setItem('interestConfig_cleanup_v3238', 'true'); })
+            .catch(e => console.warn('[CLEANUP v3.23.8] failed:', e));
+        } else {
+          localStorage.setItem('interestConfig_cleanup_v3238', 'true');
+        }
+      }).catch(() => {});
+    }
+  }, [isAdmin]);
 
   // Load user display names for addedBy resolution
   useEffect(() => {
@@ -4149,9 +4193,21 @@
 
   // Config - loaded from config.js, re-read on city change via selectedCityId dependency
   // interestOptions: now sourced from customInterests (Firebase) — city files no longer carry interests
-  // cityHiddenInterests still controls per-city visibility
+  // Two visibility axes (v3.23.8):
+  //   1. Draft/Public (locked): drafts only visible to creator + admin, bypassing city hide
+  //   2. cityHiddenInterests (per-city admin hide): applies only to public interests
+  // Back-compat (v3.23.11): legacy interests without a locked field default to Public.
+  // Only explicit locked===false is treated as Draft.
   const hiddenForCity = cityHiddenInterests[selectedCityId] || new Set();
-  const interestOptions = (customInterests || []).filter(i => !hiddenForCity.has(i.id));
+  const interestOptions = (customInterests || []).filter(i => {
+    const isDraft = i.locked === false; // explicit false only; undefined/missing → treated as public
+    if (isDraft) {
+      // Draft: only creator + admin, bypassing city hide
+      return isAdmin || (authUser?.uid && i.addedBy === authUser.uid);
+    }
+    // Public (or legacy): subject to per-city hide
+    return !hiddenForCity.has(i.id);
+  });
 
 
 
@@ -5205,7 +5261,6 @@
         weight: config.weight || opt.weight || sp.defaultInterestWeight,
         minStops: config.minStops != null ? config.minStops : (opt.minStops != null ? opt.minStops : 1),
         maxStops: config.maxStops || opt.maxStops || 10,
-        adminStatus: config.adminStatus || 'active',
         group: config.group || opt.group || '',
         noGoogleSearch: config.noGoogleSearch || opt.noGoogleSearch || false,
         privateOnly: config.privateOnly || opt.privateOnly || false,
@@ -5370,8 +5425,15 @@
   }, [customLocations, selectedCityId]);
 
   const citySavedRoutes = useMemo(() => {
-    return savedRoutes.filter(r => (r.cityId || 'bangkok') === selectedCityId);
-  }, [savedRoutes, selectedCityId]);
+    const myUid = authUser?.uid;
+    return savedRoutes.filter(r => {
+      if ((r.cityId || 'bangkok') !== selectedCityId) return false;
+      // Visibility: public (locked:true) visible to all. Private (locked:false) only to owner + editor+.
+      if (r.locked) return true;
+      if (isUnlocked) return true;
+      return myUid && r.savedBy === myUid;
+    });
+  }, [savedRoutes, selectedCityId, isUnlocked, authUser?.uid]);
 
 
   // Memoize expensive places grouping/sorting
@@ -7483,28 +7545,7 @@
   // Admin: toggle the defaultEnabled flag for an interest
 
 
-  // Admin: cycle adminStatus for an interest (active → draft → hidden → active)
-  const cycleAdminStatus = async (interestId) => {
-    if (!isUnlocked) return;
-    const currentConfig = interestConfig[interestId] || {};
-    const current = currentConfig.adminStatus || 'active';
-    const next = current === 'active' ? 'draft' : current === 'draft' ? 'hidden' : 'active';
-    
-    const updatedConfig = { ...interestConfig, [interestId]: { ...currentConfig, adminStatus: next } };
-    setInterestConfig(updatedConfig);
-    
-    if (isFirebaseAvailable && database) {
-      try {
-        await database.ref(`settings/interestConfig/${interestId}/adminStatus`).set(next);
-        console.log(`[ADMIN] Set adminStatus=${next} for ${interestId}`);
-      } catch (err) {
-        console.error('Error saving adminStatus:', err);
-      }
-    }
-    
-    const labels = { active: '🟢', draft: '🟡', hidden: '🔴' };
-    showToast(`${labels[next]} ${interestId} → ${next}`, 'info');
-  };
+  // cycleAdminStatus retired in v3.23.8 — adminStatus tri-state replaced by draft/public (locked) on /customInterests/
 
   // Check if interest has valid search config
   // RULE: behavior (noGoogleSearch, types, textSearch) comes from interestConfig (Firebase) only
