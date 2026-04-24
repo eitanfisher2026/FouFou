@@ -47,7 +47,7 @@
   const [authLoading, setAuthLoading] = useState(true); // true until onAuthStateChanged fires
   const [userRole, setUserRole] = useState(0); // 0=regular, 1=editor, 2=admin (real role from Firebase)
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
+  // showUserManagement retired in v3.23.13 — user management now lives in Settings → Users tab
   const [showAbout, setShowAbout] = useState(false);
   const [aboutEditing, setAboutEditing] = useState(false);
   const [aboutLocalText, setAboutLocalText] = useState('');
@@ -226,8 +226,8 @@
     if (!isRealAdmin || !database) return;
     try {
       await database.ref(`users/${uid}/role`).set(newRole);
-      // Refresh allUsers if open
-      if (showUserManagement) authLoadAllUsers();
+      // v3.23.13: always refresh after a role change (cheap; Users tab may be open)
+      authLoadAllUsers();
       showToast(`✅ ${t('toast.roleUpdated')}: ${['Regular','Editor','Admin'][newRole]}`, 'success');
     } catch (err) {
       console.error('[AUTH] Update role error:', err);
@@ -797,6 +797,7 @@
     try { return JSON.parse(localStorage.getItem('foufou_preferences') || '{}').placesSortBy || 'updatedAt'; } catch(e) { return 'updatedAt'; }
   }); // 'updatedAt' | 'addedAt' | 'interest' | 'area'
   const [routesSortBy, setRoutesSortBy] = useState('area'); // 'area' or 'name'
+  const [trailsFilter, setTrailsFilter] = useState('all'); // v3.23.15: 'all' | 'me' | 'others'
   const [editingRoute, setEditingRoute] = useState(null);
   const [showRouteDialog, setShowRouteDialog] = useState(false);
   const [routeDialogMode, setRouteDialogMode] = useState('edit'); // 'add' or 'edit'
@@ -3131,6 +3132,66 @@
           localStorage.setItem('interestConfig_cleanup_v3238', 'true');
         }
       }).catch(() => {});
+    }
+
+    // EMAIL-LEAK SWEEP (v3.23.14): scrub email-shaped values from publicly-readable
+    // userName / savedByName / addedByName fields across reviews, routes, interests.
+    // Root cause: older code fell back to email when displayName was missing; that
+    // email then got stored at `.read: true` paths. We now refuse emails at write
+    // time (rule + helper), and this pass cleans historical data.
+    if (localStorage.getItem('email_leak_sweep_v32314') !== 'true') {
+      const looksLikeEmail = (s) => typeof s === 'string' && s.indexOf('@') !== -1 && s.indexOf('.') !== -1;
+      const safeFromUid = (uid) => (uid ? 'User-' + String(uid).slice(0, 6) : 'User');
+      const writes = {};
+      const sweepJobs = [];
+
+      // 1. /customInterests/{id}/addedByName
+      sweepJobs.push(database.ref('customInterests').once('value').then(snap => {
+        const all = snap.val() || {};
+        Object.keys(all).forEach(k => {
+          const v = all[k];
+          if (v && looksLikeEmail(v.addedByName)) {
+            writes[`customInterests/${k}/addedByName`] = safeFromUid(v.addedBy || k);
+          }
+        });
+      }));
+
+      // 2. /cities/{cityId}/routes/{routeId}/savedByName
+      sweepJobs.push(database.ref('cities').once('value').then(snap => {
+        const cities = snap.val() || {};
+        Object.keys(cities).forEach(cid => {
+          const routes = cities[cid]?.routes || {};
+          Object.keys(routes).forEach(rid => {
+            const r = routes[rid];
+            if (r && looksLikeEmail(r.savedByName)) {
+              writes[`cities/${cid}/routes/${rid}/savedByName`] = safeFromUid(r.savedBy);
+            }
+          });
+          // 3. /cities/{cityId}/reviews/{placeKey}/{uid}/userName
+          const reviews = cities[cid]?.reviews || {};
+          Object.keys(reviews).forEach(pk => {
+            const perUser = reviews[pk] || {};
+            Object.keys(perUser).forEach(uid => {
+              const rv = perUser[uid];
+              if (rv && looksLikeEmail(rv.userName)) {
+                writes[`cities/${cid}/reviews/${pk}/${uid}/userName`] = safeFromUid(uid);
+              }
+            });
+          });
+        });
+      }));
+
+      Promise.all(sweepJobs).then(() => {
+        const n = Object.keys(writes).length;
+        if (n === 0) {
+          console.log('[EMAIL-SWEEP v3.23.14] no email-shaped display names found — clean');
+          localStorage.setItem('email_leak_sweep_v32314', 'true');
+          return;
+        }
+        database.ref().update(writes)
+          .then(() => { console.log(`[EMAIL-SWEEP v3.23.14] replaced ${n} email-shaped display names with User-<uid> fallbacks`); localStorage.setItem('email_leak_sweep_v32314', 'true'); })
+          .catch(e => console.warn('[EMAIL-SWEEP v3.23.14] update failed:', e));
+      }).catch(e => console.warn('[EMAIL-SWEEP v3.23.14] read failed:', e));
     }
   }, [isAdmin]);
 
@@ -6661,26 +6722,30 @@
         });
       }
 
-      // Route name and area info
+      // Route name and area info — v3.23.15: always build in English regardless of UI language
+      // so saved trails have stable, shareable names across languages.
+      const enLabel = (obj) => obj ? (obj.labelEn || obj.nameEn || obj.label || obj.name || obj.id || '') : '';
       let areaName, interestsText;
       if (isRadiusMode) {
-        const allCityLabel = t('general.all') + ' ' + (tLabel(window.BKK.selectedCity) || t('general.city'));
-        if (formData.searchMode === 'all' || formData.radiusPlaceName === allCityLabel || formData.radiusPlaceName === t('general.allCity')) {
+        const city = window.BKK.selectedCity;
+        const allCityLabel = 'All ' + (enLabel(city) || 'City');
+        if (formData.searchMode === 'all' || formData.radiusPlaceName === allCityLabel) {
           areaName = allCityLabel;
         } else {
           const sourceName = formData.radiusSource === 'myplace' && formData.radiusPlaceId
-            ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || t('form.myPlace')
+            ? customLocations.find(l => l.id === formData.radiusPlaceId)?.name || 'My place'
             : formData.radiusSource === 'gps'
-            ? t('wizard.myLocation')
-            : formData.radiusPlaceName || t('form.currentLocation');
+            ? 'My location'
+            : formData.radiusPlaceName || 'Current location';
           areaName = `${formData.radiusMeters}m - ${sourceName}`;
         }
       } else {
         const selectedArea = areaOptions.find(a => a.id === formData.area);
-        areaName = tLabel(selectedArea) || t('general.allCity');
+        areaName = enLabel(selectedArea) || 'All City';
       }
       interestsText = searchInterests
-        .map(id => allInterestOptions.filter(o => o && o.id).find(o => o.id === id)).map(o => o ? tLabel(o) : null)
+        .map(id => allInterestOptions.filter(o => o && o.id).find(o => o.id === id))
+        .map(o => o ? enLabel(o) : null)
         .filter(Boolean)
         .join(', ');
       
@@ -7306,7 +7371,7 @@
       notes: '',
       savedAt: new Date().toISOString(),
       savedBy: authUser?.uid || null,
-      savedByName: authUser?.displayName || authUser?.email || 'User',
+      savedByName: window.BKK.safeDisplayName(authUser),
       locked: false,
       cityId: selectedCityId
     };
@@ -8119,7 +8184,7 @@
           text: rating.text || '',
           timestamp: Date.now(),
           uid,
-          userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+          userName: window.BKK.safeDisplayName(authUser)
         });
         // Write to reviewRatings/ (ratings-only node)
         await database.ref(`cities/${selectedCityId}/reviewRatings/${pk}/${uid}`).set(rating.score);
@@ -9028,7 +9093,7 @@
                 text: ratingText,
                 timestamp: Date.now(),
                 uid,
-                userName: authUser?.displayName || authUser?.email || t('auth.anonymous')
+                userName: window.BKK.safeDisplayName(authUser)
               });
               await database.ref(`cities/${selectedCityId}/reviewRatings/${pk}/${uid}`).set(ratingScore);
               refreshReviewRating(selectedCityId, pk);

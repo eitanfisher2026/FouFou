@@ -229,6 +229,26 @@
             }}
             title={t("general.menu")}
           >☰</button>
+          {/* v3.23.15: Sign-in / avatar button — sits just inside the feedback button */}
+          <button
+            onClick={() => setShowLoginDialog(true)}
+            style={{
+              position: 'absolute',
+              [currentLang === 'he' ? 'left' : 'right']: '34px',
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none', borderRadius: '50%',
+              width: '26px', height: '26px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: '13px', color: 'white',
+              transition: 'background 0.2s',
+              padding: 0, overflow: 'hidden'
+            }}
+            title={authUser && !authUser.isAnonymous ? (authUser.displayName || authUser.email || t('auth.anonymous')) : (t('auth.signIn') || 'Sign in')}
+          >
+            {authUser && !authUser.isAnonymous && authUser.photoURL
+              ? <img src={authUser.photoURL} alt="" style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
+              : (authUser && !authUser.isAnonymous ? '👤' : '🔑')}
+          </button>
           {(theme.iconLeft || window.BKK.selectedCity?.secondaryIcon) && (() => {
             const val = theme.iconLeft || window.BKK.selectedCity?.secondaryIcon;
             return <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
@@ -286,14 +306,12 @@
             {[
               { icon: '🗺️', label: t('nav.route'), view: 'form' },
               { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: groupedPlaces.activeCount },
-              { icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
-                const aStatus = o.adminStatus || 'active';
-                if (aStatus === 'hidden') return false;
-                if (aStatus === 'draft' && !isUnlocked) return false;
+              // v3.23.15: Interests nav hidden from regular/anon users — editor+ only
+              ...(isUnlocked ? [{ icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
                 return true;
-              }).length },
-              { icon: '💾', label: t('nav.saved'), view: 'saved', count: citySavedRoutes.length },
+              }).length }] : []),
+              { icon: '🛤️', label: t('nav.savedTrails'), view: 'saved', count: citySavedRoutes.length },
               // Settings — admin only (hidden from regular users, not just blocked)
               ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
             ].map(item => (
@@ -346,20 +364,7 @@
               <span>{authUser ? (authUser.displayName || authUser.email || (t('auth.anonymous'))) : (t('auth.signIn') || 'התחבר')}</span>
               {authUser && <span style={{ fontSize: '9px', marginRight: 'auto', marginLeft: '4px', padding: '1px 5px', borderRadius: '4px', background: isAdmin ? '#fef2f2' : isEditor ? '#f3e8ff' : '#f3f4f6', color: isAdmin ? '#dc2626' : isEditor ? '#7c3aed' : '#9ca3af' }}>{isAdmin ? 'Admin' : isEditor ? 'Editor' : ''}{roleOverride !== null ? ' 🎭' : ''}</span>}
             </button>
-            {isAdmin && (
-              <button
-                onClick={() => { setShowUserManagement(true); authLoadAllUsers(); setShowHeaderMenu(false); }}
-                style={{
-                  width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
-                  background: 'transparent', border: 'none', borderRadius: '8px', padding: '8px 12px',
-                  color: '#374151', fontSize: '13px', fontWeight: '500',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                }}
-              >
-                <span style={{ fontSize: '15px' }}>👥</span>
-                <span>{t('auth.userManagement')}</span>
-              </button>
-            )}
+            {/* v3.23.13: User Management moved to Settings → Users tab */}
             {/* Return to Admin — shown when simulating another role */}
             {isRealAdmin && roleOverride !== null && (
               <button
@@ -2050,7 +2055,7 @@
                       {[
                         { icon: '+', label: t('route.addManualStop').replace('➕ ', ''), action: () => { setShowRouteMenu(false); setShowManualAddDialog(true); } },
                         { icon: '≡', label: t('route.reorderStops'), action: () => { setShowRouteMenu(false); reorderOriginalStopsRef.current = route?.stops ? [...route.stops] : null; setShowRoutePreview(true); }, disabled: !route?.optimized },
-                        { icon: '↗', label: t('general.shareRoute'), action: () => {
+                        { icon: '↗', label: (!authUser || authUser.isAnonymous) ? (t('auth.loginToShare') || 'Sign in to share') : t('general.shareRoute'), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                           setShowRouteMenu(false);
                           if (!route?.optimized) return;
@@ -2369,7 +2374,7 @@
           <div className="view-fade-in bg-white rounded-xl shadow-lg p-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold">{`🗺️ ${t("nav.saved")}`}</h2>
+                <h2 className="text-lg font-bold">{`🛤️ ${t("nav.savedTrails")}`}</h2>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                   {citySavedRoutes.length}
                 </span>
@@ -2388,6 +2393,23 @@
                 </div>
               </div>
             </div>
+            {/* v3.23.15: Me / Others / All filter — hidden for anon (no uid to own anything) */}
+            {authUser && !authUser.isAnonymous && (
+              <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2" style={{ width: 'fit-content' }}>
+                <button
+                  onClick={() => setTrailsFilter('all')}
+                  className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${trailsFilter === 'all' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                >📋 {t('general.all')}</button>
+                <button
+                  onClick={() => setTrailsFilter('me')}
+                  className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${trailsFilter === 'me' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                >👤 {t('general.me')}</button>
+                <button
+                  onClick={() => setTrailsFilter('others')}
+                  className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${trailsFilter === 'others' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
+                >🌐 {t('route.others') || 'Others'}</button>
+              </div>
+            )}
             {renderContextHint('hint_saved')}
             
             {citySavedRoutes.length === 0 ? (
@@ -2402,7 +2424,14 @@
             ) : (
               <div className="space-y-1">
                 {(() => {
-                  const sorted = [...citySavedRoutes].sort((a, b) => {
+                  // v3.23.15: apply Me/Others/All filter before sort
+                  const myUid = authUser?.uid;
+                  const filteredRoutes = citySavedRoutes.filter(r => {
+                    if (trailsFilter === 'me') return myUid && r.savedBy === myUid;
+                    if (trailsFilter === 'others') return !(myUid && r.savedBy === myUid);
+                    return true;
+                  });
+                  const sorted = [...filteredRoutes].sort((a, b) => {
                     if (routesSortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'he');
                     return (a.areaName || '').localeCompare(b.areaName || '', 'he');
                   });
@@ -3056,6 +3085,12 @@
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >🔧 פרמטרים</button>
+              <button
+                onClick={() => { setSettingsTab('users'); if (isRealAdmin) authLoadAllUsers(); }}
+                className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
+                  settingsTab === 'users' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >👥 {t('auth.userManagement') || 'Users'}</button>
             </div>
 
             {/* ===== CITIES & AREAS TAB ===== */}
@@ -4650,6 +4685,82 @@
             })()}
 
             </div>)}
+
+            {/* ===== USERS TAB (v3.23.13) ===== */}
+            {settingsTab === 'users' && isRealAdmin && (() => {
+              const roleColors = ['#6b7280', '#7c3aed', '#dc2626'];
+              // Sort ascending by name/email/uid, case-insensitive. Anonymous users are never in /users/
+              // (see app-logic.js onAuthStateChanged early-return), so no special branching needed.
+              const sortKey = (u) => ((u.name || u.email || u.uid || '').toLowerCase());
+              const sortedUsers = [...allUsers].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+              const confirmDeleteUser = (uid, displayName) => {
+                showConfirm(
+                  `${t('auth.deleteUserConfirm') || 'Delete user'} "${displayName}"?\n${t('toast.actionCannotBeUndone') || 'This action cannot be undone.'}`,
+                  async () => {
+                    try {
+                      await deleteUser(uid);
+                      showToast(`🗑️ "${displayName}" ${t('general.removed') || 'removed'}`, 'success');
+                      authLoadAllUsers();
+                    } catch (e) {
+                      showToast('❌ ' + (e.message || e), 'error');
+                    }
+                  },
+                  { confirmLabel: t('general.delete') || 'Delete', confirmColor: '#ef4444' }
+                );
+              };
+              return (
+                <div className="bg-white rounded-xl p-3" style={{ direction: 'ltr' }}>
+                  {/* Header + counter + refresh */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <h3 style={{ fontWeight: 'bold', fontSize: '14px', margin: 0 }}>
+                      👥 {sortedUsers.length} {t('auth.usersCount') || 'users'}
+                    </h3>
+                    <button onClick={authLoadAllUsers}
+                      style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#f3f4f6', cursor: 'pointer' }}
+                      title={t('general.refresh') || 'Refresh'}>🔄</button>
+                  </div>
+                  {/* User rows */}
+                  {sortedUsers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af', fontSize: '12px' }}>
+                      {t('general.loading') || 'Loading…'}
+                    </div>
+                  ) : sortedUsers.map(user => {
+                    const displayName = user.name || user.email || user.uid.slice(0, 12);
+                    const isSelf = user.uid === authUser?.uid;
+                    return (
+                      <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 6px', borderBottom: '1px solid #f3f4f6' }}>
+                        {user.photo
+                          ? <img src={user.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0 }} />
+                          : <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>👤</div>
+                        }
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#111827' }}>{displayName}</div>
+                          <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                            {user.email || ''}
+                            {user.lastLogin ? ` · ${new Date(user.lastLogin).toLocaleDateString()}` : ''}
+                          </div>
+                        </div>
+                        <select value={user.role || 0}
+                          onChange={e => authUpdateUserRole(user.uid, parseInt(e.target.value))}
+                          disabled={isSelf}
+                          style={{ padding: '3px 6px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '11px', fontWeight: 'bold', color: roleColors[user.role || 0], cursor: isSelf ? 'not-allowed' : 'pointer', opacity: isSelf ? 0.5 : 1 }}>
+                          <option value={0}>👤 Regular</option>
+                          <option value={1}>✏️ Editor</option>
+                          <option value={2}>👑 Admin</option>
+                        </select>
+                        {!isSelf && (
+                          <button
+                            onClick={() => confirmDeleteUser(user.uid, displayName)}
+                            style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '11px', cursor: 'pointer', flexShrink: 0 }}
+                            title={t('auth.deleteUser') || 'Delete user'}
+                          >🗑️</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
 
 

@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.23.12
+// FouFou app-data.js v3.23.15
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -374,6 +374,7 @@ nav: {
   route: 'מסלול',
   search: 'חיפוש',
   saved: 'שמורים',
+  savedTrails: 'מסלולים שמורים',
   favorites: 'מועדפים',
   myPlaces: 'מקומות',
   myInterests: 'תחומים',
@@ -527,6 +528,7 @@ route: {
   routeType: 'סוג מסלול',
   newRoute: 'צור מסלול חדש',
   recommended: 'מסלול מומלץ',
+  others: 'אחרים',
   private: 'פרטי',
   public: 'ציבורי',
   viewingShared: '🚫 זהו מסלול משותף — לא ניתן לשמור',
@@ -1023,10 +1025,14 @@ auth: {
   emailInUse: 'אימייל כבר רשום. נסה להתחבר.',
   weakPassword: 'סיסמה חלשה (מינימום 6 תווים)',
   userManagement: 'ניהול משתמשים',
+  usersCount: 'משתמשים',
+  deleteUserConfirm: 'מחק משתמש',
+  deleteUser: 'מחק משתמש',
   needEditor: 'נדרשת הרשאת עורך',
   needAdmin: 'נדרשת הרשאת מנהל',
   inUseBy: 'בשימוש מקומות',
   loginToSave: 'התחבר כדי לשמור',
+  loginToShare: 'התחבר כדי לשתף',
 },
 
 // --- Map ---
@@ -1515,6 +1521,7 @@ nav: {
   route: 'Route',
   search: 'Search',
   saved: 'Saved',
+  savedTrails: 'Saved Trails',
   myPlaces: 'Places',
   favorites: 'Favorites',
   myInterests: 'Interests',
@@ -1674,6 +1681,7 @@ route: {
   routeType: 'Route type',
   newRoute: 'New route',
   recommended: 'Recommended route',
+  others: 'Others',
   private: 'Private',
   public: 'Public',
   viewingShared: '🚫 Viewing shared route — cannot save',
@@ -2163,10 +2171,14 @@ auth: {
   emailInUse: 'Email already registered. Try signing in.',
   weakPassword: 'Weak password (minimum 6 characters)',
   userManagement: 'User Management',
+  usersCount: 'users',
+  deleteUserConfirm: 'Delete user',
+  deleteUser: 'Delete user',
   needEditor: 'Editor permission required',
   needAdmin: 'Admin permission required',
   inUseBy: 'Used by places',
   loginToSave: 'Sign in to save',
+  loginToShare: 'Sign in to share',
 },
 
 // --- Map ---
@@ -3500,7 +3512,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.23.12';
+window.BKK.VERSION = '3.23.15';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3769,6 +3781,20 @@ window.BKK = window.BKK || {};
  * fresh-or-cached lookup.
  */
 window.BKK.lastKnownGPS = null; // { lat, lng, timestamp } | null
+
+/**
+ * Safe display name for writing to publicly-readable shared data (reviews,
+ * routes, custom interests). Never falls back to the user's email — that would
+ * leak PII into paths that anyone can read. (v3.23.14)
+ *   displayName  -> use it
+ *   else uid     -> 'User-<6 chars of uid>'
+ *   else         -> 'User'
+ */
+window.BKK.safeDisplayName = function(user) {
+  if (user && user.displayName) return user.displayName;
+  if (user && user.uid) return 'User-' + user.uid.slice(0, 6);
+  return 'User';
+};
 
 /**
  * Store a known GPS reading in the session cache. Call this from anywhere that
