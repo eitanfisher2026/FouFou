@@ -779,6 +779,13 @@
 
   const [customLocations, setCustomLocations] = useState([]);
   const [savedRoutes, setSavedRoutes] = useState([]);
+  // v3.23.23: track source when a saved route is loaded into the editor (for "Back to Saved Trails" focus)
+  const [routeOpenedFromId, setRouteOpenedFromId] = useState(null);
+  // v3.23.23: when set, the Saved Trails list scrolls + highlights that route on mount
+  const [focusRouteId, setFocusRouteId] = useState(null);
+  // v3.23.23: Save-as-new dialog state
+  const [showSaveAsNewDialog, setShowSaveAsNewDialog] = useState(false);
+  const [saveAsNewName, setSaveAsNewName] = useState('');
   const [pendingLocations, setPendingLocations] = useState([]);
   const [pendingInterests, setPendingInterests] = useState([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
@@ -960,6 +967,9 @@
       googleTextRankPreference: 'RELEVANCE',
       // System alerts — how often to send automated system feedback (hours)
       systemAlertIntervalHours: 1,
+      // v3.23.25: per-user saved-routes caps (per city). Admins bypass both.
+      maxRoutesPerUserPerCity: 50,
+      maxPublicRoutesPerUserPerCity: 10,
       // GPS timeout (ms) — max time to wait for a device GPS reading before giving up.
       // Used by both the proactive prefetch on wizard step 3 and the click-time fallback
       // on "Open in Google Maps". Most modern devices return a fix within a second or
@@ -1688,8 +1698,6 @@
   const [feedbackSenderEmail, setFeedbackSenderEmail] = useState('');
   const [feedbackList, setFeedbackList] = useState([]);
   const [myFeedbackList, setMyFeedbackList] = useState([]); // own feedback for non-admin users
-  const [showFeedbackList, setShowFeedbackList] = useState(false);
-  const [hasNewFeedback, setHasNewFeedback] = useState(false);
   const [feedbackUnreadCount, setFeedbackUnreadCount] = useState(0); // v3.23.16: # threads with unread for this viewer
   const [feedbackSelectedThreadId, setFeedbackSelectedThreadId] = useState(null); // v3.23.16: which thread is open in detail view
   const [feedbackMode, setFeedbackMode] = useState('list'); // v3.23.16: 'list' | 'thread' | 'new'
@@ -4243,14 +4251,12 @@
   // Admin listens on /feedback (nested by uid). Non-admin listens on own slot.
   // Thread shape: { ..., messages: { msgId: {...} }, lastFrom, unreadByUser, unreadByAdmin }
   // Legacy flat entries (pre-v3.23.16) surface with _legacy:true and no messages — read-only.
-  const feedbackCountRef = useRef(null);
   useEffect(() => {
     if (!isFirebaseAvailable || !database) return;
     if (!authUser || authUser.isAnonymous) {
       setFeedbackList([]);
       setMyFeedbackList([]);
       setFeedbackUnreadCount(0);
-      feedbackCountRef.current = 0;
       return;
     }
 
@@ -4299,11 +4305,6 @@
         setMyFeedbackList(arr.filter(f => f.userId === authUser.uid));
         const unread = arr.filter(t => !t._legacy && t.unreadByAdmin === true).length;
         setFeedbackUnreadCount(unread);
-        const prevCount = feedbackCountRef.current;
-        if (prevCount !== null && arr.length > prevCount) {
-          setHasNewFeedback(true);
-        }
-        feedbackCountRef.current = arr.length;
       };
     } else {
       feedbackRef = database.ref(`feedback/${authUser.uid}`);
@@ -4319,11 +4320,6 @@
     feedbackRef.on('value', onValue);
     return () => feedbackRef.off('value', onValue);
   }, [isCurrentUserAdmin, authUser?.uid, authUser?.isAnonymous]);
-
-  const markFeedbackAsSeen = () => {
-    localStorage.setItem('foufou_last_seen_feedback', String(Date.now()));
-    setHasNewFeedback(false);
-  };
 
   // Config - loaded from config.js, re-read on city change via selectedCityId dependency
   // interestOptions: now sourced from customInterests (Firebase) — city files no longer carry interests
@@ -7409,24 +7405,30 @@
     });
   };
 
-  // Strip heavy data (base64 images) from route before save - keep Storage URLs
+  // Strip heavy data (base64 images) from route before save — keep Storage URLs.
+  // v3.23.23: also filter out trailSkipped stops — skipped stops are runtime-only and
+  // should not persist on saved routes (matches the share-route behaviour).
   const stripRouteForStorage = (r) => {
     const stripped = { ...r };
     if (stripped.stops) {
-      stripped.stops = stripped.stops.map(s => {
-        const clean = { ...s };
-        // Remove base64 images
-        if (clean.uploadedImage && clean.uploadedImage.startsWith('data:')) {
-          delete clean.uploadedImage;
-        }
-        // Remove large Firebase Storage URLs from stops (they're in customLocations)
-        if (clean.uploadedImage && clean.uploadedImage.length > 200) {
-          delete clean.uploadedImage;
-        }
-        // Remove imageUrls array from stops (they're in customLocations)
-        delete clean.imageUrls;
-        return clean;
-      });
+      stripped.stops = stripped.stops
+        .filter(s => !s.trailSkipped)
+        .map(s => {
+          const clean = { ...s };
+          // Remove base64 images
+          if (clean.uploadedImage && clean.uploadedImage.startsWith('data:')) {
+            delete clean.uploadedImage;
+          }
+          // Remove large Firebase Storage URLs from stops (they're in customLocations)
+          if (clean.uploadedImage && clean.uploadedImage.length > 200) {
+            delete clean.uploadedImage;
+          }
+          // Remove imageUrls array from stops (they're in customLocations)
+          delete clean.imageUrls;
+          // Defensive: clear any stale runtime skip flag that slipped through
+          delete clean.trailSkipped;
+          return clean;
+        });
     }
     return stripped;
   };
@@ -7436,8 +7438,20 @@
   };
 
   const quickSaveRoute = () => {
+    // v3.23.25: per-city cap on total saved routes per user (admins bypass)
+    if (!isRealAdmin && authUser?.uid) {
+      const sp = window.BKK.systemParams || window.BKK._defaultSystemParams || {};
+      const maxTotal = sp.maxRoutesPerUserPerCity ?? 50;
+      const { total } = countUserRoutesInCity(selectedCityId, authUser.uid);
+      if (total >= maxTotal) {
+        showToast((t('toast.routeCapReached') || 'You have {0}/{1} saved trails in this city. Delete some to save more.')
+          .replace('{0}', total).replace('{1}', maxTotal), 'warning', 'sticky');
+        return;
+      }
+    }
+
     const name = route.defaultName || route.name || `Route ${Date.now()}`;
-    
+
     const routeToSave = {
       ...route,
       name: name,
@@ -7502,6 +7516,22 @@
   };
 
   const updateRoute = (routeId, updates) => {
+    // v3.23.25: block public-cap violations when a non-admin user flips locked false→true
+    if (!isRealAdmin && updates && updates.locked === true && authUser?.uid) {
+      const existing = (savedRoutes || []).find(r => r.id === routeId);
+      const wasLocked = existing?.locked === true;
+      if (!wasLocked && existing?.savedBy === authUser.uid) {
+        const sp = window.BKK.systemParams || window.BKK._defaultSystemParams || {};
+        const maxPublic = sp.maxPublicRoutesPerUserPerCity ?? 10;
+        const cityId = existing.cityId || selectedCityId;
+        const { publicCount } = countUserRoutesInCity(cityId, authUser.uid);
+        if (publicCount >= maxPublic) {
+          showToast((t('toast.routePublicCapReached') || 'You have {0}/{1} public trails in this city. Unshare one to make another public.')
+            .replace('{0}', publicCount).replace('{1}', maxPublic), 'warning', 'sticky');
+          return;
+        }
+      }
+    }
     if (isFirebaseAvailable && database) {
       const routeToUpdate = savedRoutes.find(r => r.id === routeId);
       if (routeToUpdate && routeToUpdate.firebaseId) {
@@ -7522,13 +7552,27 @@
     }
   };
 
+  // v3.23.23: when focusRouteId is set AND we're on the Saved view, scroll that row into
+  // view and clear the flag after a short highlight window (1.8s).
+  useEffect(() => {
+    if (!focusRouteId || currentView !== 'saved') return;
+    const tid = setTimeout(() => {
+      const el = document.querySelector(`[data-route-fbid="${focusRouteId}"]`);
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    const clearT = setTimeout(() => setFocusRouteId(null), 1800);
+    return () => { clearTimeout(tid); clearTimeout(clearT); };
+  }, [focusRouteId, currentView]);
+
   const loadSavedRoute = (savedRoute) => {
     setRoute(savedRoute);
+    // v3.23.23: remember where this came from so "Back to Saved Trails" can focus the right row
+    setRouteOpenedFromId(savedRoute?.firebaseId || null);
     // Restore startPoint: prefer startPointCoords.address (validated), then route.startPoint, then preferences
     const coords = savedRoute.startPointCoords || null;
     const validatedAddress = coords?.address || '';
-    const startPointText = validatedAddress || 
-      (savedRoute.startPoint !== t('form.startPointFirst') ? savedRoute.startPoint : '') || 
+    const startPointText = validatedAddress ||
+      (savedRoute.startPoint !== t('form.startPointFirst') ? savedRoute.startPoint : '') ||
       '';
     if (savedRoute.preferences) {
       setFormData({...savedRoute.preferences, startPoint: startPointText });
@@ -7540,6 +7584,109 @@
     setCurrentView('form');
     setWizardStep(3);
     window.scrollTo(0, 0);
+  };
+
+  // v3.23.25: count how many routes the current user owns in a given city.
+  // Used to enforce maxRoutesPerUserPerCity / maxPublicRoutesPerUserPerCity.
+  // Admins bypass the cap check; the caller gates on `isRealAdmin` before calling enforcement.
+  const countUserRoutesInCity = (cityId, uid) => {
+    const rs = (savedRoutes || []).filter(r => {
+      const rc = r.cityId || 'bangkok';
+      return rc === cityId && r.savedBy === uid;
+    });
+    return { total: rs.length, publicCount: rs.filter(r => r.locked === true).length };
+  };
+
+  // v3.23.24: overwrite the currently-loaded saved route in Firebase. Only valid when
+  // the user owns the route (savedBy === auth.uid) and it has a firebaseId.
+  const updateCurrentRoute = () => {
+    if (!route || !route.firebaseId) { showToast(t('toast.updateError') || 'Update failed', 'warning'); return; }
+    if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
+    if (route.savedBy && route.savedBy !== authUser.uid) { showToast(t('route.notOwner') || 'Not the owner', 'warning'); return; }
+    if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    const routeToSave = {
+      ...route,
+      savedAt: new Date().toISOString(),
+      savedBy: authUser.uid,
+      savedByName: window.BKK.safeDisplayName(authUser),
+      cityId: selectedCityId
+    };
+    const stripped = stripRouteForStorage(routeToSave);
+    delete stripped.firebaseId;
+    database.ref(`cities/${selectedCityId}/routes/${route.firebaseId}`).set(stripped)
+      .then(() => {
+        setRoute({ ...routeToSave, firebaseId: route.firebaseId });
+        showToast(t('route.routeUpdated'), 'success');
+        window.BKK.logEvent?.('route_updated', { city: selectedCityId, stops: stripped.stops?.length || 0 });
+      })
+      .catch((err) => {
+        console.error('[FIREBASE] Error updating route:', err);
+        showToast(t('toast.routeSaveError'), 'error');
+      });
+  };
+
+  // v3.23.23: pick a name that doesn't collide with the user's existing saved-route names
+  // in the current city. If `base` exists, append " #1", " #2", ... until unique.
+  const makeUniqueRouteName = (base) => {
+    const trimmed = (base || '').trim();
+    if (!trimmed) return trimmed;
+    const mine = (savedRoutes || []).filter(r => r.cityId === selectedCityId || !r.cityId);
+    const existing = new Set(mine.map(r => (r.name || '').trim()));
+    if (!existing.has(trimmed)) return trimmed;
+    for (let i = 1; i < 1000; i++) {
+      const candidate = `${trimmed} #${i}`;
+      if (!existing.has(candidate)) return candidate;
+    }
+    return `${trimmed} #${Date.now()}`;
+  };
+
+  // v3.23.23: save the current in-memory route as a brand-new Firebase entry under the current user.
+  // Does NOT touch the original (firebaseId) the user loaded from — always a fresh push.
+  // Requires signed-in, non-anonymous user.
+  const saveRouteAsNew = (chosenName) => {
+    if (!route) return;
+    if (!authUser || authUser.isAnonymous) { showToast(t('auth.signInToSave') || t('auth.saveLoginRequired'), 'warning'); return; }
+    if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    // v3.23.25: per-city cap on total saved routes per user (admins bypass)
+    if (!isRealAdmin) {
+      const sp = window.BKK.systemParams || window.BKK._defaultSystemParams || {};
+      const maxTotal = sp.maxRoutesPerUserPerCity ?? 50;
+      const { total } = countUserRoutesInCity(selectedCityId, authUser.uid);
+      if (total >= maxTotal) {
+        showToast((t('toast.routeCapReached') || 'You have {0}/{1} saved trails in this city. Delete some to save more.')
+          .replace('{0}', total).replace('{1}', maxTotal), 'warning', 'sticky');
+        return;
+      }
+    }
+    const finalName = makeUniqueRouteName(chosenName);
+    if (!finalName) { showToast(t('route.nameRequired') || 'Name required', 'warning'); return; }
+    const routeToSave = {
+      ...route,
+      name: finalName,
+      notes: '',
+      savedAt: new Date().toISOString(),
+      savedBy: authUser.uid,
+      savedByName: window.BKK.safeDisplayName(authUser),
+      locked: false,
+      cityId: selectedCityId
+    };
+    // Shed any firebaseId from the source route so the push creates a new key, never overwrites
+    delete routeToSave.firebaseId;
+    delete routeToSave.id;
+    const stripped = stripRouteForStorage(routeToSave);
+    database.ref(`cities/${selectedCityId}/routes`).push(stripped)
+      .then((ref) => {
+        console.log('[FIREBASE] Route saved as new');
+        const savedWithFbId = { ...routeToSave, firebaseId: ref.key };
+        setRoute(savedWithFbId);
+        setRouteOpenedFromId(ref.key);
+        showToast((t('toast.routeSavedAs') || 'Saved as "{0}"').replace('{0}', finalName), 'success');
+        window.BKK.logEvent?.('route_saved_as_new', { city: selectedCityId, stops: stripped.stops?.length || 0 });
+      })
+      .catch((error) => {
+        console.error('[FIREBASE] Error saving route as new:', error);
+        showToast(t('toast.routeSaveError'), 'error');
+      });
   };
 
   // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)

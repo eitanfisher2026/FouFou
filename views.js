@@ -2082,26 +2082,54 @@
                         }, disabled: !route?.optimized },
                         (() => {
                           const isOthersRoute = route?.savedBy && authUser?.uid && route.savedBy !== authUser.uid;
-                          return { icon: route.name ? '✓' : (isOthersRoute ? '🚫' : '⬇'),
-                            label: route.name
-                              ? `${t('route.savedAs')} ${route.name}`
-                              : isOthersRoute
+                          const isOwnSaved = !!route?.firebaseId && route?.savedBy && authUser?.uid && route.savedBy === authUser.uid;
+                          // v3.23.24: own saved route → "Update route" (enabled); fresh route → "Save route"; others' → viewing shared
+                          if (isOwnSaved) {
+                            return {
+                              icon: '🔄',
+                              label: t('route.updateRoute') || 'Update route',
+                              action: () => { setShowRouteMenu(false); if (route?.optimized) updateCurrentRoute(); },
+                              disabled: !route?.optimized
+                            };
+                          }
+                          return { icon: isOthersRoute ? '🚫' : '⬇',
+                            label: isOthersRoute
                                 ? t('route.viewingShared')
                                 : ((!authUser || authUser.isAnonymous) ? (t('auth.loginToSave')) : t('route.saveRoute')),
                             action: () => {
                               if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
                               setShowRouteMenu(false);
-                              if (!route.name && !isOthersRoute && route?.optimized) quickSaveRoute();
+                              if (!isOthersRoute && route?.optimized) quickSaveRoute();
                             },
-                            disabled: !route?.optimized || !!route.name || isOthersRoute };
+                            disabled: !route?.optimized || isOthersRoute };
                         })(),
-                      ].map((item, idx) => (
+                        // v3.23.23: Save as new — signed-in users only, always available for any loaded route
+                        (authUser && !authUser.isAnonymous && route?.optimized) ? {
+                          icon: '📋',
+                          label: t('route.saveAsNew') || 'Save as new',
+                          action: () => {
+                            setShowRouteMenu(false);
+                            setSaveAsNewName(`${route.name || route.defaultName || t('route.myRoute') || 'Route'} - ${t('general.copy') || 'copy'}`);
+                            setShowSaveAsNewDialog(true);
+                          }
+                        } : null,
+                        // v3.23.23: Back to Saved Trails — only shown when user arrived via a saved route
+                        (routeOpenedFromId || route?.firebaseId) ? {
+                          icon: '‹',
+                          label: t('route.backToSavedList') || 'Back to Saved Trails',
+                          action: () => {
+                            setShowRouteMenu(false);
+                            setFocusRouteId(routeOpenedFromId || route?.firebaseId || null);
+                            setCurrentView('saved');
+                          }
+                        } : null,
+                      ].filter(Boolean).map((item, idx, arr) => (
                         <button
                           key={idx}
                           onClick={item.action}
                           disabled={item.disabled}
                           style={{
-                            width: '100%', padding: '10px 14px', border: 'none', borderBottom: idx < 4 ? '1px solid #f3f4f6' : 'none',
+                            width: '100%', padding: '10px 14px', border: 'none', borderBottom: idx < arr.length - 1 ? '1px solid #f3f4f6' : 'none',
                             background: 'white', cursor: item.disabled ? 'default' : 'pointer',
                             display: 'flex', alignItems: 'center', gap: '10px',
                             fontSize: '13px', fontWeight: '500', color: item.disabled ? '#9ca3af' : '#374151',
@@ -2453,8 +2481,9 @@
                           </div>
                         )}
                         <div
+                          data-route-fbid={savedRoute.firebaseId || ''}
                           className={`flex items-center justify-between gap-2 rounded-lg p-2 border cursor-pointer ${savedRoute.system ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-gray-200 bg-white hover:bg-blue-50'}`}
-                          style={{ overflow: 'hidden' }}
+                          style={{ overflow: 'hidden', ...(focusRouteId && focusRouteId === savedRoute.firebaseId ? { outline: '3px solid #fbbf24', background: '#fef3c7', transition: 'outline 0.3s, background 0.3s' } : {}) }}
                           onClick={() => loadSavedRoute(savedRoute)}
                         >
                           <div className="flex-1 min-w-0">
@@ -3066,25 +3095,25 @@
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'general' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >⚙️ כללי</button>
+              >⚙️ {t('settings.generalTab') || 'General'}</button>
               <button
                 onClick={() => setSettingsTab('cities')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'cities' ? 'bg-rose-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >🌍 ערים</button>
+              >🌍 {t('settings.citiesTab') || 'Cities'}</button>
               <button
                 onClick={() => setSettingsTab('interests')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'interests' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >🏷️ תחומים</button>
+              >🏷️ {t('settings.interestsTab') || 'Interests'}</button>
               <button
                 onClick={() => setSettingsTab('sysparams')}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
                   settingsTab === 'sysparams' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
-              >🔧 פרמטרים</button>
+              >🔧 {t('settings.parametersTab') || 'Parameters'}</button>
               <button
                 onClick={() => { setSettingsTab('users'); if (isRealAdmin) authLoadAllUsers(); }}
                 className={`flex-1 py-2 rounded-lg font-bold text-xs transition ${
@@ -3132,14 +3161,14 @@
                               {city.icon?.startsWith?.('data:') ? <img src={city.icon} alt="" style={{ width: '38px', height: '38px', objectFit: 'contain' }} /> : (city.icon || '📍')}
                             </div>
                             <div style={{ display: 'flex', gap: '3px' }}>
-                              <label style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontWeight: 'bold' }} title="העלה קובץ">
+                              <label style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #d1d5db', borderRadius: '4px', background: '#f9fafb', cursor: 'pointer', color: '#374151', fontWeight: 'bold' }} title={t('settings.uploadFile') || 'Upload file'}>
                                 📁
                                 <input type="file" accept="image/*,image/jpeg,image/jfif" className="hidden" onChange={(e) => handleCityIconUpload(e.target.files?.[0], city.id, 'icon', 80)} />
                               </label>
                               <button onClick={() => setIconPickerConfig({ description: city.nameEn || city.name || '', callback: (emoji) => { city.icon = emoji; if (window.BKK.cityRegistry[city.id]) window.BKK.cityRegistry[city.id].icon = emoji; setCityModified(true); setCityEditCounter(c => c + 1);
                                 saveCityGeneralField(city.id, 'icon', emoji);
                               }, suggestions: [], loading: false })}
-                                style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title="בחר אמוג'י"
+                                style={{ fontSize: '9px', padding: '2px 5px', border: '1px solid #f59e0b', borderRadius: '4px', background: '#fffbeb', cursor: 'pointer', color: '#d97706', fontWeight: 'bold' }} title={t('settings.chooseEmoji') || 'Choose emoji'}
                               >✨</button>
                             </div>
                           </div>
@@ -3887,69 +3916,69 @@
             </div>
             )}
 
-            )}
-            {/* Bulk Approve Drafts — editor/admin only */}
-            {isUnlocked && (
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">{`✅ ${t("settings.bulkApprove") || 'אשר טיוטות'}`}</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  {t("settings.bulkApproveDesc") || 'הפוך מקומות טיוטה למאושרים בעיר הנוכחית'}
-                </p>
-                {(() => {
-                  const cityLocs = customLocations.filter(l => (l.cityId || 'bangkok') === selectedCityId && l.status !== 'blacklist' && !l.locked);
-                  const myDrafts = cityLocs.filter(l => l.addedBy === authUser?.uid);
-                  const otherDrafts = cityLocs.length - myDrafts.length;
-                  return (
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      onClick={() => {
-                        if (myDrafts.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
-                        showConfirm(`${t('settings.approveMyConfirm') || 'לאשר'} ${myDrafts.length} ${t('settings.myDrafts') || 'טיוטות שלי'}?`, () => {
-                          let count = 0;
-                          myDrafts.forEach(loc => {
-                            if (loc.firebaseId && isFirebaseAvailable && database) {
-                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
-                              count++;
-                            }
-                          });
-                          setCustomLocations(prev => prev.map(l => myDrafts.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
-                        });
-                      }}
-                      disabled={myDrafts.length === 0}
-                      className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition ${myDrafts.length > 0 ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                    >
-                      {`👤 ${t('settings.myDraftsBtn') || 'שלי'} (${myDrafts.length})`}
-                    </button>
-                    {true && (
-                    <button
-                      onClick={() => {
-                        if (cityLocs.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
-                        showConfirm(`${t('settings.approveAllConfirm') || 'לאשר'} ${cityLocs.length} ${t('settings.allDrafts') || 'טיוטות'}? (${myDrafts.length} ${t('settings.mine') || 'שלי'} + ${otherDrafts} ${t('settings.others') || 'אחרים'})`, () => {
-                          let count = 0;
-                          cityLocs.forEach(loc => {
-                            if (loc.firebaseId && isFirebaseAvailable && database) {
-                              saveLocationLocked(selectedCityId, loc.firebaseId, true);
-                              count++;
-                            }
-                          });
-                          setCustomLocations(prev => prev.map(l => cityLocs.find(d => d.name === l.name) ? {...l, locked: true} : l));
-                          showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
-                        });
-                      }}
-                      disabled={cityLocs.length === 0}
-                      className={`flex-1 py-2 px-3 rounded-lg font-bold text-sm transition ${cityLocs.length > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
-                    >
-                      {`👑 ${t('settings.allDraftsBtn') || 'הכל'} (${cityLocs.length})`}
-                    </button>
-                    )}
+            {/* Bulk Approve Drafts — per-city scrollable list, editor/admin only */}
+            {isUnlocked && (() => {
+              const allCities = Object.values(window.BKK.cities || {});
+              const approveDrafts = (cityId, drafts, label) => {
+                if (drafts.length === 0) { showToast(t('settings.noDrafts'), 'info'); return; }
+                showConfirm(`${t('settings.approveConfirmPrefix') || 'Approve'} ${drafts.length} ${label}?`, () => {
+                  let count = 0;
+                  drafts.forEach(loc => {
+                    if (loc.firebaseId && isFirebaseAvailable && database) {
+                      saveLocationLocked(cityId, loc.firebaseId, true);
+                      count++;
+                    }
+                  });
+                  const ids = new Set(drafts.map(d => d.firebaseId));
+                  setCustomLocations(prev => prev.map(l => ids.has(l.firebaseId) ? {...l, locked: true} : l));
+                  showToast(`✅ ${count} ${t('settings.approved')}`, 'success');
+                });
+              };
+              return (
+              <div className="mb-3">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-3">
+                  <h3 className="text-base font-bold text-gray-800 mb-1">{`✅ ${t('settings.bulkApprove')}`}</h3>
+                  <p className="text-xs text-gray-600 mb-2">{t('settings.bulkApproveAllCitiesDesc') || 'Approve draft locations per city'}</p>
+                  <div style={{ maxHeight: '40vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', padding: '2px' }}>
+                    {allCities.map(city => {
+                      const cityLocs = customLocations.filter(l => (l.cityId || 'bangkok') === city.id && l.status !== 'blacklist' && !l.locked);
+                      const myDrafts = cityLocs.filter(l => l.addedBy === authUser?.uid);
+                      const totalDrafts = cityLocs.length;
+                      const mineCount = myDrafts.length;
+                      const icon = (typeof city.icon === 'string' && !city.icon.startsWith('data:')) ? city.icon : '📍';
+                      return (
+                        <div key={city.id} style={{ background: 'white', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '18px', flexShrink: 0 }}>{icon}</span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tLabel(city)}</div>
+                              <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                                {t('settings.mine')}: {mineCount} · {t('settings.total') || 'total'}: {totalDrafts}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => approveDrafts(city.id, myDrafts, `${t('settings.myDrafts') || 'my drafts'} (${city.nameEn || city.name || city.id})`)}
+                            disabled={mineCount === 0}
+                            title={t('settings.approveMine') || 'Approve mine'}
+                            className={`px-2 py-1 rounded-md font-bold text-xs transition ${mineCount > 0 ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            style={{ minWidth: '54px', flexShrink: 0 }}
+                          >👤 {mineCount}</button>
+                          <button
+                            onClick={() => approveDrafts(city.id, cityLocs, `${t('settings.allDrafts') || 'drafts'} (${city.nameEn || city.name || city.id})`)}
+                            disabled={totalDrafts === 0}
+                            title={t('settings.approveAll') || 'Approve all'}
+                            className={`px-2 py-1 rounded-md font-bold text-xs transition ${totalDrafts > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                            style={{ minWidth: '54px', flexShrink: 0 }}
+                          >👑 {totalDrafts}</button>
+                        </div>
+                      );
+                    })}
                   </div>
-                  );
-                })()}
+                </div>
               </div>
-            </div>
-            )}
+              );
+            })()}
 
 
             
@@ -4383,6 +4412,8 @@
                   { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
                   { key: 'includeDrafts', label: t('sysParams.includeDrafts'), desc: t('sysParams.includeDraftsDesc'), type: 'bool' },
                   { key: 'systemAlertIntervalHours', label: 'System Alert Interval (hours)', desc: 'How often to send automated system feedback alerts (e.g. corrupted cacheVersion). Default: 1', min: 1, max: 72, step: 1, type: 'int' },
+                  { key: 'maxRoutesPerUserPerCity', label: t('sysParams.maxRoutesPerUserPerCity') || 'Max saved trails per user (per city)', desc: t('sysParams.maxRoutesPerUserPerCityDesc') || 'Cap on total saved trails a non-admin user can store in a single city. Admins bypass. Default: 50', min: 5, max: 500, step: 5, type: 'int' },
+                  { key: 'maxPublicRoutesPerUserPerCity', label: t('sysParams.maxPublicRoutesPerUserPerCity') || 'Max public trails per user (per city)', desc: t('sysParams.maxPublicRoutesPerUserPerCityDesc') || 'Cap on public (locked) trails a non-admin user can share in a single city. Admins bypass. Default: 10', min: 1, max: 100, step: 1, type: 'int' },
                   { key: 'pointSearchMaxGoogle', label: 'מסביב למקום — תוצאות גוגל', desc: 'מקסימום תוצאות גוגל בחיפוש מסביב למקום. ברירת מחדל: 10', min: 3, max: 20, step: 1, type: 'int' },
                   { key: 'pointSearchMaxFavorites', label: 'מסביב למקום — תוצאות מועדפים', desc: 'מקסימום מועדפים בחיפוש מסביב למקום. ברירת מחדל: 5', min: 1, max: 10, step: 1, type: 'int' },
                   { key: 'gpsTimeoutMs', label: 'GPS Timeout (ms)', desc: 'זמן מקסימלי להמתנה למיקום GPS לפני ויתור ומעבר ל-Preview. משפיע גם על ה-prefetch ברקע וגם על הלחיצה על "יאללה לדרך". ברירת מחדל: 8000', min: 3000, max: 15000, step: 500, type: 'int' },
