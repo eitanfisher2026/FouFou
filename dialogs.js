@@ -2529,7 +2529,7 @@
 
       {/* Confirm Dialog */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 10200 }}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 10450 }}>
           <div className="bg-white rounded-xl p-4 max-w-sm w-full shadow-2xl">
             <p className="text-sm text-gray-800 mb-4 text-center font-medium" style={{ whiteSpace: 'pre-line' }}>{confirmConfig.message}</p>
             <div className="flex gap-2">
@@ -2560,12 +2560,18 @@
       {/* Toast Notification - Subtle */}
       {/* Feedback Dialog */}
       {showFeedbackDialog && (() => {
-        const maxImgs = sp.feedbackMaxImages || 3;
+        // v3.23.19: read images from either legacy singular `image` or new `images` map
+        const getImgs = (node) => {
+          if (!node) return [];
+          if (node.images) return Object.keys(node.images).sort((a, b) => Number(a) - Number(b)).map(k => node.images[k]).filter(Boolean);
+          if (node.image) return [node.image];
+          return [];
+        };
         const isAnon = !authUser || authUser.isAnonymous;
         if (isAnon) {
           return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
-              <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-0 sm:p-4 sm:pt-6" style={{ zIndex: 10300 }}>
+              <div className="bg-white rounded-b-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
                   <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
                   <button onClick={() => { setShowFeedbackDialog(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
@@ -2582,219 +2588,373 @@
             </div>
           );
         }
+        // v3.23.16: Thread-based feedback conversation dialog
+        const myRole = isCurrentUserAdmin ? 'admin' : 'user';
+        const threadsForMe = isCurrentUserAdmin ? feedbackList : myFeedbackList;
+        const selectedThread = feedbackSelectedThreadId
+          ? threadsForMe.find(t => t.firebaseId === feedbackSelectedThreadId)
+          : null;
+        // Auto-clear read flag when opening a thread
+        if (feedbackMode === 'thread' && selectedThread && ((myRole === 'user' && selectedThread.unreadByUser) || (myRole === 'admin' && selectedThread.unreadByAdmin))) {
+          setTimeout(() => markFeedbackThreadRead(selectedThread), 0);
+        }
+        const atCap = !isCurrentUserAdmin && threadsForMe.length >= 10;
+        const navTitle = feedbackMode === 'list'
+          ? (isCurrentUserAdmin ? `💬 Feedback (${threadsForMe.length})` : `💬 ${t('settings.sendFeedback')}`)
+          : feedbackMode === 'new'
+            ? `💬 ${t('feedback.newConversation') || 'New conversation'}`
+            : (selectedThread?.subject || `💬 ${t('feedback.conversation') || 'Conversation'}`);
+        const goBack = () => { setFeedbackMode('list'); setFeedbackSelectedThreadId(null); setFeedbackReplyImages([]); setFeedbackText(''); };
+        const handleClose = () => { setShowFeedbackDialog(false); setFeedbackMode('list'); setFeedbackSelectedThreadId(null); setFeedbackReplyImages([]); setFeedbackText(''); };
+        // Admin: after sending a reply, jump to next unread thread (or close if none)
+        const advanceAdminAfterSend = () => {
+          const next = threadsForMe.find(th => th.firebaseId !== selectedThread?.firebaseId && th.unreadByAdmin);
+          if (next) { setFeedbackSelectedThreadId(next.firebaseId); setFeedbackText(''); setFeedbackReplyImages([]); }
+          else { handleClose(); }
+        };
+        // Admin-side subtitle (sender name) — only in thread mode
+        const adminSubtitle = (feedbackMode === 'thread' && isCurrentUserAdmin && selectedThread)
+          ? (selectedThread.senderName || (selectedThread.userId ? `uid: ${String(selectedThread.userId).slice(0, 8)}` : ''))
+          : '';
+
         return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ zIndex: 10300 }}>
-          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">{`💬 ${t("settings.sendFeedback")}`}</h3>
-              <button onClick={() => { setShowFeedbackDialog(false); }} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-              {/* Category picker */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {[
-                  { id: 'bug', label: `🐛 ${t('general.bug')}`, color: '#fca5a5', border: '#ef4444', text: '#b91c1c', bg: '#fef2f2' },
-                  { id: 'idea', label: `💡 ${t('general.idea')}`, color: '#fcd34d', border: '#d97706', text: '#92400e', bg: '#fffbeb' },
-                  { id: 'general', label: `💭 ${t('general.generalFeedback')}`, color: '#93c5fd', border: '#3b82f6', text: '#1e40af', bg: '#eff6ff' }
-                ].map(cat => (
-                  <button key={cat.id} onClick={() => setFeedbackCategory(cat.id)}
-                    style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.15s',
-                      border: `2px solid ${feedbackCategory === cat.id ? cat.border : '#e5e7eb'}`,
-                      background: feedbackCategory === cat.id ? cat.bg : 'white',
-                      color: feedbackCategory === cat.id ? cat.text : '#6b7280' }}>{cat.label}</button>
-                ))}
-              </div>
-
-              {/* Subject */}
-              <input type="text" value={feedbackSubject}
-                onChange={(e) => {
-                  setFeedbackSubject(e.target.value);
-                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: e.target.value, senderName: feedbackSenderName, senderEmail: feedbackSenderEmail })); } catch(err) {}
-                }}
-                placeholder={t('settings.feedbackSubject') || 'נושא'}
-                style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
-                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
-                onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
-              />
-
-              {/* Sender info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <input type="text" value={feedbackSenderName}
-                  onChange={(e) => {
-                    setFeedbackSenderName(e.target.value);
-                    try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: feedbackSubject, senderName: e.target.value, senderEmail: feedbackSenderEmail })); } catch(err) {}
-                  }}
-                  placeholder={t('settings.feedbackSenderName') || 'שם'}
-                  style={{ flex: 1, padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
-                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
-                />
-                <input type="email" value={feedbackSenderEmail}
-                  onChange={(e) => {
-                    setFeedbackSenderEmail(e.target.value);
-                    try { localStorage.setItem('feedback_draft', JSON.stringify({ text: feedbackText, cat: feedbackCategory, subject: feedbackSubject, senderName: feedbackSenderName, senderEmail: e.target.value })); } catch(err) {}
-                  }}
-                  placeholder={t('settings.feedbackSenderEmail') || 'מייל'}
-                  style={{ flex: 1, padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: 'ltr', fontFamily: 'inherit' }}
-                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
-                  onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
-                />
-              </div>
-
-              {/* Text */}
-              <textarea value={feedbackText}
-                onChange={(e) => {
-                  setFeedbackText(e.target.value);
-                  try { localStorage.setItem('feedback_draft', JSON.stringify({ text: e.target.value, cat: feedbackCategory, subject: feedbackSubject, senderName: feedbackSenderName, senderEmail: feedbackSenderEmail })); } catch(err) {}
-                }}
-                placeholder={t("settings.feedbackPlaceholder")}
-                style={{ width: '100%', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'none', outline: 'none', lineHeight: '1.5', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', wordBreak: 'break-word', fontFamily: 'inherit' }}
-                rows={5} autoFocus
-                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
-                onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; }}
-              />
-
-              {/* Image upload */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                {feedbackImages.map((img, idx) => (
-                  <div key={idx} style={{ position: 'relative', flexShrink: 0 }}>
-                    <img src={img} alt="" style={{ width: '68px', height: '68px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', display: 'block' }}
-                      onClick={() => setModalImage(img)} />
-                    <button onClick={() => setFeedbackImages(prev => prev.filter((_, i) => i !== idx))}
-                      style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-0 sm:p-4 sm:pt-6" style={{ zIndex: 10300 }}>
+          <div className="bg-white rounded-b-2xl sm:rounded-xl w-full max-w-md shadow-2xl" style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="bg-gradient-to-r from-slate-600 to-slate-700 text-white p-3 rounded-t-2xl sm:rounded-t-xl flex items-center gap-2">
+              {feedbackMode !== 'list' && (
+                <button onClick={goBack} className="text-white opacity-80 hover:opacity-100 text-lg leading-none" style={{ padding: '0 4px' }}>‹</button>
+              )}
+              <div className="flex-1" style={{ minWidth: 0 }}>
+                <h3 className="text-base font-bold" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>{navTitle}</h3>
+                {adminSubtitle && (
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                    👤 {adminSubtitle}
                   </div>
-                ))}
-                {feedbackImages.length < maxImgs && (
-                  <label style={{ width: '68px', height: '68px', border: '2px dashed #d1d5db', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', gap: '3px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '20px' }}>📎</span>
-                    <span style={{ fontSize: '9px', fontWeight: 'bold' }}>{feedbackImages.length}/{maxImgs}</span>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      try {
-                        const compressed = await window.BKK.compressImage(file, 480);
-                        if (compressed) setFeedbackImages(prev => [...prev, compressed]);
-                      } catch(err) {
-                        showToast('שגיאה בטעינת תמונה', 'error');
-                      }
-                      e.target.value = '';
-                    }} />
-                  </label>
                 )}
               </div>
-
-              {/* Send */}
-              <button onClick={submitFeedback} disabled={!feedbackText.trim()}
-                style={{ width: '100%', padding: '12px', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: feedbackText.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s',
-                  background: feedbackText.trim() ? '#3b82f6' : '#e5e7eb',
-                  color: feedbackText.trim() ? 'white' : '#9ca3af',
-                  border: 'none' }}>
-                📨 {t('settings.send')}
-              </button>
-
+              <button onClick={handleClose} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
             </div>
+
+            {/* List-mode admin toolbar: Delete all */}
+            {feedbackMode === 'list' && isCurrentUserAdmin && threadsForMe.length > 0 && (
+              <div style={{ padding: '6px 12px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', background: '#f9fafb' }}>
+                <button onClick={() => {
+                  showConfirm(
+                    (t('feedback.deleteAllConfirm') || 'Delete ALL feedback for ALL users? This cannot be undone.') + `\n(${threadsForMe.length})`,
+                    () => { deleteAllFeedback(); },
+                    { confirmLabel: t('feedback.deleteAll') || 'Delete all', confirmColor: '#dc2626' }
+                  );
+                }} style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '6px', background: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', cursor: 'pointer', fontWeight: 500 }}>
+                  🗑️ {t('feedback.deleteAll') || 'Delete all'} ({threadsForMe.length})
+                </button>
+              </div>
+            )}
+
+            {/* ============== LIST MODE ============== */}
+            {feedbackMode === 'list' && (
+              <div className="p-3 overflow-y-auto flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {threadsForMe.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af', fontSize: '13px' }}>
+                    {t('feedback.noConversations') || 'No conversations yet'}
+                  </div>
+                ) : threadsForMe.map(thread => {
+                  const unreadForMe = (myRole === 'user' && thread.unreadByUser) || (myRole === 'admin' && thread.unreadByAdmin);
+                  const msgs = thread.messages ? Object.values(thread.messages).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)) : [];
+                  const lastMsg = msgs[msgs.length - 1];
+                  const preview = lastMsg?.text || (thread._legacy ? thread.text : '') || '';
+                  const when = thread.lastActivityAt ? new Date(thread.lastActivityAt).toLocaleString() : (thread.date || '');
+                  const catIcon = thread.category === 'bug' ? '🐛' : thread.category === 'idea' ? '💡' : '💭';
+                  return (
+                    <button key={thread.firebaseId}
+                      onClick={() => { setFeedbackSelectedThreadId(thread.firebaseId); setFeedbackMode('thread'); }}
+                      style={{ textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', background: unreadForMe ? '#eff6ff' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px', flexShrink: 0 }}>{catIcon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {thread.subject || (preview.slice(0, 40) + (preview.length > 40 ? '…' : ''))}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {isCurrentUserAdmin && thread.senderName ? `${thread.senderName} · ` : ''}{msgs.length} msg{msgs.length !== 1 ? 's' : ''} · {when}
+                        </div>
+                      </div>
+                      {unreadForMe && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />}
+                      {thread._legacy && <span style={{ fontSize: '9px', background: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: '3px', flexShrink: 0 }}>legacy</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {/* List-mode footer: new-conversation button (user side only) */}
+            {feedbackMode === 'list' && !isCurrentUserAdmin && (
+              <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={() => { if (!atCap) { setFeedbackText(''); setFeedbackSubject(''); setFeedbackCategory('general'); setFeedbackImages([]); setFeedbackMode('new'); } }}
+                  disabled={atCap}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: atCap ? 'not-allowed' : 'pointer', background: atCap ? '#e5e7eb' : '#3b82f6', color: atCap ? '#9ca3af' : 'white', border: 'none' }}
+                  title={atCap ? (t('toast.feedbackCapReached') || '') : ''}>
+                  ➕ {t('feedback.newConversation') || 'New conversation'}
+                  {atCap ? ' (10/10)' : ''}
+                </button>
+              </div>
+            )}
+
+            {/* ============== THREAD MODE ============== */}
+            {feedbackMode === 'thread' && selectedThread && (() => {
+              const msgs = selectedThread.messages ? Object.entries(selectedThread.messages).map(([id, m]) => ({ id, ...m })).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)) : [];
+              const isMyTurn = selectedThread.lastFrom !== myRole;
+              const msgCount = msgs.length;
+              const threadFull = msgCount >= 10;
+              return (<>
+                <div className="p-3 overflow-y-auto flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {(() => {
+                    const threadImgs = getImgs(selectedThread);
+                    if (!threadImgs.length || selectedThread._legacy) return null;
+                    const hasMap = !!selectedThread.images;
+                    return (
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {threadImgs.map((img, i) => (
+                          <div key={i} style={{ position: 'relative' }}>
+                            <img src={img} alt="" onClick={() => setModalImage(img)}
+                              style={{ maxWidth: '140px', maxHeight: '140px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #e5e7eb', display: 'block' }} />
+                            <button onClick={() => removeFeedbackImage(selectedThread, null, hasMap ? i : null)}
+                              title={t('feedback.removeImage') || 'Remove image'}
+                              style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                  {selectedThread._legacy ? (
+                    <div style={{ padding: '10px', background: '#fef3c7', borderRadius: '8px', fontSize: '12px', color: '#92400e' }}>
+                      ⚠️ {t('feedback.legacyNotice') || 'Legacy entry — reply not available'}
+                      <div style={{ marginTop: '6px', color: '#374151', whiteSpace: 'pre-wrap', fontSize: '13px' }}>{selectedThread.text}</div>
+                    </div>
+                  ) : msgs.map((m, idx) => {
+                    const isMine = m.from === myRole;
+                    const isLast = idx === msgs.length - 1;
+                    // Edit allowed only on own last message while other side hasn't replied yet
+                    const canEdit = isMine && isLast && m.from === selectedThread.lastFrom;
+                    const editingThis = feedbackEditingMsgId === m.id;
+                    return (
+                      <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth: '85%', padding: '8px 10px', borderRadius: '12px', fontSize: '13px', background: isMine ? '#dbeafe' : '#f3f4f6', color: '#1f2937', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {editingThis ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <textarea value={feedbackEditDraft} onChange={(e) => setFeedbackEditDraft(e.target.value)} rows={3} maxLength={3000}
+                                style={{ width: '100%', padding: '6px 8px', border: '1px solid #93c5fd', borderRadius: '6px', fontSize: '13px', resize: 'none', fontFamily: 'inherit' }} autoFocus />
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => { setFeedbackEditingMsgId(null); setFeedbackEditDraft(''); }}
+                                  style={{ padding: '3px 8px', fontSize: '11px', background: 'transparent', border: '1px solid #d1d5db', borderRadius: '5px', cursor: 'pointer', color: '#6b7280' }}>{t('general.cancel')}</button>
+                                <button onClick={() => { if (feedbackEditDraft.trim()) { editFeedbackMessage(selectedThread, m.id, feedbackEditDraft); setFeedbackEditingMsgId(null); setFeedbackEditDraft(''); } }}
+                                  disabled={!feedbackEditDraft.trim()}
+                                  style={{ padding: '3px 8px', fontSize: '11px', background: feedbackEditDraft.trim() ? '#3b82f6' : '#e5e7eb', color: feedbackEditDraft.trim() ? 'white' : '#9ca3af', border: 'none', borderRadius: '5px', cursor: feedbackEditDraft.trim() ? 'pointer' : 'not-allowed' }}>{t('general.save')}</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {(() => {
+                                const msgImgs = getImgs(m);
+                                if (!msgImgs.length) return null;
+                                const hasMap = !!m.images;
+                                return (
+                                  <div style={{ marginBottom: m.text ? '6px' : 0, display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                    {msgImgs.map((img, i) => (
+                                      <div key={i} style={{ position: 'relative' }}>
+                                        <img src={img} alt="" onClick={() => setModalImage(img)}
+                                          style={{ maxWidth: '160px', maxHeight: '120px', borderRadius: '6px', cursor: 'pointer', display: 'block' }} />
+                                        <button onClick={() => removeFeedbackImage(selectedThread, m.id, hasMap ? i : null)}
+                                          title={t('feedback.removeImage') || 'Remove image'}
+                                          style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                              {m.text}
+                              {m.editedAt && <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '6px' }}>({t('feedback.edited') || 'edited'})</span>}
+                            </>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                          <span>{m.from === 'admin' ? '👑' : '👤'} {m.timestamp ? new Date(m.timestamp).toLocaleString() : ''}</span>
+                          {canEdit && !editingThis && (
+                            <button onClick={() => { setFeedbackEditingMsgId(m.id); setFeedbackEditDraft(m.text || ''); }} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '10px', cursor: 'pointer', padding: 0 }}>✏️ {t('general.edit')}</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Composer / turn indicator + action row */}
+                <div style={{ borderTop: '1px solid #e5e7eb', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedThread._legacy ? null : threadFull ? (
+                    <div style={{ fontSize: '11px', color: '#b91c1c', textAlign: 'center' }}>{t('feedback.threadFull') || 'Conversation full (10/10) — end it or start a new one'}</div>
+                  ) : isMyTurn ? (
+                    <>
+                      <textarea value={feedbackText}
+                        onChange={(e) => setFeedbackText(e.target.value)}
+                        placeholder={t('feedback.replyHere') || 'Reply here...'}
+                        rows={2}
+                        maxLength={3000}
+                        style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', resize: 'none', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }}
+                      />
+                      {/* Image picker — up to 3 thumbs + one add slot */}
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {feedbackReplyImages.map((img, i) => (
+                          <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                            <img src={img} alt="" onClick={() => setModalImage(img)}
+                              style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e7eb', cursor: 'pointer' }} />
+                            <button onClick={() => setFeedbackReplyImages(feedbackReplyImages.filter((_, j) => j !== i))}
+                              style={{ position: 'absolute', top: '-5px', right: '-5px', width: '18px', height: '18px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                          </div>
+                        ))}
+                        {feedbackReplyImages.length < 3 && (
+                          <label title={t('feedback.addImage') || 'Attach image'}
+                            style={{ width: '56px', height: '56px', border: '2px dashed #d1d5db', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', flexShrink: 0 }}>
+                            📎
+                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const compressed = await window.BKK.compressImage(file, 480);
+                                if (compressed) setFeedbackReplyImages([...feedbackReplyImages, compressed].slice(0, 3));
+                              } catch(err) { showToast(t('toast.imageLoadError') || 'Image load error', 'error'); }
+                              e.target.value = '';
+                            }} />
+                          </label>
+                        )}
+                        <div style={{ fontSize: '10px', color: '#9ca3af' }}>{feedbackReplyImages.length}/3 🖼️</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center', fontStyle: 'italic' }}>
+                      {myRole === 'user' ? (t('feedback.waitingForAdmin') || 'Waiting for admin reply…') : (t('feedback.waitingForUser') || 'Waiting for user reply…')}
+                    </div>
+                  )}
+                  {/* Button row — auto-reverses in RTL so Send sits on the natural "forward" side */}
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch', flexDirection: window.BKK.i18n.isRTL() ? 'row-reverse' : 'row' }}>
+                    {!selectedThread._legacy && isMyTurn && !threadFull && (
+                      <button onClick={() => {
+                          replyToFeedbackThread(selectedThread, feedbackText, myRole, feedbackReplyImages);
+                          setFeedbackText('');
+                          setFeedbackReplyImages([]);
+                          if (myRole === 'admin') advanceAdminAfterSend();
+                          else handleClose();
+                        }}
+                        disabled={!feedbackText.trim()}
+                        style={{ flex: 2, padding: '11px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px',
+                          cursor: feedbackText.trim() ? 'pointer' : 'not-allowed',
+                          background: feedbackText.trim() ? '#16a34a' : '#e5e7eb',
+                          color: feedbackText.trim() ? 'white' : '#9ca3af', border: 'none' }}>
+                        📨 {t('settings.send')}
+                      </button>
+                    )}
+                    <button onClick={handleClose}
+                      style={{ flex: 1, padding: '11px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}>
+                      {t('general.close') || 'Close'}
+                    </button>
+                    <button onClick={() => {
+                      showConfirm(
+                        t('feedback.endConversationConfirm') || 'End conversation? This deletes it for both sides.',
+                        () => { endFeedbackConversation(selectedThread); goBack(); },
+                        { confirmLabel: t('feedback.endConversation') || 'End conversation', confirmColor: '#ef4444' }
+                      );
+                    }} title={t('feedback.endConversation') || 'End conversation'}
+                    style={{ flexShrink: 0, padding: '8px 10px', borderRadius: '8px', fontSize: '13px', background: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', cursor: 'pointer', minWidth: '40px' }}>
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </>);
+            })()}
+
+            {/* ============== NEW CONVERSATION MODE ============== */}
+            {feedbackMode === 'new' && (
+              <div className="p-4 overflow-y-auto flex-1" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Category */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[
+                    { id: 'bug', label: `🐛 ${t('general.bug')}`, border: '#ef4444', text: '#b91c1c', bg: '#fef2f2' },
+                    { id: 'idea', label: `💡 ${t('general.idea')}`, border: '#d97706', text: '#92400e', bg: '#fffbeb' },
+                    { id: 'general', label: `💭 ${t('general.generalFeedback')}`, border: '#3b82f6', text: '#1e40af', bg: '#eff6ff' }
+                  ].map(cat => (
+                    <button key={cat.id} onClick={() => setFeedbackCategory(cat.id)}
+                      style={{ flex: 1, padding: '6px 4px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
+                        border: `2px solid ${feedbackCategory === cat.id ? cat.border : '#e5e7eb'}`,
+                        background: feedbackCategory === cat.id ? cat.bg : 'white',
+                        color: feedbackCategory === cat.id ? cat.text : '#6b7280' }}>{cat.label}</button>
+                  ))}
+                </div>
+                {/* Subject */}
+                <input type="text" value={feedbackSubject}
+                  onChange={(e) => setFeedbackSubject(e.target.value)}
+                  placeholder={t('settings.feedbackSubject') || 'Subject'}
+                  autoFocus
+                  style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', fontFamily: 'inherit' }} />
+                {/* Text */}
+                <textarea value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder={t('settings.feedbackPlaceholder')}
+                  rows={5}
+                  maxLength={3000}
+                  style={{ width: '100%', padding: '10px', border: '2px solid #e5e7eb', borderRadius: '10px', fontSize: '13px', resize: 'none', outline: 'none', lineHeight: '1.5', boxSizing: 'border-box', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', wordBreak: 'break-word', fontFamily: 'inherit' }} />
+                {/* Images — up to 3 */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {feedbackImages.map((img, i) => (
+                    <div key={i} style={{ position: 'relative', flexShrink: 0 }}>
+                      <img src={img} alt="" onClick={() => setModalImage(img)}
+                        style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer' }} />
+                      <button onClick={() => setFeedbackImages(feedbackImages.filter((_, j) => j !== i))}
+                        style={{ position: 'absolute', top: '-6px', right: '-6px', width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', color: 'white', border: '2px solid white', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>✕</button>
+                    </div>
+                  ))}
+                  {feedbackImages.length < 3 && (
+                    <label title={t('feedback.addImage') || 'Attach image'}
+                      style={{ width: '70px', height: '70px', border: '2px dashed #d1d5db', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', gap: '3px', flexShrink: 0 }}>
+                      <span style={{ fontSize: '22px' }}>📎</span>
+                      <span style={{ fontSize: '9px', fontWeight: 'bold' }}>{feedbackImages.length}/3</span>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const compressed = await window.BKK.compressImage(file, 480);
+                          if (compressed) setFeedbackImages([...feedbackImages, compressed].slice(0, 3));
+                        } catch(err) { showToast(t('toast.imageLoadError') || 'Image load error', 'error'); }
+                        e.target.value = '';
+                      }} />
+                    </label>
+                  )}
+                </div>
+                {/* Action row — auto-reverses in RTL */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch', flexDirection: window.BKK.i18n.isRTL() ? 'row-reverse' : 'row' }}>
+                  <button onClick={() => {
+                    const key = openFeedbackThread({ subject: feedbackSubject, category: feedbackCategory, text: feedbackText, images: feedbackImages });
+                    if (key) {
+                      setFeedbackText(''); setFeedbackSubject(''); setFeedbackImages([]);
+                      handleClose();
+                    }
+                  }} disabled={!feedbackText.trim()}
+                    style={{ flex: 2, padding: '11px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: feedbackText.trim() ? 'pointer' : 'not-allowed',
+                      background: feedbackText.trim() ? '#16a34a' : '#e5e7eb',
+                      color: feedbackText.trim() ? 'white' : '#9ca3af', border: 'none' }}>
+                    📨 {t('settings.send')}
+                  </button>
+                  <button onClick={handleClose}
+                    style={{ flex: 1, padding: '11px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}>
+                    {t('general.close') || 'Close'}
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
         );
       })()}
 
-            {/* Feedback List Dialog (Admin Only) */}
-      {showFeedbackList && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-3 rounded-t-xl flex justify-between items-center">
-              <h3 className="text-base font-bold">{`💬 Feedback (`}{feedbackList.length})</h3>
-              <div className="flex items-center gap-2">
-                {feedbackList.length > 0 && (
-                  <button
-                    onClick={() => {
-                      showConfirm(t('settings.deleteAllFeedback'), () => {
-                        if (isFirebaseAvailable && database) {
-                          clearFeedbackList();
-                        }
-                      });
-                    }}
-                    className="text-white opacity-70 hover:opacity-100 text-sm"
-                    title={t("general.deleteAll")}
-                  >
-                    🗑️
-                  </button>
-                )}
-                <button onClick={() => setShowFeedbackList(false)} className="text-white opacity-70 hover:opacity-100 text-xl leading-none">✕</button>
-              </div>
-            </div>
-            <div className="overflow-y-auto flex-1 p-3">
-              {feedbackList.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  <div className="text-3xl mb-2">📭</div>
-                  <p className="text-sm">{t("general.noRegisteredUsers")}</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {feedbackList.map((item) => (
-                    <div key={item.firebaseId} style={{
-                      borderRadius: '10px', border: `2px solid ${item.resolved ? '#e5e7eb' : '#d1d5db'}`,
-                      background: item.resolved ? '#f9fafb' : 'white', opacity: item.resolved ? 0.7 : 1,
-                      overflow: 'hidden', marginBottom: '2px'
-                    }}>
-                      {/* Header row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px 4px', borderBottom: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '16px' }}>{item.category === 'bug' ? '🐛' : item.category === 'idea' ? '💡' : '💭'}</span>
-                        {item.subject ? (
-                          <span style={{ fontWeight: '700', fontSize: '13px', color: '#111827', flex: 1 }}>{item.subject}</span>
-                        ) : (
-                          <span style={{ fontSize: '11px', color: '#9ca3af', flex: 1 }}>({item.category || 'general'})</span>
-                        )}
-                        <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                          <button onClick={() => toggleFeedbackResolved(item)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px 4px', opacity: item.resolved ? 0.5 : 1 }}
-                            title={item.resolved ? t('places.markUnhandled') : t('places.markHandled')}>
-                            {item.resolved ? '↩️' : '✅'}
-                          </button>
-                          <button onClick={() => deleteFeedback(item)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px 4px', opacity: 0.5 }}
-                            title={t('general.delete')}>🗑️</button>
-                        </div>
-                      </div>
 
-                      {/* Sender info */}
-                      {(item.senderName || item.senderEmail || item.userEmail) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 10px', background: '#f0f9ff', flexWrap: 'wrap' }}>
-                          {item.senderName && <span style={{ fontSize: '12px', fontWeight: '700', color: '#1e40af' }}>👤 {item.senderName}</span>}
-                          {(item.senderEmail || item.userEmail) && (
-                            <a href={`mailto:${item.senderEmail || item.userEmail}?subject=Re: ${encodeURIComponent(item.subject || 'FouFou Feedback')}`}
-                              style={{ fontSize: '11px', color: '#2563eb', textDecoration: 'underline' }}>
-                              ✉️ {item.senderEmail || item.userEmail}
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Message body */}
-                      <div style={{ padding: '8px 10px', fontSize: '13px', color: '#374151', lineHeight: 1.55, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                        {item.text}
-                      </div>
-
-                      {item.images?.length > 0 && (
-                        <div style={{ padding: '0 10px 8px' }}>
-                          <FeedbackItemImages images={item.images} onView={(img) => setModalImage(img)} />
-                        </div>
-                      )}
-
-                      {/* Footer */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 10px 6px', fontSize: '10px', color: '#9ca3af', borderTop: '1px solid #f3f4f6' }}>
-                        <span>{`From: ${item.currentView || '?'} · ${item.userId?.slice(-6) || ''}`}</span>
-                        <span>{item.date ? new Date(item.date).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* v3.23.16: legacy Feedback List dialog (admin-only) retired — unified into main feedback dialog */}
 
       {/* Import Confirmation Dialog */}
       {showImportDialog && importedData && (

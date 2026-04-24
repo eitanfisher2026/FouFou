@@ -884,6 +884,7 @@ toast: {
   feedbackTooManyImages: '⚠️ מותר לצרף עד 3 תמונות',
   feedbackImageTooLarge: '⚠️ תמונה גדולה מדי (עד ~900KB לכל תמונה)',
   feedbackCapReached: '⚠️ יש לך 10 פניות פתוחות. יש להמתין לבדיקה לפני שליחת פניות נוספות',
+  allFeedbackDeleted: '✅ כל השיחות נמחקו',
 },
 
 // --- Settings ---
@@ -1251,6 +1252,25 @@ about: {
   saveTranslate: 'שמור + תרגם לאנגלית',
   placeholder: 'כתוב כאן על FouFou...',
   noContent: 'לחץ על עריכה כדי להוסיף תוכן',
+},
+
+// v3.23.16: Feedback conversation keys
+feedback: {
+  newConversation: 'שיחה חדשה',
+  conversation: 'שיחה',
+  noConversations: 'אין שיחות עדיין',
+  waitingForAdmin: 'ממתין לתשובת מנהל…',
+  waitingForUser: 'ממתין לתשובת משתמש…',
+  replyHere: 'כתוב תשובה...',
+  endConversation: 'סיים שיחה',
+  endConversationConfirm: 'לסיים את השיחה? הפעולה תמחק את השיחה לשני הצדדים.',
+  edited: 'נערך',
+  legacyNotice: 'רשומה ישנה — לא ניתן להשיב',
+  threadFull: 'השיחה מלאה (10/10) — סיים אותה או התחל חדשה',
+  addImage: 'תמונה',
+  removeImage: 'הסר תמונה',
+  deleteAll: 'מחק הכל',
+  deleteAllConfirm: 'למחוק את כל השיחות לכל המשתמשים? לא ניתן לבטל את הפעולה.',
 },
 
 }, // end Hebrew
@@ -2033,6 +2053,7 @@ toast: {
   feedbackTooManyImages: '⚠️ Up to 3 images allowed',
   feedbackImageTooLarge: '⚠️ Image too large (max ~900KB per image)',
   feedbackCapReached: '⚠️ You have 10 open feedback entries. Please wait for review before sending more',
+  allFeedbackDeleted: '✅ All conversations deleted',
 },
 
 settings: {
@@ -2406,6 +2427,25 @@ about: {
   saveTranslate: 'Save + Translate to Hebrew',
   placeholder: 'Write about FouFou here...',
   noContent: 'Click edit to add content',
+},
+
+// v3.23.16: Feedback conversation keys
+feedback: {
+  newConversation: 'New conversation',
+  conversation: 'Conversation',
+  noConversations: 'No conversations yet',
+  waitingForAdmin: 'Waiting for admin reply…',
+  waitingForUser: 'Waiting for user reply…',
+  replyHere: 'Reply here...',
+  endConversation: 'End conversation',
+  endConversationConfirm: 'End conversation? This will delete it for both sides.',
+  edited: 'edited',
+  legacyNotice: 'Legacy entry — reply not available',
+  threadFull: 'Conversation full (10/10) — end it or start a new one',
+  addImage: 'Image',
+  removeImage: 'Remove image',
+  deleteAll: 'Delete all',
+  deleteAllConfirm: 'Delete ALL feedback for ALL users? This cannot be undone.',
 },
 
 } // end English
