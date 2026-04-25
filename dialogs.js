@@ -277,13 +277,18 @@
                         ) : locationSearchResults.map((result, idx) => (
                           <button
                             key={idx}
-                            onClick={() => {
+                            onClick={async () => {
+                              // v3.23.31: search now runs with languageCode='en', so result.name is
+                              // already canonical English. Save-time defense in addCustomLocation
+                              // covers the rare case of legacy/mixed-script names slipping through.
+                              const englishName = result.name;
+                              const nameStillNonLatin = !isLatinScript(englishName);
                               // Auto-detect areas from coordinates
                               const detected = window.BKK.getAreasForCoordinates(result.lat, result.lng);
                               const areaUpdates = detected.length > 0 ? { areas: detected, area: detected[0] } : {};
                               const updatedLoc = {
                                 ...newLocation,
-                                name: result.name,
+                                name: englishName,
                                 lat: result.lat, lng: result.lng,
                                 address: result.address,
                                 googlePlaceId: result.googlePlaceId,
@@ -301,7 +306,7 @@
                               // Auto-populate Google Info from search result (types already in FieldMask — no extra API call)
                               if (isUnlocked && (result.types || result.primaryType)) {
                                 setGooglePlaceInfo({
-                                  name: result.name,
+                                  name: englishName,
                                   address: result.address,
                                   types: result.types || [],
                                   primaryType: result.primaryType || null,
@@ -311,7 +316,10 @@
                                   googlePlaceId: result.googlePlaceId
                                 });
                               }
-                              showToast(`✅ ${result.name} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
+                              showToast(`✅ ${englishName} ${t("toast.selectedPlace")}${detected.length > 0 ? ` (${detected.length} ${t("toast.detectedAreas")})` : ''}`, 'success');
+                              if (nameStillNonLatin) {
+                                showToast(t('toast.noEnglishNameTypeManually') || '⚠️ Google had no English name. Please type one.', 'warning');
+                              }
                             }}
                             style={{ width: '100%', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', padding: '6px 10px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: 'none', border: 'none', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
                             onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
@@ -2116,12 +2124,20 @@
                               : `"${matchedFav.name}" is in your favorites. Use it?`;
                             showConfirm(msg,
                               () => addManualStop({ name: matchedFav.name, lat: matchedFav.lat, lng: matchedFav.lng, address: matchedFav.address, rating: matchedFav.googleRating, ratingCount: matchedFav.googleRatingCount, googlePlaceId: matchedFav.googlePlaceId, isFavorite: true }),
-                              { confirmLabel: currentLang === 'he' ? '⭐ כן, השתמש במועדף' : '⭐ Yes, use favorite', confirmColor: '#2563eb', cancelLabel: currentLang === 'he' ? 'לא, גוגל' : 'No, Google', onCancel: () => addManualStop(result) }
+                              { confirmLabel: currentLang === 'he' ? '⭐ כן, השתמש במועדף' : '⭐ Yes, use favorite', confirmColor: '#2563eb', cancelLabel: currentLang === 'he' ? 'לא, גוגל' : 'No, Google', onCancel: () => {
+                                  // v3.23.31: search returns English already; just guard against legacy data
+                                  addManualStop(result);
+                                  if (!isLatinScript(result.name)) showToast(t('toast.noEnglishNameTypeManually') || '⚠️ Google had no English name; rename in route stops if needed.', 'warning');
+                                } }
                             );
                             return;
                           }
                         }
+                        // v3.23.31: search returns English already; just guard against legacy data
                         addManualStop(result);
+                        if (!isFav && !isLatinScript(result.name)) {
+                          showToast(t('toast.noEnglishNameTypeManually') || '⚠️ Google had no English name; rename in route stops if needed.', 'warning');
+                        }
                       };
                       const renderRow = (result, idx, arr, isFav) => (
                         <button key={idx}

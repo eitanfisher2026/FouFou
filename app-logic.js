@@ -3139,65 +3139,10 @@
       }).catch(() => {});
     }
 
-    // EMAIL-LEAK SWEEP (v3.23.14): scrub email-shaped values from publicly-readable
-    // userName / savedByName / addedByName fields across reviews, routes, interests.
-    // Root cause: older code fell back to email when displayName was missing; that
-    // email then got stored at `.read: true` paths. We now refuse emails at write
-    // time (rule + helper), and this pass cleans historical data.
-    if (localStorage.getItem('email_leak_sweep_v32314') !== 'true') {
-      const looksLikeEmail = (s) => typeof s === 'string' && s.indexOf('@') !== -1 && s.indexOf('.') !== -1;
-      const safeFromUid = (uid) => (uid ? 'User-' + String(uid).slice(0, 6) : 'User');
-      const writes = {};
-      const sweepJobs = [];
-
-      // 1. /customInterests/{id}/addedByName
-      sweepJobs.push(database.ref('customInterests').once('value').then(snap => {
-        const all = snap.val() || {};
-        Object.keys(all).forEach(k => {
-          const v = all[k];
-          if (v && looksLikeEmail(v.addedByName)) {
-            writes[`customInterests/${k}/addedByName`] = safeFromUid(v.addedBy || k);
-          }
-        });
-      }));
-
-      // 2. /cities/{cityId}/routes/{routeId}/savedByName
-      sweepJobs.push(database.ref('cities').once('value').then(snap => {
-        const cities = snap.val() || {};
-        Object.keys(cities).forEach(cid => {
-          const routes = cities[cid]?.routes || {};
-          Object.keys(routes).forEach(rid => {
-            const r = routes[rid];
-            if (r && looksLikeEmail(r.savedByName)) {
-              writes[`cities/${cid}/routes/${rid}/savedByName`] = safeFromUid(r.savedBy);
-            }
-          });
-          // 3. /cities/{cityId}/reviews/{placeKey}/{uid}/userName
-          const reviews = cities[cid]?.reviews || {};
-          Object.keys(reviews).forEach(pk => {
-            const perUser = reviews[pk] || {};
-            Object.keys(perUser).forEach(uid => {
-              const rv = perUser[uid];
-              if (rv && looksLikeEmail(rv.userName)) {
-                writes[`cities/${cid}/reviews/${pk}/${uid}/userName`] = safeFromUid(uid);
-              }
-            });
-          });
-        });
-      }));
-
-      Promise.all(sweepJobs).then(() => {
-        const n = Object.keys(writes).length;
-        if (n === 0) {
-          console.log('[EMAIL-SWEEP v3.23.14] no email-shaped display names found — clean');
-          localStorage.setItem('email_leak_sweep_v32314', 'true');
-          return;
-        }
-        database.ref().update(writes)
-          .then(() => { console.log(`[EMAIL-SWEEP v3.23.14] replaced ${n} email-shaped display names with User-<uid> fallbacks`); localStorage.setItem('email_leak_sweep_v32314', 'true'); })
-          .catch(e => console.warn('[EMAIL-SWEEP v3.23.14] update failed:', e));
-      }).catch(e => console.warn('[EMAIL-SWEEP v3.23.14] read failed:', e));
-    }
+    // v3.23.14 EMAIL-LEAK SWEEP retired in v3.23.28 — the migration completed in prod
+    // 13 versions ago and the read('cities') it relied on conflicts with current rules
+    // (no .read at /cities root, only on sub-paths). New leaks are prevented by the
+    // safeDisplayName helper + the rule validate that rejects '@' in *Name fields.
   }, [isAdmin]);
 
   // Load user display names for addedBy resolution
@@ -4499,7 +4444,8 @@
 
         // 2a. Nearby Search for type-based interests
         if (uniqueTypes.length > 0) {
-          const nearbyBody = { locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, includedTypes: uniqueTypes, maxResultCount: 5 };
+          // v3.23.30: trail-generation results get cached into stops, so always request English
+          const nearbyBody = { locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, includedTypes: uniqueTypes, maxResultCount: 5, languageCode: 'en' };
           const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
@@ -4518,7 +4464,8 @@
         // 2b. Text Search for text-based interests (parallel)
         if (uniqueTextQueries.length > 0) {
           await Promise.all(uniqueTextQueries.map(async (query) => {
-            const textBody = { textQuery: query, locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, maxResultCount: 5 };
+            // v3.23.27: bulk-fetched places are saved directly to Firebase, so always request English.
+            const textBody = { textQuery: query, locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: searchRadius } }, maxResultCount: 5, languageCode: 'en' };
             const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY, 'X-Goog-FieldMask': fieldMask },
@@ -4666,6 +4613,7 @@
           textQuery: searchQuery,
           ...(_maxRC > 0 ? { maxResultCount: _maxRC } : {}),
           rankPreference: window.BKK.systemParams?.googleTextRankPreference || 'RELEVANCE',
+          languageCode: 'en', // v3.23.32: bake English names into trail stops
           ...textSearchLocationParam
         };
         textSearchBodyStr = JSON.stringify(textSearchBody, null, 2);
@@ -4709,7 +4657,8 @@
               radius: searchRadius
             }
           },
-          rankPreference: radiusOverride ? 'DISTANCE' : (window.BKK.systemParams?.googleNearbyRankPreference || 'POPULARITY')
+          rankPreference: radiusOverride ? 'DISTANCE' : (window.BKK.systemParams?.googleNearbyRankPreference || 'POPULARITY'),
+          languageCode: 'en' // v3.23.32: bake English names into trail stops
         };
         nearbySearchBodyStr = JSON.stringify(nearbySearchBody, null, 2);
         response = await fetch(GOOGLE_PLACES_API_URL, {
@@ -4758,7 +4707,8 @@
                       center: { latitude: center.lat, longitude: center.lng },
                       radius: searchRadius
                     }
-                  }
+                  },
+                  languageCode: 'en' // v3.23.32: bake English names into trail stops
                 })
               });
               if (retryResponse.ok) {
@@ -8264,6 +8214,17 @@
 
   const addGooglePlaceToCustom = async (place, forceAdd = false) => {
     if (!requireSignIn()) return false;
+    // v3.23.30: trail stops generated before v3.23.30 may carry non-Latin names baked in
+    // by the Hebrew-mode bulk fetch. Refetch the canonical English name before saving so
+    // the favorite gets the right name regardless of when/how the route was created.
+    if (place && place.googlePlaceId && !isLatinScript(place.name)) {
+      console.log('[ADD_GOOGLE_TO_CUSTOM] non-Latin name, refetching English for placeId:', place.googlePlaceId);
+      const en = await fetchEnglishName(place.googlePlaceId);
+      if (en && en !== place.name) {
+        console.log('[ADD_GOOGLE_TO_CUSTOM] override:', place.name, '→', en);
+        place = { ...place, name: en };
+      }
+    }
     if (!forceAdd) {
       // Check if already exists (by name, case-insensitive)
       const existsByName = customLocations.find(loc =>
@@ -9172,9 +9133,9 @@
     showToast(`🗑️ ${remove.name} → ${t('dedup.merged')}`, 'success');
   };
 
-  const addCustomLocation = (closeAfter = true, overrideData = null) => {
+  const addCustomLocation = async (closeAfter = true, overrideData = null) => {
     if (!requireSignIn()) return;
-    const locData = overrideData || newLocation;
+    let locData = overrideData || newLocation;
     // Remember interests for next add
     if (locData.interests?.length > 0) lastCaptureInterestsRef.current = locData.interests;
     if (!locData.name?.trim() || !locData.interests?.length) {
@@ -9182,6 +9143,16 @@
         showToast(t('form.selectAtLeastOneInterest') || 'יש לבחור לפחות תחום אחד', 'warning');
       }
       return;
+    }
+    // v3.23.28: final defense — if the name is still non-Latin and we have a googlePlaceId,
+    // refetch the English name. This catches cases where the click-handler fetch was skipped
+    // or failed, before the name persists to Firebase.
+    if (locData.googlePlaceId && !isLatinScript(locData.name)) {
+      const en = await fetchEnglishName(locData.googlePlaceId);
+      if (en && en !== locData.name) {
+        console.log('[ADD_CUSTOM_LOC] save-time English fetch overrode:', locData.name, '→', en);
+        locData = { ...locData, name: en };
+      }
     }
 
     // Require coordinates
@@ -9381,7 +9352,7 @@
   };
   
   // Update existing location
-  const updateCustomLocation = (closeAfter = true) => {
+  const updateCustomLocation = async (closeAfter = true) => {
     if (!requireSignIn()) return;
     if (!newLocation.name?.trim()) {
       showToast(t('places.enterPlaceName'), 'warning');
@@ -9392,6 +9363,16 @@
     if (!newLocation.lat || !newLocation.lng || newLocation.lat === 0 || newLocation.lng === 0) {
       showToast(t('places.noCoordinates') || '📍 לא ניתן לשמור מקום ללא קואורדינטות — יש להזין כתובת או GPS', 'warning');
       return;
+    }
+    // v3.23.28: same defense as addCustomLocation — refetch English at save time
+    if (newLocation.googlePlaceId && !isLatinScript(newLocation.name)) {
+      const en = await fetchEnglishName(newLocation.googlePlaceId);
+      if (en && en !== newLocation.name) {
+        console.log('[UPDATE_CUSTOM_LOC] save-time English fetch overrode:', newLocation.name, '→', en);
+        setNewLocation(prev => ({ ...prev, name: en }));
+        // Continue with the fetched English name — read latest via local var since setState is async
+        newLocation.name = en;
+      }
     }
     
     // Check for duplicate name (warn only, don't block)
@@ -9614,13 +9595,14 @@
           },
           body: JSON.stringify({
             textQuery: searchQuery,
-            maxResultCount: 1
+            maxResultCount: 1,
+            languageCode: 'en'
           })
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (data.places && data.places.length > 0) {
         const place = data.places[0];
         const location = place.location;
@@ -9652,6 +9634,55 @@
   };
 
   // Search places by name - returns multiple results for picking
+  // v3.23.27: detect strings that are "ASCII enough" to be considered English-friendly.
+  // Returns false for strings containing Hebrew / Arabic / Thai / CJK characters.
+  // Latin-extended (Spanish, French, German accents) is allowed.
+  const isLatinScript = (s) => {
+    if (!s) return true;
+    for (const ch of s) {
+      const c = ch.codePointAt(0);
+      if ((c >= 0x0590 && c <= 0x05FF) || // Hebrew
+          (c >= 0x0600 && c <= 0x06FF) || // Arabic
+          (c >= 0x0E00 && c <= 0x0E7F) || // Thai
+          (c >= 0x4E00 && c <= 0x9FFF) || // CJK Unified
+          (c >= 0x3040 && c <= 0x30FF) || // Hiragana / Katakana
+          (c >= 0xAC00 && c <= 0xD7AF)) { // Hangul
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // v3.23.27: fetch the canonical English displayName for a Google Place.
+  // Called after a user picks a search result so saved data stays in English
+  // regardless of what UI language was used for the search. Returns null on failure.
+  // v3.23.28: log status + body on non-OK responses so silent fallbacks are debuggable.
+  const fetchEnglishName = async (placeId) => {
+    if (!placeId) return null;
+    try {
+      const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=en`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
+          'X-Goog-FieldMask': 'displayName'
+        }
+      });
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        console.warn('[FETCH_ENGLISH] non-OK', response.status, 'placeId:', placeId, 'body:', body.slice(0, 200));
+        return null;
+      }
+      const data = await response.json();
+      const text = data.displayName?.text || null;
+      console.log('[FETCH_ENGLISH] placeId:', placeId, '→', text, '(lang:', data.displayName?.languageCode, ')');
+      return text;
+    } catch (err) {
+      console.warn('[FETCH_ENGLISH] error:', err);
+      return null;
+    }
+  };
+
   const searchPlacesByName = async (query) => {
     if (!query || !query.trim()) return;
     try {
@@ -9666,7 +9697,7 @@
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
           'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName'
         },
-        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: window.BKK.systemParams?.pointSearchMaxGoogle || 10 })
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: window.BKK.systemParams?.pointSearchMaxGoogle || 10, languageCode: 'en' })
       });
       const data = await response.json();
       if (data.places && data.places.length > 0) {
@@ -9722,7 +9753,7 @@
           'X-Goog-Api-Key': GOOGLE_PLACES_API_KEY,
           'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress,places.rating,places.userRatingCount,places.types,places.primaryType,places.primaryTypeDisplayName'
         },
-        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: window.BKK.systemParams?.pointSearchMaxGoogle || 10 })
+        body: JSON.stringify({ textQuery: searchQuery, maxResultCount: window.BKK.systemParams?.pointSearchMaxGoogle || 10, languageCode: 'en' })
       });
       const data = await response.json();
       const googleResults = data.places && data.places.length > 0
