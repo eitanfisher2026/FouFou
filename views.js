@@ -1817,6 +1817,8 @@
                                       {/* FouFou info button for custom/favorite places */}
                                       {isCustom && (() => {
                                         const cl = customLocations.find(loc => loc.name === stop.name);
+                                        // v3.23.33: dashed border on the FouFou icon when this favorite is still a draft
+                                        const isDraftFav = cl && cl.locked === false;
                                         return (
                                         <button
                                           onClick={(e) => {
@@ -1830,8 +1832,8 @@
                                             setModalImageCtx({ description: stop.description || cl?.description, location: cl || stop });
                                             setShowImageModal(true);
                                           }}
-                                          style={{ cursor: 'pointer', background: 'transparent', border: 'none', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', padding: '2px', opacity: 0.75 }}
-                                          title={t("general.placeInfo") || "מידע על המקום"}
+                                          style={{ cursor: 'pointer', background: isDraftFav ? 'rgba(180,83,9,0.10)' : 'transparent', border: isDraftFav ? '2px dashed #b45309' : 'none', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', padding: '2px', opacity: 0.95 }}
+                                          title={isDraftFav ? (t('places.draftTooltip') || 'Draft — visible only to creator + editors/admins') : (t("general.placeInfo") || "מידע על המקום")}
                                         >
                                           <img src="icon-32x32.png" alt="FouFou" style={{ width: '18px', height: '18px' }} />
                                         </button>
@@ -1873,34 +1875,44 @@
                                         >🗑️</button>
                                       )}
                                     </div>
-                                    <div className="text-[10px]" style={{
-                                      color: hasValidCoords ? '#6b7280' : '#991b1b'
-                                    }}>
-                                      {hasValidCoords ? <AutoTranslateText text={stop.description} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} /> : t('places.noCoordinatesWarning')}
-                                    </div>
-                                    {stop.todayHours && (
-                                      <div className="text-[9px]" style={{ color: stop.openNow ? '#059669' : '#dc2626' }}>
-                                        🕐 {stop.openNow ? t('general.openStatus') : t('general.closedStatus')} · {stop.todayHours}
-                                      </div>
-                                    )}
-                                    {/* Ratings — Google + FouFou */}
-                                    {isCustom && (() => {
+                                    {(() => {
+                                      // v3.23.39: clean architecture — description and rating are independent.
+                                      // Description: matched favorite → cl.description; unmatched → stop.description (now empty for Google fetches).
+                                      // Rating: shown for any stop that has a Google rating OR a FouFou rating, matched or not.
+                                      const stopKey = (stop.name || '').toLowerCase().trim();
+                                      const cl = customLocations.find(loc =>
+                                        (loc.googlePlaceId && stop.googlePlaceId && loc.googlePlaceId === stop.googlePlaceId) ||
+                                        ((loc.name || '').toLowerCase().trim() === stopKey)
+                                      );
+                                      const effectiveDesc = cl ? (cl.description || '') : (stop.description || '');
                                       const pk = (stop.name || '').replace(/[.#$/\\[\]]/g, '_');
                                       const ra = reviewAverages[pk];
-                                      const cl = customLocations.find(loc => loc.name === stop.name);
-                                      const gR = cl?.googleRating || stop.googleRating;
-                                      const gC = cl?.googleRatingCount || stop.googleRatingCount || 0;
-                                      return (
-                                        <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
-                                          {ra ? (
-                                            <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); }}
-                                              style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>
-                                          ) : (
-                                            <span style={{ color: '#9ca3af', fontSize: '9px' }}>{t('reviews.notYetRated')}</span>
-                                          )}
-                                        </div>
-                                      );
+                                      const gR = cl?.googleRating || stop.googleRating || stop.rating;
+                                      const gC = cl?.googleRatingCount || stop.googleRatingCount || stop.ratingCount || 0;
+                                      return (<>
+                                        {effectiveDesc && (
+                                          <div className="text-[10px]" style={{ color: hasValidCoords ? '#6b7280' : '#991b1b' }}>
+                                            {hasValidCoords ? <AutoTranslateText text={effectiveDesc} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} /> : t('places.noCoordinatesWarning')}
+                                          </div>
+                                        )}
+                                        {!effectiveDesc && !hasValidCoords && (
+                                          <div className="text-[10px]" style={{ color: '#991b1b' }}>{t('places.noCoordinatesWarning')}</div>
+                                        )}
+                                        {stop.todayHours && (
+                                          <div className="text-[9px]" style={{ color: stop.openNow ? '#059669' : '#dc2626' }}>
+                                            🕐 {stop.openNow ? t('general.openStatus') : t('general.closedStatus')} · {stop.todayHours}
+                                          </div>
+                                        )}
+                                        {(gR || ra) && (
+                                          <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
+                                            {ra && (
+                                              <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); openReviewDialog(cl || stop); }}
+                                                style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>🌟{ra.avg.toFixed(1)} ({ra.count})</span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </>);
                                     })()}
                                   {debugMode && isUnlocked && (() => {
                                     const score = calcStopScore(stop);
@@ -4420,7 +4432,6 @@
                   { key: 'googleMaxWaypoints', label: t('sysParams.maxWaypoints'), desc: t('sysParams.maxWaypointsDesc'), min: 5, max: 25, step: 1, type: 'int' },
                   { key: 'defaultRadius', label: t('sysParams.defaultRadius'), desc: t('sysParams.defaultRadiusDesc'), min: 100, max: 5000, step: 100, type: 'int' },
                   { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
-                  { key: 'includeDrafts', label: t('sysParams.includeDrafts'), desc: t('sysParams.includeDraftsDesc'), type: 'bool' },
                   { key: 'systemAlertIntervalHours', label: 'System Alert Interval (hours)', desc: 'How often to send automated system feedback alerts (e.g. corrupted cacheVersion). Default: 1', min: 1, max: 72, step: 1, type: 'int' },
                   { key: 'maxRoutesPerUserPerCity', label: t('sysParams.maxRoutesPerUserPerCity') || 'Max saved trails per user (per city)', desc: t('sysParams.maxRoutesPerUserPerCityDesc') || 'Cap on total saved trails a non-admin user can store in a single city. Admins bypass. Default: 50', min: 5, max: 500, step: 5, type: 'int' },
                   { key: 'maxPublicRoutesPerUserPerCity', label: t('sysParams.maxPublicRoutesPerUserPerCity') || 'Max public trails per user (per city)', desc: t('sysParams.maxPublicRoutesPerUserPerCityDesc') || 'Cap on public (locked) trails a non-admin user can share in a single city. Admins bypass. Default: 10', min: 1, max: 100, step: 1, type: 'int' },
@@ -4857,8 +4868,8 @@
                   const activeCount = customLocations.filter(loc => {
                     if (loc.status === 'blacklist' || !loc.lat || !loc.lng) return false;
                     if (!loc.locked) {
-                      if (isUnlocked) { if (window.BKK.systemParams?.includeDrafts === false) return false; }
-                      else { if (_mapAnon || !_mapUid || loc.addedBy !== _mapUid) return false; }
+                      // v3.23.33: editor/admin sees all drafts; non-editor regular users see only their own
+                      if (!isUnlocked) { if (_mapAnon || !_mapUid || loc.addedBy !== _mapUid) return false; }
                     }
                     if (mapFavArea) { const la = loc.areas || (loc.area ? [loc.area] : []); if (!la.includes(mapFavArea)) return false; }
                     if (mapFavFilter.size > 0) { if (!(loc.interests || []).some(i => mapFavFilter.has(i))) return false; }
@@ -4968,7 +4979,8 @@
                             const searchable = customLocations.filter(l => {
                               if (!l.lat || !l.lng || l.status === 'blacklist') return false;
                               if (!l.locked) {
-                                if (isUnlocked) { return window.BKK.systemParams?.includeDrafts !== false; }
+                                // v3.23.33: editor/admin sees all drafts; non-editor regular users see only their own
+                                if (isUnlocked) return true;
                                 if (_srchAnon || !_srchUid) return false;
                                 return l.addedBy === _srchUid;
                               }
