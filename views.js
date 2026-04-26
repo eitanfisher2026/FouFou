@@ -1958,7 +1958,12 @@
                     });
                   })()}
                 </div>
-                
+
+                {/* v3.23.42: Google attribution under the trail-stops list — most stops show ratings/types from Google Places */}
+                <div style={{ marginTop: '6px', fontSize: '9px', color: '#9ca3af', textAlign: window.BKK.i18n.isRTL() ? 'right' : 'left', paddingInlineStart: '4px' }}>
+                  {t('general.poweredByGoogle') || 'Powered by Google'}
+                </div>
+
                 <div className="mt-3 space-y-1" style={{
                   position: 'sticky', bottom: 0, zIndex: 20,
                   background: 'linear-gradient(to top, rgba(239,246,255,1) 85%, rgba(239,246,255,0))',
@@ -3905,38 +3910,54 @@
               </div>
             </div>
             
-            {/* Refresh Google Ratings — editor/admin only */}
-            {isUnlocked && (
-            <div className="mb-3">
-              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-3">
-                <h3 className="text-base font-bold text-gray-800 mb-1">{`⭐ ${t("settings.refreshRatings") || 'רענן דירוגי גוגל'}`}</h3>
-                <p className="text-xs text-gray-600 mb-2">
-                  {t("settings.refreshRatingsDesc") || 'עדכון דירוגי גוגל לכל המקומות המועדפים בעיר הנוכחית'}
-                </p>
-                <button
-                  onClick={refreshAllGoogleRatings}
-                  disabled={!!ratingsRefreshProgress}
-                  className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
-                    ratingsRefreshProgress
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700'
-                  }`}
-                >
-                  {ratingsRefreshProgress ? (
-                    <>
-                      <span className="animate-spin">⭐</span>
-                      <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} {t('settings.updated')})</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>⭐</span>
-                      <span>{t("settings.refreshRatings") || 'רענן דירוגי גוגל'}</span>
-                    </>
-                  )}
-                </button>
+            {/* v3.23.41: Refresh Google saved information — editor/admin only. Panel text is English-only by design. */}
+            {isUnlocked && (() => {
+              const REFRESH_INTERVAL_MS = 30 * 24 * 3600 * 1000;
+              const eligible = customLocations.filter(loc => loc.status !== 'blacklist' && loc.lat && loc.lng && loc.name);
+              const dueNow = eligible.filter(loc => !loc.googleRatingUpdated || (Date.now() - loc.googleRatingUpdated) > REFRESH_INTERVAL_MS).length;
+              const recent = eligible.length - dueNow;
+              const lr = googleDataRefreshMeta?.lastRunStats;
+              const lrAt = googleDataRefreshMeta?.lastRunAt;
+              const lrAtStr = lrAt ? new Date(lrAt).toLocaleString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+              return (
+              <div className="mb-3">
+                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-400 rounded-xl p-3" style={{ direction: 'ltr', textAlign: 'left' }}>
+                  <h3 className="text-base font-bold text-gray-800 mb-1">🌐 Refresh Google saved information</h3>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Refreshes ratings, address, types, business status, and coordinates for favorites across all cities. Skips entries refreshed within the last 30 days. Place names are NOT refreshed (preserves user edits).
+                  </p>
+                  <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.6' }}>
+                    <div>📊 Status: <span style={{ fontWeight: 'bold', color: dueNow > 0 ? '#b45309' : '#059669' }}>{dueNow} due now</span> · {recent} refreshed within 30 days</div>
+                    {lrAt && lr && (
+                      <div>📅 Last run: {lrAtStr} · {lr.updated}/{lr.total} updated, {lr.errors} error{lr.errors === 1 ? '' : 's'} · ${(lr.costUSD ?? 0).toFixed(3)}</div>
+                    )}
+                    {!lrAt && <div style={{ fontStyle: 'italic' }}>📅 Last run: never</div>}
+                  </div>
+                  <button
+                    onClick={refreshAllGoogleRatings}
+                    disabled={!!ratingsRefreshProgress || dueNow === 0}
+                    className={`w-full py-2 px-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition ${
+                      ratingsRefreshProgress || dueNow === 0
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700'
+                    }`}
+                  >
+                    {ratingsRefreshProgress ? (
+                      <>
+                        <span className="animate-spin">🌐</span>
+                        <span>{ratingsRefreshProgress.current}/{ratingsRefreshProgress.total} ({ratingsRefreshProgress.updated} updated)</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🌐</span>
+                        <span>Refresh Google saved information{dueNow > 0 ? ` (${dueNow})` : ''}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-            )}
+              );
+            })()}
 
             {/* Bulk Approve Drafts — per-city scrollable list, editor/admin only */}
             {isUnlocked && (() => {
@@ -4110,12 +4131,34 @@
                           version: window.BKK.VERSION || '3.5'
                         };
 
-                        // City data: locations + routes for current city only
+                        // v3.23.42: strip Google-cached fields from exports per Google Maps Platform ToS.
+                        // We keep googlePlaceId (allowed indefinitely) + lat/lng + name + user-authored fields.
+                        // On re-import, the receiving device's "Refresh Google saved information" admin
+                        // tool repopulates rating/address/types from a fresh API call.
+                        const stripGoogleFieldsFromLocation = (loc) => {
+                          const clean = { ...loc };
+                          delete clean.googleRating;
+                          delete clean.googleRatingCount;
+                          delete clean.googleRatingUpdated;
+                          delete clean.address;
+                          delete clean.formattedAddress;
+                          delete clean.googleTypes;
+                          delete clean.types;
+                          delete clean.primaryType;
+                          delete clean.primaryTypeDisplayName;
+                          delete clean.businessStatus;
+                          delete clean.todayHours;
+                          delete clean.openNow;
+                          delete clean.currentOpeningHours;
+                          delete clean.editorialSummary;
+                          return clean;
+                        };
+                        // City data: locations + routes for current city only — Google fields stripped
                         const cityData = {
                           _type: 'foufou-city',
                           cityId: selectedCityId,
-                          customLocations: customLocations,
-                          savedRoutes: savedRoutes,
+                          customLocations: customLocations.map(stripGoogleFieldsFromLocation),
+                          savedRoutes: savedRoutes.map(r => stripRouteForStorage(r)),
                           exportDate: new Date().toISOString(),
                           version: window.BKK.VERSION || '3.5'
                         };
