@@ -7,7 +7,7 @@
     const hasAudio = hintId && !!hintAudioUrls[hintId + '_' + lang];
     const s = hintId && getHelpSection(hintId);
     const hintTxt = (s && s.content && s.content.trim()) || '';
-    const showHintBtn = hintId && (hintTxt || isAdmin);
+    const showHintBtn = hintId && (hintTxt || isEditor);
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px',
@@ -23,7 +23,7 @@
         </div>
         {showHintBtn && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-            {isAdmin && <button onClick={() => { const s2 = getHelpSection(hintId); setHintEditId(hintId); setHintEditText((s2 && s2.content) || ''); }}
+            {isEditor && <button onClick={() => { const s2 = getHelpSection(hintId); setHintEditId(hintId); setHintEditText((s2 && s2.content) || ''); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#d1d5db', padding: '0 1px' }}>✏️</button>}
             <button
               onClick={() => setOpenHintPopup(openHintPopup === hintId ? null : hintId)}
@@ -1580,7 +1580,8 @@
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-bold text-blue-900 text-sm">{`${t("route.places")} - ${route.areaName}`} ({route.stops.filter(s => !isStopDisabled(s)).length}):</h3>
+                  {/* v3.23.50: omit the dash + areaName when there is no area (manually-created trails have no areaName) */}
+                  <h3 className="font-bold text-blue-900 text-sm">{`${t("route.places")}${route.areaName ? ' - ' + route.areaName : ''} (${route.stops.filter(s => !isStopDisabled(s)).length}):`}</h3>
                 </div>
                 {renderContextHint('hint_route')}
                 {/* Normal stop list grouped by interest */}
@@ -1903,6 +1904,8 @@
                                             🕐 {stop.openNow ? t('general.openStatus') : t('general.closedStatus')} · {stop.todayHours}
                                           </div>
                                         )}
+                                        {/* v3.23.52: ratings restored in the route view (the previous hide was on the wrong surface).
+                                            The user requested ratings be hidden in the trail-edit dialog instead — see dialogs.js. */}
                                         {(gR || ra) && (
                                           <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                                             {gR && <span style={{ color: '#b45309' }}>⭐{gR.toFixed?.(1) || gR} ({gC})</span>}
@@ -2070,7 +2073,7 @@
                         <button onClick={() => setShowRouteMenu(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#9ca3af', padding: '0 2px', lineHeight: 1 }}>✕</button>
                       </div>
                       {[
-                        { icon: '+', label: t('route.addManualStop').replace('➕ ', ''), action: () => { setShowRouteMenu(false); setShowManualAddDialog(true); } },
+                        { icon: '+', label: t('route.addManualStop').replace('➕ ', ''), action: () => { setShowRouteMenu(false); setManualSearchQuery(''); setManualSearchResults(null); setShowManualAddDialog(true); } },
                         { icon: '≡', label: t('route.reorderStops'), action: () => { setShowRouteMenu(false); reorderOriginalStopsRef.current = route?.stops ? [...route.stops] : null; setShowRoutePreview(true); }, disabled: !route?.optimized },
                         { icon: '↗', label: (!authUser || authUser.isAnonymous) ? (t('auth.loginToShare') || 'Sign in to share') : t('general.shareRoute'), action: () => {
                           if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
@@ -2438,7 +2441,8 @@
                 </div>
               </div>
             </div>
-            {/* v3.23.15: Me / Others / All filter — hidden for anon (no uid to own anything) */}
+            {/* v3.23.15: Me / Others / All filter — hidden for anon (no uid to own anything).
+                v3.23.48: added "Recommended" filter (system trails curated by editors/admins). */}
             {authUser && !authUser.isAnonymous && (
               <div className="flex bg-gray-200 rounded-lg p-0.5 mb-2" style={{ width: 'fit-content' }}>
                 <button
@@ -2453,18 +2457,30 @@
                   onClick={() => setTrailsFilter('others')}
                   className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${trailsFilter === 'others' ? 'bg-white shadow text-blue-700' : 'text-gray-500'}`}
                 >🌐 {t('route.others') || 'Others'}</button>
+                <button
+                  onClick={() => setTrailsFilter('recommended')}
+                  className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${trailsFilter === 'recommended' ? 'bg-white shadow text-orange-700' : 'text-gray-500'}`}
+                >{t('route.recommended') || '🐾 Recommended'}</button>
               </div>
             )}
             {renderContextHint('hint_saved')}
-            
+
+            {/* v3.23.47: "Create new trail" — manual trail builder. Visible to everyone;
+                anonymous users get a sign-in prompt on click (handled in openCreateTrailDialog).
+                v3.23.49: drop explicit flexDirection — document-level dir="rtl" (set on <html>)
+                already mirrors flex children in Hebrew; specifying row-reverse double-flipped it. */}
+            <div className="mb-2 flex items-center gap-2">
+              <button
+                onClick={openCreateTrailDialog}
+                className="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-emerald-600"
+              >{`✏️ ${t('route.createNewTrail') || 'Create new trail'}`}</button>
+            </div>
+
             {citySavedRoutes.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🗺️</div>
                 <p className="text-gray-600 mb-3 text-sm">{t("places.noSavedRoutesInCity", {cityName: tLabel(window.BKK.selectedCity) || t('places.thisCity')})}</p>
-                <button
-                  onClick={() => setCurrentView('form')}
-                  className="bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-700"
-                >{t("route.newRoute")}</button>
+                {/* v3.23.49: redundant "New route" CTA removed — the top-of-page Create button serves the same purpose. */}
               </div>
             ) : (
               <div className="space-y-1">
@@ -2474,6 +2490,7 @@
                   const filteredRoutes = citySavedRoutes.filter(r => {
                     if (trailsFilter === 'me') return myUid && r.savedBy === myUid;
                     if (trailsFilter === 'others') return !(myUid && r.savedBy === myUid);
+                    if (trailsFilter === 'recommended') return r.system === true;
                     return true;
                   });
                   const sorted = [...filteredRoutes].sort((a, b) => {
@@ -2501,13 +2518,24 @@
                           data-route-fbid={savedRoute.firebaseId || ''}
                           className={`flex items-center justify-between gap-2 rounded-lg p-2 border cursor-pointer ${savedRoute.system ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-gray-200 bg-white hover:bg-blue-50'}`}
                           style={{ overflow: 'hidden', ...(focusRouteId && focusRouteId === savedRoute.firebaseId ? { outline: '3px solid #fbbf24', background: '#fef3c7', transition: 'outline 0.3s, background 0.3s' } : {}) }}
-                          onClick={() => loadSavedRoute(savedRoute)}
+                          onClick={() => {
+                            // v3.23.49: click trail name → open the trail dialog (showRouteDialog), matching
+                            // the existing ✏️/👁️ button behavior. Was previously navigating to the full route
+                            // view via loadSavedRoute. The route view is still reachable via the dialog's actions.
+                            const isOwnRoute = savedRoute.savedBy && authUser?.uid && savedRoute.savedBy === authUser.uid;
+                            const canEdit = isOwnRoute || isUnlocked;
+                            setEditingRoute({...savedRoute});
+                            setRouteDialogMode(canEdit ? 'edit' : 'view');
+                            setShowRouteDialog(true);
+                          }}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 flex-wrap">
-                              {savedRoute.system && <span style={{ fontSize: '11px' }} title={t('route.recommended')}>⭐</span>}
+                              {savedRoute.system && <span style={{ fontSize: '13px' }} title={t('route.recommendedBadge') || '🐾 Recommended'}>🐾</span>}
                               <span className="font-medium text-sm truncate">{savedRoute.name}</span>
                               {savedRoute.locked && !savedRoute.system && <span title={t("route.public")} style={{ fontSize: '11px' }}>🌐</span>}
+                              {/* v3.23.54: removed inline 🐾 toggle — recommendation flag is now only
+                                  flipped from inside the trail dialog (less accidental clicks, single source). */}
                               {routeInterestIds.slice(0, 5).map((intId, idx) => {
                                 const obj = interestMap[intId];
                                 if (!obj?.icon) return null;

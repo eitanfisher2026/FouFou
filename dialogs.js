@@ -1830,14 +1830,14 @@
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
           <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl">
             
-            {/* Header */}
+            {/* Header — v3.23.55: just the trail name (was "Edit saved route" / "ערוך מסלול שמור") */}
             <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold">{routeDialogMode === 'add' ? t('route.addSavedRoute') : t('route.editSavedRoute')}</h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="text-base font-bold truncate">{editingRoute.name || (routeDialogMode === 'add' ? t('route.addSavedRoute') : t('route.editSavedRoute'))}</h3>
               </div>
               <button
                 onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
-                className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
+                className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0"
               >✕</button>
             </div>
             
@@ -1849,13 +1849,46 @@
               )}
               {/* Route info */}
               <div className="bg-blue-50 rounded-lg p-3 space-y-1.5">
-                {/* Area */}
-                <div className="text-xs text-gray-700">
-                  <span className="font-bold">{`📍 ${t('general.area')}:`}</span> {editingRoute.areaName || t('general.noArea')}
+                {/* Area — v3.23.57: dropdown of the city's known areas (was free-text in v3.23.55-56).
+                     Stored as the display label in editingRoute.areaName for backward compatibility
+                     with existing trails. If the current value doesn't match any city area (legacy
+                     auto-generated trail), it's added as an extra option so it stays selectable. */}
+                <div className="text-xs text-gray-700 flex items-center gap-2">
+                  <span className="font-bold whitespace-nowrap">{`📍 ${t('general.area')}:`}</span>
+                  {(editingRoute.savedBy === authUser?.uid || isUnlocked) ? (() => {
+                    const options = (window.BKK.areaOptions || []).map(a => ({ id: a.id, label: tLabel(a) || a.id }));
+                    const cur = editingRoute.areaName || '';
+                    const knownLabels = new Set(options.map(o => o.label));
+                    const showLegacy = cur && !knownLabels.has(cur);
+                    return (
+                      <select
+                        value={cur}
+                        onChange={(e) => setEditingRoute({...editingRoute, areaName: e.target.value})}
+                        style={{ flex: 1, padding: '2px 6px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', background: 'white', direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', cursor: 'pointer' }}
+                      >
+                        <option value="">{t('general.noArea')}</option>
+                        {options.map(o => (<option key={o.id} value={o.label}>{o.label}</option>))}
+                        {showLegacy && (<option value={cur}>{cur}</option>)}
+                      </select>
+                    );
+                  })() : (
+                    <span>{editingRoute.areaName || t('general.noArea')}</span>
+                  )}
                 </div>
-                {/* Interests */}
+                {/* Interests — v3.23.56: also pull interests from matched FouFou favorites,
+                     same fix as the per-stop icons. Manually-created trails would otherwise show
+                     no interests because their stops only have '_manual'. */}
                 {(() => {
-                  const ids = [...new Set((editingRoute.stops || []).flatMap(s => s.interests || []))];
+                  const ids = [...new Set((editingRoute.stops || []).flatMap(s => {
+                    const stopInterests = s.interests || [];
+                    const stopKey = (s.name || '').toLowerCase().trim();
+                    const matchedFav = (customLocations || []).find(loc =>
+                      (loc.googlePlaceId && s.googlePlaceId && loc.googlePlaceId === s.googlePlaceId) ||
+                      ((loc.name || '').toLowerCase().trim() === stopKey)
+                    );
+                    const favInterests = matchedFav ? (matchedFav.interests || []) : [];
+                    return [...stopInterests, ...favInterests].filter(id => id !== '_manual');
+                  }))];
                   return ids.length > 0 && (
                     <div className="flex gap-1 flex-wrap items-center">
                       <span className="text-xs font-bold text-gray-700">{`🏷️ ${t('general.interestsHeader')}:`}</span>
@@ -1893,43 +1926,101 @@
                 />
               </div>
 
-              {/* Notes */}
+              {/* Notes — editable for owners/admin; auto-translated read-only display otherwise. */}
+              {/* v3.23.49: in view mode, render via AutoTranslateText so notes written in another */}
+              {/* language are auto-translated to the viewer's UI language. */}
               <div>
                 <label className="block text-xs font-bold mb-1">{`💬 ${t('general.notesLabel')}`}</label>
-                <textarea
-                  value={editingRoute.notes || ''}
-                  onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
-                  placeholder={t("places.notes")}
-                  className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg h-16 resize-none"
-                  style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
-                  disabled={!(editingRoute.savedBy === authUser?.uid || isUnlocked)}
-                />
+                {(editingRoute.savedBy === authUser?.uid || isUnlocked) ? (
+                  <textarea
+                    value={editingRoute.notes || ''}
+                    onChange={(e) => setEditingRoute({...editingRoute, notes: e.target.value})}
+                    placeholder={t("places.notes")}
+                    className="w-full p-2 text-sm border-2 border-gray-300 rounded-lg h-16 resize-none"
+                    style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}
+                  />
+                ) : (
+                  editingRoute.notes ? (
+                    <div className="w-full p-2 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 min-h-[64px] whitespace-pre-wrap"
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                      <AutoTranslateText text={editingRoute.notes} translateText={translateText} detectNeedsTranslation={detectNeedsTranslation} />
+                    </div>
+                  ) : (
+                    <div className="w-full p-2 text-sm border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-400 italic min-h-[64px]"
+                      style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>
+                      {t("places.noNotes") || (window.BKK.i18n.isRTL() ? 'אין הערות' : 'No notes')}
+                    </div>
+                  )
+                )}
               </div>
+
+              {/* v3.23.55: Documentation — uses renderStepHeader (same UI as wizard step 1's "What interests you?"
+                   header). Provides the same ✏️ + ℹ button row, and renderContextHint below handles the edit form
+                   and draggable popup with floating play/pause/stop button. Same component everywhere. */}
+              {editingRoute?.firebaseId && editingRoute.system && (
+                <>
+                  {renderStepHeader('📄', t('route.documentation') || 'Documentation', null, 'trail_doc_' + editingRoute.firebaseId)}
+                  {renderContextHint('trail_doc_' + editingRoute.firebaseId)}
+                </>
+              )}
 
               {/* Stops list */}
               <div>
                 <label className="block text-xs font-bold mb-1">{t("general.stopsCount")} ({editingRoute.stops?.length || 0})</label>
                 <div className="max-h-32 overflow-y-auto space-y-0.5">
-                  {(editingRoute.stops || []).map((stop, idx) => (
-                    <div key={idx} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
-                      <span className="text-gray-400">{window.BKK.stopLabel(idx)}.</span>
-                      <span className="font-medium truncate">{stop.name}</span>
-                      {stop.rating && <span className="text-yellow-600">⭐{stop.rating}</span>}
-                    </div>
-                  ))}
+                  {(editingRoute.stops || []).map((stop, idx) => {
+                    // v3.23.55: detect if this stop matches a FouFou favorite (curated place in customLocations)
+                    // — same matching pattern as views.js route-view: googlePlaceId first, then name fallback.
+                    const stopKey = (stop.name || '').toLowerCase().trim();
+                    const matchedFav = (customLocations || []).find(loc =>
+                      (loc.googlePlaceId && stop.googlePlaceId && loc.googlePlaceId === stop.googlePlaceId) ||
+                      ((loc.name || '').toLowerCase().trim() === stopKey)
+                    );
+                    // Interest IDs come from the stop itself, OR from the matched favorite (manual stops have only '_manual')
+                    const stopInterests = (stop.interests || []).filter(id => id !== '_manual');
+                    const favInterests = matchedFav ? (matchedFav.interests || []).filter(id => id !== '_manual') : [];
+                    const allInterests = [...new Set([...stopInterests, ...favInterests])];
+                    return (
+                      <div key={idx} className="flex items-center gap-1 text-xs bg-gray-50 px-2 py-1 rounded">
+                        <span className="text-gray-400">{window.BKK.stopLabel(idx)}.</span>
+                        <span className="font-medium truncate" style={{ flex: 1 }}>{stop.name}</span>
+                        {/* v3.23.58: same FouFou icon used in the route view (icon-32x32.png) — was an inline
+                             SVG in v3.23.56-57 which didn't match the route view exactly. */}
+                        {matchedFav && (
+                          <img src="icon-32x32.png" alt="FouFou" title={t('places.fouFouFavorite') || 'FouFou place'} style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                        )}
+                        {/* Interest icons per stop, same pattern as the trail card in the saved-trails list */}
+                        {allInterests.slice(0, 4).map((intId, i) => {
+                          const obj = interestMap[intId];
+                          if (!obj?.icon) return null;
+                          return <span key={i} title={tLabel(obj) || obj.label || intId} style={{ fontSize: '11px', flexShrink: 0 }}>{renderIcon(obj.icon, '13px')}</span>;
+                        })}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               </div>{/* close inner wrapper */}
 
-              {/* Private (locked:false, default) / Public (locked:true) toggle — owner or editor+ */}
+              {/* Private/Public toggle — owner or editor+. v3.23.50: editors/admins also get a Recommended toggle. */}
               {(editingRoute.savedBy === authUser?.uid || isUnlocked) && (
-              <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100">
+              <div className="flex gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100 flex-wrap">
                 <button type="button"
                   onClick={() => setEditingRoute({...editingRoute, locked: !editingRoute.locked})}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${editingRoute.locked ? 'border-emerald-500 bg-emerald-500 text-white shadow-md' : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'}`}
                 >
                   {editingRoute.locked ? `🌐 ${t("route.public")}` : `✏️ ${t("route.private")}`}
                 </button>
+                {(isEditor || isAdmin) && (
+                  <button type="button"
+                    onClick={() => setEditingRoute({...editingRoute, system: !editingRoute.system})}
+                    title={t('route.recommendedTrailHint') || 'FouFou-recommended trails — editor/admin only'}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all cursor-pointer ${editingRoute.system ? 'border-orange-500 bg-orange-500 text-white shadow-md' : 'border-gray-300 bg-white text-gray-600 hover:border-orange-400'}`}
+                  >
+                    {/* v3.23.56: removed duplicate 🐾 prefixes — paw-less label per user request. */}
+                    {editingRoute.system ? (t('route.recommendedShort') || 'Recommended') : (t('route.markAsRecommended') || 'Mark as recommended')}
+                  </button>
+                )}
               </div>
               )}
 
@@ -1942,10 +2033,11 @@
                       setShowRouteDialog(false);
                       setEditingRoute(null);
                     }}
-                    className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600"
+                    className="flex-1 py-2.5 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600"
                     style={{ fontSize: '15px' }}
                   >
-                    📍 {t("general.openRoute")}
+                    {/* v3.23.56: green (matching favorites' "Open in Google" green), 🐾 paw icon for trail */}
+                    🐾 {t("general.openRoute")}
                   </button>
                   {(() => {
                     const isOwn = editingRoute.savedBy && authUser?.uid && editingRoute.savedBy === authUser.uid;
@@ -1980,24 +2072,34 @@
                     {canUpdate && (
                       <button
                         onClick={() => {
-                          updateRoute(editingRoute.id, {
+                          // v3.23.50: include `system` in the payload — editors/admins can flip the
+                          // Recommended flag from inside the dialog. Regular users won't see the toggle,
+                          // so editingRoute.system stays at whatever it already was.
+                          // v3.23.55: include areaName since the field is now editable.
+                          const updates = {
                             name: editingRoute.name,
                             notes: editingRoute.notes,
-                            locked: editingRoute.locked
-                          });
+                            locked: editingRoute.locked,
+                            areaName: editingRoute.areaName || ''
+                          };
+                          if (isEditor || isAdmin) updates.system = !!editingRoute.system;
+                          updateRoute(editingRoute.id, updates);
                           setShowRouteDialog(false);
                           setEditingRoute(null);
                         }}
-                        className="flex-1 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-600"
+                        className="flex-1 py-2.5 bg-purple-500 text-white rounded-lg text-sm font-bold hover:bg-purple-600"
                       >
-                        💾 {t('general.update') || 'Update'}
+                        {/* v3.23.56: purple (matching favorites' Update & Quit), uses existing
+                            updateAndQuit i18n which already includes 🚪 */}
+                        {t('general.updateAndQuit') || '🚪 Update & Close'}
                       </button>
                     )}
                     <button
                       onClick={() => { setShowRouteDialog(false); setEditingRoute(null); }}
-                      className="px-5 py-2.5 rounded-lg bg-green-500 text-white text-sm font-bold hover:bg-green-600"
+                      className="px-5 py-2.5 rounded-lg bg-gray-400 text-white text-sm font-bold hover:bg-gray-500"
                     >
-                      {`✓ ${t("general.close")}`}
+                      {/* v3.23.56: gray (matching favorites' Cancel), no checkmark */}
+                      {`✕ ${t("general.close")}`}
                     </button>
                   </>
                 );
@@ -2009,9 +2111,10 @@
 
       {/* Manual Add Stop Dialog */}
       {showManualAddDialog && (() => {
+        // v3.23.59: same UX as the Create-trail dialog — instant favorites filter on typing,
+        // "Search Google" button below for the API call. Reuses the shared _instantFavoritesFilter.
         const searchManualPlace = () => {
-          const inp = document.getElementById('manual-stop-input');
-          const q = inp?.value?.trim();
+          const q = (manualSearchQuery || '').trim();
           if (q) searchManualForDialog(q);
         };
 
@@ -2043,8 +2146,8 @@
           }
           showToast(`➕ ${display} ${t('interests.added')} — ${t('general.addedManually') || 'נוסף לתחתית הרשימה'}`, 'success');
           window.BKK.logEvent?.('manual_stop_added', { stop_name: display });
-          const inp = document.getElementById('manual-stop-input');
-          if (inp) inp.value = '';
+          // v3.23.59: input is controlled now — clear React state, not just the DOM
+          setManualSearchQuery('');
           setManualSearchResults(null);
         };
         
@@ -2055,7 +2158,7 @@
               <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
                 <h3 className="text-sm font-bold">{t("route.addManualStop")}</h3>
                 <button
-                  onClick={() => { setShowManualAddDialog(false); setManualSearchResults(null); }}
+                  onClick={() => { setShowManualAddDialog(false); setManualSearchResults(null); setManualSearchQuery(''); }}
                   className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center"
                 >
                   ✕
@@ -2068,7 +2171,9 @@
                   <input
                     id="manual-stop-input"
                     type="text"
-                    onKeyDown={(e) => { if (e.key === 'Enter') searchManualPlace(); }}
+                    value={manualSearchQuery}
+                    onChange={(e) => manualInstantFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchManualPlace(); } }}
                     placeholder={isRecording && recordingField === 'manual_stop' ? '' : t("form.typeAddressAlt")}
                     className="flex-1 p-2.5 border-2 border-purple-300 rounded-lg text-sm focus:border-purple-500"
                     style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr', borderColor: isRecording && recordingField === 'manual_stop' ? '#ef4444' : undefined }}
@@ -2078,10 +2183,11 @@
                     <button type="button"
                       onClick={() => toggleRecording('manual_stop',
                         (text) => {
-                          const inp = document.getElementById('manual-stop-input');
-                          if (inp) inp.value = (inp.value ? inp.value + ' ' : '') + text;
+                          // v3.23.59: also drive the instant filter so favorites appear as you dictate
+                          const next = (manualSearchQuery ? manualSearchQuery + ' ' : '') + text;
+                          manualInstantFilter(next);
                         },
-                        () => { const inp = document.getElementById('manual-stop-input'); if (inp) inp.value = ''; },
+                        () => { manualInstantFilter(''); },
                         'en-US'
                       )}
                       style={{ width: '34px', height: '34px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', background: isRecording && recordingField === 'manual_stop' ? '#ef4444' : '#f3f4f6', color: isRecording && recordingField === 'manual_stop' ? 'white' : '#6b7280', boxShadow: isRecording && recordingField === 'manual_stop' ? '0 0 0 3px rgba(239,68,68,0.3)' : 'none', animation: isRecording && recordingField === 'manual_stop' ? 'pulse 1s ease-in-out infinite' : 'none' }}
@@ -2090,14 +2196,15 @@
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                  <button
-                    onClick={searchManualPlace}
-                    className="flex-1 py-1.5 rounded-lg text-xs font-bold bg-purple-500 text-white hover:bg-purple-600"
-                  >
-                    {`🔍 ${t('form.searchPlaceGoogle')}`}
-                  </button>
-                </div>
+                {/* v3.23.59: full-width "Search Google" button — disabled when input is empty.
+                     Matches the Create-trail dialog and the wizard step-2 "around a place" UX. */}
+                <button
+                  onClick={searchManualPlace}
+                  disabled={!(manualSearchQuery || '').trim()}
+                  className={`w-full py-2 rounded-lg text-sm font-bold ${(manualSearchQuery || '').trim() ? 'bg-purple-500 text-white hover:bg-purple-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                  style={{ marginTop: '4px' }}>
+                  {`🔍 ${t('form.searchPlaceGoogle')}`}
+                </button>
                 {isRecording && recordingField === 'manual_stop' && interimText && (
                   <div style={{ padding: '4px 8px', background: '#fef3c7', borderRadius: '6px', fontSize: '12px', color: '#92400e', fontStyle: 'italic', direction: 'ltr' }}>🎤 {interimText}</div>
                 )}
@@ -3025,6 +3132,179 @@
           </div>
         </div>
       )}
+
+      {/* v3.23.47: Create new trail — manual trail builder accessed from saved-trails page.
+           v3.23.48: search UX matches "around a place" wizard step 2 — instant favorites
+           filter on typing, "Search Google" full-width button below, results dropdown.  */}
+      {showCreateTrailDialog && (() => {
+        const nameCheck = validateTrailName(createTrailName);
+        const stopsOk = validateTrailMinStops(createTrailStops);
+        const canSave = nameCheck.valid && stopsOk;
+        const isRTL = window.BKK.i18n.isRTL();
+        const triggerGoogle = () => {
+          const q = (createTrailSearchQuery || '').trim();
+          if (q) searchCreateTrailPlace(q);
+        };
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3" style={{ zIndex: 10300 }}>
+            <div className="bg-white rounded-xl w-full max-w-md shadow-2xl" style={{ direction: isRTL ? 'rtl' : 'ltr', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-2.5 rounded-t-xl flex items-center justify-between">
+                <h3 className="text-sm font-bold">{`🛤️ ${t('route.createNewTrail') || 'Create new trail'}`}</h3>
+                <button onClick={closeCreateTrailDialog} className="text-xl hover:bg-white hover:bg-opacity-20 rounded-full w-7 h-7 flex items-center justify-center">✕</button>
+              </div>
+
+              {/* Body — scrollable */}
+              <div className="p-4 space-y-3" style={{ overflowY: 'auto' }}>
+                {/* Name — 2 rows, ASCII-only */}
+                <div>
+                  <label style={{ fontSize: '11px', color: '#4b5563', fontWeight: 'bold' }}>
+                    {t('route.trailName') || 'Trail name'} <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <textarea
+                    value={createTrailName}
+                    onChange={(e) => setCreateTrailName(e.target.value)}
+                    rows={2}
+                    placeholder={t('route.trailNamePlaceholderEn') || 'English only (e.g. "Old town walk")'}
+                    style={{ width: '100%', padding: '8px 10px', border: '2px solid ' + (createTrailName.trim() && !nameCheck.valid ? '#fca5a5' : '#e5e7eb'), borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: 'ltr', fontFamily: 'inherit', marginTop: '4px', resize: 'vertical' }} />
+                  {createTrailName.trim() && !nameCheck.valid && (
+                    <div style={{ fontSize: '10px', color: '#dc2626', marginTop: '3px' }}>{nameCheck.error}</div>
+                  )}
+                </div>
+
+                {/* Notes — 5 rows minimum, scrollable */}
+                <div>
+                  <label style={{ fontSize: '11px', color: '#4b5563', fontWeight: 'bold' }}>{t('route.notes') || 'Notes'}</label>
+                  <textarea
+                    value={createTrailNotes}
+                    onChange={(e) => setCreateTrailNotes(e.target.value)}
+                    rows={5}
+                    placeholder={t('route.notesPlaceholder') || 'Optional notes about this trail'}
+                    style={{ width: '100%', padding: '8px 10px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', direction: isRTL ? 'rtl' : 'ltr', fontFamily: 'inherit', resize: 'vertical', marginTop: '4px', minHeight: '110px', overflowY: 'auto' }} />
+                </div>
+
+                {/* Editor/admin-only: mark as recommended (system trail) */}
+                {(isEditor || isAdmin) && (
+                  <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '8px 10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      id="create-trail-system-flag"
+                      checked={createTrailIsSystem}
+                      onChange={(e) => setCreateTrailIsSystem(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#ea580c' }}
+                    />
+                    <label htmlFor="create-trail-system-flag" style={{ fontSize: '12px', color: '#7c2d12', cursor: 'pointer', flex: 1 }}>
+                      <div style={{ fontWeight: 'bold' }}>{t('route.recommendedBadge') || '🐾 Recommended'}</div>
+                      <div style={{ fontSize: '10px', color: '#9a3412' }}>{t('route.recommendedTrailHint') || 'FouFou-recommended trails — editor/admin only'}</div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Search-and-add stops — mirrors "around a place" UX */}
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
+                  <label style={{ fontSize: '11px', color: '#4b5563', fontWeight: 'bold' }}>
+                    {t('route.addStopsToTrail') || 'Add stops'} {createTrailStops.length > 0 && <span style={{ color: '#059669' }}>· {createTrailStops.length}</span>}
+                  </label>
+                  <input
+                    id="create-trail-stop-input"
+                    type="text"
+                    value={createTrailSearchQuery}
+                    onChange={(e) => createTrailInstantFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); triggerGoogle(); } }}
+                    placeholder={t('form.typeAddressAlt') || 'Type a place name'}
+                    className="w-full p-2 border-2 border-emerald-300 rounded-lg text-sm focus:border-emerald-500"
+                    style={{ direction: isRTL ? 'rtl' : 'ltr', marginTop: '4px', outline: 'none' }}
+                  />
+                  <button
+                    onClick={triggerGoogle}
+                    disabled={!(createTrailSearchQuery || '').trim()}
+                    className={`w-full py-2 rounded-lg text-sm font-bold ${(createTrailSearchQuery||'').trim() ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                    style={{ marginTop: '6px' }}>
+                    {`🔍 ${isRTL ? 'חפש בגוגל' : 'Search Google'}`}
+                  </button>
+
+                  {/* Results dropdown — favorites + Google */}
+                  {createTrailSearchResults !== null && (
+                    <div style={{ border: '1.5px solid #a7f3d0', borderRadius: '8px', overflow: 'hidden', background: 'white', marginTop: '6px', maxHeight: '220px', overflowY: 'auto' }}>
+                      {Array.isArray(createTrailSearchResults) && createTrailSearchResults.length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '10px', color: '#9ca3af', fontSize: '11px' }}>⏳ {t('general.searching') || 'Searching'}...</div>
+                      )}
+                      {createTrailSearchResults && !Array.isArray(createTrailSearchResults) && (() => {
+                        const favs = createTrailSearchResults.favorites || [];
+                        const goog = createTrailSearchResults.google || [];
+                        return (
+                          <>
+                            {favs.length > 0 && (
+                              <div style={{ padding: '4px 8px', fontSize: '9px', color: '#7c3aed', background: '#faf5ff', fontWeight: 'bold' }}>⭐ {t('nav.favorites') || 'Favorites'}</div>
+                            )}
+                            {favs.map((r, i) => (
+                              <button key={'f' + i} onClick={() => addStopToCreateTrail(r)}
+                                style={{ display: 'block', width: '100%', textAlign: isRTL ? 'right' : 'left', padding: '6px 10px', border: 'none', borderTop: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', fontSize: '12px' }}>
+                                <div style={{ fontWeight: 'bold' }}>{r.name}</div>
+                                {r.address && <div style={{ fontSize: '10px', color: '#6b7280' }}>{r.address}</div>}
+                              </button>
+                            ))}
+                            {goog.length > 0 && (
+                              <div style={{ padding: '4px 8px', fontSize: '9px', color: '#9ca3af', background: '#fafafa', fontWeight: 'bold' }}>{t('general.poweredByGoogle') || 'Powered by Google'}</div>
+                            )}
+                            {goog.map((r, i) => (
+                              <button key={'g' + i} onClick={() => addStopToCreateTrail(r)}
+                                style={{ display: 'block', width: '100%', textAlign: isRTL ? 'right' : 'left', padding: '6px 10px', border: 'none', borderTop: '1px solid #f3f4f6', background: 'white', cursor: 'pointer', fontSize: '12px' }}>
+                                <div style={{ fontWeight: 'bold' }}>{r.name}</div>
+                                {r.address && <div style={{ fontSize: '10px', color: '#6b7280' }}>{r.address}</div>}
+                                {r.rating && <div style={{ fontSize: '10px', color: '#f59e0b' }}>⭐ {r.rating}{r.ratingCount ? ` (${r.ratingCount})` : ''}</div>}
+                              </button>
+                            ))}
+                            {favs.length === 0 && goog.length === 0 && (
+                              <div style={{ textAlign: 'center', padding: '10px', color: '#9ca3af', fontSize: '11px' }}>{t('places.noPlacesFound') || 'No places found'}</div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* List of added stops */}
+                {createTrailStops.length > 0 && (
+                  <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#4b5563', fontWeight: 'bold', marginBottom: '4px' }}>
+                      📍 {createTrailStops.length} {t('general.stopsCount') || 'stops'}
+                    </div>
+                    {createTrailStops.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', background: 'white', borderRadius: '6px', marginBottom: '3px', fontSize: '12px' }}>
+                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 'bold', color: '#059669' }}>{i + 1}.</span> {s.name}
+                        </div>
+                        <button onClick={() => removeStopFromCreateTrail(i)}
+                          style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', padding: '2px 6px', fontSize: '11px', cursor: 'pointer', marginLeft: '6px' }}>
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer — save / cancel */}
+              <div style={{ padding: '10px 16px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '6px', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                <button onClick={submitCreateTrail}
+                  disabled={!canSave}
+                  style={{ flex: 2, padding: '10px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px',
+                    cursor: canSave ? 'pointer' : 'not-allowed',
+                    background: canSave ? '#16a34a' : '#e5e7eb',
+                    color: canSave ? 'white' : '#9ca3af', border: 'none' }}>
+                  💾 {t('route.saveTrail') || 'Save trail'}
+                </button>
+                <button onClick={closeCreateTrailDialog}
+                  style={{ flex: 1, padding: '10px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}>
+                  {t('general.cancel') || 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Import Confirmation Dialog */}
       {showImportDialog && importedData && (

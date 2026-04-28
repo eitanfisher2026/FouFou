@@ -786,6 +786,17 @@
   // v3.23.23: Save-as-new dialog state
   const [showSaveAsNewDialog, setShowSaveAsNewDialog] = useState(false);
   const [saveAsNewName, setSaveAsNewName] = useState('');
+  // v3.23.47: Create-new-trail dialog state — manual trail builder accessed from saved-trails page
+  const [showCreateTrailDialog, setShowCreateTrailDialog] = useState(false);
+  const [createTrailName, setCreateTrailName] = useState('');
+  const [createTrailNotes, setCreateTrailNotes] = useState('');
+  const [createTrailStops, setCreateTrailStops] = useState([]);
+  const [createTrailSearchResults, setCreateTrailSearchResults] = useState(null);
+  const [createTrailSearchQuery, setCreateTrailSearchQuery] = useState('');
+  const [createTrailIsSystem, setCreateTrailIsSystem] = useState(false); // editor/admin-only flag
+  // v3.23.59: query state for the Manual Add Stop dialog so its input can be controlled — needed
+  // for instant favorites filter on typing (was uncontrolled, only filtered on button click).
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
   const [pendingLocations, setPendingLocations] = useState([]);
   const [pendingInterests, setPendingInterests] = useState([]);
   const [locationsLoading, setLocationsLoading] = useState(true);
@@ -2356,9 +2367,10 @@
     const btnStyle = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', padding: '0 1px' };
     const isRTL = window.BKK.i18n.isRTL();
     
-    if (!txt && !isAdmin) return null;
-    
-    // Admin editing mode
+    // v3.23.53: edit access extended from admin-only to editor+ (consistent with the rest of content editing)
+    if (!txt && !isEditor) return null;
+
+    // Editor/admin editing mode
     if (hintEditId === hintId) return (
       <div style={{ margin: '4px 0', padding: '8px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #93c5fd' }}>
         <textarea value={hintEditText + (hintInterimText ? ' ' + hintInterimText : '')} 
@@ -2391,8 +2403,8 @@
       </div>
     );
     
-    // Empty (admin only) - small add button
-    if (!txt && isAdmin) return (
+    // Empty (editor/admin) - small add button
+    if (!txt && isEditor) return (
       <div style={{ display: 'flex', justifyContent: isRTL ? 'flex-start' : 'flex-end', margin: '-4px 0 0 0', lineHeight: 1 }}>
         <button onClick={() => { setHintEditId(hintId); setHintEditText(''); }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '10px', color: '#d1d5db', padding: '0 2px' }}>＋</button>
@@ -3318,8 +3330,12 @@
       const onValue = routesRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
+          // v3.23.57: set `id` to the Firebase key, not just `firebaseId`. Multiple lookups
+          // (updateRoute, deleteRoute, etc.) match on `r.id`. If `id` was undefined, every
+          // lookup matched the FIRST route in the array → editing trail B mutated trail A.
           const routesArray = Object.keys(data).map(key => ({
             ...data[key],
+            id: key,
             firebaseId: key
           }));
           setSavedRoutes(routesArray);
@@ -3733,6 +3749,7 @@
           if (routeData) {
             const routesArray = Object.keys(routeData).map(key => ({
               ...routeData[key],
+              id: key,           // v3.23.57: match the primary loader — `id` must equal Firebase key
               firebaseId: key
             }));
             setSavedRoutes(routesArray);
@@ -7554,6 +7571,31 @@
   };
 
   const updateRoute = (routeId, updates) => {
+    // v3.23.57: block name collisions when the name is being changed via the dialog Update button
+    if (updates && typeof updates.name === 'string') {
+      const existing = (savedRoutes || []).find(r => r.id === routeId);
+      const existingName = (existing?.name || '').trim().toLowerCase();
+      const newName = (updates.name || '').trim().toLowerCase();
+      if (newName !== existingName) {
+        if (!validateTrailNameUnique(updates.name, existing?.firebaseId)) {
+          showToast(t('route.nameAlreadyExists') || 'A trail with this name already exists in this city.', 'warning');
+          return;
+        }
+      }
+    }
+    // v3.23.53: cap recommended trails at 10 per city — only check when flipping false→true
+    if (updates && updates.system === true) {
+      const existing = (savedRoutes || []).find(r => r.id === routeId);
+      const wasSystem = existing?.system === true;
+      if (!wasSystem) {
+        const cityId = existing?.cityId || selectedCityId;
+        const sysCount = (savedRoutes || []).filter(r => (r.cityId || 'bangkok') === cityId && r.system === true).length;
+        if (sysCount >= 10) {
+          showToast(`${t('route.recommendedCapReached') || 'Max 10 recommended trails per city. Unmark one first.'}`, 'warning', 'sticky');
+          return;
+        }
+      }
+    }
     // v3.23.25: block public-cap violations when a non-admin user flips locked false→true
     if (!isRealAdmin && updates && updates.locked === true && authUser?.uid) {
       const existing = (savedRoutes || []).find(r => r.id === routeId);
@@ -7642,6 +7684,10 @@
     if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); return; }
     if (route.savedBy && route.savedBy !== authUser.uid) { showToast(t('route.notOwner') || 'Not the owner', 'warning'); return; }
     if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    // v3.23.47: prevent saving an empty trail (the name is preserved from when it was loaded — grandfathered)
+    if (!validateTrailMinStops(route?.stops)) { showToast(t('route.minStopsRequired') || 'Trail must have at least one stop', 'warning'); return; }
+    // v3.23.57: also block name collisions if the name has been changed
+    if (!validateTrailNameUnique(route?.name, route?.firebaseId)) { showToast(t('route.nameAlreadyExists') || 'A trail with this name already exists in this city.', 'warning'); return; }
     const routeToSave = {
       ...route,
       savedAt: new Date().toISOString(),
@@ -7661,6 +7707,33 @@
         console.error('[FIREBASE] Error updating route:', err);
         showToast(t('toast.routeSaveError'), 'error');
       });
+  };
+
+  // v3.23.47: shared trail validators applied at every save point (saveRouteAsNew, updateCurrentRoute, saveCustomTrail).
+  // Name is enforced ASCII-only so trails are universally readable across UI languages and shareable
+  // without script-rendering surprises. Existing trails saved before this rule are grandfathered —
+  // updateCurrentRoute does not re-validate the name (it preserves whatever was loaded from Firebase).
+  const validateTrailName = (name) => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return { valid: false, error: t('route.nameRequired') || 'Name required' };
+    if (!/^[\x20-\x7E]+$/.test(trimmed)) return { valid: false, error: t('route.nameAsciiOnly') || 'Trail name must be in English (basic Latin only)' };
+    return { valid: true };
+  };
+  const validateTrailMinStops = (stops) => Array.isArray(stops) && stops.length >= 1;
+
+  // v3.23.57: prevent two trails in the same city from sharing a name. Caller passes
+  // excludeFirebaseId when updating an existing trail (so the trail's own current name
+  // doesn't trigger a false collision against itself).
+  const validateTrailNameUnique = (name, excludeFirebaseId) => {
+    const trimmed = (name || '').trim().toLowerCase();
+    if (!trimmed) return true;
+    const dup = (savedRoutes || []).some(r => {
+      if (excludeFirebaseId && r.firebaseId === excludeFirebaseId) return false;
+      const rc = r.cityId || 'bangkok';
+      if (rc !== selectedCityId) return false;
+      return (r.name || '').trim().toLowerCase() === trimmed;
+    });
+    return !dup;
   };
 
   // v3.23.23: pick a name that doesn't collide with the user's existing saved-route names
@@ -7685,6 +7758,12 @@
     if (!route) return;
     if (!authUser || authUser.isAnonymous) { showToast(t('auth.signInToSave') || t('auth.saveLoginRequired'), 'warning'); return; }
     if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    // v3.23.47: enforce trail-name + min-stops rules
+    const nameCheck = validateTrailName(chosenName);
+    if (!nameCheck.valid) { showToast(nameCheck.error, 'warning'); return; }
+    if (!validateTrailMinStops(route?.stops)) { showToast(t('route.minStopsRequired') || 'Trail must have at least one stop', 'warning'); return; }
+    // v3.23.57: hard-reject duplicate names (was previously auto-suffixed by makeUniqueRouteName)
+    if (!validateTrailNameUnique(chosenName)) { showToast(t('route.nameAlreadyExists') || 'A trail with this name already exists in this city.', 'warning'); return; }
     // v3.23.25: per-city cap on total saved routes per user (admins bypass)
     if (!isRealAdmin) {
       const sp = window.BKK.systemParams || window.BKK._defaultSystemParams || {};
@@ -7725,6 +7804,186 @@
         console.error('[FIREBASE] Error saving route as new:', error);
         showToast(t('toast.routeSaveError'), 'error');
       });
+  };
+
+  // v3.23.47: build-and-save a brand-new trail from the "Create new trail" dialog.
+  // Mirrors saveRouteAsNew but takes explicit name/notes/stops so it doesn't depend on
+  // (or clobber) the in-memory `route` state. On success, closes the dialog and scrolls
+  // the saved-trails list to the new entry (via setFocusRouteId) — does NOT auto-navigate
+  // to the route view. The user can open it from the list using the existing button.
+  // v3.23.48: also persists the optional isSystemTrail flag (editor/admin-only).
+  const saveCustomTrail = (name, notes, stops, isSystemTrail, onSuccess) => {
+    if (!authUser || authUser.isAnonymous) { showToast(t('auth.signInToSave') || t('auth.saveLoginRequired'), 'warning'); return; }
+    if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    const nameCheck = validateTrailName(name);
+    if (!nameCheck.valid) { showToast(nameCheck.error, 'warning'); return; }
+    if (!validateTrailMinStops(stops)) { showToast(t('route.minStopsRequired') || 'Trail must have at least one stop', 'warning'); return; }
+    // v3.23.57: hard-reject duplicate names
+    if (!validateTrailNameUnique(name)) { showToast(t('route.nameAlreadyExists') || 'A trail with this name already exists in this city.', 'warning'); return; }
+    if (!isRealAdmin) {
+      const sp = window.BKK.systemParams || window.BKK._defaultSystemParams || {};
+      const maxTotal = sp.maxRoutesPerUserPerCity ?? 50;
+      const { total } = countUserRoutesInCity(selectedCityId, authUser.uid);
+      if (total >= maxTotal) {
+        showToast((t('toast.routeCapReached') || 'You have {0}/{1} saved trails in this city. Delete some to save more.')
+          .replace('{0}', total).replace('{1}', maxTotal), 'warning', 'sticky');
+        return;
+      }
+    }
+    const finalName = makeUniqueRouteName(name);
+    // Only editors/admins can create a system/recommended trail — flag silently ignored otherwise.
+    // Field is named `system` to match the pre-existing badge rendering in views.js.
+    const systemFlag = (isSystemTrail && (isEditor || isAdmin)) ? true : false;
+    // v3.23.53: cap on recommended trails per city
+    if (systemFlag) {
+      const sysCount = (savedRoutes || []).filter(r => (r.cityId || 'bangkok') === selectedCityId && r.system === true).length;
+      if (sysCount >= 10) {
+        showToast(`${t('route.recommendedCapReached') || 'Max 10 recommended trails per city. Unmark one first.'}`, 'warning', 'sticky');
+        return;
+      }
+    }
+    const newRoute = {
+      name: finalName,
+      notes: notes || '',
+      stops: stops,
+      circular: false,
+      optimized: false,
+      savedAt: new Date().toISOString(),
+      savedBy: authUser.uid,
+      savedByName: window.BKK.safeDisplayName(authUser),
+      locked: false,
+      cityId: selectedCityId,
+      manuallyCreated: true,
+      system: systemFlag
+    };
+    const stripped = stripRouteForStorage(newRoute);
+    database.ref(`cities/${selectedCityId}/routes`).push(stripped)
+      .then((ref) => {
+        showToast((t('toast.routeSavedAs') || 'Saved as "{0}"').replace('{0}', finalName), 'success');
+        window.BKK.logEvent?.('custom_trail_created', { city: selectedCityId, stops: stops.length, system: systemFlag });
+        // Highlight the new trail in the saved-trails list (existing focus mechanism)
+        setFocusRouteId(ref.key);
+        if (onSuccess) onSuccess();
+      })
+      .catch((err) => {
+        console.error('[FIREBASE] Error saving custom trail:', err);
+        showToast(t('toast.routeSaveError') || 'Save failed', 'error');
+      });
+  };
+
+  // v3.23.48: editor/admin-only inline toggle on the saved-trails card — flip the
+  // `system` flag without opening the trail. Writes a single field to Firebase.
+  const toggleTrailSystemFlag = (route) => {
+    if (!isEditor && !isAdmin) return;
+    if (!isFirebaseAvailable || !database) { showToast(t('toast.firebaseUnavailable') || 'Firebase unavailable', 'error'); return; }
+    if (!route?.firebaseId) return;
+    const cityId = route.cityId || selectedCityId;
+    const next = !route.system;
+    // v3.23.53: cap on recommended trails per city — only checked when flipping on
+    if (next) {
+      const sysCount = (savedRoutes || []).filter(r => (r.cityId || 'bangkok') === cityId && r.system === true).length;
+      if (sysCount >= 10) {
+        showToast(`${t('route.recommendedCapReached') || 'Max 10 recommended trails per city. Unmark one first.'}`, 'warning', 'sticky');
+        return;
+      }
+    }
+    database.ref(`cities/${cityId}/routes/${route.firebaseId}/system`).set(next)
+      .then(() => {
+        showToast(next ? (t('route.markAsRecommended') || 'Marked as recommended') : (t('route.unmarkAsRecommended') || 'Unmarked'), 'success');
+        window.BKK.logEvent?.('trail_system_flag_toggled', { value: next });
+      })
+      .catch((err) => {
+        console.error('[FIREBASE] Error toggling system flag:', err);
+        showToast(t('toast.routeSaveError') || 'Save failed', 'error');
+      });
+  };
+
+  // v3.23.59: shared instant-favorites filter used by both the Create-trail dialog and the
+  // Manual Add Stop dialog. Filters customLocations by name (synchronous, no API call) and
+  // populates the results state with { favorites: [...], google: [] }. Google search runs
+  // separately on button click / Enter via the caller-provided fetcher.
+  const _instantFavoritesFilter = (val, setQueryFn, setResultsFn) => {
+    setQueryFn(val);
+    const q = (val || '').toLowerCase().trim();
+    if (!q) { setResultsFn(null); return; }
+    const favMatches = (customLocations || []).filter(cl =>
+      cl.lat && cl.lng && (cl.name || '').toLowerCase().includes(q)
+    ).slice(0, 5).map(cl => ({
+      name: cl.name, lat: cl.lat, lng: cl.lng,
+      address: cl.address || '', rating: cl.googleRating,
+      ratingCount: cl.googleRatingCount, googlePlaceId: cl.googlePlaceId,
+      isFavorite: true
+    }));
+    setResultsFn({ favorites: favMatches, google: [] });
+  };
+
+  // v3.23.47: helpers for the Create-trail dialog
+  // v3.23.48: instant local favorites filter on typing — mirrors the "around a place" wizard step 2 UX.
+  // v3.23.59: now delegates to the shared _instantFavoritesFilter so the Manual Add Stop dialog can reuse it.
+  const createTrailInstantFilter = (val) => _instantFavoritesFilter(val, setCreateTrailSearchQuery, setCreateTrailSearchResults);
+  const manualInstantFilter = (val) => _instantFavoritesFilter(val, setManualSearchQuery, setManualSearchResults);
+  const searchCreateTrailPlace = (query) => _searchPlacesCore(query, setCreateTrailSearchResults);
+  const addStopToCreateTrail = (result) => {
+    const newStop = {
+      name: result.name,
+      lat: result.lat,
+      lng: result.lng,
+      // v3.23.50: leave description empty by default — the rating is already on stop.rating
+      // and the saved-trail view doesn't display ratings anyway. Putting "⭐ X.X" into the
+      // description duplicated the visible info on every stop.
+      description: '',
+      address: result.address || result.name,
+      duration: 45,
+      interests: ['_manual'],
+      manuallyAdded: true,
+      googlePlace: !!result.googlePlaceId,
+      googlePlaceId: result.googlePlaceId || null,
+      rating: result.rating || 0,
+      ratingCount: result.ratingCount || 0
+    };
+    const isDup = createTrailStops.some(s =>
+      (s.googlePlaceId && newStop.googlePlaceId && s.googlePlaceId === newStop.googlePlaceId) ||
+      ((s.name || '').toLowerCase().trim() === newStop.name.toLowerCase().trim())
+    );
+    if (isDup) {
+      showToast(`"${newStop.name}" ${t('places.alreadyInRoute') || 'already in trail'}`, 'warning');
+      return;
+    }
+    setCreateTrailStops(prev => [...prev, newStop]);
+    setCreateTrailSearchResults(null);
+    // v3.23.49: input is controlled now — must clear React state, not just the DOM
+    setCreateTrailSearchQuery('');
+  };
+  const removeStopFromCreateTrail = (idx) => {
+    setCreateTrailStops(prev => prev.filter((_, i) => i !== idx));
+  };
+  const openCreateTrailDialog = () => {
+    if (!authUser || authUser.isAnonymous) {
+      setShowLoginDialog(true);
+      showToast(t('auth.signInRequired') || 'Sign in required', 'info', 'sticky');
+      return;
+    }
+    // Discard-confirm only when there's an in-progress unsaved trail
+    if (route && (route.stops?.length > 0) && !route.firebaseId) {
+      const ok = window.confirm(t('route.discardCurrentTrail') || 'Discard the current unsaved trail and create a new one?');
+      if (!ok) return;
+      setRoute(null);
+    }
+    setCreateTrailName('');
+    setCreateTrailNotes('');
+    setCreateTrailStops([]);
+    setCreateTrailSearchResults(null);
+    setCreateTrailSearchQuery('');
+    setCreateTrailIsSystem(false);
+    setShowCreateTrailDialog(true);
+  };
+  const closeCreateTrailDialog = () => {
+    setShowCreateTrailDialog(false);
+    setCreateTrailSearchResults(null);
+    setCreateTrailSearchQuery('');
+  };
+  const submitCreateTrail = () => {
+    saveCustomTrail(createTrailName, createTrailNotes, createTrailStops, createTrailIsSystem, closeCreateTrailDialog);
   };
 
   // NOTE: addCustomInterest logic is now inline in the dialog footer (see Add Interest Dialog)
