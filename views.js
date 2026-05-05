@@ -1530,7 +1530,6 @@
               onClick={() => { setWizardStep(2); setRoute(null); setRouteChoiceMade(null); setCurrentView('form'); window.scrollTo(0, 0); }}
               style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationColor: '#d1d5db' }}
             >📍 {(() => {
-              if (formData.searchMode === 'all') return t('wizard.allCity');
               if (formData.searchMode === 'radius') { const locName = formData.radiusSource === 'point' ? (formData.radiusPlaceName || t('wizard.nearMePoint')) : t('wizard.myLocation'); const rLabel = formData.radiusMeters >= 1000 ? (formData.radiusMeters/1000 + 'km') : (formData.radiusMeters + 'm'); return locName + ' (' + rLabel + ')'; }
               const area = (window.BKK.areaOptions || []).find(a => a.id === formData.area);
               return area ? tLabel(area) : '';
@@ -4897,8 +4896,8 @@
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
-                const appUrl = 'https://eitanfisher2026.github.io/FouFou/';
-                const shareData = { title: 'FouFou', text: t('settings.appDescription') || 'City trails in Bangkok & Singapore', url: appUrl };
+                const appUrl = 'https://foufou.city/';
+                const shareData = { title: 'FouFou', text: t('settings.appDescription') || 'City trails — open in any browser, no install', url: appUrl };
                 window.BKK.logEvent?.('app_shared', {});
                 if (navigator.share) { navigator.share(shareData).catch(() => {}); }
                 else { try { navigator.clipboard.writeText(appUrl); showToast(t('route.linkCopied'), 'success'); } catch(e) { showToast(appUrl, 'info'); } }
