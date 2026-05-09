@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.23.73
+// FouFou app-data.js v3.23.74
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -3277,14 +3277,14 @@ window.BKK.cityData.paris = {
   "name": "פריז",
   "nameEn": "Paris",
   "country": "France",
-  "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiA0OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxLjYiIHI9IjAuNiIgZmlsbD0iIzAwMCIvPjxsaW5lIHgxPSIxNiIgeTE9IjIuNCIgeDI9IjE2IiB5Mj0iNSIvPjxwYXRoIGQ9Ik0xNiA1IEwxNCAxMCBMMTggMTAgWiIvPjxwYXRoIGQ9Ik0xNCAxMCBMMTMgMjIgTDE5IDIyIEwxOCAxMCIvPjxsaW5lIHgxPSIxNiIgeTE9IjEwIiB4Mj0iMTYiIHkyPSIyMiIvPjxsaW5lIHgxPSIxMyIgeTE9IjE0IiB4Mj0iMTkiIHkyPSIxNCIvPjxsaW5lIHgxPSIxMyIgeTE9IjE4IiB4Mj0iMTkiIHkyPSIxOCIvPjxsaW5lIHgxPSIxMyIgeTE9IjIyIiB4Mj0iMTkiIHkyPSIyMiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48bGluZSB4MT0iMTMiIHkxPSIyMyIgeDI9IjE5IiB5Mj0iMjMiLz48cGF0aCBkPSJNMTMgMjMgTDExIDM1IEwyMSAzNSBMMTkgMjMiLz48bGluZSB4MT0iMTQiIHkxPSIyMyIgeDI9IjEzLjMiIHkyPSIzNSIvPjxsaW5lIHgxPSIxOCIgeTE9IjIzIiB4Mj0iMTguNyIgeTI9IjM1Ii8+PGxpbmUgeDE9IjE2IiB5MT0iMjMiIHgyPSIxNiIgeTI9IjM1Ii8+PGxpbmUgeDE9IjEyLjUiIHkxPSIyOSIgeDI9IjE5LjUiIHkyPSIyOSIvPjxsaW5lIHgxPSIxMiIgeTE9IjMyIiB4Mj0iMjAiIHkyPSIzMiIvPjxsaW5lIHgxPSIxMSIgeTE9IjM1IiB4Mj0iMjEiIHkyPSIzNSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48bGluZSB4MT0iMTEiIHkxPSIzNiIgeDI9IjIxIiB5Mj0iMzYiLz48bGluZSB4MT0iMTEiIHkxPSIzNiIgeDI9IjYiIHkyPSI0NiIvPjxsaW5lIHgxPSIyMSIgeTE9IjM2IiB4Mj0iMjYiIHkyPSI0NiIvPjxsaW5lIHgxPSIxNCIgeTE9IjM2IiB4Mj0iMTEiIHkyPSI0NiIvPjxsaW5lIHgxPSIxOCIgeTE9IjM2IiB4Mj0iMjEiIHkyPSI0NiIvPjxwYXRoIGQ9Ik0xMSAzNiBRIDE2IDQ0IDIxIDM2Ii8+PHBhdGggZD0iTTExIDM2IFEgMTIgNDEgMTQgMzYiLz48cGF0aCBkPSJNMTggMzYgUSAyMCA0MSAyMSAzNiIvPjxsaW5lIHgxPSIzIiB5MT0iNDYiIHgyPSIyOSIgeTI9IjQ2IiBzdHJva2Utd2lkdGg9IjEuMyIvPjwvc3ZnPgo=",
+  "icon": "📍",
   "secondaryIcon": "🥐",
   "theme": {
-    "color": "#1f2937",
+    "color": "#709bd7",
     "iconLeft": "🥐",
     "iconRight": "🎨"
   },
-  "active": false,
+  "active": true,
   "distanceMultiplier": 1.2,
   "dayStartHour": 7,
   "nightStartHour": 18,
@@ -3919,7 +3919,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.23.73';
+window.BKK.VERSION = '3.23.74';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
