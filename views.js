@@ -177,7 +177,7 @@
       )}
 
       {(() => {
-        const theme = window.BKK.selectedCity?.theme || { color: '#e11d48', iconLeft: '🏙️' };
+        const theme = isTrailAnywhere ? { color: '#059669' } : (window.BKK.selectedCity?.theme || { color: '#e11d48' });
         const c = theme.color || '#e11d48';
         return (
       <div style={{
@@ -245,10 +245,11 @@
               ? <img src={authUser.photoURL} alt="" style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} />
               : (authUser && !authUser.isAnonymous ? '👤' : '🔑')}
           </button>
-          {theme.iconLeft && (() => {
-            const val = theme.iconLeft;
+          {(() => {
+            const icon = isTrailAnywhere ? '🌍' : window.BKK.selectedCity?.icon;
+            if (!icon) return null;
             return <span style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
-              {val.startsWith('data:') ? <img src={val} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : val}
+              {icon.startsWith('data:') ? <img src={icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : icon}
             </span>;
           })()}
           <h1 style={{ 
@@ -258,7 +259,7 @@
             letterSpacing: '0.5px',
             margin: 0,
             textShadow: '0 1px 3px rgba(0,0,0,0.2)'
-          }}>{tLabel(window.BKK.selectedCity) || 'FouFou'}</h1>
+          }}>{isTrailAnywhere ? (currentLang === 'he' ? 'מסלול בכל מקום' : 'Trail Anywhere') : (tLabel(window.BKK.selectedCity) || 'FouFou')}</h1>
           <span style={{
             fontSize: '8px', 
             color: 'rgba(255,255,255,0.5)',
@@ -295,16 +296,16 @@
           }}>
             {[
               { icon: '🗺️', label: t('nav.route'), view: 'form' },
-              { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: groupedPlaces.activeCount },
+              !isTrailAnywhere && { icon: '⭐', label: t('nav.favorites'), view: 'myPlaces', count: groupedPlaces.activeCount },
               // v3.23.15: Interests nav hidden from regular/anon users — editor+ only
               ...(isUnlocked ? [{ icon: '🏷️', label: t('nav.myInterests'), view: 'myInterests', count: allInterestOptions.filter(o => {
                 if (o.scope === 'local' && o.cityId && o.cityId !== selectedCityId) return false;
                 return true;
               }).length }] : []),
-              { icon: '🛤️', label: t('nav.savedTrails'), view: 'saved', count: citySavedRoutes.length },
+              !isTrailAnywhere && { icon: '🛤️', label: t('nav.savedTrails'), view: 'saved', count: citySavedRoutes.length },
               // Settings — admin only (hidden from regular users, not just blocked)
               ...(isAdmin ? [{ icon: '⚙️', label: t('settings.title'), view: 'settings' }] : []),
-            ].map(item => (
+            ].filter(Boolean).map(item => (
               <button
                 key={item.view}
                 onClick={() => {
@@ -421,7 +422,7 @@
 
             {/* Camera Button row — doc button on left (after camera in DOM = left in RTL, closes naturally (ok) */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'stretch' }}>
-            <button
+            {!isTrailAnywhere && <button
               onClick={() => {
                 if (!authUser || authUser.isAnonymous) { setShowLoginDialog(true); showToast(t('auth.signInRequired'), 'info', 'sticky'); return; }
                 // Interest priority: user's manual selection this session > trail interests > wizard selection
@@ -482,7 +483,7 @@
             >
               <span style={{ fontSize: '18px' }}>📸</span>
               <span>{t('trail.capturePlace')}</span>
-            </button>
+            </button>}
               {(() => {
                 const s = getHelpSection('activeTrail');
                 const txt = (s && s.content && s.content.trim()) || '';
@@ -592,8 +593,8 @@
                         {stop.name}
                         {!isSkipped && isFavorite && <img src="icon-32x32.png" alt="FouFou" style={{ width: '12px', height: '12px', flexShrink: 0 }} />}
                       </span>
-                      {/* Add to favorites / Rate button — always visible even for skipped stops */}
-                      {(() => {
+                      {/* Add to favorites / Rate button — hidden in Trail Anywhere mode */}
+                      {!isTrailAnywhere && (() => {
                         if (isFavorite) {
                           // Already a favorite — show rating or invite to rate
                           return (
@@ -803,17 +804,18 @@
                 {(() => {
                   const activeTab = formData.searchMode !== 'radius' ? 'area'
                     : (formData.radiusSource || 'gps') === 'point' ? 'point' : 'gps';
-                  const STEPS = [100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500];
+                  const _maxR = window.BKK.systemParams?.maxSearchRadius || 5000;
+                  const STEPS = [100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000].filter(v => v <= _maxR);
                   const curR = formData.radiusMeters || 500;
                   const curIdx = STEPS.indexOf(curR) !== -1 ? STEPS.indexOf(curR) : STEPS.reduce((best, v, i) => Math.abs(v - curR) < Math.abs(STEPS[best] - curR) ? i : best, 0);
                   const setR = (r) => { setFormData(prev => ({...prev, radiusMeters: r})); window.BKK.logEvent?.('radius_changed', { radius_meters: r }); };
                   const rLabel = curR >= 1000 ? `${curR/1000}km` : `${curR}m`;
 
                   const tabs = [
-                    { id: 'area',  icon: '🗺️', he: 'בחר אזור',       en: 'Area' },
+                    !isTrailAnywhere && { id: 'area',  icon: '🗺️', he: 'בחר אזור',       en: 'Area' },
                     { id: 'point', icon: '🎯', he: 'מסביב למקום',    en: 'Around a place' },
                     { id: 'gps',   icon: '📍', he: 'קרוב אליי',      en: 'Near me' },
-                  ];
+                  ].filter(Boolean);
 
                   const onTab = (id) => {
                     setPointSearchResults(null);
@@ -1114,7 +1116,7 @@
                 padding: '16px 0 env(safe-area-inset-bottom, 8px)',
                 background: 'linear-gradient(to top, rgba(255,251,235,1) 80%, rgba(255,251,235,0))'
               }}>
-                <button
+                {!isTrailAnywhere && <button
                   onClick={() => {
                     setMapMode('favorites');
                     setMapFavArea(formData.searchMode === 'area' && formData.area ? formData.area : null);
@@ -1128,7 +1130,7 @@
                     cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
                     color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                >⭐ 🗺️ {t('form.favoritesMap')}</button>
+                >⭐ 🗺️ {t('form.favoritesMap')}</button>}
                 {(() => {
                   const canSearch = isDataLoaded && formData.interests.length > 0 && (formData.searchMode === 'radius' ? (formData.radiusSource === 'gps' || formData.currentLat) : (formData.searchMode === 'area' ? formData.area : true));
                   return (
@@ -1185,8 +1187,13 @@
             {/* Step 1: Choose Interests (was step 2) */}
             {wizardStep === 1 && (<>
               <div className="bg-white rounded-xl shadow-lg p-3">
+                {/* Mode toggle: FouFou Cities / Trail Anywhere */}
+                <div style={{ display: 'flex', gap: '3px', marginBottom: '12px', borderRadius: '10px', background: '#e5e7eb', padding: '3px' }}>
+                  <button onClick={() => toggleTrailAnywhere(false)} style={{ flex: 1, padding: '8px 6px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: 'all 0.15s', background: !isTrailAnywhere ? 'white' : 'transparent', color: !isTrailAnywhere ? '#e11d48' : '#6b7280', boxShadow: !isTrailAnywhere ? '0 1px 4px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}><img src="icon-32x32.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', opacity: !isTrailAnywhere ? 1 : 0.6 }} />{currentLang === 'he' ? 'ערי FouFou' : 'FouFou Cities'}</button>
+                  <button onClick={() => toggleTrailAnywhere(true)} style={{ flex: 1, padding: '8px 6px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', transition: 'all 0.15s', background: isTrailAnywhere ? 'white' : 'transparent', color: isTrailAnywhere ? '#059669' : '#6b7280', boxShadow: isTrailAnywhere ? '0 1px 4px rgba(0,0,0,0.12)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>🌍 {currentLang === 'he' ? 'מסלול בכל מקום' : 'Trail Anywhere'}</button>
+                </div>
                 {/* City Selector — custom dropdown, consistent across all Android devices */}
-                {(() => {
+                {!isTrailAnywhere && (() => {
                   const activeCities = Object.values(window.BKK.cityRegistry || {}).filter(c => { const fbState = cityActiveStates[c.id]; return fbState !== false && (Object.keys(cityActiveStates).length === 0 ? c.active !== false : true); });
                   const selectedCity = window.BKK.cityRegistry ? Object.values(window.BKK.cityRegistry).find(r => r.id === selectedCityId) : null;
                   // v3.23.67: per-city tips popup. Reuses the existing help-popup component.
@@ -1244,7 +1251,7 @@
                     {renderContextHint(cityHintId)}
                   </>);
                 })()}
-                {renderStepHeader('⭐', t('wizard.step2Title'), t('wizard.step2Subtitle'), 'hint_interests')}
+                {renderStepHeader('⭐', t('wizard.step2Title'), isTrailAnywhere ? (currentLang === 'he' ? 'בחר תחום אחד או יותר' : 'Select one or more interests') : t('wizard.step2Subtitle'), 'hint_interests')}
                 {renderContextHint('hint_interests')}
 
                 {/* Time filter toggle — ☀️ day / 🌙 night / ☯ all */}
@@ -1274,11 +1281,17 @@
                     Fix: one grid per group, separators are divs OUTSIDE the grids. */}
                 <div style={{ marginBottom: '12px' }}>
                   {(() => {
+                    const googleMappings = window.BKK.interestToGooglePlaces || {};
                     const filtered = allInterestOptions.filter(option => {
                       // v3.23.8: draft visibility handled by interestOptions memo (creator+admin only). adminStatus retired.
                       if (option.scope === 'local' && option.cityId && option.cityId !== selectedCityId) return false;
+                      // Trail Anywhere: hide interests with no Google Places mapping
+                      if (isTrailAnywhere) {
+                        const cfg = interestConfig[option.id];
+                        const hasTypes = (Array.isArray(cfg?.types) && cfg.types.length > 0) || (typeof cfg?.types === 'string' && cfg.types.trim()) || cfg?.textSearch;
+                        if (!hasTypes && !googleMappings[option.id]) return false;
+                      }
                       // Time filter: show only interests matching selected time filter
-                      // Check option.bestTime first (stored on the interest object), then interestConfig override
                       if (interestTimeFilter !== 'all') {
                         const cfg = interestConfig[option.id];
                         const bt = cfg?.bestTime || option.bestTime || 'anytime';
@@ -1379,7 +1392,7 @@
                 padding: '8px 0 env(safe-area-inset-bottom, 8px)',
                 background: 'linear-gradient(to top, rgba(255,251,235,1) 80%, rgba(255,251,235,0))'
               }}>
-                <button
+                {!isTrailAnywhere && <button
                   onClick={() => {
                     setMapMode('favorites');
                     setMapFavArea(null); setMapFavRadius(null); setMapFocusPlace(null);
@@ -1391,7 +1404,7 @@
                     cursor: 'pointer', background: 'linear-gradient(135deg, #faf5ff, #ede9fe)',
                     color: '#6d28d9', fontSize: '13px', fontWeight: 'bold',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                >⭐ 🗺️ {t('form.favoritesMap')}</button>
+                >⭐ 🗺️ {t('form.favoritesMap')}</button>}
                 {formData.interests.length > 0 && (
                   <button
                     onClick={() => { setWizardStep(2); window.scrollTo(0, 0); }}
@@ -1417,8 +1430,8 @@
           />
         )}
 
-        {/* FAB: Quick Capture — draggable, available when no active trail */}
-        {!showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
+        {/* FAB: Quick Capture — draggable, available when no active trail, hidden in Trail Anywhere */}
+        {!isTrailAnywhere && !showQuickCapture && !showAddLocationDialog && !showEditLocationDialog && (() => {
           const pos = fabPos || { right: 16, bottom: 80 };
           const style = fabPos 
             ? { position: 'fixed', left: pos.left + 'px', top: pos.top + 'px', zIndex: 1000 }
@@ -2115,10 +2128,9 @@
                           if (navigator.share) { navigator.share({ title: routeName, text: shareText }); }
                           else { navigator.clipboard.writeText(shareText); showToast(t('route.routeCopied'), 'success'); }
                         }, disabled: !route?.optimized },
-                        (() => {
+                        !isTrailAnywhere && (() => {
                           const isOthersRoute = route?.savedBy && authUser?.uid && route.savedBy !== authUser.uid;
                           const isOwnSaved = !!route?.firebaseId && route?.savedBy && authUser?.uid && route.savedBy === authUser.uid;
-                          // v3.23.24: own saved route → "Update route" (enabled); fresh route → "Save route"; others' → viewing shared
                           if (isOwnSaved) {
                             return {
                               icon: '🔄',
@@ -2138,8 +2150,8 @@
                             },
                             disabled: !route?.optimized || isOthersRoute };
                         })(),
-                        // v3.23.23: Save as new — signed-in users only, always available for any loaded route
-                        (authUser && !authUser.isAnonymous && route?.optimized) ? {
+                        // Save as new — hidden in Trail Anywhere mode
+                        !isTrailAnywhere && (authUser && !authUser.isAnonymous && route?.optimized) ? {
                           icon: '📋',
                           label: t('route.saveAsNew') || 'Save as new',
                           action: () => {
@@ -3880,6 +3892,7 @@
                   { key: 'fetchMoreCount', label: t('sysParams.fetchMore'), desc: t('sysParams.fetchMoreDesc'), min: 1, max: 10, step: 1, type: 'int' },
                   { key: 'googleMaxWaypoints', label: t('sysParams.maxWaypoints'), desc: t('sysParams.maxWaypointsDesc'), min: 5, max: 25, step: 1, type: 'int' },
                   { key: 'defaultRadius', label: t('sysParams.defaultRadius'), desc: t('sysParams.defaultRadiusDesc'), min: 100, max: 5000, step: 100, type: 'int' },
+                  { key: 'maxSearchRadius', label: currentLang === 'he' ? 'רדיוס חיפוש מקסימלי' : 'Max search radius (m)', desc: currentLang === 'he' ? 'הרדיוס המקסימלי שניתן לבחור בחיפוש מסביב למקום. ברירת מחדל: 5000' : 'Maximum selectable radius in Around a place search. Default: 5000', min: 500, max: 20000, step: 500, type: 'int' },
                   { key: 'toastDuration', label: t('sysParams.toastDurationLabel'), desc: t('sysParams.toastDurationDesc'), min: 1000, max: 10000, step: 500, type: 'int' },
                   { key: 'systemAlertIntervalHours', label: 'System Alert Interval (hours)', desc: 'How often to send automated system feedback alerts (e.g. corrupted cacheVersion). Default: 1', min: 1, max: 72, step: 1, type: 'int' },
                   { key: 'maxRoutesPerUserPerCity', label: t('sysParams.maxRoutesPerUserPerCity') || 'Max saved trails per user (per city)', desc: t('sysParams.maxRoutesPerUserPerCityDesc') || 'Cap on total saved trails a non-admin user can store in a single city. Admins bypass. Default: 50', min: 5, max: 500, step: 5, type: 'int' },

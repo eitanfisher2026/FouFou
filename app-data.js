@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.27.0
+// FouFou app-data.js v3.28.1
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2625,7 +2625,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.27.0';
+window.BKK.VERSION = '3.28.1';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -3080,11 +3080,12 @@ window.BKK.isGpsWithinCity = (lat, lng) => {
  * @param {function} onSuccess - (pos) => {} — only called if within city
  * @param {function} onError - (reason) => {} — 'outside_city', 'denied', 'unavailable', 'timeout'
  */
-window.BKK.getValidatedGps = (onSuccess, onError) => {
+window.BKK.getValidatedGps = (onSuccess, onError, options) => {
   if (!navigator.geolocation) { if (onError) onError('unavailable'); return; }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       window.BKK.setUserGPS(pos.coords.latitude, pos.coords.longitude);
+      if (options && options.skipCityCheck) { if (onSuccess) onSuccess(pos); return; }
       const check = window.BKK.isGpsWithinCity(pos.coords.latitude, pos.coords.longitude);
       if (check.withinCity) {
         if (onSuccess) onSuccess(pos);

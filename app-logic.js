@@ -358,6 +358,19 @@
   const [cityActiveStates, setCityActiveStates] = useState({});
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  const [isTrailAnywhere, setIsTrailAnywhere] = useState(() => {
+    try {
+      const urlMode = new URLSearchParams(location.search).get('mode');
+      if (urlMode === 'anywhere') { localStorage.setItem('foufou_mode', 'anywhere'); return true; }
+      if (urlMode === 'cities') { localStorage.setItem('foufou_mode', 'cities'); return false; }
+      return localStorage.getItem('foufou_mode') === 'anywhere';
+    } catch(e) { return false; }
+  });
+  const toggleTrailAnywhere = (val) => {
+    setIsTrailAnywhere(val);
+    try { localStorage.setItem('foufou_mode', val ? 'anywhere' : 'cities'); } catch(e) {}
+    if (val) setFormData(prev => ({ ...prev, searchMode: 'radius', radiusSource: 'gps', area: null }));
+  };
   const [formData, setFormData] = useState(loadPreferences());
   const [route, setRoute] = useState(null);
   const [routeListKey, setRouteListKey] = useState(0); // incremented to force re-render of route stop list after favorites change
@@ -967,6 +980,7 @@
       fetchMoreCount: 3,
       googleMaxWaypoints: 12,
       defaultRadius: 500,
+      maxSearchRadius: 5000,
       // Dedup
       dedupRadiusMeters: 100,
       dedupGoogleEnabled: 1,
@@ -1070,7 +1084,12 @@
   const [googlePlaceInfo, setGooglePlaceInfo] = useState(null);
   const [locationSearchResults, setLocationSearchResults] = useState(null); // null=hidden, []=no results, [...]= results
   const [pointSearchResults, setPointSearchResults] = useState(null); // null=hidden, []=loading, [...]= results for step-2 point mode
-  const [pointSearchQuery, setPointSearchQuery] = useState(''); // tracks input value for button enable/disable
+  const [pointSearchQuery, setPointSearchQuery] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('foufou_preferences') || '{}');
+      return (prefs.radiusSource === 'point' && prefs.radiusPlaceName) ? prefs.radiusPlaceName : '';
+    } catch(e) { return ''; }
+  });
   const [manualSearchResults, setManualSearchResults] = useState(null); // null=hidden, []=loading, {favorites,google}=results for manual-add dialog
   const [editingCustomInterest, setEditingCustomInterest] = useState(null);
   const [showAddInterestDialog, setShowAddInterestDialog] = useState(false);
@@ -4385,7 +4404,7 @@
       setFormData(prev => ({
         hours: 3, area: firstArea, interests: [], circular: true, startPoint: '',
         maxStops: prev.maxStops || 10, fetchMoreCount: prev.fetchMoreCount || 3, searchMode: 'area',
-        radiusMeters: prev.radiusMeters || 500, radiusSource: 'gps', radiusPlaceId: null, radiusPlaceName: '',
+        radiusMeters: prev.radiusMeters || window.BKK._defaultRadius || 1500, radiusSource: 'gps', radiusPlaceId: null, radiusPlaceName: '',
         gpsLat: null, gpsLng: null, currentLat: null, currentLng: null
       }));
       setRoute(null);
@@ -5790,6 +5809,7 @@
   // Button styles - loaded from utils.js
 
   const getStopsForInterests = () => {
+    if (isTrailAnywhere) return [];
     // Now we only collect CUSTOM locations - Google Places will be fetched in generateRoute
     const isRadiusMode = formData.searchMode === 'radius';
     
@@ -8693,6 +8713,7 @@
   
   // Boundary check before any location save. Returns 'ok', 'warn' (admin), or 'block'.
   const checkLocationBoundary = (lat, lng) => {
+    if (isTrailAnywhere) return 'ok';
     if (!lat || !lng) return 'ok';
     const cityData = window.BKK.activeCityData;
     if (!cityData?.center) return 'ok';
@@ -9966,7 +9987,8 @@
       (reason) => {
         if (reason === 'outside_city') showToast(t('toast.outsideCity'), 'warning', 'sticky');
         else showToast(reason === 'denied' ? t('toast.locationNoPermission') : t('toast.noGpsSignal'), 'error', 'sticky');
-      }
+      },
+      { skipCityCheck: isTrailAnywhere }
     );
   };
 
