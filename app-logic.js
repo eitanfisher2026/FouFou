@@ -18,6 +18,12 @@
           prefs.currentLat = null;
           prefs.currentLng = null;
         }
+        // Expire GPS coords after 1 hour — prevents stale location from a previous city/country
+        if (prefs.currentLat && (!prefs.gpsTimestamp || Date.now() - prefs.gpsTimestamp > 60 * 60 * 1000)) {
+          prefs.currentLat = null;
+          prefs.currentLng = null;
+          prefs.gpsTimestamp = null;
+        }
         if (!prefs.radiusMeters) prefs.radiusMeters = 500;
         if (!prefs.radiusSource) prefs.radiusSource = 'gps';
         if (!prefs.radiusPlaceName) prefs.radiusPlaceName = '';
@@ -360,9 +366,11 @@
   const [wizardStep, setWizardStep] = useState(1);
   const [isTrailAnywhere, setIsTrailAnywhere] = useState(() => {
     try {
-      const urlMode = new URLSearchParams(location.search).get('mode');
+      const params = new URLSearchParams(location.search);
+      const urlMode = params.get('mode');
+      const urlCity = params.get('city');
       if (urlMode === 'anywhere') { localStorage.setItem('foufou_mode', 'anywhere'); return true; }
-      if (urlMode === 'cities') { localStorage.setItem('foufou_mode', 'cities'); return false; }
+      if (urlMode === 'cities' || urlCity) { localStorage.setItem('foufou_mode', 'cities'); return false; }
       return localStorage.getItem('foufou_mode') === 'anywhere';
     } catch(e) { return false; }
   });
@@ -376,6 +384,7 @@
   const [routeListKey, setRouteListKey] = useState(0); // incremented to force re-render of route stop list after favorites change
   const [isGenerating, setIsGenerating] = useState(false);
   const [waitingForGps, setWaitingForGps] = useState(false); // true while "open in Google Maps" is waiting on GPS
+  const [gpsRefreshStatus, setGpsRefreshStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
 
   // Proactive GPS prefetch: when the user reaches wizard step 3 (the route preview
   // screen where "Open in Google Maps" lives), kick off a background GPS fetch if

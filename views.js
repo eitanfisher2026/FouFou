@@ -45,10 +45,10 @@
 
   const renderIcon = (icon, size = '14px') => {
     if (!icon) return null;
-    const isUrl = typeof icon === 'string' && (icon.startsWith('data:') || icon.startsWith('http'));
-    return isUrl 
-      ? <img src={icon} alt="" style={{ width: size, height: size, objectFit: 'contain', display: 'inline', verticalAlign: 'middle' }} />
-      : icon;
+    const isImg = typeof icon === 'string' && (icon.startsWith('data:') || icon.startsWith('http') || icon.startsWith('interest-icons/'));
+    if (!isImg) return icon;
+    const src = icon.startsWith('interest-icons/') ? `${icon}?v=${window.BKK.VERSION}` : icon;
+    return <img src={src} alt="" style={{ width: size, height: size, objectFit: 'contain', display: 'inline', verticalAlign: 'middle' }} />;
   };
 
   // Shared import file parser — used from settings and favorites screen
@@ -520,14 +520,10 @@
                       {legendInterests.map(int => {
                         const color = window.BKK.getInterestColor(int.id, allInterestOptions);
                         const iconRaw = int.icon || '';
-                        const isImg = iconRaw.startsWith('data:');
                         return (
                           <div key={int.id} style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#4b5563' }}>
                             <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }}></span>
-                            {isImg
-                              ? <img src={iconRaw} alt="" style={{ width: '12px', height: '12px', objectFit: 'contain' }} />
-                              : <span style={{ fontSize: '11px', lineHeight: 1 }}>{iconRaw}</span>
-                            }
+                            {renderIcon(iconRaw, '12px')}
                             <span>{tLabel(int)}</span>
                           </div>
                         );
@@ -907,10 +903,7 @@
                                   const int = allInterestOptions.find(o => (fav.interests || []).includes(o.id));
                                   const iconRaw = int?.icon || '';
                                   return (<>
-                                    {iconRaw ? (iconRaw.startsWith('data:')
-                                      ? <img src={iconRaw} alt="" style={{ width: '13px', height: '13px', objectFit: 'contain', opacity: 0.75, flexShrink: 0 }} />
-                                      : <span style={{ fontSize: '13px', lineHeight: 1, opacity: 0.75 }}>{iconRaw}</span>
-                                    ) : null}
+                                    {int ? <span style={{ opacity: 0.75, flexShrink: 0 }}>{renderIcon(iconRaw, '13px')}</span> : null}
                                     <img src="icon-32x32.png" alt="FouFou" style={{ width: '16px', height: '16px', flexShrink: 0, opacity: 0.85 }} />
                                   </>);
                                 })()}
@@ -1038,8 +1031,7 @@
                                             const firstInt = allInterestOptions.find(o => intIds.includes(o.id));
                                             if (!firstInt) return null;
                                             const iconRaw = firstInt.icon || '';
-                                            if (iconRaw.startsWith('data:')) return <img src={iconRaw} alt="" style={{ width: '13px', height: '13px', objectFit: 'contain', flexShrink: 0, opacity: 0.7 }} />;
-                                            return <span style={{ fontSize: '12px', lineHeight: 1, opacity: 0.7 }}>{iconRaw}</span>;
+                                            return <span style={{ opacity: 0.7 }}>{renderIcon(iconRaw, '13px')}</span>;
                                           })()}
                                         </div>
                                         <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '1px' }}>{result.address}{result.rating ? ` · ⭐ ${result.rating}` : ''}</div>
@@ -1087,8 +1079,29 @@
                       {activeTab === 'gps' && (
                         <div style={{ marginBottom: '8px' }}>
                           <div style={{ height: '6px' }} />
-                          <div style={{ textAlign: 'center', padding: '10px 0 14px', color: '#0369a1', fontSize: '12px', fontWeight: '500' }}>
-                            {currentLang === 'he' ? 'המיקום שלך יאותר בעת חיפוש' : 'Your location will be detected at search time'}
+                          <div style={{ textAlign: 'center', padding: '6px 0 12px' }}>
+                            <button
+                              disabled={gpsRefreshStatus === 'loading'}
+                              onClick={() => {
+                                setGpsRefreshStatus('loading');
+                                window.BKK.getValidatedGps(
+                                  (pos) => {
+                                    setFormData(prev => ({...prev, currentLat: pos.coords.latitude, currentLng: pos.coords.longitude, gpsTimestamp: Date.now(), radiusPlaceName: currentLang === 'he' ? 'המיקום שלי' : 'My location'}));
+                                    setGpsRefreshStatus('ok');
+                                    setTimeout(() => setGpsRefreshStatus(null), 3000);
+                                  },
+                                  (err) => { setGpsRefreshStatus('error'); setTimeout(() => setGpsRefreshStatus(null), 3000); },
+                                  { skipCityCheck: true }
+                                );
+                              }}
+                              style={{ padding: '8px 20px', borderRadius: '20px', border: '1.5px solid #0369a1', background: gpsRefreshStatus === 'ok' ? '#dcfce7' : gpsRefreshStatus === 'error' ? '#fef2f2' : 'white', color: gpsRefreshStatus === 'ok' ? '#16a34a' : gpsRefreshStatus === 'error' ? '#dc2626' : '#0369a1', fontSize: '13px', fontWeight: '600', cursor: gpsRefreshStatus === 'loading' ? 'default' : 'pointer' }}>
+                              {gpsRefreshStatus === 'loading' ? (currentLang === 'he' ? '⏳ מאתר...' : '⏳ Detecting...') : gpsRefreshStatus === 'ok' ? (currentLang === 'he' ? '✓ מיקום עודכן' : '✓ Location updated') : gpsRefreshStatus === 'error' ? (currentLang === 'he' ? '✕ לא ניתן לאתר' : '✕ Could not detect') : (currentLang === 'he' ? '📍 עדכן את המיקום שלי' : '📍 Update my location')}
+                            </button>
+                            {formData.currentLat && gpsRefreshStatus !== 'loading' && (
+                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                                {formData.radiusPlaceName || (currentLang === 'he' ? 'מיקום ידוע' : 'Location known')}
+                              </div>
+                            )}
                           </div>
                           {/* Radius stepper — same spacer as point tab so label position never jumps */}
                           <div style={{ height: '8px' }} />
@@ -1343,7 +1356,7 @@
                               }}
                             >
                               {isDraft && <span style={{ position: 'absolute', top: '2px', right: '4px', fontSize: '8px' }}>🟡</span>}
-                              <div style={{ fontSize: '22px', marginBottom: '2px' }}>{option.icon?.startsWith?.('data:') ? <img src={option.icon} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', display: 'inline' }} /> : option.icon}</div>
+                              <div style={{ marginBottom: '4px' }}>{(() => { const lp = window.BKK.interestIconPaths?.[option.id]; return lp ? <img src={lp} alt="" style={{ width: '52px', height: '52px', objectFit: 'contain', display: 'inline' }} /> : renderIcon(option.icon, '52px') || <span style={{ fontSize: '28px', lineHeight: 1 }}>{option.icon}</span>; })()}</div>
                               <div style={{ fontWeight: '700', fontSize: '11px', color: isSelected ? '#1e40af' : '#374151', wordBreak: 'break-word' }}>{tLabel(option)}</div>
                             </button>
                           );
@@ -1732,7 +1745,7 @@
                           {/* Interest header with fetch-more button */}
                           <div className="flex items-center justify-between mb-1.5">
                             <div className="font-bold text-xs text-gray-700 flex items-center gap-1">
-                              <span style={{ fontSize: '14px' }}>{interestObj.icon?.startsWith?.('data:') ? <img src={interestObj.icon} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : interestObj.icon}</span>
+                              <span style={{ fontSize: '14px' }}>{renderIcon(interestObj.icon || '', '16px')}</span>
                               <span>{tLabel(interestObj)} ({filteredStops.length})</span>
                             </div>
                             {!isManualGroup && (
@@ -2413,7 +2426,7 @@
                           const interest = interestMap[intId];
                           return interest ? (
                             <span key={intId} className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                              {interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-3.5 h-3.5 object-contain inline" /> : interest.icon} {tLabel(interest)}
+                              {renderIcon(interest.icon || '', '14px')} {tLabel(interest)}
                             </span>
                           ) : null;
                         })}
@@ -2855,7 +2868,7 @@
                     return (
                       <div key={key} className="border border-gray-200 rounded-lg overflow-hidden mb-1.5">
                         <div className="bg-gray-100 px-2 py-1 flex items-center gap-1 text-xs font-bold text-gray-700">
-                          <span>{groupIcon?.startsWith?.('data:') ? <img src={groupIcon} alt="" className="w-4 h-4 object-contain inline" /> : groupIcon}</span>
+                          <span>{renderIcon(groupIcon, '16px')}</span>
                           <span>{groupLabel}</span>
                           <span className="text-gray-400 font-normal">({locs.length})</span>
                         </div>
@@ -3074,7 +3087,7 @@
                     {/* Color bar */}
                     <div style={{ width: '4px', alignSelf: 'stretch', borderRadius: '2px', background: effectiveActive ? interestColor : '#d1d5db', flexShrink: 0 }}></div>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-lg flex-shrink-0">{interest.icon?.startsWith?.('data:') ? <img src={interest.icon} alt="" className="w-5 h-5 object-contain" /> : interest.icon}</span>
+                      <span className="text-lg flex-shrink-0">{renderIcon(interest.icon || '', '20px')}</span>
                       <span className={`font-medium text-sm truncate ${isDraft ? 'text-amber-700' : !effectiveActive ? 'text-gray-500' : ''}`}>{tLabel(interest)}</span>
                       {isDraft && <span title={t('interests.draftStatus')} style={{ fontSize: '11px', flexShrink: 0 }}>✏️</span>}
                       {favCount > 0 && <span style={{ fontSize: '10px', color: '#9ca3af', flexShrink: 0 }}>({favCount})</span>}
@@ -3671,7 +3684,7 @@
             {/* ===== INTERESTS TAB ===== */}
             {settingsTab === 'interests' && (() => {
                             const renderInterestSettingsRow = (i, allCities, getAStatus, openFn) => {
-                const icon = i.icon?.startsWith?.('data:') ? <img src={i.icon} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain' }} /> : <span style={{ fontSize: '18px' }}>{i.icon || '📍'}</span>;
+                const icon = renderIcon(i.icon || '📍', '20px');
                 const isDraft = getAStatus(i) === 'draft';
                 const isHidden = getAStatus(i) === 'hidden';
                 const visibleCities = allCities.filter(city => !(cityHiddenInterests[city.id] || new Set()).has(i.id));
@@ -4573,7 +4586,7 @@
                                   }}
                                   style={{ padding: '8px 4px', borderRadius: '10px', border: isOn ? `2px solid ${color}` : '1.5px solid #e5e7eb', background: isOn ? color + '18' : 'white', cursor: 'pointer', textAlign: 'center', opacity: isOn ? 1 : 0.45 }}>
                                   <div style={{ fontSize: '16px', marginBottom: '2px', lineHeight: 1 }}>
-                                    {isImgIcon ? <img src={iconRaw} alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', display: 'inline' }} /> : iconRaw}
+                                    {(() => { const lp = window.BKK.interestIconPaths?.[int.id]; return lp ? <img src={lp} alt="" style={{ width: '20px', height: '20px', objectFit: 'contain', display: 'inline' }} /> : renderIcon(iconRaw, '20px'); })()}
                                   </div>
                                   <div style={{ fontWeight: '700', fontSize: '9px', color: isOn ? color : '#374151', wordBreak: 'break-word', lineHeight: 1.2 }}>{tLabel(int)}</div>
                                 </button>
@@ -4590,7 +4603,7 @@
                               return (
                                 <div key={int.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px' }}>
                                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, display: 'inline-block', border: '1px solid ' + color }}></span>
-                                  <span style={{ color: '#6b7280' }}>{renderIcon(int.icon, '14px')} {tLabel(int)}</span>
+                                  <span style={{ color: '#6b7280' }}>{tLabel(int)}</span>
                                 </div>
                               );
                             })}
@@ -4764,14 +4777,9 @@
                         {legendItems.map(int => {
                           const color = window.BKK.getInterestColor(int.id, allInterestOptions);
                           const iconRaw = int.icon || '';
-                          const isImg = iconRaw.startsWith('data:');
                           return (
                             <div key={int.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#374151', padding: '2px 7px', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e5e7eb' }}>
                               <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }}></span>
-                              {isImg
-                                ? <img src={iconRaw} alt="" style={{ width: '13px', height: '13px', objectFit: 'contain' }} />
-                                : <span style={{ fontSize: '12px', lineHeight: 1 }}>{iconRaw}</span>
-                              }
                               <span style={{ fontWeight: '500' }}>{tLabel(int)}</span>
                             </div>
                           );
