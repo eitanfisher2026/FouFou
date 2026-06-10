@@ -1,4 +1,4 @@
-// FouFou app-data.js v3.28.7
+// FouFou app-data.js v3.28.17
 // ============================================================================
 // FouFou — City Trail Generator - Internationalization (i18n)
 // Copyright © 2026 Eitan Fisher. All Rights Reserved.
@@ -2326,7 +2326,7 @@ map: {
 help: {
   main: {
     title: 'How to use?',
-    content: "**FouFou** helps you discover interesting places and plan a trip route.\n\n**3 simple steps:**\n1. **Choose interests** — what interests you? Galleries, food, coffee, temples...\n2. **Choose an area** — tap an area from the list, or \"Near me\" to search by GPS\n3. **Get results** — the system searches your favorites and Google for places\n\n**After getting results:**\n• **\"Let's Go!\"** — opens navigation in Google Maps immediately\n• **\"Manual mode\"** — full control: skip places, change order, choose starting point\n• **\"🗺️ Map & Plan\"** — interactive map with real walking route\n\n**Menu ☰ (top right):**\n• 🗺️ **Route** — back to planning\n• 💾 **Saved** — routes you saved\n• ⭐ **Favorites** — places you liked and added\n• 🏷️ **Interests** — manage interest categories\n• ⚙️ **Settings** — system settings (requires password)\n\n**During an active trail:**\n• **📸 Snap a place** — take a photo, the system identifies nearby Google places\n• **⭐ Rate** — rate favorite places or add Google places to favorites\n• **📍 Where am I** — map with your location and the trail\n\n**Tip:** Places rated highly in FouFou will appear first in your route!"
+    content: "**FouFou — the trail generator.**\nImagine landing somewhere you've never been — Bangkok, Rome, Tokyo — and asking a local friend: \"What would you recommend for half a day?\" That's exactly what FouFou does.\n\nOther tools overwhelm you with too many places and too much information. FouFou cuts through that: a short, ready-to-walk route of well-known spots and hidden gems, tailored to your interests. 3 clicks and you're off.\n\n---\n\n**Two modes — choose at the top of Step 1:**\n\n🏙️ **FouFou Cities** — cities with curated local knowledge: favorites added by locals, rated places, and hidden gems you won't find on Google alone. The route algorithm prioritizes FouFou favorites and fills in with top-rated Google places.\n\n🌍 **Trail Anywhere** — no city needed. Explore any place in the world using Google results only. Perfect for spontaneous travel — no saving, no favorites, just go.\n\n---\n\n**Step 1 — What interests you?**\n• Choose one or more interests (food, culture, coffee, temples, nightlife...)\n• In FouFou Cities: tap ⭐🗺️ to see where favorites are concentrated on the map\n• Hit **Continue** when ready\n\n**Step 2 — Where?**\n• **Area** (FouFou Cities only) — pick a neighborhood or district\n• **Around a place** — search any location by name, e.g. \"Imperial Palace Tokyo\"\n• **Near me** — uses GPS, wherever you are now\n\n**Step 3 — Results & route**\n• **\"Let's Go!\"** — instant navigation in Google Maps\n• **\"Manual mode\"** — skip places, reorder, choose a starting point\n• **\"🗺️ Map & Plan\"** — real walking route on an interactive map\n\n---\n\n**Top bar:**\n• ☰ (left) — menu: favorites, saved trails, interests, settings\n• 🔑 (right) — sign in / your account\n• 💬 (right) — send feedback or ask a question\n\n---\n\n**Favorite places** (FouFou Cities only) are saved per city — spots added by locals and by you. Any registered user can add a place or rate existing ones. Places are organized by interest and by area.\n\n**Tip:** Upload your saved Google Places to FouFou — your favorites appear first in every trail, and you can share them with friends and family."
   },
   placesListing: {
     title: 'Places list',
@@ -2625,7 +2625,7 @@ window.BKK.mapConfig = {
   window.BKK.visitorName = vname || vid.slice(0, 10);
 })();
 
-window.BKK.VERSION = '3.28.7';
+window.BKK.VERSION = '3.28.17';
 window.BKK.stopLabel = function(i) {
   if (i < 26) return String.fromCharCode(65 + i);
   return String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26));
@@ -2931,6 +2931,43 @@ Object.defineProperty(window.BKK, 'helpContent', {
 // ============================================================================
 
 window.BKK = window.BKK || {};
+
+window.BKK.interestIconPaths = {
+  'i_all_restaurants':         'interest-icons/i_all_restaurants.png',
+  'i_architecture_and_museums':'interest-icons/i_architecture_and_museums.png',
+  'i_asian_food':              'interest-icons/i_asian_food.png',
+  'i_brunch_coffee':           'interest-icons/i_brunch_coffee.png',
+  'i_cat_dog_coffee':          'interest-icons/i_cat_dog_coffee.png',
+  'i_churches':                'interest-icons/i_churches.png',
+  'i_coffee':                  'interest-icons/i_coffee.png',
+  'i_crafts':                  'interest-icons/i_crafts.png',
+  'i_day_markets':             'interest-icons/i_day_markets.png',
+  'i_day_street':              'interest-icons/i_day_street.png',
+  'i_entertainment':           'interest-icons/i_entertainment.png',
+  'i_fountain_and_statues':    'interest-icons/i_fountain_and_statues.png',
+  'i_galleries':               'interest-icons/i_galleries.png',
+  'i_kids':                    'interest-icons/i_kids.png',
+  'i_mediterranean_food':      'interest-icons/i_mediterranean_food.png',
+  'i_mosque':                  'interest-icons/i_mosque.png',
+  'i_nature':                  'interest-icons/i_nature.png',
+  'i_night_markets':           'interest-icons/i_night_markets.png',
+  'i_night_street':            'interest-icons/i_night_street.png',
+  'i_nightlife':               'interest-icons/i_nightlife.png',
+  'i_parks_and_gardens':       'interest-icons/i_parks_and_gardens.png',
+  'i_places_with_water':       'interest-icons/i_places_with_water.png',
+  'i_shopping_malls':          'interest-icons/i_shopping_malls.png',
+  'i_specialty_stores':        'interest-icons/i_specialty_stores.png',
+  'i_street_art':              'interest-icons/i_street_art.png',
+  'i_street_food_day':         'interest-icons/i_street_food_day.png',
+  'i_street_food_night':       'interest-icons/i_street_food_night.png',
+  'i_sweets':                  'interest-icons/i_sweets.png',
+  'i_synagogue':               'interest-icons/i_synagogue.png',
+  'i_temples':                 'interest-icons/i_temples.png',
+  'i_tourist_attraction':      'interest-icons/i_tourist_attraction.png',
+  'i_vegetarian_food':         'interest-icons/i_vegetarian_food.png',
+  'i_vintage':                 'interest-icons/i_vintage.png',
+  'i_wine_rooftop_bar':        'interest-icons/i_wine_rooftop_bar.png',
+};
 
 // ============================================================================
 // ============================================================================
