@@ -327,6 +327,21 @@
                 <span>{item.label}{item.count > 0 ? ` (${item.count})` : ''}</span>
               </button>
             ))}
+            {/* Install app — shown when installable and not yet installed */}
+            {canInstall && (
+              <button
+                onClick={() => { installApp(); window.BKK.logEvent?.('install_app_clicked'); }}
+                style={{
+                  width: '100%', textAlign: currentLang === 'he' ? 'right' : 'left',
+                  background: 'transparent', border: 'none', borderRadius: '8px', padding: '8px 12px',
+                  color: '#374151', fontSize: '13px', fontWeight: '600',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+              >
+                <span style={{ fontSize: '15px' }}>📲</span>
+                <span>{currentLang === 'he' ? 'התקן אפליקציה' : 'Install App'}</span>
+              </button>
+            )}
             {/* About — visible to all users */}
             <button
               onClick={() => { setShowAbout(true); setShowHeaderMenu(false); window.BKK.logEvent?.('nav_menu_clicked', { destination: 'about' }); }}
@@ -3248,6 +3263,15 @@
                             }}
                             style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "6px", border: "none", cursor: "pointer", background: isActive ? "#dcfce7" : "#fee2e2", color: isActive ? "#16a34a" : "#ef4444", fontWeight: "bold" }}
                           >{isActive ? `▶️ ${t("general.active")}` : `⏸️ ${t("general.inactive")}`}</button>
+                          <button
+                            onClick={() => {
+                              if (!database) { showToast('No database connection', 'error'); return; }
+                              database.ref('cityDataVersions/' + reg.id).set(Date.now())
+                                .then(() => showToast('📤 ' + (reg.nameEn || reg.name) + ' — published', 'success'))
+                                .catch(err => showToast('Publish failed: ' + err.message, 'error'));
+                            }}
+                            style={{ fontSize: "10px", padding: "2px 8px", borderRadius: "6px", border: "none", cursor: "pointer", background: "#e0e7ff", color: "#4338ca", fontWeight: "bold", flexShrink: 0 }}
+                          >📤</button>
                         </div>
                       );
                     })}
