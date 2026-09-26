@@ -1,13 +1,13 @@
 # FouFou — City Trail Generator · Claude Context
 
 ## Live
-https://eitanfisher2026.github.io/FouFou-dev/
+https://eitanfisher2026.github.io/FouFou/
 
 ## Stack
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Current Version
-**v4.0.0**
+**v4.3.2**
 
 ## Recent Changes (v3.22.87 → v3.23.4)
 - **v3.22.87**: Debug tab + `addDebugLog` infrastructure removed
@@ -81,12 +81,12 @@ grep "3\.22\." app-data.js sw.js index.html config.js version.json .last_built_v
 python3 build.py
 node compile.js app-code.js
 # bump version (see above)
-zip -q github-upload-dev-vX_YY_ZZ.zip \
-  CLAUDE_CONTEXT.md README.md _app-code-template.js _source-template.html \
+zip -q github-upload-prod-vX_YY_ZZ.zip \
+  CLAUDE.md README.md _app-code-template.js _source-template.html \
   app-code.js app-data.js app-logic.js build.py \
-  city-bangkok.js city-gushdan.js city-malaga.js city-singapore.js city-telaviv.js \
   compile.js config.js dialogs.js favicon.ico firebase-rules.json i18n.js \
   icon-16x16.png icon-180x180.png icon-192x192.png icon-32x32.png icon-512x512.png \
+  icons-svg interest-icons \
   index.html manifest.json package-lock.json package.json privacy.html \
   quick-add-component.js sw.js utils.js version.json views.js \
   .last_built_version .nojekyll

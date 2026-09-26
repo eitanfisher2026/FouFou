@@ -133,7 +133,7 @@
           ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 1000)"
         },
         "role": {
-          ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && (newData.val() <= 1 || root.child('users').child(auth.uid).child('role').val() >= 2 || (!data.exists() && !root.child('users').exists())))"
+          ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 2 && (newData.val() === data.val() || root.child('users').child(auth.uid).child('role').val() >= 2 || (!data.exists() && newData.val() === 0) || (!data.exists() && !root.child('users').exists() && newData.val() === 2)))"
         },
         "$other": {
           ".validate": true
