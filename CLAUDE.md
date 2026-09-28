@@ -3,11 +3,17 @@
 ## Live
 https://eitanfisher2026.github.io/FouFou/
 
+## Single environment (since v4.3.3, 2026-09-28)
+This repo is the **only** FouFou environment. The separate FouFou-dev repo/site was permanently deleted —
+the app is used by the owner and maybe one other user, so there is no dev→prod promotion step anymore.
+Every change is made here, and pushing to `main` publishes it live (GitHub Pages).
+Firebase project `bangkok-explorer` (unchanged). Admin tool: `C:\Projects\foufou-build`.
+
 ## Stack
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Current Version
-**v4.3.2**
+**v4.3.3**
 
 ## Recent Changes (v3.22.87 → v3.23.4)
 - **v3.22.87**: Debug tab + `addDebugLog` infrastructure removed
@@ -59,38 +65,28 @@ Last working zip before context reset: **v3.22.95** (582KB, 36 files)
 
 ## Build & Compile
 ```bash
-python3 build.py              # assembles index.html + app-data.js
-node compile.js app-code.js   # JSX → minified JS (MUST run after build.py)
+PYTHONIOENCODING=utf-8 python build.py   # assembles index.html + app-data.js (env var avoids emoji-print crash on Windows)
+node compile.js app-code.js              # JSX → minified JS (MUST run after build.py)
 ```
 
 ## ⚠️ VERSION BUMP — MANDATORY (every release)
 ```bash
-OLD=3.22.X; NEW=3.22.Y
-sed -i "s|v=${OLD}|v=${NEW}|g; s|v${OLD}|v${NEW}|g; s|'${OLD}'|'${NEW}'|g; s|foufou-dev-v${OLD}|foufou-dev-v${NEW}|g" \
+OLD=4.3.X; NEW=4.3.Y
+sed -i "s|v=${OLD}|v=${NEW}|g; s|v${OLD}|v${NEW}|g; s|'${OLD}'|'${NEW}'|g; s|foufou-v${OLD}|foufou-v${NEW}|g" \
   app-data.js sw.js index.html config.js
 echo "{\"version\": \"${NEW}\"}" > version.json
 echo -n "${NEW}" > .last_built_version
 ```
-**Verify ALL 6 files match:**
+Then run the build (above) and **verify ALL 6 files match** (and no old version remains):
 ```bash
-grep "3\.22\." app-data.js sw.js index.html config.js version.json .last_built_version
+grep -c "${NEW}" app-data.js sw.js index.html config.js version.json .last_built_version
+grep -c "${OLD}" app-data.js sw.js index.html config.js
 ```
+Service-worker cache name is `foufou-v<version>`.
 
-## Packaging (MANDATORY after every change)
-```bash
-python3 build.py
-node compile.js app-code.js
-# bump version (see above)
-zip -q github-upload-prod-vX_YY_ZZ.zip \
-  CLAUDE.md README.md _app-code-template.js _source-template.html \
-  app-code.js app-data.js app-logic.js build.py \
-  compile.js config.js dialogs.js favicon.ico firebase-rules.json i18n.js \
-  icon-16x16.png icon-180x180.png icon-192x192.png icon-32x32.png icon-512x512.png \
-  icons-svg interest-icons \
-  index.html manifest.json package-lock.json package.json privacy.html \
-  quick-add-component.js sw.js utils.js version.json views.js \
-  .last_built_version .nojekyll
-```
+## Release
+Bump → build → compile → verify → commit → `git push` to `main` (= live). Always include `version.json`
+in the commit — omitting it causes an infinite "update available" loop.
 **Always end every session with:** `📦 GitHub only — no Play Store needed`
 
 ---
