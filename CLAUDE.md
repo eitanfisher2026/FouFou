@@ -13,7 +13,7 @@ Firebase project `bangkok-explorer` (unchanged). Admin tool: `C:\Projects\foufou
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Current Version
-**v4.3.4**
+**v4.3.5**
 
 ## Recent Changes (v3.22.87 → v3.23.4)
 - **v3.22.87**: Debug tab + `addDebugLog` infrastructure removed
@@ -125,7 +125,7 @@ in the commit — omitting it causes an infinite "update available" loop.
 - **Status after edit** (v4.3.4): a **regular user** saving content edits to an approved place auto-downgrades it to draft. An **admin/editor** save auto-approves the place (draft or approved) — their edit is the review. Only exception: admin/editor explicitly flips the status toggle approved→draft in the same save (`updateCustomLocation`).
 - **Reviews are safe**: writing/editing reviews goes to `cities/{cityId}/reviews/{placeKey}/{uid}` — separate Firebase path, never touches `locked` on the location
 - **Tab visibility** (v3.22.94): `all/drafts/ready` tabs visible to all logged-in users; `skipped` (blacklist) hidden from non-editor; entire filter row hidden from anonymous
-- **Edit icon** (v4.3.4): `!canEdit || (loc.locked && !isEditor) ? "👁️" : "✏️"` — eye for approved only for regular users (hints that editing will revert to draft); admin/editor always see the pencil
+- **Edit icon** (v4.3.5): `!canEdit || loc.locked ? "👁️" : "✏️"` — this icon is the ONLY draft/approved marker in the favorites list row (👁️ = approved, ✏️ = draft), for all roles. Do not make it role-dependent: v4.3.4 showed admins a constant ✏️ and the list looked like it was not refreshing after an edit auto-approved a place.
 - Nav arrows in edit dialog work from `flatNavList` (app-logic.js L5410) which respects all active filters
 - `addedBy` = Firebase uid of creator
 
