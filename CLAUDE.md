@@ -13,7 +13,7 @@ Firebase project `bangkok-explorer` (unchanged). Admin tool: `C:\Projects\foufou
 React (pre-compiled JSX via Babel), Firebase Realtime DB + Analytics, Google Places API, PWA
 
 ## Current Version
-**v4.3.3**
+**v4.3.4**
 
 ## Recent Changes (v3.22.87 → v3.23.4)
 - **v3.22.87**: Debug tab + `addDebugLog` infrastructure removed
@@ -122,10 +122,10 @@ in the commit — omitting it causes an infinite "update available" loop.
   - Regular user: edit/delete own places (draft OR approved)
   - Anonymous: no edit/delete
 - **Approve permissions** (v3.22.93): only Admin/Editor can flip draft ↔ approved (via status toggle in edit dialog OR bulk approve in Settings)
-- **Auto-revert on edit** (v3.22.93): saving content edits to an approved place auto-downgrades it back to draft (`updateCustomLocation` L9027). **Exception**: when an admin/editor explicitly flips the status toggle draft→approved in the same save, the approval is preserved.
+- **Status after edit** (v4.3.4): a **regular user** saving content edits to an approved place auto-downgrades it to draft. An **admin/editor** save auto-approves the place (draft or approved) — their edit is the review. Only exception: admin/editor explicitly flips the status toggle approved→draft in the same save (`updateCustomLocation`).
 - **Reviews are safe**: writing/editing reviews goes to `cities/{cityId}/reviews/{placeKey}/{uid}` — separate Firebase path, never touches `locked` on the location
 - **Tab visibility** (v3.22.94): `all/drafts/ready` tabs visible to all logged-in users; `skipped` (blacklist) hidden from non-editor; entire filter row hidden from anonymous
-- **Edit icon** (v3.22.94): `!canEdit || loc.locked ? "👁️" : "✏️"` — eye for approved (hints that editing will revert to draft)
+- **Edit icon** (v4.3.4): `!canEdit || (loc.locked && !isEditor) ? "👁️" : "✏️"` — eye for approved only for regular users (hints that editing will revert to draft); admin/editor always see the pencil
 - Nav arrows in edit dialog work from `flatNavList` (app-logic.js L5410) which respects all active filters
 - `addedBy` = Firebase uid of creator
 

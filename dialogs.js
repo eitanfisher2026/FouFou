@@ -855,7 +855,7 @@
                 const isOwnPlace = !editingLocation?.addedBy || editingLocation.addedBy === authUser?.uid;
                 // Admin and Editor can edit any place.
                 // Regular users can edit their own places — draft or approved.
-                // When a regular user edits an approved place, it reverts to draft (see saveLocation logic).
+                // When a regular user edits an approved place, it reverts to draft; an admin/editor save auto-approves (see updateCustomLocation).
                 const canEdit = isAdmin || isEditor || isOwnPlace;
                 return (
               <div className="px-4 py-2.5 border-t border-gray-200 flex gap-2" style={{ direction: window.BKK.i18n.isRTL() ? 'rtl' : 'ltr' }}>

@@ -2941,7 +2941,7 @@
                                 ); })()}
                                 <button onClick={() => handleEditLocation(loc, flatNavList)}
                                   className="text-xs px-1 py-0.5 rounded"
-                                  title={!canEdit ? t("general.viewOnly") : (loc.locked ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || loc.locked ? "👁️" : "✏️"}</button>
+                                  title={!canEdit ? t("general.viewOnly") : (loc.locked && !isEditor ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || (loc.locked && !isEditor) ? "👁️" : "✏️"}</button>
                               </div>
                             );
                           })}
@@ -2997,7 +2997,7 @@
                               ); })()}
                               <button onClick={() => handleEditLocation(loc, flatNavList)}
                                 className="text-xs px-1 py-0.5 rounded"
-                                title={!canEdit ? t("general.viewOnly") : (loc.locked ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || loc.locked ? "👁️" : "✏️"}</button>
+                                title={!canEdit ? t("general.viewOnly") : (loc.locked && !isEditor ? t("general.viewOnly") : t("places.detailsEdit"))}>{!canEdit || (loc.locked && !isEditor) ? "👁️" : "✏️"}</button>
                             </div>
                           );
                         })}
